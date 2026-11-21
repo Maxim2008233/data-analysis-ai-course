@@ -1,6 +1,6 @@
 "use client";
-// Страница «Приложение»: установка курса как приложения (кнопка на Android и в Chrome/Edge, инструкция на iPhone),
-// скачивание всего курса для офлайна и совет войти в аккаунт, чтобы прогресс был общим на всех устройствах.
+// Страница «Без интернета» (/app): скачивание всего курса для офлайна, установка курса как приложения (кнопка на
+// Android и в Chrome/Edge, инструкция на iPhone) и совет войти в аккаунт, чтобы прогресс был общим на всех устройствах.
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -28,8 +28,8 @@ const mb = (bytes: number) => `${Math.max(1, Math.round(bytes / 2 ** 20)).toLoca
 export function AppClient() {
   return (
     <div className="mt-8 space-y-6">
-      <InstallSection />
       <OfflineSection />
+      <InstallSection />
       <AccountSection />
     </div>
   );
@@ -221,7 +221,7 @@ function OfflineSection() {
 
   return (
     <section className="paper p-5" data-testid="offline-card">
-      <h2 className="!m-0 font-display text-xl font-semibold">Без интернета</h2>
+      <h2 className="!m-0 font-display text-xl font-semibold">Скачать курс целиком</h2>
       {supported === false ? (
         <p className="mt-3">Этот браузер не поддерживает офлайн-режим. Он работает в Safari, Chrome, Edge, Firefox и Яндекс Браузере.</p>
       ) : (

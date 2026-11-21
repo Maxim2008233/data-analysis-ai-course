@@ -1,5 +1,5 @@
 // Список файлов курса для офлайн-режима. Строится один раз при сборке сайта
-// (маршрут src/app/offline-files.json/route.ts) и скачивается страницей «Приложение» (src/lib/pwa/offline.ts).
+// (маршрут src/app/offline-files.json/route.ts) и скачивается страницей «Без интернета» (src/lib/pwa/offline.ts).
 // Только для сервера: читает файлы проекта и результат сборки .next/static.
 import fs from "node:fs";
 import path from "node:path";

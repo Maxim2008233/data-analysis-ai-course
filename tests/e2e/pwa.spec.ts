@@ -124,7 +124,7 @@ test("32. «Скачать курс»: весь курс без интернет
     expect(files.some((f) => f.startsWith(name)), name).toBe(true);
   }
   for (const name of ["seaborn-", "plotly-"]) expect(cdn.some((u) => u.includes("files.pythonhosted.org") && u.split("/").pop()!.startsWith(name))).toBe(true);
-  // сколько места занял курс (для оценки на странице «Приложение» и в README)
+  // сколько места занял курс (для оценки на странице «Без интернета» и в README)
   const usage = await page.evaluate(async () => (await navigator.storage.estimate()).usage ?? 0);
   test.info().annotations.push({ type: "storage", description: `${Math.round(usage / 2 ** 20)} МБ` });
   console.log(`[pwa] курс на устройстве: ${Math.round(usage / 2 ** 20)} МБ`);

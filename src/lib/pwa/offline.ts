@@ -1,7 +1,7 @@
 "use client";
 // «Скачать курс для офлайна»: страницы, файлы сборки, данные, Python и его библиотеки — в кэши service worker'а
 // (те же кэши и ключи, что в public/sw.js, см. caches.ts). Список файлов курса собирается при сборке сайта
-// (src/app/offline-files.json/route.ts). Скачивает страница «Приложение», пока она открыта; уже сохранённое
+// (src/app/offline-files.json/route.ts). Скачивает страница «Без интернета», пока она открыта; уже сохранённое
 // не скачивается заново, поэтому прерванную загрузку можно продолжить.
 import { APP_VERSION, PLOTLY_SRC, PY_MICROPIP_MODULES, PYODIDE_CORE_FILES, PYODIDE_INDEX_URL } from "../config";
 import { CACHES, pageKey } from "./caches";
