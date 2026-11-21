@@ -1,6 +1,8 @@
 // Интеграционные тесты базы Supabase (локальный стенд: npx supabase start).
 // Проверяют: синхронизацию со слиянием, совпадение SQL- и TS-правил слияния, правила доступа (RLS),
-// сброс прогресса с эпохой и удаление аккаунта. Пропускаются, если .env.local не настроен.
+// сброс прогресса с эпохой, пределы прогресса на пользователя и удаление аккаунта.
+// Пропускаются, если .env.local не настроен.
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -125,6 +127,46 @@ describe.skipIf(!enabled)("Supabase: прогресс, слияние, RLS", () 
     const ok = await A.sb.rpc("sync_progress", { p_items: [{ key: "task:t2", data: { status: "solved", at: 1 } }], p_epoch: 1 });
     expect((ok.data as { stale: boolean }).stale).toBe(false);
   });
+
+  it("предел записей: не больше 3000 на пользователя, обновление существующей записи разрешено", async () => {
+    const C = await newUser();
+    const admin = createClient(URL!, SERVICE!, { auth: { persistSession: false } });
+    const rows = Array.from({ length: 2999 }, (_, i) => ({ user_id: C.id, item_key: `task:q${i}`, data: { status: "in_progress" } }));
+    const bulk = await admin.from("progress").insert(rows);
+    expect(bulk.error).toBeNull();
+    const last = await C.sb.rpc("sync_progress", { p_items: [{ key: "task:q2999", data: { status: "solved", at: 1 } }], p_epoch: 0 });
+    expect(last.error).toBeNull();
+    const over = await C.sb.rpc("sync_progress", { p_items: [{ key: "task:q3000", data: { status: "solved", at: 1 } }], p_epoch: 0 });
+    expect(over.error?.message).toContain("progress quota: too many items");
+    const update = await C.sb.rpc("sync_progress", { p_items: [{ key: "task:q5", data: { status: "solved", at: 2 } }], p_epoch: 0 });
+    expect(update.error).toBeNull();
+    const direct = await C.sb.from("progress").insert({ user_id: C.id, item_key: "task:direct", data: {} });
+    expect(direct.error?.message).toContain("progress quota");
+    await C.sb.rpc("delete_own_account");
+  }, 60_000);
+
+  it("предел объёма: не больше 10 МБ данных прогресса на пользователя", async () => {
+    const D = await newUser();
+    // случайный текст почти не сжимается: каждая запись занимает около 200 КБ
+    const chunk = () => crypto.randomBytes(150_000).toString("base64");
+    let saved = 0;
+    let quotaError = "";
+    for (let i = 0; i < 70; i++) {
+      const r = await D.sb.rpc("sync_progress", { p_items: [{ key: `task:big${i}`, data: { code: chunk(), at: 1 } }], p_epoch: 0 });
+      if (r.error) {
+        quotaError = r.error.message;
+        break;
+      }
+      saved++;
+    }
+    expect(quotaError).toContain("progress quota: too much data");
+    expect(saved).toBeGreaterThanOrEqual(45);
+    expect(saved).toBeLessThanOrEqual(55);
+    // небольшая правка уже сохранённой записи по-прежнему проходит
+    const small = await D.sb.rpc("sync_progress", { p_items: [{ key: "task:big0", data: { status: "solved", at: 2 } }], p_epoch: 0 });
+    expect(small.error).toBeNull();
+    await D.sb.rpc("delete_own_account");
+  }, 60_000);
 
   it("удаление аккаунта стирает облачные данные и запрещает вход", async () => {
     const del = await A.sb.rpc("delete_own_account");

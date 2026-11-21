@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { progressStore, useAllProgress } from "@/lib/progress/store";
 import { lessonKey, taskKey } from "@/lib/progress/stats";
+import { decodeHash } from "@/lib/url";
 
 export type StepKind = "text" | "quiz" | "code" | "bug" | "predict" | "plot";
 
@@ -42,7 +43,7 @@ function subscribeHash(cb: () => void) {
   window.addEventListener("hashchange", cb);
   return () => window.removeEventListener("hashchange", cb);
 }
-const readHash = () => decodeURIComponent(window.location.hash.replace(/^#/, ""));
+const readHash = () => decodeHash(window.location.hash);
 
 export function LessonSteps({
   lessonId,

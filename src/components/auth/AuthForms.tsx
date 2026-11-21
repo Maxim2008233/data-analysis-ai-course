@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { safeNext } from "@/lib/url";
 
 const input = "w-full rounded-lg border border-line-strong bg-elev px-3 py-2.5 text-[0.97rem] outline-none focus:border-accent";
 
@@ -48,7 +49,7 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const next = params.get("next") || "/course";
+  const next = safeNext(params.get("next")); // только путь этого сайта: иначе ссылка увела бы ученика на чужой сайт
 
   useEffect(() => {
     if (auth.ready && auth.user) router.replace(next);

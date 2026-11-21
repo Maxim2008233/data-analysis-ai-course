@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { ReferenceEntry } from "@/lib/content/reference";
+import { decodeHash } from "@/lib/url";
 
 function norm(s: string) {
   return s.toLowerCase().replace(/ё/g, "е").trim();
@@ -12,7 +13,7 @@ function subscribeHash(cb: () => void) {
   window.addEventListener("hashchange", cb);
   return () => window.removeEventListener("hashchange", cb);
 }
-const readHash = () => decodeURIComponent(window.location.hash.replace(/^#/, ""));
+const readHash = () => decodeHash(window.location.hash);
 
 export function ReferenceList({ entries, compact = false, initialQuery = "" }: { entries: ReferenceEntry[]; compact?: boolean; initialQuery?: string }) {
   const [q, setQ] = useState(initialQuery);
