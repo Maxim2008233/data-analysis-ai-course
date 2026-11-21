@@ -1,4 +1,4 @@
-// Таблица лидеров соревнования: только имена, которые ученики выбрали сами, и лучшие результаты.
+// Таблица лидеров соревнования: логины учеников с аккаунтом и их лучшие результаты (без идентификаторов пользователей).
 import { fromStoredLoss, getCompetition } from "@/lib/competitions/registry";
 import { getLeaderboard, leaderboardEnabled, userFromRequest } from "@/lib/competitions/server";
 
@@ -23,7 +23,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       enabled: true,
       participants: board.participants,
       rows: board.rows.map(({ loss, ...r }) => ({ ...r, score: fromStoredLoss(comp, loss) })),
-      me: board.me && { nickname: board.me.nickname, submissions: board.me.submissions, place: board.me.place, score: board.me.loss === null ? null : fromStoredLoss(comp, board.me.loss) },
+      me: board.me && { login: board.me.login, submissions: board.me.submissions, place: board.me.place, score: board.me.loss === null ? null : fromStoredLoss(comp, board.me.loss) },
     });
   } catch {
     return json({ ok: false, error: "Таблица лидеров временно недоступна." }, 503);

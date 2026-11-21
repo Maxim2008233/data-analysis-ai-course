@@ -45,9 +45,9 @@ export interface LeaderboardResponse {
   ok: boolean;
   enabled?: boolean;
   error?: string;
-  rows?: { place: number; nickname: string; score: number; submissions: number; bestAt: string | null }[];
+  rows?: { place: number; login: string | null; score: number; submissions: number; bestAt: string | null; mine: boolean }[];
   participants?: number;
-  me?: { nickname: string | null; score: number | null; submissions: number; place: number | null } | null;
+  me?: { login: string | null; score: number | null; submissions: number; place: number | null } | null;
 }
 
 async function authHeader(): Promise<Record<string, string>> {
@@ -84,13 +84,5 @@ export async function submitPredictions(competitionId: string, data: SubmissionD
 export async function fetchLeaderboard(competitionId: string): Promise<LeaderboardResponse> {
   return request<LeaderboardResponse>(`/api/competitions/${encodeURIComponent(competitionId)}/leaderboard`, {
     headers: await authHeader(),
-  });
-}
-
-export async function saveNickname(competitionId: string, nickname: string | null): Promise<{ ok: boolean; error?: string; nickname?: string | null }> {
-  return request(`/api/competitions/${encodeURIComponent(competitionId)}/nickname`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...(await authHeader()) },
-    body: JSON.stringify({ nickname }),
   });
 }

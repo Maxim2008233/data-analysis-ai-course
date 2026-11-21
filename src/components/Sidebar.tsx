@@ -117,7 +117,7 @@ function ModuleList({ modules, pathname }: { modules: SidebarModule[]; pathname:
 }
 
 function SidebarBody({ modules, pathname }: { modules: SidebarModule[]; pathname: string }) {
-  const { user, enabled, ready } = useAuth();
+  const { user, username, enabled, ready } = useAuth();
   return (
     <div className="flex h-full flex-col">
       <Link href="/" className="flex items-center gap-3 px-4 pb-4 pt-5" aria-label="На главную">
@@ -160,9 +160,16 @@ function SidebarBody({ modules, pathname }: { modules: SidebarModule[]; pathname
         </div>
         {enabled && ready && (
           user ? (
-            <Link href="/profile" className="block truncate text-sm text-accent-ink hover:underline" data-testid="profile-link" title={user.email ?? ""}>
-              {user.email}
-            </Link>
+            // в углу — логин, а не почта; у аккаунтов, созданных до логинов, — приглашение его придумать
+            username === null ? (
+              <Link href="/profile#login" className="block truncate text-sm font-semibold text-accent-ink hover:underline" data-testid="profile-link">
+                Придумайте логин
+              </Link>
+            ) : (
+              <Link href="/profile" className="block truncate text-sm text-accent-ink hover:underline" data-testid="profile-link" title="Профиль">
+                {username ?? "Профиль"}
+              </Link>
+            )
           ) : (
             <Link href="/login" className="inline-flex rounded-md bg-ok px-3 py-1.5 text-sm font-semibold text-white dark:text-[#0e1a13]" data-testid="login-link">
               Войти или зарегистрироваться

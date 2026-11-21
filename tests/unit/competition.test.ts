@@ -13,7 +13,6 @@ import {
   isBetter,
   toStoredLoss,
 } from "../../src/lib/competitions/registry";
-import { normalizeNickname } from "../../src/lib/competitions/server";
 
 const IDS = [1, 2, 3, 4];
 const RANGE: [number, number] = [0, 1e7];
@@ -72,14 +71,6 @@ describe("метрики и лимиты", () => {
     memoryLimiter.record("k", now - 500);
     expect(memoryLimiter.state("k", 2, now).remaining).toBe(0);
     expect(memoryLimiter.state("other", 2, now).remaining).toBe(2);
-  });
-
-  it("имя в таблице лидеров", () => {
-    expect(normalizeNickname("  Маша   К. ")).toEqual({ ok: true, nickname: "Маша К." });
-    expect(normalizeNickname("")).toEqual({ ok: true, nickname: null });
-    expect(normalizeNickname("a").ok).toBe(false);
-    expect(normalizeNickname("<script>").ok).toBe(false);
-    expect(normalizeNickname("x".repeat(25)).ok).toBe(false);
   });
 
   it("реестр соревнований", () => {

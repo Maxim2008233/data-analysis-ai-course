@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { safeNext } from "@/lib/url";
+import { USERNAME_RULES, usernameError } from "@/lib/username";
 
 const input = "w-full rounded-lg border border-line-strong bg-elev px-3 py-2.5 text-[0.97rem] outline-none focus:border-accent";
 
@@ -45,7 +46,7 @@ export function LoginForm() {
   const auth = useAuth();
   const router = useRouter();
   const params = useSearchParams();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -62,7 +63,7 @@ export function LoginForm() {
     setErr(null);
     setBusy(true);
     try {
-      await auth.signIn(email, password);
+      await auth.signIn(identifier, password);
       router.replace(next);
     } catch (e) {
       setErr((e as Error).message);
@@ -74,11 +75,21 @@ export function LoginForm() {
   return (
     <Shell title="Вход" subtitle={<>Прогресс и код будут доступны на любом устройстве. Решённые без входа задачи перенесутся в аккаунт.</>}>
       <form onSubmit={submit} className="space-y-3" data-testid="login-form">
-        {params.get("confirmed") && <Msg kind="ok">Email подтверждён. Войдите с вашим паролем.</Msg>}
+        {params.get("confirmed") && <Msg kind="ok">Почта подтверждена. Войдите по логину или почте.</Msg>}
         {params.get("reset") && <Msg kind="ok">Пароль изменён. Войдите с новым паролем.</Msg>}
         <label className="block text-sm">
-          Email
-          <input className={`${input} mt-1`} type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} name="email" />
+          Почта или логин
+          <input
+            className={`${input} mt-1`}
+            type="text"
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
+            required
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            name="login"
+          />
         </label>
         <label className="block text-sm">
           Пароль
@@ -104,6 +115,7 @@ export function LoginForm() {
 export function RegisterForm() {
   const auth = useAuth();
   const router = useRouter();
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
@@ -116,11 +128,13 @@ export function RegisterForm() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     setErr(null);
+    const loginProblem = usernameError(username);
+    if (loginProblem) return setErr(loginProblem);
     if (password.length < 8) return setErr("Пароль должен быть не короче 8 символов.");
     if (password !== password2) return setErr("Пароли не совпадают.");
     setBusy(true);
     try {
-      const { needsConfirmation } = await auth.signUp(email, password);
+      const { needsConfirmation } = await auth.signUp(email, password, username);
       if (needsConfirmation) setDone(true);
       else router.replace("/course");
     } catch (e) {
@@ -140,10 +154,28 @@ export function RegisterForm() {
     );
 
   return (
-    <Shell title="Регистрация" subtitle={<>Нужны только email и пароль. Задачи, решённые без входа, перенесутся в аккаунт.</>}>
+    <Shell title="Регистрация" subtitle={<>Нужны логин, почта и пароль. Задачи, решённые без входа, перенесутся в аккаунт.</>}>
       <form onSubmit={submit} className="space-y-3" data-testid="register-form">
         <label className="block text-sm">
-          Email
+          Логин
+          <input
+            className={`${input} mt-1`}
+            type="text"
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
+            required
+            maxLength={20}
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            name="username"
+          />
+          <span className="mt-1 block text-xs text-muted">
+            {USERNAME_RULES} Логин видят другие ученики в таблице лидеров; входить можно по логину или по почте.
+          </span>
+        </label>
+        <label className="block text-sm">
+          Почта
           <input className={`${input} mt-1`} type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} name="email" />
         </label>
         <label className="block text-sm">
@@ -191,13 +223,13 @@ export function ForgotForm() {
     }
   }
   return (
-    <Shell title="Восстановление пароля" subtitle="Пришлём ссылку для установки нового пароля.">
+    <Shell title="Восстановление пароля" subtitle="Укажите почту аккаунта — пришлём ссылку для установки нового пароля. Логин здесь не подходит: по нему мы не раскрываем адрес почты.">
       {sent ? (
         <Msg kind="ok">Если аккаунт с адресом {email} существует, письмо со ссылкой уже отправлено. Ссылка действует ограниченное время.</Msg>
       ) : (
         <form onSubmit={submit} className="space-y-3" data-testid="forgot-form">
           <label className="block text-sm">
-            Email
+            Почта
             <input className={`${input} mt-1`} type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} name="email" />
           </label>
           {err && <Msg kind="error">{err}</Msg>}

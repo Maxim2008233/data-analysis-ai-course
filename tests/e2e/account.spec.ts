@@ -1,7 +1,8 @@
 // Сценарии с аккаунтом (локальный Supabase): 2 (перенос прогресса гостя), 3 (вход на «новом устройстве»),
 // 4 (изменения видны на другом устройстве), 7 (смена пароля), 8 (восстановление пароля), 9 (удаление аккаунта),
-// 12 (обрыв сети при сохранении). Сценарий 11 (RLS) проверяется напрямую через API в tests/integration/db.test.ts.
-import { test, expect, newDevice, solveTask, openTask, getCode, findTask, uniqueEmail, signUp, logIn, waitSynced, lastEmailTo, readEnv, setCode, checkTask, TOTAL_TASKS } from "./helpers";
+// 12 (обрыв сети при сохранении), 29 (логин: в углу экрана, вход по логину, аккаунт без логина).
+// Сценарий 11 (RLS) проверяется напрямую через API в tests/integration/db.test.ts.
+import { test, expect, newDevice, solveTask, openTask, getCode, findTask, uniqueEmail, uniqueLogin, signUp, logIn, waitSynced, lastEmailTo, readEnv, setCode, checkTask, TOTAL_TASKS } from "./helpers";
 
 const PASSWORD = "Password-123";
 
@@ -9,8 +10,10 @@ test("2–4. Регистрация переносит прогресс гост
   // гость решает задание
   await solveTask(page, "m1-l0-t2");
   const email = uniqueEmail("sync");
-  await signUp(page, email, PASSWORD);
+  const login = await signUp(page, email, PASSWORD);
   await expect(page.getByTestId("auth-notice")).toContainText("Перенесено 1");
+  // в углу экрана — логин, а не почта
+  await expect(page.getByTestId("profile-link").first()).toHaveText(login);
   await waitSynced(page);
   await page.goto("/profile");
   await expect(page.getByTestId("stat-solved")).toHaveText(`1 / ${TOTAL_TASKS}`);
@@ -33,8 +36,9 @@ test("2–4. Регистрация переносит прогресс гост
   await page.goto("/profile");
   await page.getByTestId("logout").click();
   await expect(page.getByTestId("login-link").first()).toBeVisible();
+  // на третьем устройстве — вход по логину вместо почты
   const c = await newDevice(browser);
-  await logIn(c.page, email, PASSWORD);
+  await logIn(c.page, login, PASSWORD);
   await c.page.waitForURL("**/course");
   await c.page.goto("/profile");
   await expect(c.page.getByTestId("stat-solved")).toHaveText(`2 / ${TOTAL_TASKS}`);
@@ -138,4 +142,46 @@ test("12. Обрыв сети при сохранении: изменения к
   await openTask(d.page, "m1-l0-t1");
   await expect(d.page.locator('[data-task-id="m1-l0-t1"]')).toHaveAttribute("data-status", "solved");
   await d.context.close();
+});
+
+test("29. Логин: в углу экрана вместо почты, вход по логину, аккаунт без логина задаёт его в профиле", async ({ page }) => {
+  // аккаунт без логина — как созданные до появления логинов: регистрация напрямую через Supabase без поля username
+  const env = readEnv();
+  const email = uniqueEmail("old");
+  const r = await fetch(`${env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/signup`, {
+    method: "POST",
+    headers: { apikey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password: PASSWORD }),
+  });
+  expect(r.ok).toBe(true);
+
+  await logIn(page, email, PASSWORD);
+  await page.waitForURL("**/course");
+  const corner = page.getByTestId("profile-link").first();
+  await expect(corner).toHaveText("Придумайте логин");
+  await expect(page.locator("body")).not.toContainText(email);
+
+  // неверный логин — понятное сообщение; занятый логин не взять
+  await corner.click();
+  await page.waitForURL("**/profile#login");
+  await expect(page.getByTestId("username-needed")).toBeVisible();
+  const form = page.getByTestId("username-form");
+  await form.locator('input[name="username"]').fill("1bad");
+  await form.getByTestId("username-save").click();
+  await expect(page.getByTestId("username-msg")).toContainText("начинаться с латинской буквы");
+
+  const login = uniqueLogin("old");
+  await form.locator('input[name="username"]').fill(login);
+  await form.getByTestId("username-save").click();
+  await expect(page.getByTestId("username-msg")).toContainText("Логин сохранён");
+  await expect(page.getByTestId("profile-link").first()).toHaveText(login);
+
+  // выход и вход по логину; неверный пароль по логину — общее сообщение
+  await page.getByTestId("logout").click();
+  await expect(page.getByTestId("login-link").first()).toBeVisible();
+  await logIn(page, login, "wrong-password");
+  await expect(page.getByTestId("auth-error")).toContainText("Неверный логин или пароль");
+  await logIn(page, login.toUpperCase(), PASSWORD);
+  await page.waitForURL("**/course");
+  await expect(page.getByTestId("profile-link").first()).toHaveText(login);
 });

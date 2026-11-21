@@ -112,19 +112,24 @@ export async function recordSubmission(competitionId: string, userId: string, lo
   };
 }
 
-/** Строка таблицы лидеров. loss — хранимая величина «меньше — лучше»; в метрику её переводит fromStoredLoss. */
+/**
+ * Строка таблицы лидеров. loss — хранимая величина «меньше — лучше»; в метрику её переводит fromStoredLoss.
+ * login — логин ученика из профиля (null, если аккаунт создан до логинов и логин ещё не задан);
+ * mine — это строка того, кто спрашивает. Идентификаторы пользователей наружу не отдаются.
+ */
 export interface LeaderboardRow {
   place: number;
-  nickname: string;
+  login: string | null;
   loss: number;
   submissions: number;
   bestAt: string | null;
+  mine: boolean;
 }
 
 export interface Leaderboard {
   rows: LeaderboardRow[];
   participants: number;
-  me: { nickname: string | null; loss: number | null; submissions: number; place: number | null } | null;
+  me: { login: string | null; loss: number | null; submissions: number; place: number | null } | null;
 }
 
 export async function getLeaderboard(competitionId: string, userId: string | null, limit = 20): Promise<Leaderboard | null> {
@@ -133,21 +138,29 @@ export async function getLeaderboard(competitionId: string, userId: string | nul
   const [top, scores, mine] = await Promise.all([
     db
       .from("competition_entries")
-      .select("nickname, best_mae, submissions, best_at")
+      .select("user_id, best_mae, submissions, best_at")
       .eq("competition_id", competitionId)
-      .not("nickname", "is", null)
       .not("best_mae", "is", null)
       .order("best_mae", { ascending: true })
       .order("best_at", { ascending: true })
       .limit(limit),
     db.from("competition_entries").select("best_mae").eq("competition_id", competitionId).not("best_mae", "is", null),
     userId
-      ? db.from("competition_entries").select("nickname, best_mae, submissions").eq("competition_id", competitionId).eq("user_id", userId).maybeSingle()
+      ? db.from("competition_entries").select("best_mae, submissions").eq("competition_id", competitionId).eq("user_id", userId).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
   ]);
   for (const r of [top, scores, mine]) if (r.error) throw new Error(r.error.message);
 
-  // место — среди всех участников с результатом (и тех, кто не показывает имя): 1 + число результатов лучше
+  // логины участников из профилей — одним запросом
+  const ids = [...new Set([...(top.data ?? []).map((r) => String(r.user_id)), ...(userId ? [userId] : [])])];
+  const logins = new Map<string, string | null>();
+  if (ids.length) {
+    const prof = await db.from("profiles").select("user_id, username").in("user_id", ids);
+    if (prof.error) throw new Error(prof.error.message);
+    for (const p of prof.data ?? []) logins.set(String(p.user_id), (p.username as string | null) ?? null);
+  }
+
+  // место — среди всех участников с результатом: 1 + число результатов лучше
   const all = (scores.data ?? []).map((r) => Number(r.best_mae)).sort((a, b) => a - b);
   const placeOf = (mae: number) => {
     let lo = 0;
@@ -162,42 +175,21 @@ export async function getLeaderboard(competitionId: string, userId: string | nul
 
   const rows: LeaderboardRow[] = (top.data ?? []).map((r) => ({
     place: placeOf(Number(r.best_mae)),
-    nickname: String(r.nickname),
+    login: logins.get(String(r.user_id)) ?? null,
     loss: Number(r.best_mae),
     submissions: Number(r.submissions),
     bestAt: (r.best_at as string) ?? null,
+    mine: userId !== null && String(r.user_id) === userId,
   }));
-  const m = mine.data as { nickname: string | null; best_mae: number | null; submissions: number } | null;
-  const me: Leaderboard["me"] = m
-    ? {
-        nickname: m.nickname,
-        loss: m.best_mae === null ? null : Number(m.best_mae),
-        submissions: Number(m.submissions),
-        place: m.best_mae === null ? null : placeOf(Number(m.best_mae)),
-      }
-    : null;
+  const m = mine.data as { best_mae: number | null; submissions: number } | null;
+  const me: Leaderboard["me"] =
+    m && userId
+      ? {
+          login: logins.get(userId) ?? null,
+          loss: m.best_mae === null ? null : Number(m.best_mae),
+          submissions: Number(m.submissions),
+          place: m.best_mae === null ? null : placeOf(Number(m.best_mae)),
+        }
+      : null;
   return { rows, participants: all.length, me };
-}
-
-/** Имя в таблице лидеров: 2–24 символа — буквы, цифры, пробел, точка, дефис, подчёркивание. */
-export function normalizeNickname(raw: unknown): { ok: true; nickname: string | null } | { ok: false; error: string } {
-  if (raw === null || raw === "") return { ok: true, nickname: null };
-  if (typeof raw !== "string") return { ok: false, error: "Имя должно быть строкой." };
-  const nickname = raw.normalize("NFC").replace(/\s+/g, " ").trim();
-  if (nickname.length < 2 || nickname.length > 24) return { ok: false, error: "Имя — от 2 до 24 символов." };
-  if (!/^[\p{L}\p{N} ._-]+$/u.test(nickname)) return { ok: false, error: "В имени можно использовать буквы, цифры, пробел, точку, дефис и подчёркивание." };
-  return { ok: true, nickname };
-}
-
-export async function setNickname(competitionId: string, userId: string, nickname: string | null): Promise<{ ok: true } | { ok: false; error: string }> {
-  const db = adminClient();
-  if (!db) return { ok: false, error: "Таблица лидеров не настроена." };
-  const { error } = await db
-    .from("competition_entries")
-    .upsert({ competition_id: competitionId, user_id: userId, nickname, updated_at: new Date().toISOString() }, { onConflict: "competition_id,user_id" });
-  if (error) {
-    if (error.code === "23505") return { ok: false, error: "Это имя уже занято — выберите другое." };
-    throw new Error(error.message);
-  }
-  return { ok: true };
 }

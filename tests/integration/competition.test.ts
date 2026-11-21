@@ -1,6 +1,6 @@
 // Интеграционные тесты соревнований против локального Supabase (npx supabase start):
 //   • таблицы соревнований закрыты для учеников и анонимов (RLS без политик), запись — только сервером;
-//   • маршруты API (submit, leaderboard, nickname) работают целиком: проверка формата, лимит, метрика, места;
+//   • маршруты API (submit, leaderboard) работают целиком: проверка формата, лимит, метрика, места, логины;
 //   • удаление аккаунта стирает результаты.
 // Маршруты вызываются напрямую как функции (без запуска Next.js). Пропускаются, если .env.local не настроен.
 import fs from "node:fs";
@@ -29,7 +29,6 @@ const COMP = "cars-price";
 type Route = (req: Request, ctx: { params: Promise<{ id: string }> }) => Promise<Response>;
 let submit: Route;
 let leaderboard: Route;
-let nickname: Route;
 let answers: { ids: number[]; prices: number[] };
 let zsAnswers: { ids: string[]; classes: string[] };
 let qaAnswers: { ids: number[]; scored: number[]; answers: number[] };
@@ -85,7 +84,6 @@ describe.skipIf(!enabled)("Соревнования: API и база", () => {
     Object.assign(process.env, { NEXT_PUBLIC_SUPABASE_URL: URL, NEXT_PUBLIC_SUPABASE_ANON_KEY: ANON, SUPABASE_SERVICE_ROLE_KEY: SERVICE });
     submit = (await import("../../src/app/api/competitions/[id]/submit/route")).POST as Route;
     leaderboard = (await import("../../src/app/api/competitions/[id]/leaderboard/route")).GET as Route;
-    nickname = (await import("../../src/app/api/competitions/[id]/nickname/route")).POST as Route;
     answers = JSON.parse(fs.readFileSync(path.join(process.cwd(), "private/competitions/cars-price/answers.json"), "utf8"));
     zsAnswers = JSON.parse(fs.readFileSync(path.join(process.cwd(), "private/competitions/zero-shot/answers.json"), "utf8"));
     qaAnswers = JSON.parse(fs.readFileSync(path.join(process.cwd(), "private/competitions/qa/answers.json"), "utf8"));
@@ -123,7 +121,7 @@ describe.skipIf(!enabled)("Соревнования: API и база", () => {
     expect((await blocked.json()).error).toContain("Лимит — 10 отправок за 24 часа");
   });
 
-  it("аккаунт: лучший результат, место, имя в таблице лидеров и удаление аккаунта", async () => {
+  it("аккаунт: лучший результат, место, логин в таблице лидеров и удаление аккаунта", async () => {
     const u = await newUser();
     const auth = { Authorization: `Bearer ${u.token}` };
     const r1 = await (await post(submit, predictionsWithError(3000), auth)).json();
@@ -135,23 +133,31 @@ describe.skipIf(!enabled)("Соревнования: API и база", () => {
     expect(r3.leaderboard).toMatchObject({ best: 20, submissions: 3 });
     expect(r3.remaining).toBe(7);
 
-    // без имени результат учитывается в местах, но не виден в таблице
+    // аккаунт без логина (как созданные до логинов): строка есть, вместо логина — null, своя строка помечена
+    type Row = { login: string | null; score: number; place: number; submissions: number; mine: boolean };
     let board = await (await leaderboard(new Request("http://localhost/x", { headers: auth }), ctx)).json();
     expect(board.enabled).toBe(true);
-    expect(board.me).toMatchObject({ score: 20, submissions: 3, nickname: null, place: 1 });
-    expect(board.rows.some((r: { score: number }) => r.score === 20)).toBe(false);
+    expect(board.me).toMatchObject({ score: 20, submissions: 3, login: null, place: 1 });
+    expect(board.rows.find((r: Row) => r.mine)).toMatchObject({ login: null, score: 20, place: 1, submissions: 3 });
+    expect(JSON.stringify(board)).not.toContain(u.id);
 
-    const nick = `Тест ${Math.random().toString(36).slice(2, 7)}`;
-    const saved = await (await post(nickname, { nickname: `  ${nick}  ` }, auth)).json();
-    expect(saved).toEqual({ ok: true, nickname: nick });
+    // ученик задал логин в профиле — таблица показывает его
+    const login = `t${Math.random().toString(36).slice(2, 9)}`;
+    expect((await u.sb.from("profiles").upsert({ user_id: u.id, username: login }, { onConflict: "user_id" })).error).toBeNull();
     board = await (await leaderboard(new Request("http://localhost/x", { headers: auth }), ctx)).json();
-    expect(board.rows.find((r: { nickname: string }) => r.nickname === nick)).toMatchObject({ score: 20, place: 1, submissions: 3 });
+    expect(board.me).toMatchObject({ login, place: 1 });
+    expect(board.rows.find((r: Row) => r.mine)).toMatchObject({ login, score: 20 });
 
-    // занятое имя другим учеником не взять; без входа имя не задать
+    // другой ученик видит этот логин, но строка не его; занятый логин (без учёта регистра) ему не взять
     const other = await newUser();
-    const taken = await post(nickname, { nickname: nick.toUpperCase() }, { Authorization: `Bearer ${other.token}` });
-    expect(taken.status).toBe(409);
-    expect((await post(nickname, { nickname: "Аноним" })).status).toBe(401);
+    const seen = await (await leaderboard(new Request("http://localhost/x", { headers: { Authorization: `Bearer ${other.token}` } }), ctx)).json();
+    expect(seen.rows.find((r: Row) => r.login === login)).toMatchObject({ mine: false, score: 20 });
+    const taken = await other.sb.from("profiles").upsert({ user_id: other.id, username: login.toUpperCase() }, { onConflict: "user_id" });
+    expect(taken.error?.code).toBe("23505");
+    // гость видит таблицу без «своей» строки
+    const guestBoard = await (await leaderboard(new Request("http://localhost/x"), ctx)).json();
+    expect(guestBoard.me).toBeNull();
+    expect(guestBoard.rows.some((r: Row) => r.mine)).toBe(false);
 
     // удаление аккаунта стирает результаты
     expect((await u.sb.rpc("delete_own_account")).error).toBeNull();

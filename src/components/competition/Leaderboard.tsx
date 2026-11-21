@@ -1,18 +1,14 @@
 "use client";
-// Таблица лидеров: лучшие результаты учеников, которые указали имя. Без имени результат учитывается в местах, но скрыт.
+// Таблица лидеров: лучшие результаты учеников с аккаунтом, по логинам. Логин задаётся при регистрации или в профиле.
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { fetchLeaderboard, saveNickname, type LeaderboardResponse } from "@/lib/competitions/client";
+import { fetchLeaderboard, type LeaderboardResponse } from "@/lib/competitions/client";
 import { formatScore, getCompetition } from "@/lib/competitions/registry";
 
 export function Leaderboard({ competition, version }: { competition: string; version: number }) {
-  const { user, ready } = useAuth();
+  const { user, username, ready } = useAuth();
   const [board, setBoard] = useState<LeaderboardResponse | null>(null);
-  const [name, setName] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [reload, setReload] = useState(0);
   const comp = getCompetition(competition);
   const fmt = (v: number) => (comp ? formatScore(comp, v) : String(v));
   const bestLabel = comp?.metric === "accuracy" ? "Лучшая доля верных" : "Лучший MAE";
@@ -21,14 +17,12 @@ export function Leaderboard({ competition, version }: { competition: string; ver
     if (!ready) return;
     let active = true;
     fetchLeaderboard(competition).then((res) => {
-      if (!active) return;
-      setBoard(res);
-      if (res.ok && res.me?.nickname) setName(res.me.nickname);
+      if (active) setBoard(res);
     });
     return () => {
       active = false;
     };
-  }, [ready, user?.id, version, reload, competition]);
+  }, [ready, user?.id, username, version, competition]);
 
   if (!board || (board.ok && !board.enabled)) return null;
   if (!board.ok) {
@@ -37,20 +31,6 @@ export function Leaderboard({ competition, version }: { competition: string; ver
         {board.error}
       </p>
     );
-  }
-
-  async function save(nickname: string | null) {
-    setSaving(true);
-    setMessage(null);
-    const res = await saveNickname(competition, nickname);
-    setSaving(false);
-    if (!res.ok) {
-      setMessage(res.error ?? "Не удалось сохранить имя.");
-      return;
-    }
-    setMessage(nickname ? "Имя сохранено." : "Имя скрыто: ваш результат больше не показывается в таблице.");
-    if (!nickname) setName("");
-    setReload((k) => k + 1);
   }
 
   const rows = board.rows ?? [];
@@ -73,28 +53,30 @@ export function Leaderboard({ competition, version }: { competition: string; ver
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => {
-                const mine = Boolean(me?.nickname && r.nickname === me.nickname);
-                return (
-                  <tr key={`${r.place}-${r.nickname}`} className={`border-t border-dashed border-line ${mine ? "bg-accent-soft/40 font-semibold" : ""}`} data-testid="leaderboard-row">
-                    <td className="py-1.5 pr-3">{r.place}</td>
-                    <td className="py-1.5 pr-3 break-all">{r.nickname}</td>
-                    <td className="py-1.5 pr-3">{fmt(r.score)}</td>
-                    <td className="py-1.5">{r.submissions}</td>
-                  </tr>
-                );
-              })}
+              {rows.map((r, i) => (
+                <tr
+                  key={`${r.place}-${r.login ?? "none"}-${i}`}
+                  className={`border-t border-dashed border-line ${r.mine ? "bg-accent-soft/40 font-semibold" : ""}`}
+                  data-testid="leaderboard-row"
+                  data-mine={r.mine ? "true" : undefined}
+                >
+                  <td className="py-1.5 pr-3">{r.place}</td>
+                  <td className="py-1.5 pr-3 break-all">{r.login ?? <span className="italic text-muted">логин не задан</span>}</td>
+                  <td className="py-1.5 pr-3">{fmt(r.score)}</td>
+                  <td className="py-1.5">{r.submissions}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       ) : (
-        <p className="mt-2 text-sm text-muted">Пока никто не указал имя — станьте первым.</p>
+        <p className="mt-2 text-sm text-muted">Пока нет результатов — станьте первым.</p>
       )}
 
       <div className="mt-4 border-t border-dashed border-line-strong pt-3 text-sm">
         {!user ? (
           <p className="text-muted">
-            Отправлять решения можно и без аккаунта, но в таблицу лидеров попадают только ученики с аккаунтом.{" "}
+            Отправлять решения можно и без аккаунта, но в таблицу лидеров попадают только ученики с аккаунтом — по логину.{" "}
             <Link href="/login" className="text-accent-ink underline">
               Войти
             </Link>
@@ -104,41 +86,26 @@ export function Leaderboard({ competition, version }: { competition: string; ver
             {me?.place ? (
               <p data-testid="leaderboard-me">
                 Ваше место — <b>{me.place}</b> из {board.participants}, {bestLabel.toLowerCase()} — {fmt(me.score ?? 0)}.
-                {!me.nickname && " Без имени результат учитывается в местах, но в таблице не показывается."}
               </p>
             ) : (
               <p className="text-muted">После первой отправки здесь появится ваше место.</p>
             )}
-            <form
-              className="mt-2 flex flex-wrap items-center gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void save(name.trim() || null);
-              }}
-            >
-              <label htmlFor={`nick-${competition}`} className="text-muted">
-                Имя в таблице:
-              </label>
-              <input
-                id={`nick-${competition}`}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                maxLength={24}
-                placeholder="например, Маша К."
-                className="min-w-0 flex-1 rounded-md border border-line-strong bg-elev px-2.5 py-1.5 outline-none focus:border-accent"
-                data-testid="nickname-input"
-              />
-              <button type="submit" disabled={saving} className="rounded-md border border-line-strong px-3 py-1.5 font-semibold hover:border-accent disabled:opacity-60" data-testid="nickname-save">
-                Сохранить
-              </button>
-              {me?.nickname && (
-                <button type="button" disabled={saving} onClick={() => void save(null)} className="rounded-md px-3 py-1.5 text-muted hover:bg-soft hover:text-ink">
-                  Скрыть
-                </button>
-              )}
-            </form>
-            {message && <p className="mt-1.5 text-xs text-muted">{message}</p>}
-            <p className="mt-1.5 text-xs text-muted">Не используйте настоящую фамилию полностью, если не хотите, чтобы её видели другие ученики.</p>
+            {username === null ? (
+              <p className="mt-1.5 text-muted" data-testid="leaderboard-login-hint">
+                <Link href="/profile#login" className="text-accent-ink underline">
+                  Придумайте логин
+                </Link>{" "}
+                — пока в таблице вместо него написано «логин не задан».
+              </p>
+            ) : username ? (
+              <p className="mt-1.5 text-xs text-muted" data-testid="leaderboard-login-hint">
+                В таблице вы — <b>{username}</b>. Логин можно изменить в{" "}
+                <Link href="/profile#login" className="text-accent-ink underline">
+                  профиле
+                </Link>
+                .
+              </p>
+            ) : null}
           </>
         )}
       </div>

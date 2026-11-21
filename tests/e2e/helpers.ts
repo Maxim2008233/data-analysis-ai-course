@@ -130,18 +130,27 @@ export function uniqueEmail(tag: string) {
   return `e2e-${tag}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@example.com`;
 }
 
-export async function signUp(page: Page, email: string, password: string) {
+/** Уникальный логин для теста: латиница, начинается с буквы. */
+export function uniqueLogin(tag: string) {
+  return `${tag}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`.slice(0, 20);
+}
+
+/** Регистрация через форму сайта; возвращает логин нового аккаунта. */
+export async function signUp(page: Page, email: string, password: string, login = uniqueLogin("e")) {
   await page.goto("/register");
+  await page.locator('input[name="username"]').fill(login);
   await page.locator('input[name="email"]').fill(email);
   await page.locator('input[name="password"]').fill(password);
   await page.locator('input[name="password2"]').fill(password);
   await page.getByRole("button", { name: "Зарегистрироваться" }).click();
   await page.waitForURL("**/course");
+  return login;
 }
 
-export async function logIn(page: Page, email: string, password: string) {
+/** Вход через форму сайта: по почте или по логину. */
+export async function logIn(page: Page, identifier: string, password: string) {
   await page.goto("/login");
-  await page.locator('input[name="email"]').fill(email);
+  await page.locator('input[name="login"]').fill(identifier);
   await page.locator('input[name="password"]').fill(password);
   await page.getByRole("button", { name: "Войти" }).click();
 }

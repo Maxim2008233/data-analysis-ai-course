@@ -1,9 +1,10 @@
 "use client";
-// Профиль: прогресс по модулям, статистика, экспорт/импорт, сброс, смена пароля, удаление аккаунта.
+// Профиль: логин, прогресс по модулям, статистика, экспорт/импорт, сброс, смена пароля, удаление аккаунта.
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { USERNAME_RULES, usernameError } from "@/lib/username";
 import { progressStore, useAllProgress, useProgressVersion } from "@/lib/progress/store";
 import { courseStats, moduleStats } from "@/lib/progress/stats";
 import { makeExport, parseImport } from "@/lib/progress/merge";
@@ -20,6 +21,66 @@ function Section({ title, children, id }: { title: string; children: React.React
       </h2>
       {children}
     </Card>
+  );
+}
+
+/** Логин: задать (аккаунты, созданные до логинов) или сменить. Он виден в углу экрана и в таблице лидеров. */
+function UsernameForm() {
+  const auth = useAuth();
+  const current = auth.username;
+  // поле заполняется текущим логином; когда логин загрузится, форму один раз пересоздаёт key у родителя
+  const [value, setValue] = useState(current ?? "");
+  const [msg, setMsg] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setMsg(null);
+    const problem = usernameError(value);
+    if (problem) return setMsg({ kind: "error", text: problem });
+    if (current && value.trim() === current) return setMsg({ kind: "ok", text: "Это ваш текущий логин." });
+    setBusy(true);
+    try {
+      await auth.setUsername(value);
+      setMsg({ kind: "ok", text: "Логин сохранён." });
+    } catch (e) {
+      setMsg({ kind: "error", text: (e as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <form onSubmit={submit} className="mt-4 space-y-2 border-t border-dashed border-line pt-4" data-testid="username-form">
+      {current === null && (
+        <p className="rounded-lg bg-info-soft px-3 py-2 text-sm text-info" data-testid="username-needed">
+          Придумайте логин: он будет виден в углу экрана и в таблице лидеров, и по нему можно входить вместо почты.
+        </p>
+      )}
+      <label htmlFor="login" className="block text-sm font-medium">
+        Логин
+      </label>
+      <div className="flex flex-wrap gap-2">
+        <input
+          id="login"
+          name="username"
+          className={`${input} max-w-xs`}
+          maxLength={20}
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+        <Button type="submit" disabled={busy} data-testid="username-save">
+          {current ? "Изменить" : "Сохранить"}
+        </Button>
+      </div>
+      <p className="text-xs text-muted">{USERNAME_RULES} Логин видят другие ученики в таблице лидеров.</p>
+      {msg && (
+        <p className={`text-sm ${msg.kind === "ok" ? "text-ok" : "text-bad"}`} role={msg.kind === "error" ? "alert" : "status"} data-testid="username-msg">
+          {msg.text}
+        </p>
+      )}
+    </form>
   );
 }
 
@@ -177,13 +238,23 @@ export function ProfileClient({ index }: { index: CourseIndex }) {
         ) : !auth.ready ? (
           <p className="text-sm text-muted">Загружаем…</p>
         ) : auth.user ? (
-          <div className="flex flex-wrap items-center gap-3">
-            <p className="text-sm">
-              Вы вошли как <b data-testid="profile-email">{auth.user.email}</b>. Прогресс сохраняется в облаке и доступен на любом устройстве.
-            </p>
-            <Button variant="secondary" onClick={() => auth.signOut()} data-testid="logout" className="sm:ml-auto">
-              Выйти
-            </Button>
+          <div>
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-sm">
+                {auth.username === null ? (
+                  <>Вы вошли, логин ещё не задан</>
+                ) : (
+                  <>
+                    Вы вошли как <b data-testid="profile-username">{auth.username ?? "…"}</b>
+                  </>
+                )}{" "}
+                · почта <span data-testid="profile-email">{auth.user.email}</span>. Прогресс сохраняется в облаке и доступен на любом устройстве.
+              </p>
+              <Button variant="secondary" onClick={() => auth.signOut()} data-testid="logout" className="sm:ml-auto">
+                Выйти
+              </Button>
+            </div>
+            <UsernameForm key={auth.username === undefined ? "loading" : "loaded"} />
           </div>
         ) : (
           <div className="space-y-3">

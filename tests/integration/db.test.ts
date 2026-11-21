@@ -180,3 +180,71 @@ describe.skipIf(!enabled)("Supabase: прогресс, слияние, RLS", () 
     expect(login.error).not.toBeNull();
   });
 });
+
+describe.skipIf(!enabled)("Логины: регистрация, вход по логину, логин у старых аккаунтов", () => {
+  const rand = () => Math.random().toString(36).slice(2, 9);
+  const password = "test-password-123";
+
+  it("регистрация с логином создаёт профиль; занятый (без учёта регистра) и неверный логин отменяют регистрацию", async () => {
+    const login = `u${rand()}`;
+    const email = `login-${rand()}@example.com`;
+    const sb = client();
+    const r = await sb.auth.signUp({ email, password, options: { data: { username: login } } });
+    expect(r.error).toBeNull();
+    const prof = await sb.from("profiles").select("username").eq("user_id", r.data.user!.id).single();
+    expect(prof.data?.username).toBe(login);
+
+    expect((await client().rpc("username_available", { p_username: login.toUpperCase() })).data).toBe(false);
+    expect((await client().rpc("username_available", { p_username: `z${rand()}` })).data).toBe(true);
+    expect((await client().rpc("username_available", { p_username: "ab" })).data).toBe(false);
+    expect((await client().rpc("username_available", { p_username: "Максим" })).data).toBe(false);
+
+    const dup = await client().auth.signUp({ email: `dup-${rand()}@example.com`, password, options: { data: { username: login.toUpperCase() } } });
+    expect(dup.error).not.toBeNull();
+    const bad = await client().auth.signUp({ email: `bad-${rand()}@example.com`, password, options: { data: { username: "1bad name" } } });
+    expect(bad.error).not.toBeNull();
+    await sb.rpc("delete_own_account");
+  });
+
+  it("вход по логину: почта — только при верном пароле; после 10 ошибок вход по логину приостановлен", async () => {
+    const login = `l${rand()}`;
+    const email = `login-${rand()}@example.com`;
+    const sb = client();
+    expect((await sb.auth.signUp({ email, password, options: { data: { username: login } } })).error).toBeNull();
+
+    const ok = await client().rpc("login_email", { p_login: login.toUpperCase(), p_password: password });
+    expect(ok.data).toEqual({ status: "ok", email });
+    const signIn = await client().auth.signInWithPassword({ email: (ok.data as { email: string }).email, password });
+    expect(signIn.error).toBeNull();
+
+    expect((await client().rpc("login_email", { p_login: login, p_password: "wrong-password" })).data).toEqual({ status: "invalid" });
+    expect((await client().rpc("login_email", { p_login: `nobody${rand()}`, p_password: password })).data).toEqual({ status: "invalid" });
+    expect((await client().rpc("login_email", { p_login: "a@b.c", p_password: password })).data).toEqual({ status: "invalid" });
+    for (let i = 0; i < 9; i++) await client().rpc("login_email", { p_login: login, p_password: `wrong-${i}` });
+    expect((await client().rpc("login_email", { p_login: login, p_password: password })).data).toEqual({ status: "locked" });
+    // вход по почте при этом работает как обычно
+    expect((await client().auth.signInWithPassword({ email, password })).error).toBeNull();
+    // журнал попыток закрыт для учеников и гостей
+    expect((await sb.from("login_attempts").select("*")).error).not.toBeNull();
+    expect((await client().from("login_attempts").select("*")).error).not.toBeNull();
+    await sb.rpc("delete_own_account");
+  });
+
+  it("аккаунт без логина задаёт его в профиле; чужие профили и логины ученику не видны", async () => {
+    const C = await newUser(); // регистрация без логина — как у аккаунтов, созданных до логинов
+    const before = await C.sb.from("profiles").select("username").eq("user_id", C.id).maybeSingle();
+    expect(before.data?.username ?? null).toBeNull();
+    const name = `c${rand()}`;
+    expect((await C.sb.from("profiles").upsert({ user_id: C.id, username: name }, { onConflict: "user_id" })).error).toBeNull();
+    const after = await C.sb.from("profiles").select("username").eq("user_id", C.id).single();
+    expect(after.data?.username).toBe(name);
+    const badFormat = await C.sb.from("profiles").upsert({ user_id: C.id, username: "1bad" }, { onConflict: "user_id" });
+    expect(badFormat.error?.code).toBe("23514");
+    const others = await C.sb.from("profiles").select("username").neq("user_id", C.id);
+    expect(others.data ?? []).toEqual([]);
+    // по новому логину можно войти
+    const ok = await client().rpc("login_email", { p_login: name, p_password: C.password });
+    expect(ok.data).toEqual({ status: "ok", email: C.email });
+    await C.sb.rpc("delete_own_account");
+  });
+});
