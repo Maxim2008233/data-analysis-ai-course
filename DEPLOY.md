@@ -88,7 +88,8 @@ Anon-ключ публичный — он попадает в браузер, и
 3. Так же выполните по очереди `supabase/migrations/20261109000000_lesson_steps.sql`,
    `supabase/migrations/20261112000000_competitions.sql` (таблица лидеров соревнований) и
    `supabase/migrations/20261121000000_progress_quota.sql` (не больше 3000 записей и 10 МБ прогресса на ученика —
-   чтобы один аккаунт не мог заполнить бесплатную базу).
+   чтобы один аккаунт не мог заполнить бесплатную базу) и `supabase/migrations/20261121000001_service_role_grants.sql`
+   (права сервера сайта на таблицы соревнований: новые облачные проекты Supabase не выдают их сами).
 4. Проверьте: **Table Editor** → появились таблицы `profiles`, `progress`, `competition_entries` и
    `competition_submissions`, у всех включён значок **RLS**.
 
@@ -103,10 +104,12 @@ npx supabase link --project-ref abcdefgh
 ```
 
 ```bash
-npx supabase db push
+npx supabase db push --remote
 ```
 
-(`abcdefgh` — часть адреса проекта перед `.supabase.co`.)
+(`abcdefgh` — Reference ID проекта, часть адреса перед `.supabase.co`.) Флаг `--remote` обязателен: Supabase CLI 3
+без него применяет миграции к локальной базе и пишет «Local database is up to date». Проверить, что облачная база
+получила все пять миграций: `npx supabase migration list --remote` — в столбцах local и remote одинаковые номера.
 
 ### 3.4. Настроить вход по email
 
@@ -331,7 +334,10 @@ npm run validate -- --module b1
 
 **Нет таблицы лидеров в соревновании.** Не задан `SUPABASE_SERVICE_ROLE_KEY` или не выполнена миграция
 `20261112000000_competitions.sql` (шаг 3.3). Проверка прогнозов при этом работает. Сообщение «Таблица лидеров временно
-недоступна» — ошибка запроса к базе: смотрите логи функции `/api/competitions/[id]/leaderboard`.
+недоступна» — ошибка запроса к базе: смотрите логи функции `/api/competitions/[id]/leaderboard`. Самая частая причина в
+новом облачном проекте — у роли `service_role` нет прав на таблицы соревнований: выполните миграцию
+`20261121000001_service_role_grants.sql`. Проверить права можно запросом в **SQL Editor**:
+`select has_table_privilege('service_role', 'public.competition_entries', 'SELECT');` — должно быть `true`.
 
 **«Лимит — 10 отправок за 24 часа».** Так задумано: соревнование учит проверять идеи на своей validation. Для учеников
 с аккаунтом лимит считается по журналу в базе; для гостей — по IP в памяти серверной функции (на Vercel — по
