@@ -15,6 +15,9 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     locale: "ru-RU",
+    // service worker (офлайн-режим) отвечает на запросы страницы сам, мимо подмены загрузки Pyodide в helpers.ts:
+    // в обычных тестах он выключен, а проверяют его отдельные тесты tests/e2e/pwa.spec.ts (проект pwa)
+    serviceWorkers: "block",
   },
   webServer: {
     command: "npm run build && npm run start -- -p 3100",
@@ -22,5 +25,8 @@ export default defineConfig({
     reuseExistingServer: true,
     timeout: 600_000,
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"] }, testIgnore: /pwa\.spec\.ts/ },
+    { name: "pwa", use: { ...devices["Desktop Chrome"], serviceWorkers: "allow" }, testMatch: /pwa\.spec\.ts/ },
+  ],
 });

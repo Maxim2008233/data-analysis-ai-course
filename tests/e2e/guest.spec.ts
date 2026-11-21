@@ -595,9 +595,9 @@ test("27. Бонус-модуль: необязательный урок, раз
   expect(okTree.passed, okTree.text).toBe(true);
 });
 
-test("28. Долгий сеанс: при переполнении памяти Python перезапускается в безопасной точке, примеры урока и проверка задания продолжают работать", async ({ page }) => {
+test("28. Долгий сеанс: при переполнении памяти Python перезапускается в безопасной точке (но не по кругу), примеры урока и проверка задания продолжают работать", async ({ page }) => {
   test.setTimeout(300_000);
-  // порог памяти 1 МБ: его превышает любой ответ Python, поэтому перезапуск срабатывает в каждой безопасной точке
+  // порог памяти 1 МБ: его превышает любой ответ Python, поэтому первый перезапуск — в первой же безопасной точке
   await page.addInitScript(() => {
     (window as unknown as { __PY_MEMORY_LIMIT_MB: number }).__PY_MEMORY_LIMIT_MB = 1;
   });
@@ -618,13 +618,28 @@ test("28. Долгий сеанс: при переполнении памяти 
   await page.getByRole("tab", { name: /Форма, размер и число осей/ }).click();
   await expect(shape).toContainText("Запущен автоматически");
 
-  // проверка задания: Python снова перезапускается, строка состояния объясняет почему, решение проходит
+  // проверка задания сразу после перезапуска: свежий Python уже «выше порога» (1 МБ), но с тех пор не вырос —
+  // второй раз подряд он не перезапускается (иначе на телефоне с тяжёлыми библиотеками перезапуск шёл бы перед
+  // каждой проверкой), решение проходит
   const { task } = findTask("m1-l2-t1");
-  const card = await openTask(page, "m1-l2-t1");
+  // переход к заданию — вкладкой шага: та же страница и тот же Python (переход по якорю после смены шага
+  // через history.pushState в Chromium иногда не доходит до урока)
+  await page.getByRole("tab", { name: /Сколько записей и признаков/ }).click();
+  const card = page.locator('[data-task-id="m1-l2-t1"]');
+  await expect(card).toBeVisible();
+  await setCode(page, "m1-l2-t1", task.solution ?? "");
+  let r = await checkTask(page, "m1-l2-t1");
+  expect(r.passed, r.text).toBe(true);
+  expect(await page.evaluate(() => document.querySelectorAll('[data-testid="py-memory-restart"]').length)).toBe(0);
+
+  // код ученика занял ещё 320 МБ: перед следующей проверкой Python перезапускается, строка состояния объясняет почему
+  await setCode(page, "m1-l2-t1", "import numpy as np\nbig = np.ones(40_000_000)\n");
+  r = await checkTask(page, "m1-l2-t1");
+  expect(r.passed).toBe(false);
   await setCode(page, "m1-l2-t1", task.solution ?? "");
   await card.getByTestId("check").click();
   await expect(card.getByTestId("py-memory-restart")).toBeVisible({ timeout: 30_000 });
   const result = card.getByTestId("check-result");
-  await expect(result).toBeVisible({ timeout: 120_000 });
+  await expect(card.getByTestId("check")).toBeVisible({ timeout: 120_000 });
   expect(await result.getAttribute("data-passed"), (await result.innerText()).trim()).toBe("true");
 });

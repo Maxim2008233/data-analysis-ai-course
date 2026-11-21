@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import DOMPurify from "dompurify";
 import type { OutputItem, PyErrorInfo } from "@/lib/py/client";
-
 // Версия plotly.js совпадает с той, что встроена в plotly 7.1.0 для Python (public/workers/py-engine.mjs).
-const PLOTLY_SRC = "https://cdn.jsdelivr.net/npm/plotly.js-dist-min@4.1.1/plotly.min.js";
+import { PLOTLY_SRC } from "@/lib/config";
+
 let plotlyPromise: Promise<unknown> | null = null;
 // типы графиков plotly без декартовых осей x/y
 const NON_CARTESIAN = new Set(["pie", "treemap", "sunburst", "icicle", "indicator", "table", "sankey", "funnelarea", "scatterpolar", "barpolar", "choropleth", "scattergeo"]);
@@ -18,6 +18,8 @@ function loadPlotly(): Promise<unknown> {
     plotlyPromise = new Promise((resolve, reject) => {
       const s = document.createElement("script");
       s.src = PLOTLY_SRC;
+      // запрос с CORS: такой ответ service worker может сохранить для офлайн-режима (public/sw.js)
+      s.crossOrigin = "anonymous";
       s.async = true;
       s.onload = () => resolve((window as unknown as { Plotly: unknown }).Plotly);
       s.onerror = () => {

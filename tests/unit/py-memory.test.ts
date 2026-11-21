@@ -1,7 +1,7 @@
 // Перезапуск Python при переполнении памяти: клиент запоминает память движка из ответа worker'а
 // и перезапускает Python только по вызову relieveMemory в безопасной точке, когда ничего не выполняется.
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { PyClient } from "@/lib/py/client";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { memoryLimitBytes, PyClient } from "@/lib/py/client";
 
 class FakeWorker {
   static all: FakeWorker[] = [];
@@ -37,7 +37,13 @@ afterEach(() => {
   delete g.window;
   delete g.Worker;
   delete g.__PY_MEMORY_LIMIT_MB;
+  vi.unstubAllGlobals();
 });
+
+/** Ответить на «init», который новый Python получает сразу после перезапуска. */
+function answerInit(w: FakeWorker) {
+  for (const m of w.posted) if (m.type === "init") w.reply({ type: "result", id: m.id, result: { ok: true } });
+}
 
 /** Выполнить запрос и ответить на него от имени worker'а: после выполнения движок занимает memory байт. */
 async function runWithMemory(client: PyClient, memory: number) {
@@ -89,6 +95,32 @@ describe("перезапуск Python при переполнении памят
     const c = new PyClient();
     await runWithMemory(c, 40 * MB);
     expect(c.relieveMemory()).toBe(true);
+  });
+
+  it("на iPhone и Android порог ниже, чем на компьютере", async () => {
+    expect(memoryLimitBytes()).toBe(1024 * MB);
+    vi.stubGlobal("navigator", {
+      userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
+      maxTouchPoints: 5,
+    });
+    expect(memoryLimitBytes()).toBe(640 * MB);
+    const c = new PyClient();
+    await runWithMemory(c, 700 * MB);
+    expect(c.relieveMemory()).toBe(true);
+  });
+
+  it("если новый Python сразу занимает больше порога, следующий перезапуск — только после роста на 25 %", async () => {
+    const c = new PyClient();
+    await runWithMemory(c, 1100 * MB);
+    expect(c.relieveMemory()).toBe(true);
+    answerInit(FakeWorker.all[1]);
+    await runWithMemory(c, 1100 * MB); // тяжёлые библиотеки: свежий Python уже выше порога
+    expect(c.relieveMemory()).toBe(false);
+    await runWithMemory(c, 1300 * MB);
+    expect(c.relieveMemory()).toBe(false);
+    await runWithMemory(c, 1400 * MB);
+    expect(c.relieveMemory()).toBe(true);
+    expect(FakeWorker.all).toHaveLength(3);
   });
 
   it("после обычной остановки отметка «перезапущен ради памяти» снимается", async () => {

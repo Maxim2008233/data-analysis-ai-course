@@ -1,10 +1,12 @@
 /*
  * Web Worker (модульный) с Python (Pyodide). Интерфейс страницы не зависает, пока выполняется код.
  * Протокол:
- *   страница → worker: { id, type: 'init' } | { id, type: 'execute', payload }
+ *   страница → worker: { id, type: 'init' } | { id, type: 'execute', payload } | { id, type: 'prefetch', code }
  *   worker → страница: { id, type: 'status', text } | { id, type: 'started' }
  *                      | { id, type: 'result', result, memory } | { id, type: 'error', message } | { type: 'ready', ms }
  * memory — сколько байт занял движок после выполнения: по нему страница решает, не пора ли перезапустить Python.
+ * prefetch — загрузить библиотеки для импортов из code, ничего не выполняя: так страница «Приложение» сохраняет
+ * для офлайн-режима пакеты, которые ставятся через micropip (src/lib/pwa/offline.ts).
  * Таймаут и остановку выполняет страница: она завершает worker и создаёт новый.
  * Pyodide загружается через import() (CORS-запрос) — работает в браузерах, где importScripts с CDN запрещён.
  */
@@ -60,6 +62,11 @@ self.onmessage = async (ev) => {
     const engine = await getEngine();
     if (msg.type === "init") {
       post({ type: "result", id: msg.id, result: { ok: true } });
+      return;
+    }
+    if (msg.type === "prefetch") {
+      await engine.ensurePackages(String(msg.code || ""));
+      post({ type: "result", id: msg.id, result: { ok: true }, memory: engine.memoryBytes() });
       return;
     }
     if (msg.type === "execute") {

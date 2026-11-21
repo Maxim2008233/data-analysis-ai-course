@@ -33,6 +33,7 @@ const NAV = [
   { href: "/tasks", label: "Задачи", hint: "все задания с фильтрами", icon: "M9 4h6l1 3h3v13H5V7h3zM9 13l2 2 4-4" },
   { href: "/reference", label: "Справочник", hint: "термины и функции", icon: "M5 4h10a4 4 0 0 1 4 4v12H9a4 4 0 0 1-4-4zM9 8h6M9 12h6" },
   { href: "/profile", label: "Профиль", hint: "прогресс и аккаунт", icon: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0" },
+  { href: "/app", label: "Приложение", hint: "установка и офлайн", icon: "M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM12 7v7M9 11l3 3 3-3M10 18h4" },
 ];
 
 function Icon({ d }: { d: string }) {

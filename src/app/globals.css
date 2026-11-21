@@ -518,6 +518,11 @@ body {
   background: repeating-linear-gradient(135deg, var(--warm) 0 2px, transparent 2px 4px);
 }
 
+/* пока над клавиатурой телефона открыта панель символов кода, кнопка «Справочник» не выглядывает из-под неё */
+body:has([data-testid="code-keys"]) [data-testid="open-reference"] {
+  display: none;
+}
+
 @media print {
   aside,
   header,

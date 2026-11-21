@@ -1,6 +1,7 @@
 "use client";
 // Редактор кода на CodeMirror 6: подсветка Python, автодополнение, Ctrl/Cmd+Enter — запуск.
-import { useEffect, useRef } from "react";
+// На телефоне и планшете, пока редактор в фокусе, над клавиатурой — панель символов (MobileCodeKeys).
+import { useEffect, useRef, useState } from "react";
 import { EditorState, Prec, StateEffect, StateField, type Extension } from "@codemirror/state";
 import {
   Decoration,
@@ -19,6 +20,7 @@ import { bracketMatching, indentOnInput, indentUnit, syntaxHighlighting } from "
 import { classHighlighter } from "@lezer/highlight";
 import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap, type CompletionContext } from "@codemirror/autocomplete";
 import { LIBRARY_COMPLETIONS } from "./completions";
+import { CODE_KEYS_HEIGHT, MobileCodeKeys, useCoarsePointer } from "./MobileCodeKeys";
 
 const setErrorLine = StateEffect.define<number | null>();
 const errorLineField = StateField.define<DecorationSet>({
@@ -72,6 +74,16 @@ export default function CodeEditor({ value, onChange, onRun, readOnly = false, e
     onChangeRef.current = onChange;
     onRunRef.current = onRun;
   });
+  const coarse = useCoarsePointer();
+  const [focused, setFocused] = useState(false);
+  // фокус уходит не сразу: если браузер на миг уведёт его при нажатии кнопки панели, панель не исчезнет из-под пальца
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (blurTimer.current) clearTimeout(blurTimer.current);
+    },
+    []
+  );
 
   useEffect(() => {
     if (!host.current) return;
@@ -117,7 +129,14 @@ export default function CodeEditor({ value, onChange, onRun, readOnly = false, e
       }),
       EditorView.updateListener.of((u) => {
         if (u.docChanged) onChangeRef.current?.(u.state.doc.toString());
+        if (u.focusChanged) {
+          if (blurTimer.current) clearTimeout(blurTimer.current);
+          if (u.view.hasFocus) setFocused(true);
+          else blurTimer.current = setTimeout(() => setFocused(false), 200);
+        }
       }),
+      // на сенсорном экране курсор не должен прятаться под панелью символов
+      EditorView.scrollMargins.of(() => (window.matchMedia?.("(pointer: coarse)").matches ? { bottom: CODE_KEYS_HEIGHT + 8 } : null)),
     ];
     if (readOnly) {
       extensions.push(EditorState.readOnly.of(true), EditorView.editable.of(false), EditorView.editorAttributes.of({ class: "cm-readonly-editor" }));
@@ -149,5 +168,10 @@ export default function CodeEditor({ value, onChange, onRun, readOnly = false, e
     view.current?.dispatch({ effects: setErrorLine.of(errorLine) });
   }, [errorLine]);
 
-  return <div ref={host} className="overflow-hidden" data-testid="code-editor" />;
+  return (
+    <>
+      <div ref={host} className="overflow-hidden" data-testid="code-editor" />
+      {coarse && focused && !readOnly && <MobileCodeKeys getView={() => view.current} />}
+    </>
+  );
 }
