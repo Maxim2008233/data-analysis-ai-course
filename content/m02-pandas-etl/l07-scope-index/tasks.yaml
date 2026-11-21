@@ -1,0 +1,416 @@
+- id: m2-l7-t1
+  title: Нарушители двух правил
+  difficulty: warmup
+  introduces: [analysis-scope]
+  uses: [pd-isin-between]
+  statement: |
+    В таблице `df` (уже без повторов и неполных записей) посчитайте:
+
+    - `n_bad_year` — сколько записей с годом выпуска **вне** диапазона 1951–2021;
+    - `n_bad_price` — сколько записей с ценой вне диапазона 101–500 000 евро.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.drop_duplicates().dropna().copy()   # повторы и неполные записи удалены — урок 2.6
+  starter: |
+    n_bad_year = ...
+    n_bad_price = ...
+    print(n_bad_year, n_bad_price)
+  solution: |
+    n_bad_year = (~df['Year'].between(1951, 2021)).sum()
+    n_bad_price = (~df['Price(euro)'].between(101, 500_000)).sum()
+    print(n_bad_year, n_bad_price)
+  explanation: |
+    - `between(1951, 2021)` — маска «в диапазоне», концы включены; `~` даёт «вне диапазона».
+    - Пропусков в таблице уже нет (урок 2.6), поэтому `~between` не захватит лишнего.
+    - Сумма маски — число записей.
+  alternatives:
+    - |
+      n_bad_year = int(((df['Year'] < 1951) | (df['Year'] > 2021)).sum())
+      n_bad_price = int(((df['Price(euro)'] < 101) | (df['Price(euro)'] > 500000)).sum())
+  hints:
+    - «Вне диапазона» — это отрицание маски «в диапазоне».
+    - "`~df['Year'].between(1951, 2021)` — маска нарушителей; её `.sum()` — их число."
+    - "`n_bad_price = (~df['Price(euro)'].between(101, 500_000)).sum()`."
+  tests: |
+    y = var('n_bad_year', 'number', 'числом')
+    if y == ref('df')['Year'].between(1951, 2021).sum():
+        fail('Получилось число записей внутри диапазона. Нужны записи вне его — добавьте отрицание `~`.')
+    close(y, ref('n_bad_year'), 'Записей с годом вне 1951–2021 — {expected}, а у вас {actual}.')
+    close(var('n_bad_price', 'number', 'числом'), ref('n_bad_price'), 'Записей с ценой вне 101–500 000 — {expected}, а у вас {actual}.')
+    close(alt('n_bad_year'), alt_ref('n_bad_year'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        n_bad_year = df['Year'].between(1951, 2021).sum()
+        n_bad_price = (~df['Price(euro)'].between(101, 500_000)).sum()
+      expect: вне его
+    - code: |
+        n_bad_year = 35
+        n_bad_price = 12
+      expect: вписан вручную
+
+- id: m2-l7-t2
+  title: Маска учебной области анализа
+  difficulty: main
+  introduces: [analysis-scope]
+  uses: [pd-isin-between, mask-combine]
+  statement: |
+    Константы границ уже заданы. Соберите маску `in_scope` из **пяти** правил урока и получите:
+
+    - `scoped` — записи внутри области анализа;
+    - `out_of_scope` — записи вне её (сохраним для проверки).
+
+    Пятое правило: исключаем записи, у которых год выпуска меньше `MAX_YEAR` **и** пробег меньше `MIN_DISTANCE_OLDER`.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.drop_duplicates().dropna().copy()   # урок 2.6
+    MIN_YEAR, MAX_YEAR = 1951, 2021
+    MIN_ENGINE, MAX_ENGINE = 200, 5000
+    MIN_PRICE, MAX_PRICE = 101, 500_000
+    MAX_DISTANCE = 1_000_000
+    MIN_DISTANCE_OLDER = 1100
+  starter: |
+    in_scope = (
+        df['Year'].between(MIN_YEAR, MAX_YEAR) &
+        ...
+    )
+    scoped = ...
+    out_of_scope = ...
+    print(len(scoped), len(out_of_scope))
+  solution: |
+    in_scope = (
+        df['Year'].between(MIN_YEAR, MAX_YEAR) &
+        df['Distance'].between(0, MAX_DISTANCE) &
+        df['Engine_capacity(cm3)'].between(MIN_ENGINE, MAX_ENGINE) &
+        df['Price(euro)'].between(MIN_PRICE, MAX_PRICE) &
+        ~((df['Year'] < MAX_YEAR) & (df['Distance'] < MIN_DISTANCE_OLDER))
+    )
+    scoped = df.loc[in_scope].copy()
+    out_of_scope = df.loc[~in_scope].copy()
+    print(len(scoped), len(out_of_scope))
+  explanation: |
+    - Четыре правила-диапазона записаны через `between` с константами — никаких «магических чисел».
+    - Пятое правило отрицает **всё** условие «старая машина И малый пробег»: `~((...) & (...))`.
+    - `scoped` и `out_of_scope` вместе содержат все строки `df`; `.copy()` делает их независимыми таблицами.
+  hints:
+    - Внутри скобок пять масок через `&`. Для пятого правила нужно отрицание составного условия.
+    - "Диапазоны: `df['Distance'].between(0, MAX_DISTANCE)` и т. д.; пятое — `~((df['Year'] < MAX_YEAR) & (df['Distance'] < MIN_DISTANCE_OLDER))`."
+    - "`scoped = df.loc[in_scope].copy()`, `out_of_scope = df.loc[~in_scope].copy()`."
+  tests: |
+    import pandas as pd
+    s = var('scoped', pd.DataFrame, 'таблицей DataFrame')
+    o = var('out_of_scope', pd.DataFrame, 'таблицей DataFrame')
+    d = ref('df')
+    if len(s) + len(o) != len(d):
+        fail('`scoped` и `out_of_scope` вместе должны содержать все {0} строк `df`, а у вас {1}. Отберите их по маске и по её отрицанию.'.format(len(d), len(s) + len(o)))
+    old_low = (s['Year'] < 2021) & (s['Distance'] < 1100)
+    if old_low.any():
+        fail('В `scoped` остались {0} записей с годом до 2021 и пробегом меньше 1100 км. Проверьте пятое правило: `~((df[\'Year\'] < MAX_YEAR) & (df[\'Distance\'] < MIN_DISTANCE_OLDER))`.'.format(int(old_low.sum())))
+    for col, lo, hi in [('Year', 1951, 2021), ('Distance', 0, 1_000_000), ('Engine_capacity(cm3)', 200, 5000), ('Price(euro)', 101, 500_000)]:
+        if not s[col].between(lo, hi).all():
+            fail('В `scoped` есть значения `{0}` вне диапазона {1}–{2}. Добавьте это правило в маску.'.format(col, lo, hi))
+    same_frame(s, ref('scoped'), 'Таблица `scoped` не совпадает с нужной.')
+    same_frame(o, ref('out_of_scope'), 'Таблица `out_of_scope` не совпадает с нужной.')
+    close(len(alt('scoped')), len(alt_ref('scoped')), HARDCODE_MSG)
+  wrong:
+    - code: |
+        in_scope = (
+            df['Year'].between(MIN_YEAR, MAX_YEAR) &
+            df['Distance'].between(0, MAX_DISTANCE) &
+            df['Engine_capacity(cm3)'].between(MIN_ENGINE, MAX_ENGINE) &
+            df['Price(euro)'].between(MIN_PRICE, MAX_PRICE) &
+            ~(df['Year'] < MAX_YEAR) & (df['Distance'] < MIN_DISTANCE_OLDER)
+        )
+        scoped = df.loc[in_scope].copy()
+        out_of_scope = df.loc[~in_scope].copy()
+      expect: Таблица `scoped` не совпадает
+    - code: |
+        in_scope = (
+            df['Year'].between(MIN_YEAR, MAX_YEAR) &
+            df['Distance'].between(0, MAX_DISTANCE) &
+            df['Engine_capacity(cm3)'].between(MIN_ENGINE, MAX_ENGINE) &
+            df['Price(euro)'].between(MIN_PRICE, MAX_PRICE)
+        )
+        scoped = df.loc[in_scope].copy()
+        out_of_scope = df.loc[~in_scope].copy()
+      expect: пятое правило
+    - code: |
+        in_scope = (
+            df['Year'].between(MIN_YEAR, MAX_YEAR) &
+            df['Distance'].between(0, MAX_DISTANCE) &
+            df['Price(euro)'].between(MIN_PRICE, MAX_PRICE) &
+            ~((df['Year'] < MAX_YEAR) & (df['Distance'] < MIN_DISTANCE_OLDER))
+        )
+        scoped = df.loc[in_scope].copy()
+        out_of_scope = df.loc[~in_scope].copy()
+      expect: Engine_capacity(cm3)
+
+- id: m2-l7-t3
+  title: Что изменил отбор
+  difficulty: main
+  introduces: [analysis-scope]
+  uses: [mean-median]
+  statement: |
+    Сравните данные до и после обработки. Получите:
+
+    - `share_left` — долю строк `scoped` от числа строк **исходной** таблицы `raw`;
+    - `median_before` и `median_after` — медианную цену в `raw` и в `scoped`;
+    - `mean_before` и `mean_after` — то же для средней цены.
+
+    Какая статистика изменилась сильнее и почему?
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.drop_duplicates().dropna().copy()   # урок 2.6
+    in_scope = (df['Year'].between(1951, 2021) & df['Distance'].between(0, 1_000_000) &
+                df['Engine_capacity(cm3)'].between(200, 5000) & df['Price(euro)'].between(101, 500_000) &
+                ~((df['Year'] < 2021) & (df['Distance'] < 1100)))   # область анализа — задание 2.7.2
+    scoped = df.loc[in_scope].copy()
+  starter: |
+    share_left = ...
+    median_before = ...
+    median_after = ...
+    mean_before = ...
+    mean_after = ...
+    print(round(share_left, 3), median_before, median_after, round(mean_before), round(mean_after))
+  solution: |
+    share_left = len(scoped) / len(raw)
+    median_before = raw['Price(euro)'].median()
+    median_after = scoped['Price(euro)'].median()
+    mean_before = raw['Price(euro)'].mean()
+    mean_after = scoped['Price(euro)'].mean()
+    print(round(share_left, 3), median_before, median_after, round(mean_before), round(mean_after))
+  explanation: |
+    - Доля — от исходного числа строк `len(raw)`, а не от промежуточной таблицы.
+    - Медиана устойчива к крайним значениям и почти не изменилась; среднее сдвинулось сильнее — ушли цены вроде 10 000 000 евро.
+  hints:
+    - Знаменатель доли — исходная таблица. Медиана и среднее — методы колонки цены.
+    - "`len(scoped) / len(raw)`; `raw['Price(euro)'].median()` и `scoped['Price(euro)'].median()`; так же `mean()`."
+    - "`share_left = len(scoped) / len(raw)`."
+  tests: |
+    s = var('share_left', 'number', 'числом')
+    if abs(float(s) - len(ref('scoped')) / len(ref('df'))) < 1e-12:
+        fail('Доля посчитана от промежуточной таблицы `df`. Нужна доля от исходного числа строк `len(raw)`.')
+    close(s, ref('share_left'), 'Доля оставшихся строк — {expected}, а у вас {actual}.')
+    close(var('median_before', 'number', 'числом'), ref('median_before'), 'Медиана до обработки — {expected}, а у вас {actual}.')
+    close(var('median_after', 'number', 'числом'), ref('median_after'), 'Медиана после обработки — {expected}, а у вас {actual}.')
+    close(var('mean_before', 'number', 'числом'), ref('mean_before'), 'Среднее до обработки — {expected}, а у вас {actual}.')
+    close(var('mean_after', 'number', 'числом'), ref('mean_after'), 'Среднее после обработки — {expected}, а у вас {actual}.')
+    close(alt('share_left'), alt_ref('share_left'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        share_left = len(scoped) / len(df)
+        median_before = raw['Price(euro)'].median()
+        median_after = scoped['Price(euro)'].median()
+        mean_before = raw['Price(euro)'].mean()
+        mean_after = scoped['Price(euro)'].mean()
+      expect: len(raw)
+    - code: |
+        share_left = len(scoped) / len(raw)
+        median_before = df['Price(euro)'].median()
+        median_after = scoped['Price(euro)'].median()
+        mean_before = df['Price(euro)'].mean()
+        mean_after = scoped['Price(euro)'].mean()
+      expect: до обработки
+
+- id: m2-l7-t4
+  title: Метка исходной строки и новый индекс
+  difficulty: main
+  introduces: [pd-reset-index]
+  uses: [label-vs-position]
+  statement: |
+    Получите `clean` — копию `scoped`, в которой:
+
+    1. старые метки строк сохранены в колонку `source_row_id`;
+    2. строки перенумерованы с нуля без лишней колонки `index`.
+
+    Затем `tenth_source` — исходную метку записи, которая в `clean` стоит под меткой 9, и `original_tenth` — эту строку в `raw`.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.drop_duplicates().dropna().copy()   # урок 2.6
+    in_scope = (df['Year'].between(1951, 2021) & df['Distance'].between(0, 1_000_000) &
+                df['Engine_capacity(cm3)'].between(200, 5000) & df['Price(euro)'].between(101, 500_000) &
+                ~((df['Year'] < 2021) & (df['Distance'] < 1100)))   # задание 2.7.2
+    scoped = df.loc[in_scope].copy()
+  starter: |
+    clean = scoped.copy()
+    clean['source_row_id'] = ...
+    clean = ...
+    tenth_source = ...
+    original_tenth = ...
+    print(tenth_source)
+    clean[['source_row_id', 'Make', 'Model']].head(10)
+  solution: |
+    clean = scoped.copy()
+    clean['source_row_id'] = clean.index
+    clean = clean.reset_index(drop=True)
+    tenth_source = clean.loc[9, 'source_row_id']
+    original_tenth = raw.loc[tenth_source]
+    print(tenth_source)
+    clean[['source_row_id', 'Make', 'Model']].head(10)
+  explanation: |
+    - `clean['source_row_id'] = clean.index` — сохраняем старые метки **до** перенумерации.
+    - `reset_index(drop=True)` — метки 0, 1, 2, …; старый индекс выбрасываем, он уже сохранён.
+    - `clean.loc[9, 'source_row_id']` — исходная метка; `raw.loc[...]` по ней находит строку исходного файла.
+  hints:
+    - Сначала запишите старые метки в колонку, потом перенумеруйте. Почему порядок важен?
+    - "Старые метки — `clean.index`; перенумерация — `reset_index(drop=True)`; значение — `clean.loc[9, 'source_row_id']`."
+    - "`clean = clean.reset_index(drop=True)`, `original_tenth = raw.loc[tenth_source]`."
+  tests: |
+    import pandas as pd
+    c = var('clean', pd.DataFrame, 'таблицей DataFrame')
+    if 'index' in c.columns:
+        fail('В `clean` появилась колонка `index`: используйте `reset_index(drop=True)` — старые метки уже сохранены в `source_row_id`.')
+    ensure('source_row_id' in c.columns, 'В `clean` нет колонки `source_row_id`.')
+    if (c['source_row_id'].to_numpy() == range(len(c))).all():
+        fail('В `source_row_id` записаны новые номера 0, 1, 2, … Сохраните метки до `reset_index`.')
+    ensure(c.index.equals(pd.RangeIndex(len(c))), 'Метки строк `clean` должны идти по порядку с нуля — вызовите `reset_index(drop=True)`.')
+    same_frame(c, ref('clean'), 'Таблица `clean` не совпадает с нужной.')
+    equal(int(var('tenth_source', 'number', 'числом')), int(ref('tenth_source')), 'Исходная метка записи 9 — {expected}, а у вас {actual}.')
+    o = var('original_tenth', pd.Series, 'строкой Series: `raw.loc[tenth_source]`')
+    ensure(o.equals(ref('original_tenth')), '`original_tenth` должна быть строкой `raw` с меткой `tenth_source`.')
+    equal(int(alt('tenth_source')), int(alt_ref('tenth_source')), HARDCODE_MSG)
+  wrong:
+    - code: |
+        clean = scoped.copy()
+        clean = clean.reset_index(drop=True)
+        clean['source_row_id'] = clean.index
+        tenth_source = clean.loc[9, 'source_row_id']
+        original_tenth = raw.loc[tenth_source]
+      expect: до `reset_index`
+    - code: |
+        clean = scoped.copy()
+        clean['source_row_id'] = clean.index
+        clean = clean.reset_index()
+        tenth_source = clean.loc[9, 'source_row_id']
+        original_tenth = raw.loc[tenth_source]
+      expect: drop=True
+    - code: |
+        clean = scoped.copy()
+        clean['source_row_id'] = clean.index
+        clean = clean.reset_index(drop=True)
+        tenth_source = clean.loc[9, 'source_row_id']
+        original_tenth = raw.loc[9]
+      expect: original_tenth
+
+- id: m2-l7-t5
+  kind: predict
+  title: Что сделает reset_index
+  difficulty: main
+  introduces: [pd-reset-index]
+  uses: []
+  statement: |
+    Не запуская код, ответьте, что получится. В таблице `t` три строки с метками 0, 3, 7:
+
+    ```python
+    t = pd.DataFrame({'price': [10, 30, 12]}, index=[0, 3, 7])
+    ```
+  quiz:
+    - q: Какие колонки и метки будут у результата?
+      code: |
+        t.reset_index()
+      options:
+        - "Колонки `index` и `price`, метки 0, 1, 2"
+        - "Колонка `price`, метки 0, 3, 7"
+        - "Колонка `price`, метки 0, 1, 2"
+      answer: 0
+      explain: Без `drop=True` старые метки становятся колонкой `index`, а строки нумеруются заново.
+    - q: Что выведет код?
+      code: |
+        print(t.reset_index(drop=True).loc[1, 'price'])
+      options:
+        - "10"
+        - "30"
+        - "12"
+      answer: 1
+      ordered: true
+      explain: После перенумерации вторая строка (цена 30) получает метку 1.
+    - q: Что выведет код?
+      code: |
+        t['source_row_id'] = t.index
+        t = t.reset_index(drop=True)
+        print(t.loc[2, 'source_row_id'])
+      options:
+        - "2"
+        - "7"
+        - "12"
+      answer: 1
+      explain: Третья строка имела метку 7 — она сохранена в `source_row_id` до перенумерации.
+  hints:
+    - "Подумайте: что происходит со старыми метками с `drop=True` и без него?"
+    - "Без `drop=True` старые метки становятся колонкой `index`; новые метки — 0, 1, 2 по порядку."
+    - "Ответы: колонки index и price с метками 0, 1, 2; 30; 7."
+
+- id: m2-l7-t6
+  title: Главная причина исключения
+  difficulty: star
+  introduces: [analysis-scope]
+  uses: [mask-combine, py-dicts]
+  statement: |
+    Словарь `rules` сопоставляет короткому названию правила маску записей, которые это правило **исключает**. Получите:
+
+    - `rule_counts` — словарь «название → сколько записей исключает правило» (целые числа);
+    - `top_rule` — название правила, которое исключает больше всего записей;
+    - `n_only_lowdist` — сколько записей исключает **только** правило `'lowdist'` и ни одно другое.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.drop_duplicates().dropna().copy()   # урок 2.6
+    rules = {
+        'year': ~df['Year'].between(1951, 2021),
+        'distance': ~df['Distance'].between(0, 1_000_000),
+        'engine': ~df['Engine_capacity(cm3)'].between(200, 5000),
+        'price': ~df['Price(euro)'].between(101, 500_000),
+        'lowdist': (df['Year'] < 2021) & (df['Distance'] < 1100),
+    }
+  starter: |
+    rule_counts = ...
+    top_rule = ...
+    n_only_lowdist = ...
+    print(rule_counts, top_rule, n_only_lowdist)
+  solution: |
+    rule_counts = {name: int(mask.sum()) for name, mask in rules.items()}
+    top_rule = max(rule_counts, key=rule_counts.get)
+    others = rules['year'] | rules['distance'] | rules['engine'] | rules['price']
+    n_only_lowdist = int((rules['lowdist'] & ~others).sum())
+    print(rule_counts, top_rule, n_only_lowdist)
+  explanation: |
+    - Генератор словаря проходит по парам «название — маска» и считает `True` в каждой маске.
+    - `max(словарь, key=словарь.get)` возвращает ключ с наибольшим значением.
+    - «Только это правило» — его маска **и не** (любое другое): `rules['lowdist'] & ~(год | пробег | объём | цена)`.
+  alternatives:
+    - |
+      rule_counts = {}
+      for name in rules:
+          rule_counts[name] = int(rules[name].sum())
+      top_rule = sorted(rule_counts.items(), key=lambda kv: kv[1])[-1][0]
+      n_only_lowdist = int((rules['lowdist'] & ~rules['year'] & ~rules['distance'] & ~rules['engine'] & ~rules['price']).sum())
+  hints:
+    - "Для словаря удобен генератор `{ключ: значение for ... in rules.items()}`. Как выразить «ни одно другое правило»?"
+    - "`int(mask.sum())` — число записей; `max(rule_counts, key=rule_counts.get)`; «ни одно другое» — отрицание объединения масок через `|`."
+    - "`n_only_lowdist = int((rules['lowdist'] & ~(rules['year'] | rules['distance'] | rules['engine'] | rules['price'])).sum())`."
+  tests: |
+    rc = var('rule_counts', dict, 'словарём')
+    expected = ref('rule_counts')
+    ensure(set(rc) == set(expected), 'В `rule_counts` должны быть те же ключи, что в `rules`: {0}.'.format(sorted(expected)))
+    for k in expected:
+        equal(int(rc[k]), expected[k], 'Правило «' + k + '» исключает {expected} записей, а у вас {actual}.')
+    equal(var('top_rule', str, 'строкой'), ref('top_rule'), 'Больше всего исключает правило {expected}, а у вас {actual}.')
+    n = var('n_only_lowdist', 'number', 'числом')
+    if n == expected['lowdist']:
+        fail('Это все записи, которые исключает правило lowdist. Нужны только те, которые не исключает ни одно другое правило.')
+    close(n, ref('n_only_lowdist'), 'Только правило lowdist исключает {expected} записей, а у вас {actual}.')
+    close(alt('n_only_lowdist'), alt_ref('n_only_lowdist'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        rule_counts = {name: int(mask.sum()) for name, mask in rules.items()}
+        top_rule = max(rule_counts, key=rule_counts.get)
+        n_only_lowdist = rule_counts['lowdist']
+      expect: ни одно другое
+    - code: |
+        rule_counts = {name: int(mask.sum()) for name, mask in rules.items()}
+        top_rule = min(rule_counts, key=rule_counts.get)
+        n_only_lowdist = int((rules['lowdist'] & ~(rules['year'] | rules['distance'] | rules['engine'] | rules['price'])).sum())
+      expect: Больше всего исключает

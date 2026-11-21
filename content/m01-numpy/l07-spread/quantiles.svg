@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 210" font-family="Inter, Arial, sans-serif" font-size="13" role="img" aria-label="Схема квантилей цен: Q1 3500, медиана 6600, Q3 12150, IQR 8650; максимум 10 000 000 далеко за пределами схемы">
+  <line x1="40" y1="110" x2="600" y2="110" stroke="currentColor" stroke-opacity="0.5"/>
+  <!-- ось -->
+  <g font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" fill-opacity="0.7">
+    <text x="36" y="132">0</text>
+    <text x="150" y="132">5000</text>
+    <text x="268" y="132">10000</text>
+    <text x="388" y="132">15000</text>
+    <text x="508" y="132">20000</text>
+  </g>
+  <g stroke="currentColor" stroke-opacity="0.4">
+    <line x1="40" y1="106" x2="40" y2="114"/><line x1="160" y1="106" x2="160" y2="114"/><line x1="280" y1="106" x2="280" y2="114"/><line x1="400" y1="106" x2="400" y2="114"/><line x1="520" y1="106" x2="520" y2="114"/>
+  </g>
+  <!-- ящик Q1..Q3 (масштаб 0.024 px/€) -->
+  <rect x="124" y="70" width="207.6" height="30" rx="4" fill="#3d5bd9" fill-opacity="0.15" stroke="#3d5bd9" stroke-width="1.6"/>
+  <line x1="198.4" y1="66" x2="198.4" y2="104" stroke="#c0362c" stroke-width="2.4"/>
+  <line x1="83.2" y1="85" x2="124" y2="85" stroke="#3d5bd9"/><line x1="83.2" y1="77" x2="83.2" y2="93" stroke="#3d5bd9"/>
+  <line x1="331.6" y1="85" x2="503.2" y2="85" stroke="#3d5bd9"/><line x1="503.2" y1="77" x2="503.2" y2="93" stroke="#3d5bd9"/>
+  <text x="104" y="60" fill="#3d5bd9" font-size="12">Q1 = 3500</text>
+  <text x="170" y="44" fill="#c0362c" font-size="12">медиана 6600</text>
+  <text x="300" y="60" fill="#3d5bd9" font-size="12">Q3 = 12 150</text>
+  <text x="60" y="152" fill="currentColor" font-size="12">q = 0.10: 1800</text>
+  <text x="440" y="60" fill="currentColor" fill-opacity="0.75" font-size="12">q = 0.90: 19 300</text>
+  <path d="M124 160 L124 170 L331.6 170 L331.6 160" fill="none" stroke="#3d5bd9" stroke-width="1.4"/>
+  <text x="162" y="188" fill="#3d5bd9">IQR = Q3 − Q1 = 8650 € — центральная половина цен</text>
+  <!-- выброс -->
+  <text x="610" y="96" fill="currentColor" font-size="20">⋯</text>
+  <circle cx="680" cy="85" r="5" fill="#c0362c"/>
+  <text x="626" y="64" fill="#c0362c" font-size="12">max = 10 000 000</text>
+  <text x="608" y="132" fill="currentColor" fill-opacity="0.65" font-size="11">далеко за краем</text>
+</svg>

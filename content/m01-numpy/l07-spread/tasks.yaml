@@ -1,0 +1,306 @@
+- id: m1-l7-t1
+  title: Квантиль 0.9 цены
+  difficulty: warmup
+  introduces: [quantiles-iqr]
+  uses: [bool-mask]
+  statement: |
+    Получите `q90_price` — квантиль уровня 0.9 для конечных цен (вектор `price_values` готов). Это граница, ниже которой 90 % объявлений.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    price = X[:, 3]
+    price_values = price[np.isfinite(price)]   # конечные цены — урок 1.5
+  starter: |
+    q90_price = ...
+    print(q90_price)
+  solution: |
+    q90_price = np.quantile(price_values, 0.9)
+    print(q90_price)
+  explanation: |
+    - `np.quantile(a, 0.9)` — уровень задаётся долей от 0 до 1, а не процентом.
+  alternatives:
+    - |
+      q90_price = np.percentile(price_values, 90)
+  hints:
+    - Нужна функция NumPy для квантилей; уровень — доля, не процент.
+    - "`np.quantile(значения, уровень)`, уровень 0.9. Либо `np.percentile(значения, 90)`."
+    - "`q90_price = np.quantile(price_values, 0.9)`"
+  tests: |
+    v = var('q90_price', 'number', 'числом')
+    import numpy as np
+    if abs(v - np.quantile(ref('price_values'), 0.1)) < 1e-9:
+        fail('Это квантиль 0.1. Нужен уровень 0.9 — граница, ниже которой 90 % цен.')
+    close(v, ref('q90_price'), 'Квантиль 0.9 должен быть {expected}, а у вас {actual}.')
+    close(alt('q90_price'), alt_ref('q90_price'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        q90_price = np.quantile(price_values, 0.1)
+      expect: квантиль 0.1
+    - code: |
+        q90_price = 19300.0
+      expect: вписан вручную
+
+- id: m1-l7-t2
+  title: Квартили и IQR пробега
+  difficulty: main
+  introduces: [quantiles-iqr]
+  uses: [nan-inf, bool-mask]
+  statement: |
+    Для конечных пробегов получите `q1_distance`, `q3_distance` (квартили 0.25 и 0.75) и `iqr_distance` — межквартильный размах. Сравните `iqr_distance` с размахом `max − min` — во сколько раз размах больше?
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    distance = X[:, 1]
+  starter: |
+    distance_values = distance[np.isfinite(distance)]
+    q1_distance, q3_distance = ...
+    iqr_distance = ...
+    print(q1_distance, q3_distance, iqr_distance, np.ptp(distance_values))
+  solution: |
+    distance_values = distance[np.isfinite(distance)]
+    q1_distance, q3_distance = np.quantile(distance_values, [0.25, 0.75])
+    iqr_distance = q3_distance - q1_distance
+    print(q1_distance, q3_distance, iqr_distance, np.ptp(distance_values))
+  explanation: |
+    - Список уровней `[0.25, 0.75]` возвращает два квантиля сразу; их можно распаковать в две переменные.
+    - IQR — разность Q3 и Q1. Размах `np.ptp` огромен из-за пробегов в десятки миллионов км.
+  hints:
+    - "`np.quantile` принимает список уровней и возвращает столько же значений."
+    - "Уровни 0.25 и 0.75; IQR = Q3 − Q1."
+    - "`q1_distance, q3_distance = np.quantile(distance_values, [0.25, 0.75])`, `iqr_distance = q3_distance - q1_distance`."
+  tests: |
+    close(var('q1_distance', 'number', 'числом'), ref('q1_distance'), 'Q1 пробега должен быть {expected}, а у вас {actual}.')
+    close(var('q3_distance', 'number', 'числом'), ref('q3_distance'), 'Q3 пробега должен быть {expected}, а у вас {actual}.')
+    i = var('iqr_distance', 'number', 'числом')
+    if i < 0:
+        fail('IQR отрицательный — вычитайте Q1 из Q3, а не наоборот.')
+    close(i, ref('iqr_distance'), 'IQR должен быть {expected}, а у вас {actual}.')
+    close(alt('iqr_distance'), alt_ref('iqr_distance'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        distance_values = distance[np.isfinite(distance)]
+        q1_distance, q3_distance = np.quantile(distance_values, [0.25, 0.75])
+        iqr_distance = q1_distance - q3_distance
+      expect: отрицательный
+    - code: |
+        distance_values = distance[np.isfinite(distance)]
+        q1_distance, q3_distance = np.quantile(distance_values, [0.1, 0.9])
+        iqr_distance = q3_distance - q1_distance
+      expect: Q1 пробега
+
+- id: m1-l7-t3
+  title: Разброс объёма двигателя
+  difficulty: main
+  introduces: [std-var]
+  uses: [nan-inf, bool-mask]
+  statement: |
+    Для конечных объёмов двигателя получите стандартное отклонение `std_engine` (см³) и дисперсию `var_engine` (см³²), оба с `ddof=0`. Убедитесь, что `std_engine` — корень из `var_engine`.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    engine = X[:, 2]
+  starter: |
+    engine_values = engine[np.isfinite(engine)]
+    std_engine = ...
+    var_engine = ...
+    print(round(std_engine, 2), round(var_engine, 2), round(np.sqrt(var_engine), 2))
+  solution: |
+    engine_values = engine[np.isfinite(engine)]
+    std_engine = np.std(engine_values, ddof=0)
+    var_engine = np.var(engine_values, ddof=0)
+    print(round(std_engine, 2), round(var_engine, 2), round(np.sqrt(var_engine), 2))
+  explanation: |
+    - Пропуски сначала убираем маской — иначе `np.std` вернёт `nan`.
+    - `ddof=0` — делим на n: описываем именно этот набор.
+  hints:
+    - Перед расчётом уберите пропуски; затем две функции NumPy для разброса.
+    - "`np.std(значения, ddof=0)` и `np.var(значения, ddof=0)` по `engine_values`."
+    - "`std_engine = np.std(engine_values, ddof=0)`, `var_engine = np.var(engine_values, ddof=0)`."
+  tests: |
+    import math
+    s = var('std_engine', 'number', 'числом')
+    v = var('var_engine', 'number', 'числом')
+    if math.isnan(s) or math.isnan(v):
+        fail('Получился nan — посчитайте по engine_values (без пропусков), а не по engine.')
+    if abs(s - ref('engine_values').std(ddof=1)) < 1e-9 and abs(s - ref('std_engine')) > 1e-9:
+        fail('Похоже, использован ddof=1. В задании нужен ddof=0.')
+    close(s, ref('std_engine'), 'Стандартное отклонение должно быть {expected}, а у вас {actual}.')
+    close(v, ref('var_engine'), 'Дисперсия должна быть {expected}, а у вас {actual}.')
+    close(alt('std_engine'), alt_ref('std_engine'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        engine_values = engine[np.isfinite(engine)]
+        std_engine = np.std(engine)
+        var_engine = np.var(engine)
+      expect: nan
+    - code: |
+        engine_values = engine[np.isfinite(engine)]
+        std_engine = np.std(engine_values, ddof=1)
+        var_engine = np.var(engine_values, ddof=1)
+      expect: ddof=1
+
+- id: m1-l7-t4
+  title: Сколько объявлений в каждом ценовом диапазоне
+  difficulty: main
+  introduces: [histogram-counts]
+  uses: [bool-mask]
+  statement: |
+    Разбейте конечные неотрицательные цены на интервалы `[0, 3000)`, `[3000, 7000)`, `[7000, 15000)`, `[15000, ∞)` с помощью `np.histogram`. Получите:
+
+    - `counts` — число объявлений в каждом интервале;
+    - `shares` — доли этих объявлений (сумма долей равна 1).
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    price = X[:, 3]
+    price_values = price[np.isfinite(price)]
+  starter: |
+    bins = np.array([0., 3000., 7000., 15000., np.inf])
+    values = price_values[price_values >= 0]
+    counts, edges = ...
+    shares = ...
+    print(counts, shares.round(3))
+  solution: |
+    bins = np.array([0., 3000., 7000., 15000., np.inf])
+    values = price_values[price_values >= 0]
+    counts, edges = np.histogram(values, bins=bins)
+    shares = counts / values.size
+    print(counts, shares.round(3))
+  explanation: |
+    - `np.histogram(values, bins=bins)` возвращает пару: числа значений в интервалах и сами границы.
+    - Доли — числа, делённые на общее количество значений (векторно, без цикла).
+  hints:
+    - Функция NumPy для частот по интервалам возвращает два массива — распакуйте их.
+    - "`np.histogram(values, bins=bins)` → `(counts, edges)`; доли = `counts / values.size`."
+    - "`counts, edges = np.histogram(values, bins=bins)`, `shares = counts / values.size`."
+  tests: |
+    import numpy as np
+    c = var('counts', 'ndarray', 'массивом NumPy')
+    ensure(c.shape == (4,), 'Интервалов 4 — counts должен содержать 4 числа, а форма %s.' % (c.shape,))
+    same_array(c, ref('counts'), 'Числа объявлений по интервалам не совпадают — передайте bins=bins в np.histogram.')
+    s = var('shares', 'ndarray', 'массивом NumPy')
+    ensure(abs(float(np.sum(s)) - 1) < 1e-9, 'Сумма долей должна быть 1, а у вас %.4f. Делите на общее число значений.' % float(np.sum(s)))
+    same_array(s, ref('shares'), 'Доли не совпадают.')
+    same_array(alt('counts'), alt_ref('counts'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        bins = np.array([0., 3000., 7000., 15000., np.inf])
+        values = price_values[price_values >= 0]
+        counts, edges = np.histogram(values, bins=4)
+        shares = counts / values.size
+      expect: bins=bins
+    - code: |
+        bins = np.array([0., 3000., 7000., 15000., np.inf])
+        values = price_values[price_values >= 0]
+        counts, edges = np.histogram(values, bins=bins)
+        shares = counts / 1000
+      expect: Сумма долей
+
+- id: m1-l7-t5
+  kind: quiz
+  title: Квантили и разброс без компьютера
+  difficulty: main
+  introduces: []
+  uses: [quantiles-iqr, std-var]
+  statement: |
+    Посчитайте устно или на бумаге — по формулам из теории.
+  quiz:
+    - q: "Значения `[10, 20, 30, 40, 50]`. Чему равен квантиль 0.25 по формуле линейной интерполяции NumPy?"
+      options:
+        - "15"
+        - "20"
+        - "12.5"
+      answer: 1
+      explain: "h = 0.25 · (5 − 1) = 1 — ровно второе по порядку значение, 20."
+    - q: "Для тех же значений чему равен квантиль 0.9?"
+      options:
+        - "45"
+        - "46"
+        - "50"
+      answer: 1
+      explain: "h = 0.9 · 4 = 3.6: 40 + 0.6 · (50 − 40) = 46."
+    - q: "Два набора: A = `[6000, 6000, 6000, 6000]`, B = `[3000, 5000, 7000, 9000]`. У них одинаковое среднее 6000. Что верно?"
+      options:
+        - Стандартные отклонения равны
+        - Стандартное отклонение A равно 0, у B — больше 0
+        - Медианы различаются
+      answer: 1
+      explain: В A нет отклонений от среднего вовсе. Медианы обоих наборов равны 6000.
+  hints:
+    - "Дробная позиция h = q · (n − 1); если h целое — это значение с таким номером в упорядоченном наборе."
+    - "Для q = 0.9 и n = 5: h = 3.6 — между 4-м (40) и 5-м (50) значениями, на 0.6 пути."
+    - "20; 46; у набора из одинаковых чисел σ = 0."
+
+- id: m1-l7-t6
+  title: Правило «полтора IQR»
+  difficulty: star
+  introduces: []
+  uses: [quantiles-iqr, mask-combine]
+  statement: |
+    Популярное правило помечает значение как кандидата на проверку, если оно лежит **ниже** $Q1 - 1.5 \cdot IQR$ или **выше** $Q3 + 1.5 \cdot IQR$. Для конечных цен получите:
+
+    - `low_fence`, `high_fence` — эти две границы;
+    - `n_flagged` — сколько цен выходит за границы;
+    - `flagged_share` — доля таких цен.
+
+    Это не «удаление выбросов», а список записей для внимательного взгляда: для цен с длинным хвостом правило помечает и вполне реальные дорогие машины.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    price = X[:, 3]
+    price_values = price[np.isfinite(price)]
+  starter: |
+    q1, q3 = np.quantile(price_values, [0.25, 0.75])
+    iqr = q3 - q1
+    low_fence = ...
+    high_fence = ...
+    flagged = ...
+    n_flagged = ...
+    flagged_share = ...
+    print(low_fence, high_fence, n_flagged, round(flagged_share, 4))
+  solution: |
+    q1, q3 = np.quantile(price_values, [0.25, 0.75])
+    iqr = q3 - q1
+    low_fence = q1 - 1.5 * iqr
+    high_fence = q3 + 1.5 * iqr
+    flagged = (price_values < low_fence) | (price_values > high_fence)
+    n_flagged = flagged.sum()
+    flagged_share = flagged.mean()
+    print(low_fence, high_fence, n_flagged, round(flagged_share, 4))
+  explanation: |
+    - Границы: $Q1 - 1.5\,IQR$ и $Q3 + 1.5\,IQR$. Нижняя граница здесь отрицательная, поэтому снизу никто не помечается.
+    - Маска «ниже ИЛИ выше» — оператор `|`; сумма — количество, среднее — доля.
+  hints:
+    - Сначала две границы по формуле, затем маска «ниже нижней или выше верхней».
+    - "`low_fence = q1 - 1.5 * iqr`, `high_fence = q3 + 1.5 * iqr`; маска через `|`."
+    - "`flagged = (price_values < low_fence) | (price_values > high_fence)`, дальше `.sum()` и `.mean()`."
+  tests: |
+    close(var('low_fence', 'number', 'числом'), ref('low_fence'), 'low_fence должна быть {expected}, а у вас {actual}. Формула: Q1 − 1.5 · IQR.')
+    close(var('high_fence', 'number', 'числом'), ref('high_fence'), 'high_fence должна быть {expected}, а у вас {actual}. Формула: Q3 + 1.5 · IQR.')
+    close(var('n_flagged', 'number', 'числом'), ref('n_flagged'), 'n_flagged должно быть {expected}, а у вас {actual}.')
+    close(var('flagged_share', 'number', 'числом'), ref('flagged_share'), 'flagged_share должно быть {expected}, а у вас {actual}.')
+    close(alt('n_flagged'), alt_ref('n_flagged'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        q1, q3 = np.quantile(price_values, [0.25, 0.75])
+        iqr = q3 - q1
+        low_fence = q1 - 1.5 * iqr
+        high_fence = q3 + 1.5 * iqr
+        flagged = (price_values < low_fence) & (price_values > high_fence)
+        n_flagged = flagged.sum()
+        flagged_share = flagged.mean()
+      expect: n_flagged
+    - code: |
+        q1, q3 = np.quantile(price_values, [0.25, 0.75])
+        iqr = q3 - q1
+        low_fence = q1 - iqr
+        high_fence = q3 + iqr
+        flagged = (price_values < low_fence) | (price_values > high_fence)
+        n_flagged = flagged.sum()
+        flagged_share = flagged.mean()
+      expect: Q1 − 1.5

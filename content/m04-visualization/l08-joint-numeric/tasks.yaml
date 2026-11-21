@@ -1,0 +1,394 @@
+- id: m4-l8-t1
+  kind: plot
+  title: Год и цена без сплошного пятна
+  difficulty: warmup
+  introduces: [overplotting]
+  uses: [log-axis, mpl-fig-ax]
+  statement: |
+    Нарисуйте диаграмму рассеяния «год выпуска — цена» для **всех** объявлений так, чтобы плотные места были видны: маленькие точки (`s` не больше 10) и сильная прозрачность (`alpha` не больше 0,2). Сделайте ось цены логарифмической, добавьте заголовок и подписи осей.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.scatter(...)
+    ax.set_yscale(...)
+    ax.set(title=..., xlabel=..., ylabel=...)
+    plt.show()
+  solution: |
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.scatter(df['Year'], df['Price'], s=4, alpha=0.1)
+    ax.set_yscale('log')
+    ax.set(title='Цена и год выпуска', xlabel='Год выпуска', ylabel='Цена, евро (логарифмическая шкала)')
+    plt.show()
+  explanation: |
+    - Каждая запись — точка (год, цена); `s=4` — маленькая площадь, `alpha=0.1` — полупрозрачность: где точек много, цвет темнее.
+    - Логарифмическая шкала цены растягивает плотную нижнюю часть (урок 4.5): видно, что с каждым годом облако поднимается.
+  hints:
+    - Размер точек задаёт `s`, прозрачность — `alpha`; шкалу оси — `set_yscale`.
+    - "`ax.scatter(df['Year'], df['Price'], s=4, alpha=0.1)`."
+    - "`ax.set_yscale('log')`; подписи — `ax.set(title=..., xlabel=..., ylabel=...)`."
+  tests: |
+    import numpy as np
+    ax = axes()
+    pts = [c for c in ax.collections if type(c).__name__ == 'PathCollection']
+    ensure(len(pts) >= 1, 'Нарисуйте точки методом `ax.scatter(...)`.')
+    sc = max(pts, key=lambda c: len(c.get_offsets()))
+    offs = np.asarray(sc.get_offsets())
+    ensure(len(offs) == len(ref('df')), 'Точек должно быть столько же, сколько объявлений ({0}), а у вас {1}.'.format(len(ref('df')), len(offs)))
+    same_array(offs[:, 0], ref('df')['Year'].values, 'По оси X — год выпуска (`df[\'Year\']`), по оси Y — цена.')
+    same_array(offs[:, 1], ref('df')['Price'].values, 'По оси Y — цена (`df[\'Price\']`).')
+    alpha = sc.get_alpha()
+    ensure(alpha is not None and alpha <= 0.2, 'Сделайте точки прозрачнее: `alpha` не больше 0,2.')
+    sizes = sc.get_sizes()
+    ensure(len(sizes) > 0 and max(sizes) <= 10, 'Сделайте точки мельче: `s` не больше 10.')
+    ensure(ax.get_yscale() == 'log', 'Сделайте ось цены логарифмической: `ax.set_yscale(\'log\')`.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+    ensure(ax.get_xlabel().strip() != '' and ax.get_ylabel().strip() != '', 'Подпишите обе оси.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        fig, ax = plt.subplots()
+        ax.scatter(df['Year'], df['Price'])
+        ax.set_yscale('log')
+        ax.set(title='Цена', xlabel='Год', ylabel='Цена, евро')
+        plt.show()
+      expect: прозрачнее
+    - code: |
+        fig, ax = plt.subplots()
+        ax.scatter(df['Year'], df['Price'], s=4, alpha=0.1)
+        ax.set(title='Цена', xlabel='Год', ylabel='Цена, евро')
+        plt.show()
+      expect: логарифмической
+
+- id: m4-l8-t2
+  kind: plot
+  title: hexbin пробега в год и цены
+  difficulty: main
+  introduces: [overplotting]
+  uses: [mpl-fig-ax]
+  statement: |
+    Нарисуйте `hb = ax.hexbin(...)` для пары «пробег в год (`km_year`) — цена»: `gridsize=40`, логарифмическая шкала цвета (`bins='log'`), без пустых ячеек (`mincnt=1`). Добавьте цветовую шкалу с подписью (`fig.colorbar(hb, ax=ax, label=...)`), заголовок и подписи осей.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    fig, ax = plt.subplots(figsize=(9, 4))
+    hb = ax.hexbin(...)
+    fig.colorbar(...)
+    ax.set(title=..., xlabel=..., ylabel=...)
+    plt.show()
+  solution: |
+    fig, ax = plt.subplots(figsize=(9, 4))
+    hb = ax.hexbin(df['km_year'], df['Price'], gridsize=40, bins='log', mincnt=1)
+    fig.colorbar(hb, ax=ax, label='Число записей в ячейке')
+    ax.set(title='Пробег в год и цена', xlabel='Пробег за год, км', ylabel='Цена, евро')
+    plt.show()
+  explanation: |
+    - `hexbin` считает записи в шестиугольных ячейках: `gridsize=40` — ячеек по горизонтали, `mincnt=1` — пустые не рисуются.
+    - `bins='log'` — логарифмическая шкала цвета: видны и плотные ячейки с тысячами записей, и редкие сочетания.
+    - `fig.colorbar(hb, ax=ax, label=...)` объясняет, что означают цвета.
+  hints:
+    - "Первые два аргумента `hexbin` — X и Y; остальное задают параметры `gridsize`, `bins`, `mincnt`."
+    - "`hb = ax.hexbin(df['km_year'], df['Price'], gridsize=40, bins='log', mincnt=1)`."
+    - "`fig.colorbar(hb, ax=ax, label='Число записей в ячейке')`."
+  tests: |
+    import numpy as np
+    import matplotlib.pyplot as plt
+    fig = figures()[-1]
+    axs = plot_axes(fig)
+    ensure(len(axs) >= 1, 'Нарисуйте hexbin на осях `ax`.')
+    ax = axs[0]
+    polys = [c for c in ax.collections if type(c).__name__ == 'PolyCollection']
+    ensure(len(polys) >= 1, 'Нарисуйте шестиугольные ячейки: `ax.hexbin(...)`.')
+    hb = polys[0]
+    ensure(type(hb.norm).__name__ == 'LogNorm', 'Сделайте шкалу цвета логарифмической: `bins=\'log\'`.')
+    d = ref('df')
+    f2, a2 = plt.subplots()
+    h2 = a2.hexbin(d['km_year'], d['Price'], gridsize=40, bins='log', mincnt=1)
+    exp = np.asarray(h2.get_array())
+    plt.close(f2)
+    got = np.asarray(hb.get_array())
+    ensure(abs(got.sum() - len(d)) < 0.5, 'В ячейках должны быть все объявления; не забудьте `mincnt=1` и данные целиком.')
+    ensure(len(got) == len(exp) and np.allclose(got, exp), 'Ячейки не совпадают: X — `km_year`, Y — `Price`, `gridsize=40`, `mincnt=1`.')
+    bars = [a for a in fig.axes if a.get_label() == '<colorbar>']
+    ensure(len(bars) == 1, 'Добавьте цветовую шкалу: `fig.colorbar(hb, ax=ax, label=...)`.')
+    ensure(bars[0].get_ylabel().strip() != '', 'Подпишите цветовую шкалу: `label=\'Число записей в ячейке\'`.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+    ensure(ax.get_xlabel().strip() != '' and ax.get_ylabel().strip() != '', 'Подпишите обе оси.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        fig, ax = plt.subplots()
+        hb = ax.hexbin(df['km_year'], df['Price'], gridsize=40, mincnt=1)
+        fig.colorbar(hb, ax=ax, label='Число записей')
+        ax.set(title='Пробег в год и цена', xlabel='Пробег за год, км', ylabel='Цена, евро')
+        plt.show()
+      expect: логарифмической
+    - code: |
+        fig, ax = plt.subplots()
+        hb = ax.hexbin(df['km_year'], df['Price'], gridsize=40, bins='log', mincnt=1)
+        ax.set(title='Пробег в год и цена', xlabel='Пробег за год, км', ylabel='Цена, евро')
+        plt.show()
+      expect: цветовую шкалу
+
+- id: m4-l8-t3
+  title: Сколько записей выше границы
+  difficulty: main
+  introduces: [filter-boundary]
+  uses: [pd-bool-filter, pd-new-column]
+  statement: |
+    Граница фильтрации — прямая от (0 км; 130 000 €) до (600 000 км; 0 €). Получите `limit` — допустимую цену при пробеге каждой записи (Series той же длины, что `df`), `above` — маску записей с ценой **выше** границы, `n_above` — их число и `n_far` — сколько из них с пробегом **больше 600 000 км**.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    limit = ...
+    above = ...
+    n_above = ...
+    n_far = ...
+    print(n_above, n_far)
+  solution: |
+    limit = 130_000 * (1 - df['Distance'] / 600_000)
+    above = df['Price'] > limit
+    n_above = int(above.sum())
+    n_far = int((above & (df['Distance'] > 600_000)).sum())
+    print(n_above, n_far)
+  explanation: |
+    - Прямая через (0; a) и (b; 0) — это `a * (1 - x / b)`: при x = 0 получается a, при x = b — ноль.
+    - Операции применяются ко всей колонке сразу: `limit` — граница для каждой записи (урок 2.8).
+    - Сравнение с ценой — маска (урок 2.5); две маски через `&` — записи выше границы и с огромным пробегом.
+  hints:
+    - "Прямая через (0; a) и (b; 0): `a * (1 - x / b)`; сравните цену с границей."
+    - "`limit = 130_000 * (1 - df['Distance'] / 600_000)`; `above = df['Price'] > limit`."
+    - "`n_far = int((above & (df['Distance'] > 600_000)).sum())`."
+  tests: |
+    import pandas as pd
+    lim = var('limit', pd.Series, 'Series — границей для каждой записи')
+    ensure(len(lim) == len(ref('df')), '`limit` должна быть той же длины, что и таблица.')
+    if abs(lim.iloc[0] - 600_000 * (1 - ref('df')['Price'].iloc[0] / 130_000)) < 1e-6:
+        fail('Оси перепутаны: граница — это допустимая **цена** при данном пробеге: `130_000 * (1 - df[\'Distance\'] / 600_000)`.')
+    same_frame(lim, ref('limit'), 'Граница не совпадает: `130_000 * (1 - df[\'Distance\'] / 600_000)`.')
+    n = var('n_above', 'number', 'числом')
+    if n == int((ref('df')['Price'] < ref('limit')).sum()):
+        fail('Посчитаны записи **ниже** границы. Нужны записи с ценой выше: `df[\'Price\'] > limit`.')
+    close(n, ref('n_above'), 'Выше границы {expected} записей, а у вас {actual}.')
+    close(var('n_far', 'number', 'числом'), ref('n_far'), 'Записей выше границы с пробегом больше 600 000 км — {expected}, а у вас {actual}.')
+    close(alt('n_above'), alt_ref('n_above'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        limit = 130_000 * (1 - df['Distance'] / 600_000)
+        above = df['Price'] < limit
+        n_above = int(above.sum())
+        n_far = int((above & (df['Distance'] > 600_000)).sum())
+      expect: ниже
+    - code: |
+        limit = 130_000 * (1 - df['Distance'] / 600_000)
+        above = df['Price'] > limit
+        n_above = int(above.sum())
+        n_far = int((df['Distance'] > 600_000).sum()) - 1
+      expect: больше 600 000
+
+- id: m4-l8-t4
+  kind: plot
+  title: Граница на графике
+  difficulty: main
+  introduces: [filter-boundary, overplotting]
+  uses: [mpl-layers]
+  statement: |
+    Нарисуйте hexbin «пробег — цена» (`gridsize=45`, `bins='log'`, `mincnt=1`) с цветовой шкалой и поверх — границу фильтрации: красную пунктирную прямую от (0; 130 000) до (600 000; 0) с подписью для легенды. Добавьте легенду, заголовок и подписи осей.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    fig, ax = plt.subplots(figsize=(9, 4))
+    hb = ax.hexbin(...)
+    fig.colorbar(hb, ax=ax, label='Число записей в ячейке')
+    ax.plot(...)
+    ax.set(title=..., xlabel=..., ylabel=...)
+    ax.legend()
+    plt.show()
+  solution: |
+    fig, ax = plt.subplots(figsize=(9, 4))
+    hb = ax.hexbin(df['Distance'], df['Price'], gridsize=45, bins='log', mincnt=1)
+    fig.colorbar(hb, ax=ax, label='Число записей в ячейке')
+    ax.plot([0, 600_000], [130_000, 0], 'r--', linewidth=2, label='Граница фильтрации')
+    ax.set(title='Цена и пробег: граница фильтрации', xlabel='Пробег, км', ylabel='Цена, евро')
+    ax.legend()
+    plt.show()
+  explanation: |
+    - Прямую задают двумя точками: список X `[0, 600_000]` и список Y `[130_000, 0]`.
+    - `'r--'` — красная (`r`) пунктирная (`--`) линия; `label` попадёт в легенду.
+    - hexbin и линия — два слоя на одних осях (урок 4.2).
+  hints:
+    - "Прямая — это `ax.plot` по двум точкам: первый список — X концов, второй — Y."
+    - "`ax.plot([0, 600_000], [130_000, 0], 'r--', label='Граница фильтрации')`."
+    - "`hb = ax.hexbin(df['Distance'], df['Price'], gridsize=45, bins='log', mincnt=1)`."
+  tests: |
+    import numpy as np
+    fig = figures()[-1]
+    ax = plot_axes(fig)[0]
+    polys = [c for c in ax.collections if type(c).__name__ == 'PolyCollection']
+    ensure(len(polys) >= 1, 'Нарисуйте hexbin: `ax.hexbin(df[\'Distance\'], df[\'Price\'], ...)`.')
+    ensure(type(polys[0].norm).__name__ == 'LogNorm', 'Шкала цвета hexbin должна быть логарифмической: `bins=\'log\'`.')
+    ensure(any(a.get_label() == '<colorbar>' for a in fig.axes), 'Добавьте цветовую шкалу: `fig.colorbar(hb, ax=ax, label=...)`.')
+    lines = ax.get_lines()
+    ensure(len(lines) >= 1, 'Нарисуйте границу: `ax.plot([0, 600_000], [130_000, 0], \'r--\', label=...)`.')
+    line = lines[0]
+    pts = sorted(zip(np.asarray(line.get_xdata(), dtype=float), np.asarray(line.get_ydata(), dtype=float)))
+    ensure(len(pts) == 2 and np.allclose(pts[0], (0, 130_000)) and np.allclose(pts[-1], (600_000, 0)), 'Граница должна идти от точки (0; 130 000) до точки (600 000; 0).')
+    ensure(line.get_linestyle() == '--', 'Сделайте границу пунктирной: формат `\'r--\'`.')
+    leg = ax.get_legend()
+    ensure(leg is not None and any(t.get_text().strip() for t in leg.get_texts()), 'Подпишите границу (`label=...`) и добавьте легенду: `ax.legend()`.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        fig, ax = plt.subplots()
+        hb = ax.hexbin(df['Distance'], df['Price'], gridsize=45, bins='log', mincnt=1)
+        fig.colorbar(hb, ax=ax, label='Число')
+        ax.plot([0, 130_000], [600_000, 0], 'r--', label='Граница')
+        ax.set(title='Граница')
+        ax.legend()
+        plt.show()
+      expect: (0; 130 000)
+    - code: |
+        fig, ax = plt.subplots()
+        hb = ax.hexbin(df['Distance'], df['Price'], gridsize=45, bins='log', mincnt=1)
+        fig.colorbar(hb, ax=ax, label='Число')
+        ax.plot([0, 600_000], [130_000, 0], 'r-', label='Граница')
+        ax.set(title='Граница')
+        ax.legend()
+        plt.show()
+      expect: пунктирной
+
+- id: m4-l8-t5
+  kind: quiz
+  title: Наложение точек и граница
+  difficulty: main
+  introduces: [overplotting, filter-boundary]
+  uses: []
+  statement: |
+    Проверьте выводы урока.
+  quiz:
+    - q: На hexbin с обычной шкалой цвета закрашены почти одинаково все ячейки, кроме трёх самых плотных. Что сделать?
+      options:
+        - "Включить логарифмическую шкалу цвета: `bins='log'`"
+        - Увеличить размер точек
+        - Удалить три самые плотные ячейки
+      answer: 0
+      explain: При очень неравных количествах обычная шкала «съедает» различия между редкими ячейками.
+    - q: "Граница — прямая через (0 км; 100 000 €) и (500 000 км; 0 €). Какая граница цены при пробеге 100 000 км?"
+      options:
+        - 20 000 €
+        - 80 000 €
+        - 100 000 €
+      answer: 1
+      ordered: true
+      explain: 100 000 · (1 − 100 000 / 500 000) = 80 000 €.
+    - q: Выше границы оказался Mercedes G-класса 2020 года с пробегом 3 000 км за 215 000 €. Что с ним делать?
+      options:
+        - Удалить — он за границей
+        - Записать в журнал как проверенную настоящую дорогую машину и оставить
+        - Исправить цену на 130 000 €
+      answer: 1
+      explain: Граница отбирает кандидатов на проверку; правдоподобная запись остаётся в данных.
+  hints:
+    - Вспомните, зачем `bins='log'`, формулу прямой и порядок «отобрать → проверить → решить».
+    - "Неравные количества — логарифмическая шкала цвета; граница `a * (1 - x / b)`; граница отбирает кандидатов."
+    - "Ответы: `bins='log'`; 80 000 €; записать в журнал и оставить."
+
+- id: m4-l8-t6
+  title: Журнал проверки и отфильтрованная копия
+  difficulty: star
+  introduces: [filter-boundary]
+  uses: [processing-log, pd-to-csv, pd-loc-assign]
+  statement: |
+    Соберите журнал проверки и отдельную копию данных без записей выше границы:
+
+    - `review_log` — записи выше границы с колонками `source_row_id`, `Make`, `Model`, `Year`, `Distance`, `Price` и новой колонкой `reason`: `'пробег больше 600 000 км'` для пробега больше 600 000 км и `'цена выше границы'` для остальных; строки — по убыванию цены;
+    - сохраните журнал в файл `cars_review_log.csv` без индекса;
+    - `df_clean` — копия `df` **без** записей выше границы (исходная `df` не меняется).
+  prelude: |
+    import os
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    if os.path.exists('cars_review_log.csv'):
+        os.remove('cars_review_log.csv')       # начинаем без старого файла
+  starter: |
+    limit = 130_000 * (1 - df['Distance'] / 600_000)
+    above = df['Price'] > limit
+    columns = ['source_row_id', 'Make', 'Model', 'Year', 'Distance', 'Price']
+    review_log = ...
+    review_log['reason'] = ...
+    review_log.loc[..., 'reason'] = ...
+    review_log.to_csv(...)
+    df_clean = ...
+    print(review_log['reason'].value_counts())
+    print(len(df), '→', len(df_clean))
+  solution: |
+    limit = 130_000 * (1 - df['Distance'] / 600_000)
+    above = df['Price'] > limit
+    columns = ['source_row_id', 'Make', 'Model', 'Year', 'Distance', 'Price']
+    review_log = df.loc[above, columns].sort_values('Price', ascending=False).copy()
+    review_log['reason'] = 'цена выше границы'
+    review_log.loc[review_log['Distance'] > 600_000, 'reason'] = 'пробег больше 600 000 км'
+    review_log.to_csv('cars_review_log.csv', index=False)
+    df_clean = df[~above].copy()
+    print(review_log['reason'].value_counts())
+    print(len(df), '→', len(df_clean))
+  explanation: |
+    - `df.loc[above, columns]` — записи выше границы и нужные колонки; `copy()` — отдельная таблица, в которую можно добавлять колонки.
+    - Сначала всем строкам журнала — общая причина, затем `loc` с условием переписывает её для огромных пробегов (урок 2.9).
+    - `to_csv(..., index=False)` сохраняет журнал без лишней колонки индекса (урок 2.11); по `source_row_id` любую запись можно найти в исходном файле.
+    - `~above` — отрицание маски: в копию попадают записи на границе и ниже; исходная `df` остаётся нетронутой (урок 2.6).
+  hints:
+    - "Журнал — отбор строк и колонок, сортировка и `copy()`; причину задайте всем строкам, затем перепишите через `loc` с условием."
+    - "`review_log.loc[review_log['Distance'] > 600_000, 'reason'] = 'пробег больше 600 000 км'`; копия без записей — `df[~above].copy()`."
+    - "`review_log = df.loc[above, columns].sort_values('Price', ascending=False).copy()`; файл — `review_log.to_csv('cars_review_log.csv', index=False)`."
+  tests: |
+    import os
+    import pandas as pd
+    # файл читаем до запуска эталона: эталон пишет файл с тем же именем
+    ensure(os.path.exists('cars_review_log.csv') and 'cars_review_log.csv' in source(), 'Файл `cars_review_log.csv` не найден. Сохраните журнал: `review_log.to_csv(\'cars_review_log.csv\', index=False)`.')
+    saved = pd.read_csv('cars_review_log.csv')
+    log = var('review_log', pd.DataFrame, 'таблицей DataFrame')
+    cols = ['source_row_id', 'Make', 'Model', 'Year', 'Distance', 'Price', 'reason']
+    ensure(list(log.columns) == cols, 'Колонки журнала должны быть {0}, а у вас {1}.'.format(cols, list(log.columns)))
+    if any(str(c).startswith('Unnamed') for c in saved.columns):
+        fail('В файле лишняя колонка индекса — сохраните с `index=False`.')
+    exp = ref('review_log')
+    ensure(len(log) == len(exp), 'В журнале должно быть {0} записей — все записи выше границы, а у вас {1}.'.format(len(exp), len(log)))
+    if (log['reason'] == 'цена выше границы').all():
+        fail('У записей с пробегом больше 600 000 км причина должна быть `\'пробег больше 600 000 км\'`: перепишите её через `loc` с условием.')
+    same_frame(log, exp, 'Журнал не совпадает: проверьте причины и порядок строк (по убыванию цены).')
+    ensure(len(saved) == len(exp) and list(saved.columns) == cols, 'В файле должен быть весь журнал с колонками {0}.'.format(cols))
+    clean = var('df_clean', pd.DataFrame, 'таблицей DataFrame')
+    ensure(len(var('df', pd.DataFrame, 'таблицей')) == len(ref('df')), 'Исходную таблицу `df` менять не нужно — исключайте записи в отдельной копии `df_clean`.')
+    ensure(len(clean) == len(ref('df_clean')), 'В `df_clean` должно остаться {0} записей, а у вас {1}.'.format(len(ref('df_clean')), len(clean)))
+    close(len(alt('review_log')), len(alt_ref('review_log')), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        limit = 130_000 * (1 - df['Distance'] / 600_000)
+        above = df['Price'] > limit
+        columns = ['source_row_id', 'Make', 'Model', 'Year', 'Distance', 'Price']
+        review_log = df.loc[above, columns].sort_values('Price', ascending=False).copy()
+        review_log['reason'] = 'цена выше границы'
+        review_log.to_csv('cars_review_log.csv', index=False)
+        df_clean = df[~above].copy()
+      expect: перепишите её через `loc`
+    - code: |
+        limit = 130_000 * (1 - df['Distance'] / 600_000)
+        above = df['Price'] > limit
+        columns = ['source_row_id', 'Make', 'Model', 'Year', 'Distance', 'Price']
+        review_log = df.loc[above, columns].sort_values('Price', ascending=False).copy()
+        review_log['reason'] = 'цена выше границы'
+        review_log.loc[review_log['Distance'] > 600_000, 'reason'] = 'пробег больше 600 000 км'
+        review_log.to_csv('cars_review_log.csv')
+        df_clean = df[~above].copy()
+      expect: index=False

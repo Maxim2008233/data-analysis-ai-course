@@ -1,0 +1,56 @@
+# Справочник: работа с LLM и промпт-инжиниринг (модуль 10).
+- id: llm-chat-api
+  term: Запрос к чат-модели
+  category: Работа с LLM
+  aliases: [GigaChat API, chat completion, Chat, Messages, MessagesRole, max_tokens, finish_reason, usage, токены запроса]
+  summary: "Чат-модель получает список сообщений с ролями (system, user, assistant, function) и параметры генерации: модель, temperature, top_p, max_tokens. В ответе — варианты choices: текст choices[0].message.content и причина остановки finish_reason: stop — модель закончила сама, length — упёрлась в max_tokens, function_call — хочет вызвать функцию. usage — сколько токенов ушло на запрос и ответ: по ним считается оплата. Модель не помнит прошлых запросов — историю передают в каждом."
+  syntax: |
+    with GigaChat(credentials=token) as giga:
+        response = giga.chat(Chat(messages=[Messages(role=MessagesRole.USER, content='Вопрос')], max_tokens=100))
+    response.choices[0].message.content, response.choices[0].finish_reason
+- id: sampling-temperature
+  term: Температура, top-p
+  category: Работа с LLM
+  aliases: [temperature, top_p, top_k, сэмплирование, жадный выбор, greedy, nucleus sampling, случайность ответа]
+  summary: "Модель на каждом шаге выдаёт вероятности следующего токена и выбирает его случайно. Температура T пересчитывает вероятности: p ∝ p^(1/T). При T → 0 выбирается самый вероятный токен (ответы почти не меняются), при T = 1 — как оценила модель, при T > 1 распределение «расплющивается» и ответы разнообразнее, но чаще бессвязны. top_p (nucleus sampling) оставляет самые вероятные токены, сумма вероятностей которых не меньше p."
+  syntax: |
+    q = p ** (1 / T); q /= q.sum()          # температура
+    order = np.argsort(-q); keep = order[: np.searchsorted(np.cumsum(q[order]), top_p) + 1]   # top-p
+- id: system-prompt
+  term: Системный промпт
+  category: Работа с LLM
+  aliases: [system prompt, роли, роль system, роль user, роль assistant, инструкция модели, persona]
+  summary: "Сообщение с ролью system, которое задаёт поведение модели на весь диалог: кто она (роль), что делает (задача), для кого (аудитория), в каком виде отвечать (формат) и чего не делать (ограничения). Пользователь его обычно не видит. Ответы модели добавляют в историю с ролью assistant — иначе модель примет их за слова человека."
+- id: context-window
+  term: Контекстное окно
+  category: Работа с LLM
+  aliases: [context window, история диалога, длина контекста, память модели, обрезка истории]
+  summary: "Сколько токенов модель может прочитать за один запрос — вместе с системным промптом, историей и вопросом. Модель «помнит» только то, что передано в запросе, поэтому длинный диалог приходится сокращать: убирать старые сообщения, оставляя системный промпт, или заменять их кратким пересказом."
+- id: few-shot
+  term: Few-shot промпт
+  category: Работа с LLM
+  aliases: [few-shot, zero-shot промпт, one-shot, примеры в промпте, in-context learning, FewShotPromptTemplate]
+  summary: "Промпт с несколькими решёнными примерами задачи перед настоящим вопросом. Модель повторяет формат и ход решения примеров — без дообучения («обучение в контексте»). Zero-shot — без примеров, one-shot — с одним. Хорошие примеры похожи на вопрос (та же тема и формат); каждый пример удлиняет промпт и стоит токенов."
+- id: structured-output
+  term: Ответ в заданном формате
+  category: Работа с LLM
+  aliases: [structured output, JSON, формат ответа, разбор ответа, парсер, OutputParser, JsonOutputParser, retry]
+  summary: "Модель пишет свободный текст, а программе нужны данные: номер варианта, число, словарь. Поэтому формат задают в промпте явно («ответь одной цифрой», «верни JSON с полем answer»), ответ разбирают программой и проверяют, что значение допустимо. Не разобралось — переспрашивают модель. Правило «первое число в ответе» ломается, когда в ответе есть годы или числа из вопроса."
+  syntax: |
+    data = json.loads(text)            # или JsonOutputParser().parse(text)
+    if data.get('answer') not in {0, 1, 2, 3}: ...   # переспросить
+- id: function-calling
+  term: Вызов функций (function calling)
+  category: Работа с LLM
+  aliases: [function calling, tools, инструменты, Function, FunctionParameters, JSON Schema, function_call, роль function]
+  summary: "Способ дать модели доступ к свежим данным и точным вычислениям. В запрос передают описания функций: имя, описание (когда её звать) и аргументы в формате JSON Schema. Модель может ответить не текстом, а вызовом — function_call с именем и аргументами (finish_reason = function_call). Программа проверяет аргументы, выполняет функцию, добавляет результат сообщением с ролью function и снова отправляет запрос — теперь модель отвечает с учётом результата."
+- id: llm-chain
+  term: Цепочка (chain)
+  category: Работа с LLM
+  aliases: [chain, LangChain, LCEL, Runnable, PromptTemplate, ChatPromptTemplate, StrOutputParser, FakeListChatModel, цепочка рассуждений, chain of thought]
+  summary: "Несколько шагов, соединённых в конвейер: шаблон промпта → модель → разбор ответа (prompt | model | parser в LangChain). Цепочку вызывают на одном входе (invoke) или на списке (batch). Её логику проверяют без настоящей модели — на тестовой FakeListChatModel с заранее заданными ответами. Chain of thought — промпт «реши по шагам»: модель выписывает рассуждение перед ответом."
+- id: llm-evaluation
+  term: Оценка LLM-решения
+  category: Работа с LLM
+  aliases: [оценка LLM, accuracy LLM, ориентир, baseline, разметка, ошибки разметки, доверительный интервал]
+  summary: "LLM-решение проверяют как любую модель: на размеченных примерах, которые не участвовали в подборе промпта. Сравнивают с простыми ориентирами (случайный вариант, самый частый ответ), смотрят разброс оценки (на 87 вопросах ±9 пунктов), ошибки по категориям и саму разметку — в ней тоже бывают ошибки."

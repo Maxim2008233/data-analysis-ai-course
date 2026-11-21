@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 330" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="Как CLIP классифицирует картинку без обучения. Картинку режут на 49 квадратов-патчей, кодировщик картинок превращает её в вектор из 512 чисел. Подписи «This is a photo of panthera-leo.», «…ursus-maritimus.», «…grand_piano.», «…pizza.», «…airplanes.» кодировщик текста превращает в векторы того же пространства. Косинусные сходства картинки с подписями: 0,28, 0,22, 0,19, 0,18, 0,14. Их умножают на 100 и пропускают через softmax: вероятность panthera-leo — 0,9986.">
+  <defs><marker id="cz-a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#64748b"/></marker></defs>
+  <text x="12" y="22" fill="currentColor" font-weight="700">CLIP: картинка и подписи — векторы одного пространства</text>
+  <rect x="24" y="48" width="98" height="98" rx="4" fill="#c2410c" fill-opacity="0.12" stroke="#c2410c" stroke-opacity="0.7"/>
+  <line x1="38.0" y1="48" x2="38.0" y2="146" stroke="#c2410c" stroke-opacity="0.35"/>
+  <line x1="24" y1="62.0" x2="122" y2="62.0" stroke="#c2410c" stroke-opacity="0.35"/>
+  <line x1="52.0" y1="48" x2="52.0" y2="146" stroke="#c2410c" stroke-opacity="0.35"/>
+  <line x1="24" y1="76.0" x2="122" y2="76.0" stroke="#c2410c" stroke-opacity="0.35"/>
+  <line x1="66.0" y1="48" x2="66.0" y2="146" stroke="#c2410c" stroke-opacity="0.35"/>
+  <line x1="24" y1="90.0" x2="122" y2="90.0" stroke="#c2410c" stroke-opacity="0.35"/>
+  <line x1="80.0" y1="48" x2="80.0" y2="146" stroke="#c2410c" stroke-opacity="0.35"/>
+  <line x1="24" y1="104.0" x2="122" y2="104.0" stroke="#c2410c" stroke-opacity="0.35"/>
+  <line x1="94.0" y1="48" x2="94.0" y2="146" stroke="#c2410c" stroke-opacity="0.35"/>
+  <line x1="24" y1="118.0" x2="122" y2="118.0" stroke="#c2410c" stroke-opacity="0.35"/>
+  <line x1="108.0" y1="48" x2="108.0" y2="146" stroke="#c2410c" stroke-opacity="0.35"/>
+  <line x1="24" y1="132.0" x2="122" y2="132.0" stroke="#c2410c" stroke-opacity="0.35"/>
+  <text x="73.0" y="101.0" fill="currentColor" text-anchor="middle" font-weight="700">191.jpg</text>
+  <text x="73.0" y="162" fill="currentColor" text-anchor="middle" font-size="10.5" opacity="0.8">7 × 7 патчей = токены</text>
+  <path d="M126 97.0 L146 97.0" stroke="#64748b" stroke-width="1.5" marker-end="url(#cz-a)"/>
+  <rect x="150" y="70" width="128" height="54" rx="8" fill="#c2410c" fill-opacity="0.08" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="214" y="92" fill="currentColor" text-anchor="middle" font-weight="700" font-size="11.5">кодировщик</text>
+  <text x="214" y="108" fill="currentColor" text-anchor="middle" font-size="11">картинок (ViT)</text>
+  <path d="M282 97.0 L316 97.0" stroke="#64748b" stroke-width="1.5" marker-end="url(#cz-a)"/>
+  <rect x="320" y="80" width="86" height="34" rx="6" fill="#c2410c" fill-opacity="0.16" stroke="#c2410c" stroke-opacity="0.7"/>
+  <text x="363" y="101" fill="currentColor" text-anchor="middle" font-size="11">512 чисел</text>
+  <text x="24" y="180" fill="currentColor" font-size="11" opacity="0.8">подписи-кандидаты</text>
+  <rect x="24" y="190" width="236" height="22" rx="4" fill="#3d5bd9" fill-opacity="0.08" stroke="#3d5bd9" stroke-opacity="0.5"/>
+  <text x="32" y="205" fill="currentColor" font-size="11">This is a photo of panthera-leo.</text>
+  <rect x="24" y="216" width="236" height="22" rx="4" fill="#3d5bd9" fill-opacity="0.08" stroke="#3d5bd9" stroke-opacity="0.5"/>
+  <text x="32" y="231" fill="currentColor" font-size="11">This is a photo of ursus-maritimus.</text>
+  <rect x="24" y="242" width="236" height="22" rx="4" fill="#3d5bd9" fill-opacity="0.08" stroke="#3d5bd9" stroke-opacity="0.5"/>
+  <text x="32" y="257" fill="currentColor" font-size="11">This is a photo of grand_piano.</text>
+  <rect x="24" y="268" width="236" height="22" rx="4" fill="#3d5bd9" fill-opacity="0.08" stroke="#3d5bd9" stroke-opacity="0.5"/>
+  <text x="32" y="283" fill="currentColor" font-size="11">This is a photo of pizza.</text>
+  <rect x="24" y="294" width="236" height="22" rx="4" fill="#3d5bd9" fill-opacity="0.08" stroke="#3d5bd9" stroke-opacity="0.5"/>
+  <text x="32" y="309" fill="currentColor" font-size="11">This is a photo of airplanes.</text>
+  <path d="M262 253 L276 253" stroke="#64748b" stroke-width="1.5" marker-end="url(#cz-a)"/>
+  <rect x="280" y="226" width="110" height="54" rx="8" fill="#3d5bd9" fill-opacity="0.08" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="335" y="248" fill="currentColor" text-anchor="middle" font-weight="700" font-size="11.5">кодировщик</text>
+  <text x="335" y="264" fill="currentColor" text-anchor="middle" font-size="11">текста</text>
+  <path d="M410 97.0 C450 97.0 430 120 464 120" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#cz-a)"/>
+  <path d="M394 253 C440 253 430 170 464 170" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#cz-a)"/>
+  <text x="470" y="64" fill="currentColor" font-size="11" font-weight="700">подпись</text>
+  <text x="635" y="64" fill="currentColor" font-size="11" font-weight="700" text-anchor="end">cos</text>
+  <text x="732" y="64" fill="currentColor" font-size="11" font-weight="700" text-anchor="end">вероятность</text>
+  <rect x="464" y="70" width="274" height="23" rx="4" fill="#15803d" fill-opacity="0.14"/>
+  <text x="470" y="86" fill="currentColor" font-size="11" font-weight="700">panthera-leo</text>
+  <text x="635" y="86" fill="currentColor" font-size="11" text-anchor="end" font-weight="700">0,282</text>
+  <text x="732" y="86" fill="currentColor" font-size="11" text-anchor="end" font-weight="700">0,9986</text>
+  <text x="470" y="112" fill="currentColor" font-size="11">ursus-maritimus</text>
+  <text x="635" y="112" fill="currentColor" font-size="11" text-anchor="end">0,216</text>
+  <text x="732" y="112" fill="currentColor" font-size="11" text-anchor="end">0,0013</text>
+  <text x="470" y="138" fill="currentColor" font-size="11">grand_piano</text>
+  <text x="635" y="138" fill="currentColor" font-size="11" text-anchor="end">0,190</text>
+  <text x="732" y="138" fill="currentColor" font-size="11" text-anchor="end">0,0001</text>
+  <text x="470" y="164" fill="currentColor" font-size="11">pizza</text>
+  <text x="635" y="164" fill="currentColor" font-size="11" text-anchor="end">0,182</text>
+  <text x="732" y="164" fill="currentColor" font-size="11" text-anchor="end">&lt; 0,0001</text>
+  <text x="470" y="190" fill="currentColor" font-size="11">airplanes</text>
+  <text x="635" y="190" fill="currentColor" font-size="11" text-anchor="end">0,136</text>
+  <text x="732" y="190" fill="currentColor" font-size="11" text-anchor="end">&lt; 0,0001</text>
+  <text x="470" y="232" fill="currentColor" font-size="11">Векторы нормированы: cos — скалярное</text>
+  <text x="470" y="248" fill="currentColor" font-size="11">произведение. Разница в косинусах мала,</text>
+  <text x="470" y="264" fill="currentColor" font-size="11">поэтому CLIP умножает их на 100,</text>
+  <text x="470" y="280" fill="currentColor" font-size="11">а затем применяет softmax.</text>
+  <text x="470" y="306" fill="#15803d" font-size="11.5" font-weight="700">Класс — подпись с наибольшим cos</text>
+</svg>

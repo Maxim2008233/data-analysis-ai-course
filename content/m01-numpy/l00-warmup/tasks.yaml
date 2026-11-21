@@ -1,0 +1,213 @@
+- id: m1-l0-t1
+  title: Первый, последний и сколько всего
+  difficulty: warmup
+  introduces: []
+  uses: [py-lists]
+  statement: |
+    Дан список `numeric_names`. Получите три переменные:
+
+    - `first_name` — первый элемент;
+    - `last_name` — последний элемент (используйте отрицательный индекс);
+    - `n_names` — число элементов.
+  prelude: |
+    numeric_names = ['Year', 'Distance', 'Engine_capacity(cm3)', 'Price(euro)']
+  starter: |
+    first_name = ...
+    last_name = ...
+    n_names = ...
+    print(first_name, last_name, n_names)
+  solution: |
+    first_name = numeric_names[0]
+    last_name = numeric_names[-1]
+    n_names = len(numeric_names)
+    print(first_name, last_name, n_names)
+  explanation: |
+    - `numeric_names[0]` — нумерация с нуля, поэтому первый элемент имеет индекс 0.
+    - `numeric_names[-1]` — отрицательные индексы считают с конца: `-1` — последний.
+    - `len(...)` — длина списка.
+  hints:
+    - Какой индекс у первого элемента списка в Python? А как обратиться к последнему, не зная длины?
+    - "Индекс `0` — первый элемент, `-1` — последний; длина — функция `len`."
+    - "`first_name = numeric_names[0]`, `last_name = numeric_names[-1]`, `n_names = len(numeric_names)`."
+  tests: |
+    equal(var('first_name'), 'Year', 'first_name должен быть первым элементом списка: {expected}, а у вас {actual}. Нумерация начинается с 0.')
+    equal(var('last_name'), 'Price(euro)', 'last_name должен быть последним элементом: {expected}, а у вас {actual}.')
+    equal(var('n_names', 'int', 'целым числом'), 4, 'В списке {expected} элемента, а у вас {actual}.')
+    ensure('[-1]' in source(), 'Возьмите последний элемент через отрицательный индекс [-1] — так код работает для списка любой длины.')
+  wrong:
+    - code: |
+        first_name = numeric_names[1]
+        last_name = numeric_names[-1]
+        n_names = len(numeric_names)
+      expect: Нумерация начинается с 0
+    - code: |
+        first_name = numeric_names[0]
+        last_name = numeric_names[3]
+        n_names = 4
+      expect: "[-1]"
+
+- id: m1-l0-t2
+  title: Номера столбцов одной строкой
+  difficulty: warmup
+  introduces: []
+  uses: [py-lists, py-loops]
+  statement: |
+    Даны список `header` (все столбцы файла) и список `wanted` (нужные столбцы). Получите список `columns` с номерами столбцов из `wanted` **в том же порядке**. Используйте генератор списка.
+  prelude: |
+    header = ['Make', 'Model', 'Year', 'Style', 'Distance',
+              'Engine_capacity(cm3)', 'Fuel_type', 'AutoTransmission', 'Price(euro)']
+    wanted = ['Price(euro)', 'Year', 'Distance']
+  starter: |
+    columns = ...
+    print(columns)
+  solution: |
+    columns = [header.index(name) for name in wanted]
+    print(columns)
+  explanation: |
+    - Для каждого `name` из `wanted` вычисляем `header.index(name)` — позицию в заголовке.
+    - Генератор списка сохраняет порядок `wanted`: получится `[8, 2, 4]`.
+  hints:
+    - Для каждого названия из `wanted` нужно найти его позицию в `header` и собрать результаты в список.
+    - "Генератор списка: `[выражение for name in wanted]`; позиция — `header.index(name)`."
+    - "`columns = [header.index(name) for name in wanted]`"
+  tests: |
+    c = var('columns', 'list', 'списком')
+    equal(c, [8, 2, 4], 'Ожидался список {expected}, а у вас {actual}. Порядок номеров должен совпадать с порядком названий в wanted.')
+  wrong:
+    - code: |
+        columns = [8, 2, 4][::-1]
+      expect: Порядок номеров
+    - code: |
+        columns = sorted(header.index(name) for name in wanted)
+      expect: Порядок номеров
+
+- id: m1-l0-t3
+  title: Сообщение с долей в процентах
+  difficulty: main
+  introduces: []
+  uses: [py-fstrings]
+  statement: |
+    Даны `count` — число дорогих объявлений и `total` — всего объявлений. Составьте строку `message` ровно такого вида (для этих чисел):
+
+    `Дорогих: 12716 из 41007 (31.0%)`
+
+    Долю посчитайте в коде и выведите с одним знаком после запятой в процентах — форматом `.1%`.
+  prelude: |
+    count = 12716
+    total = 41007
+  starter: |
+    message = ...
+    print(message)
+  solution: |
+    message = f'Дорогих: {count} из {total} ({count / total:.1%})'
+    print(message)
+  explanation: |
+    - f-строка подставляет `count` и `total` как есть.
+    - `{count / total:.1%}` — доля 0.31009… выводится как `31.0%`: формат `%` умножает на 100 и добавляет знак процента.
+  hints:
+    - Нужна f-строка с тремя подстановками; доля — это `count / total`.
+    - "Формат процентов с одним знаком после запятой — `:.1%` внутри фигурных скобок."
+    - "`message = f'Дорогих: {count} из {total} ({...:.1%})'` — вместо многоточия выражение доли."
+  tests: |
+    m = var('message', 'str', 'строкой')
+    expected = 'Дорогих: 12716 из 41007 (31.0%)'
+    if m != expected:
+        if m.replace(' ', '') == expected.replace(' ', ''):
+            fail('Почти верно — проверьте пробелы. Нужно: «%s», у вас: «%s».' % (expected, m))
+        fail('Строка не совпадает. Нужно: «%s», у вас: «%s».' % (expected, m))
+    ensure('{' in source() and '%' in source(), 'Используйте f-строку с форматом .1% — не вписывайте готовый текст.')
+  wrong:
+    - code: |
+        message = f'Дорогих: {count} из {total} ({count / total:.1f})'
+      expect: Строка не совпадает
+    - code: |
+        message = 'Дорогих: 12716 из 41007 (31.0%)'
+      expect: f-строку
+
+- id: m1-l0-t4
+  title: Функция доли с защитой от деления на ноль
+  difficulty: main
+  introduces: []
+  uses: [py-functions, py-loops]
+  statement: |
+    Напишите функцию `share(count, total)`, которая возвращает долю `count / total`, округлённую до трёх знаков (`round(x, 3)`). Если `total` равен нулю, функция должна вернуть `0.0` и не падать с ошибкой.
+
+    Например: `share(12716, 41007)` → `0.31`, `share(5, 0)` → `0.0`.
+  starter: |
+    def share(count, total):
+        ...
+
+    print(share(12716, 41007), share(5, 0))
+  solution: |
+    def share(count, total):
+        if total == 0:
+            return 0.0
+        return round(count / total, 3)
+
+    print(share(12716, 41007), share(5, 0))
+  explanation: |
+    - Сначала обрабатываем особый случай: при `total == 0` сразу возвращаем `0.0`.
+    - Иначе считаем долю и округляем `round(..., 3)`.
+  hints:
+    - Сначала проверьте особый случай (знаменатель равен нулю), затем посчитайте долю.
+    - "Внутри функции: `if total == 0:` → `return 0.0`; иначе `return round(count / total, 3)`."
+    - "Добавьте две строки: `if total == 0: return 0.0` и `return round(count / total, 3)`."
+  tests: |
+    f = var('share')
+    ensure(callable(f), 'share должна быть функцией: def share(count, total): ...')
+    r = f(12716, 41007)
+    ensure(r is not None, 'Функция ничего не вернула — добавьте return.')
+    close(r, 0.31, 'share(12716, 41007) должна вернуть {expected} (округлите до 3 знаков), а вернула {actual}.')
+    close(f(1, 3), 0.333, 'share(1, 3) должна вернуть {expected} (округление до 3 знаков), а вернула {actual}.')
+    try:
+        z = f(5, 0)
+    except ZeroDivisionError:
+        fail('При total = 0 функция падает с делением на ноль. Добавьте проверку if total == 0.')
+    close(z, 0.0, 'share(5, 0) должна вернуть {expected}, а вернула {actual}.')
+  wrong:
+    - code: |
+        def share(count, total):
+            return round(count / total, 3)
+      expect: деление
+    - code: |
+        def share(count, total):
+            if total == 0:
+                return 0.0
+            return count / total
+      expect: округл
+
+- id: m1-l0-t5
+  kind: predict
+  title: Предскажите вывод
+  difficulty: main
+  introduces: []
+  uses: [py-lists, py-loops]
+  statement: |
+    Не запуская код, ответьте, что он выведет. Эти особенности списков Python важны: в следующих уроках мы увидим, что массивы NumPy ведут себя иначе.
+  quiz:
+    - q: Что выведет этот код?
+      code: |
+        prices = [5000, 8000]
+        print(prices * 2)
+      options:
+        - "`[10000, 16000]`"
+        - "`[5000, 8000, 5000, 8000]`"
+        - Ошибку TypeError
+      answer: 1
+      explain: Умножение списка на число повторяет его элементы. Поэлементное умножение — свойство массивов NumPy (урок 1.4).
+    - q: Что выведет этот код?
+      code: |
+        names = ['Year', 'Price']
+        values = [2011, 7750]
+        for name, value in zip(names, values):
+            print(name, value)
+      options:
+        - "Две строки: `Year 2011` и `Price 7750`"
+        - "Одну строку: `['Year', 'Price'] [2011, 7750]`"
+        - "Четыре строки — все элементы по очереди"
+      answer: 0
+      explain: "`zip` составляет пары из элементов с одинаковыми позициями: (Year, 2011), (Price, 7750)."
+  hints:
+    - Вспомните, что делает оператор `*` со строками и списками в Python.
+    - "`*` для списка — повторение; `zip(a, b)` — пары элементов с одинаковыми номерами."
+    - "Список удвоится по длине; цикл по `zip` выполнится 2 раза."

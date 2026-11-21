@@ -1,0 +1,703 @@
+- id: m7-l9-t1
+  title: "Шаг 1. Повторы, признаки и разбиение"
+  difficulty: main
+  introduces: []
+  uses: [binary-encoding, ordinal-encoding, sk-split]
+  statement: |
+    Удалите из `adult` точные повторы строк — получится `data`. `n_rows` — сколько строк осталось.
+
+    Проверьте, что у каждого уровня `education` ровно один номер `education-num` и у каждого номера — ровно один уровень: `one_to_one` — `True` или `False`. Если это так, номер — готовый порядковый код с осмысленным порядком, и текстовая колонка не нужна.
+
+    Соберите `X` — все колонки `data`, кроме `age`, `fnlwgt` и `education`, и `y` — колонку `age`. Закодируйте бинарные признаки: `sex` — 1 для `Male`, 0 для `Female`; `salary` — 1 для `>50K`, 0 для `<=50K`. Разбейте данные как обычно: test — 20 %, затем validation — 25 % остатка, `random_state=42`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    adult = pd.read_csv('adult.csv')
+  starter: |
+    data = ...
+    n_rows = len(data)
+    one_to_one = ...
+    X = data.drop(columns=[...]).copy()
+    y = data['age']
+    X['sex'] = X['sex'].map(...)
+    X['salary'] = X['salary'].map(...)
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = ...
+    print(n_rows, one_to_one, X_train.shape, X_valid.shape, X_test.shape)
+  solution: |
+    data = adult.drop_duplicates()
+    n_rows = len(data)
+    one_to_one = bool(data.groupby('education')['education-num'].nunique().max() == 1 and
+                      data.groupby('education-num')['education'].nunique().max() == 1)
+    X = data.drop(columns=['age', 'fnlwgt', 'education']).copy()
+    y = data['age']
+    X['sex'] = X['sex'].map({'Male': 1, 'Female': 0})
+    X['salary'] = X['salary'].map({'>50K': 1, '<=50K': 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    print(n_rows, one_to_one, X_train.shape, X_valid.shape, X_test.shape)
+  explanation: |
+    - Точных повторов 24, остаётся 32 537 строк. Повторы опасны: одна и та же анкета может попасть и в train, и в test.
+    - Уровни образования и номера соответствуют один к одному: 1 — `Preschool`, 9 — `HS-grad`, 13 — `Bachelors`, 16 — `Doctorate`. Номер — порядковый код, причём порядок осмысленный, не по алфавиту.
+    - Два бинарных признака становятся числами 0/1. В `X` остаются 12 колонок: шесть категориальных и шесть числовых. Части — 19 521, 6 508 и 6 508 человек.
+  hints:
+    - "Повторы — `adult.drop_duplicates()`. Число номеров у каждого уровня — `data.groupby('education')['education-num'].nunique()`; проверьте и в обратную сторону."
+    - "`X = data.drop(columns=['age', 'fnlwgt', 'education']).copy()`; словари для `map` — `{'Male': 1, 'Female': 0}` и `{'>50K': 1, '<=50K': 0}`."
+    - "Validation — `train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    equal(int(var('n_rows', 'number', 'числом')), int(ref('n_rows')), 'После удаления повторов должно остаться {expected} строк, а у вас {actual}: `adult.drop_duplicates()`.')
+    ensure(bool(var('one_to_one')) == bool(ref('one_to_one')), 'Проверьте соответствие ещё раз: у каждого уровня `education` один номер, и у каждого номера — один уровень.')
+    Xs = var('X', pd.DataFrame, 'таблицей DataFrame')
+    ensure(sorted(Xs.columns) == sorted(ref('X').columns), 'В `X` — все колонки, кроме `age`, `fnlwgt` и `education`.')
+    rx = ref('X')
+    if (Xs['sex'].to_numpy() == 1 - rx['sex'].to_numpy()).all():
+        fail('`sex`: 1 — `Male`, 0 — `Female`, а у вас наоборот.')
+    ensure((Xs['sex'].to_numpy() == rx['sex'].to_numpy()).all() and (Xs['salary'].to_numpy() == rx['salary'].to_numpy()).all(), '`sex` и `salary` должны стать числами 0/1: 1 — `Male` и `>50K`.')
+    xt = var('X_train', pd.DataFrame, 'таблицей DataFrame')
+    ensure(xt.shape == ref('X_train').shape and (xt.index == ref('X_train').index).all(), 'Разбиение не совпадает: test — 20 %, validation — 25 % остатка, `random_state=42` в обоих шагах.')
+    equal(int(alt('n_rows')), int(alt_ref('n_rows')), HARDCODE_MSG)
+  files: [adult.csv]
+  wrong:
+    - code: |
+        data = adult
+        n_rows = len(data)
+        one_to_one = bool(data.groupby('education')['education-num'].nunique().max() == 1 and
+                          data.groupby('education-num')['education'].nunique().max() == 1)
+        X = data.drop(columns=['age', 'fnlwgt', 'education']).copy()
+        y = data['age']
+        X['sex'] = X['sex'].map({'Male': 1, 'Female': 0})
+        X['salary'] = X['salary'].map({'>50K': 1, '<=50K': 0})
+        X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+      expect: drop_duplicates
+    - code: |
+        data = adult.drop_duplicates()
+        n_rows = len(data)
+        one_to_one = bool(data.groupby('education')['education-num'].nunique().max() == 1 and
+                          data.groupby('education-num')['education'].nunique().max() == 1)
+        X = data.drop(columns=['age', 'fnlwgt', 'education']).copy()
+        y = data['age']
+        X['sex'] = X['sex'].map({'Male': 0, 'Female': 1})
+        X['salary'] = X['salary'].map({'>50K': 1, '<=50K': 0})
+        X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+      expect: а у вас наоборот
+
+- id: m7-l9-t2
+  title: "Шаг 2. Ориентир и оценка по группе"
+  difficulty: main
+  introduces: []
+  uses: [group-estimate, pd-groupby]
+  statement: |
+    Ориентир — медиана возраста train для всех: `mae_median` — его MAE на validation. Затем простая оценка по группе (урок 3.7): `group_medians` — медиана возраста train в каждой группе `marital-status`. Прогноз для человека из validation — медиана его группы, а для незнакомой группы — общая медиана train. `mae_group` — MAE такого прогноза на validation.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import mean_absolute_error
+    data = pd.read_csv('adult.csv').drop_duplicates()
+    X = data.drop(columns=['age', 'fnlwgt', 'education']).copy()
+    y = data['age']
+    X['sex'] = X['sex'].map({'Male': 1, 'Female': 0})
+    X['salary'] = X['salary'].map({'>50K': 1, '<=50K': 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    mae_median = ...
+    group_medians = ...
+    group_pred = X_valid['marital-status'].map(...).fillna(...)
+    mae_group = ...
+    print(round(mae_median, 2), round(mae_group, 2))
+    print(group_medians)
+  solution: |
+    mae_median = mean_absolute_error(y_valid, np.full(len(y_valid), y_train.median()))
+    group_medians = y_train.groupby(X_train['marital-status']).median()
+    group_pred = X_valid['marital-status'].map(group_medians).fillna(y_train.median())
+    mae_group = mean_absolute_error(y_valid, group_pred)
+    print(round(mae_median, 2), round(mae_group, 2))
+    print(group_medians)
+  explanation: |
+    - Медиана train — 37 лет, её MAE — 11,15 года. Это планка, которую любая модель обязана побить.
+    - Одно семейное положение снижает ошибку до 8,64 года. Медиана у никогда не состоявших в браке — 25 лет, у вдов и вдовцов — 59.
+    - Простая групповая оценка — сильный ориентир. Модели со всеми признаками должны выиграть у неё, а не только у общей медианы.
+  hints:
+    - "Ориентир — `np.full(len(y_valid), y_train.median())`."
+    - "Медианы групп — `y_train.groupby(X_train['marital-status']).median()`."
+    - "Прогноз — `X_valid['marital-status'].map(group_medians).fillna(y_train.median())`."
+  tests: |
+    import pandas as pd
+    from sklearn.metrics import mean_absolute_error
+    mm = var('mae_median', 'number', 'числом')
+    if abs(mm - mean_absolute_error(ref('y_valid'), [ref('y_train').mean()] * len(ref('y_valid')))) < 1e-9:
+        fail('Ориентир — медиана возраста train, а не среднее: `y_train.median()`.')
+    close(mm, ref('mae_median'), 'MAE ориентира — {expected}, а у вас {actual}.')
+    g = var('group_medians', pd.Series, 'Series')
+    rg = ref('group_medians')
+    ensure(sorted(g.index) == sorted(rg.index), 'В `group_medians` — по значению на каждую группу `marital-status` из train.')
+    same_array(g.sort_index().to_numpy(dtype=float), rg.sort_index().to_numpy(dtype=float), 'Медианы групп не совпадают: `y_train.groupby(X_train[\'marital-status\']).median()` — медиана, а не среднее.')
+    close(var('mae_group', 'number', 'числом'), ref('mae_group'), 'MAE оценки по группе — {expected}, а у вас {actual}.')
+    close(alt('mae_group'), alt_ref('mae_group'), HARDCODE_MSG)
+  files: [adult.csv]
+  wrong:
+    - code: |
+        mae_median = mean_absolute_error(y_valid, np.full(len(y_valid), y_train.mean()))
+        group_medians = y_train.groupby(X_train['marital-status']).median()
+        group_pred = X_valid['marital-status'].map(group_medians).fillna(y_train.median())
+        mae_group = mean_absolute_error(y_valid, group_pred)
+      expect: а не среднее
+    - code: |
+        mae_median = mean_absolute_error(y_valid, np.full(len(y_valid), y_train.median()))
+        group_medians = y_train.groupby(X_train['marital-status']).mean()
+        group_pred = X_valid['marital-status'].map(group_medians).fillna(y_train.median())
+        mae_group = mean_absolute_error(y_valid, group_pred)
+      expect: Медианы групп не совпадают
+
+- id: m7-l9-t3
+  title: "Шаг 3. Редкие и неизвестные значения"
+  difficulty: main
+  introduces: []
+  uses: [infrequent-categories, pd-value-counts]
+  statement: |
+    Посмотрите на категории в train. `n_countries` — сколько разных стран в `native-country`. `rare_countries` — список стран, из которых в train меньше 20 человек. `rare_share` — доля людей train из этих стран. `unknown_share` — Series: доля значений `'?'` в каждой колонке `cat_cols`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    data = pd.read_csv('adult.csv').drop_duplicates()
+    X = data.drop(columns=['age', 'fnlwgt', 'education']).copy()
+    y = data['age']
+    X['sex'] = X['sex'].map({'Male': 1, 'Female': 0})
+    X['salary'] = X['salary'].map({'>50K': 1, '<=50K': 0})
+    cat_cols = ['workclass', 'marital-status', 'occupation', 'relationship', 'race', 'native-country']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    counts = X_train['native-country'].value_counts()
+    n_countries = ...
+    rare_countries = ...
+    rare_share = ...
+    unknown_share = ...
+    print(n_countries, len(rare_countries), round(rare_share, 4))
+    print(unknown_share.round(3))
+  solution: |
+    counts = X_train['native-country'].value_counts()
+    n_countries = len(counts)
+    rare_countries = list(counts[counts < 20].index)
+    rare_share = X_train['native-country'].isin(rare_countries).mean()
+    unknown_share = (X_train[cat_cols] == '?').mean()
+    print(n_countries, len(rare_countries), round(rare_share, 4))
+    print(unknown_share.round(3))
+  explanation: |
+    - Стран 42, из них у 16 меньше 20 человек. Вместе это меньше 1 % людей: у редких категорий мало записей (урок 7.3). Почти 90 % людей родились в США.
+    - Знак `'?'` встречается в трёх колонках: `workclass` и `occupation` (по 5,7 %) и `native-country` (1,7 %). Это не пропуск, а отдельная категория «неизвестно».
+    - У людей с неизвестным родом занятий медиана возраста 35 лет, а среднее — 41 год: среди них и студенты, и пенсионеры. Такая категория несёт информацию, и выбрасывать её не нужно.
+  hints:
+    - "`n_countries = len(counts)`; редкие — `list(counts[counts < 20].index)`."
+    - "Доля людей из редких стран — `X_train['native-country'].isin(rare_countries).mean()`."
+    - "Доли `'?'` по колонкам — `(X_train[cat_cols] == '?').mean()`."
+  tests: |
+    import pandas as pd
+    equal(int(var('n_countries', 'number', 'числом')), int(ref('n_countries')), 'Стран в train — {expected}, а у вас {actual}.')
+    rc = [str(v) for v in var('rare_countries', list, 'списком')]
+    ensure(sorted(rc) == sorted(str(v) for v in ref('rare_countries')), 'Редких стран (меньше 20 человек в train) — {0}, а у вас {1}.'.format(len(ref('rare_countries')), len(rc)))
+    close(var('rare_share', 'number', 'числом'), ref('rare_share'), 'Доля людей из редких стран — {expected}, а у вас {actual}.')
+    u = var('unknown_share', pd.Series, 'Series')
+    ensure(list(u.index) == list(ref('unknown_share').index), 'В `unknown_share` — по значению на каждую колонку `cat_cols`.')
+    same_array(u.to_numpy(dtype=float), ref('unknown_share').to_numpy(dtype=float), 'Доли `\'?\'` не совпадают: `(X_train[cat_cols] == \'?\').mean()`.')
+    close(alt('rare_share'), alt_ref('rare_share'), HARDCODE_MSG)
+  files: [adult.csv]
+  wrong:
+    - code: |
+        counts = X_train['native-country'].value_counts()
+        n_countries = len(counts)
+        rare_countries = list(counts[counts < 20].index)
+        rare_share = X_train['native-country'].isin(rare_countries).mean()
+        unknown_share = X_train[cat_cols].isna().mean()
+      expect: Доли `'?'`
+    - code: |
+        counts = X_train['native-country'].value_counts()
+        n_countries = len(counts)
+        rare_countries = list(counts[counts < 20].index)
+        rare_share = len(rare_countries) / n_countries
+        unknown_share = (X_train[cat_cols] == '?').mean()
+      expect: Доля людей из редких стран
+
+- id: m7-l9-t4
+  title: "Шаг 4. Линейная модель с One-Hot"
+  difficulty: main
+  introduces: []
+  uses: [one-hot-encoding, column-transformer, linear-regression]
+  statement: |
+    Соберите `linear` — Pipeline: ColumnTransformer с `OneHotEncoder(handle_unknown='ignore')` для `cat_cols` и `StandardScaler()` для `num_cols`, затем `LinearRegression()`. Обучите на train. `mae_linear` — MAE на validation, `n_columns` — сколько признаков получает модель.
+
+    Прочитайте коэффициенты: `widowed_vs_never` — разность коэффициентов `cat__marital-status_Widowed` и `cat__marital-status_Never-married`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import mean_absolute_error
+    data = pd.read_csv('adult.csv').drop_duplicates()
+    X = data.drop(columns=['age', 'fnlwgt', 'education']).copy()
+    y = data['age']
+    X['sex'] = X['sex'].map({'Male': 1, 'Female': 0})
+    X['salary'] = X['salary'].map({'>50K': 1, '<=50K': 0})
+    cat_cols = ['workclass', 'marital-status', 'occupation', 'relationship', 'race', 'native-country']
+    num_cols = ['education-num', 'capital-gain', 'capital-loss', 'hours-per-week', 'sex', 'salary']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    enc = ColumnTransformer([
+        ('cat', ..., cat_cols),
+        ('num', ..., num_cols),
+    ])
+    linear = Pipeline([('enc', enc), ('model', LinearRegression())]).fit(X_train, y_train)
+    mae_linear = ...
+    n_columns = ...
+    coef = pd.Series(linear.named_steps['model'].coef_, index=linear.named_steps['enc'].get_feature_names_out())
+    widowed_vs_never = ...
+    print(round(mae_linear, 3), n_columns, round(widowed_vs_never, 1))
+  solution: |
+    enc = ColumnTransformer([
+        ('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols),
+        ('num', StandardScaler(), num_cols),
+    ])
+    linear = Pipeline([('enc', enc), ('model', LinearRegression())]).fit(X_train, y_train)
+    mae_linear = mean_absolute_error(y_valid, linear.predict(X_valid))
+    n_columns = linear.named_steps['model'].n_features_in_
+    coef = pd.Series(linear.named_steps['model'].coef_, index=linear.named_steps['enc'].get_feature_names_out())
+    widowed_vs_never = coef['cat__marital-status_Widowed'] - coef['cat__marital-status_Never-married']
+    print(round(mae_linear, 3), n_columns, round(widowed_vs_never, 1))
+  explanation: |
+    - 84 индикатора категорий и 6 чисел — 90 столбцов. MAE — 8,19 года: лучше ориентира (11,15) и чуть лучше оценки по одной группе (8,64).
+    - При прочих равных модель считает вдов и вдовцов старше никогда не состоявших в браке почти на 26 лет. Читаем именно разность двух коэффициентов одного признака (урок 7.4).
+    - Ошибка на train (8,22) почти такая же, как на validation: линейная модель здесь не переобучается.
+  hints:
+    - "Шаги — `OneHotEncoder(handle_unknown='ignore')` и `StandardScaler()`."
+    - "`n_columns = linear.named_steps['model'].n_features_in_`."
+    - "`widowed_vs_never = coef['cat__marital-status_Widowed'] - coef['cat__marital-status_Never-married']`."
+  tests: |
+    from sklearn.pipeline import Pipeline
+    p = var('linear', Pipeline, 'объектом Pipeline')
+    kinds = {name: type(t).__name__ for name, t, cols in p.named_steps['enc'].transformers}
+    ensure(kinds.get('cat') == 'OneHotEncoder' and kinds.get('num') == 'StandardScaler', 'Шаги ColumnTransformer — `(\'cat\', OneHotEncoder(handle_unknown=\'ignore\'), cat_cols)` и `(\'num\', StandardScaler(), num_cols)`.')
+    close(var('mae_linear', 'number', 'числом'), ref('mae_linear'), 'MAE линейной модели — {expected}, а у вас {actual}.', rtol=1e-4)
+    equal(int(var('n_columns', 'number', 'числом')), int(ref('n_columns')), 'Столбцов — {expected}, а у вас {actual}: `n_features_in_` шага `\'model\'`.')
+    w = var('widowed_vs_never', 'number', 'числом')
+    if abs(w + ref('widowed_vs_never')) < 0.5:
+        fail('Разность наоборот: из коэффициента `Widowed` вычтите коэффициент `Never-married`.')
+    close(w, ref('widowed_vs_never'), 'Разность коэффициентов — {expected}, а у вас {actual}.', rtol=1e-3)
+    close(alt('mae_linear'), alt_ref('mae_linear'), HARDCODE_MSG, rtol=1e-4)
+  files: [adult.csv]
+  wrong:
+    - code: |
+        enc = ColumnTransformer([
+            ('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols),
+            ('num', StandardScaler(), num_cols),
+        ])
+        linear = Pipeline([('enc', enc), ('model', LinearRegression())]).fit(X_train, y_train)
+        mae_linear = mean_absolute_error(y_valid, linear.predict(X_valid))
+        n_columns = linear.named_steps['model'].n_features_in_
+        coef = pd.Series(linear.named_steps['model'].coef_, index=linear.named_steps['enc'].get_feature_names_out())
+        widowed_vs_never = coef['cat__marital-status_Never-married'] - coef['cat__marital-status_Widowed']
+      expect: Разность наоборот
+    - code: |
+        enc = ColumnTransformer([
+            ('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols),
+            ('num', StandardScaler(), num_cols),
+        ])
+        linear = Pipeline([('enc', enc), ('model', LinearRegression())]).fit(X_train, y_train)
+        mae_linear = mean_absolute_error(y_train, linear.predict(X_train))
+        n_columns = linear.named_steps['model'].n_features_in_
+        coef = pd.Series(linear.named_steps['model'].coef_, index=linear.named_steps['enc'].get_feature_names_out())
+        widowed_vs_never = coef['cat__marital-status_Widowed'] - coef['cat__marital-status_Never-married']
+      expect: MAE линейной модели
+
+- id: m7-l9-t5
+  title: "Шаг 5. Нужна ли регуляризация"
+  difficulty: main
+  introduces: []
+  uses: [ridge-lasso, regularization]
+  statement: |
+    Проверьте, помогает ли Ridge. Для каждого α из `alphas` обучите Pipeline с тем же кодировщиком (`make_enc()`) и `Ridge(alpha=a)` и посчитайте MAE на validation: `alpha_mae` — Series «α → MAE». `best_alpha` — α с наименьшей ошибкой. `ridge_gain` — на сколько лучший Ridge точнее линейной модели (`mae_linear` уже посчитана; отрицательное значение — Ridge хуже). `ridge_needed` — `True`, если выигрыш больше 0,05 года.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.linear_model import LinearRegression, Ridge
+    from sklearn.metrics import mean_absolute_error
+    data = pd.read_csv('adult.csv').drop_duplicates()
+    X = data.drop(columns=['age', 'fnlwgt', 'education']).copy()
+    y = data['age']
+    X['sex'] = X['sex'].map({'Male': 1, 'Female': 0})
+    X['salary'] = X['salary'].map({'>50K': 1, '<=50K': 0})
+    cat_cols = ['workclass', 'marital-status', 'occupation', 'relationship', 'race', 'native-country']
+    num_cols = ['education-num', 'capital-gain', 'capital-loss', 'hours-per-week', 'sex', 'salary']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    def make_enc():
+        return ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols),
+                                  ('num', StandardScaler(), num_cols)])
+    linear = Pipeline([('enc', make_enc()), ('model', LinearRegression())]).fit(X_train, y_train)
+    mae_linear = mean_absolute_error(y_valid, linear.predict(X_valid))
+    alphas = [0.1, 1, 10, 100]
+  starter: |
+    result = {}
+    for a in alphas:
+        pipe = ...
+        result[a] = ...
+    alpha_mae = pd.Series(result)
+    best_alpha = ...
+    ridge_gain = ...
+    ridge_needed = ...
+    print(alpha_mae.round(3))
+    print(best_alpha, round(ridge_gain, 4), ridge_needed)
+  solution: |
+    result = {}
+    for a in alphas:
+        pipe = Pipeline([('enc', make_enc()), ('model', Ridge(alpha=a))]).fit(X_train, y_train)
+        result[a] = mean_absolute_error(y_valid, pipe.predict(X_valid))
+    alpha_mae = pd.Series(result)
+    best_alpha = alpha_mae.idxmin()
+    ridge_gain = mae_linear - alpha_mae.min()
+    ridge_needed = bool(ridge_gain > 0.05)
+    print(alpha_mae.round(3))
+    print(best_alpha, round(ridge_gain, 4), ridge_needed)
+  explanation: |
+    - При α = 0,1 ошибка та же, что у линейной модели (8,19). Дальше она только растёт: при α = 100 — 8,23. Регуляризация здесь не помогает.
+    - Почему не так, как на машинах (урок 7.6)? Там было 770 столбцов и сотни моделей с одной-двумя машинами. Здесь 90 столбцов на 19 521 человека, и почти все категории хорошо наполнены. Коэффициентам не на чем переобучаться — линейная модель и так не переобучается.
+    - Вывод проекта: регуляризация — средство от конкретной беды (много столбцов, мало данных на столбец). Применять её «на всякий случай» незачем, и проверка на validation это показывает.
+  hints:
+    - "`pipe = Pipeline([('enc', make_enc()), ('model', Ridge(alpha=a))]).fit(X_train, y_train)`."
+    - "`best_alpha = alpha_mae.idxmin()`; `ridge_gain = mae_linear - alpha_mae.min()`."
+    - "`ridge_needed = bool(ridge_gain > 0.05)`."
+  tests: |
+    import pandas as pd
+    s = var('alpha_mae', pd.Series, 'Series')
+    ensure([float(v) for v in s.index] == [float(v) for v in ref('alphas')], 'Индекс `alpha_mae` — значения из `alphas`.')
+    same_array(s.to_numpy(dtype=float), ref('alpha_mae').to_numpy(dtype=float), 'MAE для разных α не совпадают: Pipeline с `make_enc()` и `Ridge(alpha=a)`, ошибка на validation.', rtol=1e-4)
+    equal(float(var('best_alpha', 'number', 'числом')), float(ref('best_alpha')), 'Лучшее α — {expected}, а у вас {actual}.')
+    g = var('ridge_gain', 'number', 'числом')
+    if abs(g + ref('ridge_gain')) < 1e-6 and abs(g) > 1e-9:
+        fail('`ridge_gain` — MAE линейной модели минус лучшая MAE Ridge, а у вас наоборот.')
+    close(g, ref('ridge_gain'), '`ridge_gain` — {expected}, а у вас {actual}.', rtol=1e-3, atol=1e-6)
+    equal(bool(var('ridge_needed')), bool(ref('ridge_needed')), '`ridge_needed` — {expected}: выигрыш Ridge не больше 0,05 года.')
+    same_array(alt('alpha_mae').to_numpy(dtype=float), alt_ref('alpha_mae').to_numpy(dtype=float), HARDCODE_MSG, rtol=1e-4)
+  files: [adult.csv]
+  wrong:
+    - code: |
+        result = {}
+        for a in alphas:
+            pipe = Pipeline([('enc', make_enc()), ('model', Ridge(alpha=a))]).fit(X_train, y_train)
+            result[a] = mean_absolute_error(y_valid, pipe.predict(X_valid))
+        alpha_mae = pd.Series(result)
+        best_alpha = alpha_mae.idxmin()
+        ridge_gain = alpha_mae.min() - mae_linear
+        ridge_needed = bool(ridge_gain > 0.05)
+      expect: а у вас наоборот
+    - code: |
+        result = {}
+        for a in alphas:
+            pipe = Pipeline([('enc', make_enc()), ('model', Ridge(alpha=a))]).fit(X_train, y_train)
+            result[a] = mean_absolute_error(y_train, pipe.predict(X_train))
+        alpha_mae = pd.Series(result)
+        best_alpha = alpha_mae.idxmin()
+        ridge_gain = mae_linear - alpha_mae.min()
+        ridge_needed = bool(ridge_gain > 0.05)
+      expect: ошибка на validation
+
+- id: m7-l9-t6
+  title: "Шаг 6. LightGBM: сколько деревьев"
+  difficulty: main
+  introduces: []
+  uses: [gradient-boosting, learning-rate]
+  statement: |
+    Функция `as_category(table, train_table)` уже есть: она переводит `cat_cols` в тип `category` по словарю из `train_table`. Обучите `LGBMRegressor(n_estimators=300, learning_rate=0.1, random_state=42, verbosity=-1, n_jobs=1)` на train.
+
+    Посчитайте MAE на validation после первых `n` деревьев для каждого `n` из `checkpoints`. Прогноз по первым `n` деревьям даёт `booster.predict(C_valid, num_iteration=n)`. `tree_mae` — Series «число деревьев → MAE», `best_n` — лучшее число деревьев.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import mean_absolute_error
+    from lightgbm import LGBMRegressor
+    data = pd.read_csv('adult.csv').drop_duplicates()
+    X = data.drop(columns=['age', 'fnlwgt', 'education']).copy()
+    y = data['age']
+    X['sex'] = X['sex'].map({'Male': 1, 'Female': 0})
+    X['salary'] = X['salary'].map({'>50K': 1, '<=50K': 0})
+    cat_cols = ['workclass', 'marital-status', 'occupation', 'relationship', 'race', 'native-country']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    def as_category(table, train_table):
+        out = table.copy()
+        for c in cat_cols:
+            cats = sorted(train_table[c].unique())
+            out[c] = pd.Categorical(out[c].where(out[c].isin(cats)), categories=cats)
+        return out
+    checkpoints = [50, 100, 150, 200, 300]
+  starter: |
+    C_train, C_valid = as_category(X_train, X_train), as_category(..., ...)
+    booster = LGBMRegressor(n_estimators=300, learning_rate=0.1, random_state=42, verbosity=-1, n_jobs=1).fit(C_train, y_train)
+    tree_mae = pd.Series({n: ... for n in checkpoints})
+    best_n = ...
+    print(tree_mae.round(3))
+    print(best_n)
+  solution: |
+    C_train, C_valid = as_category(X_train, X_train), as_category(X_valid, X_train)
+    booster = LGBMRegressor(n_estimators=300, learning_rate=0.1, random_state=42, verbosity=-1, n_jobs=1).fit(C_train, y_train)
+    tree_mae = pd.Series({n: mean_absolute_error(y_valid, booster.predict(C_valid, num_iteration=n)) for n in checkpoints})
+    best_n = tree_mae.idxmin()
+    print(tree_mae.round(3))
+    print(best_n)
+  explanation: |
+    - LightGBM ошибается на 7,6 года — на 0,6 года точнее линейной модели. Лучше всего — 150 деревьев (7,598), дальше ошибка медленно растёт: модель начинает подстраиваться под шум.
+    - Словарь категорий для validation берём из train: `as_category(X_valid, X_train)`. Незнакомые значения станут пропусками.
+    - Число деревьев выбрано по validation, поэтому эта MAE немного оптимистична. Честную оценку даст test.
+  hints:
+    - "Validation переводим по словарю train: `as_category(X_valid, X_train)`."
+    - "MAE после `n` деревьев — `mean_absolute_error(y_valid, booster.predict(C_valid, num_iteration=n))`."
+    - "`best_n = tree_mae.idxmin()`."
+  tests: |
+    import pandas as pd
+    s = var('tree_mae', pd.Series, 'Series')
+    ensure([int(v) for v in s.index] == list(ref('checkpoints')), 'Индекс `tree_mae` — значения из `checkpoints`.')
+    v = s.to_numpy(dtype=float)
+    if (abs(v - v[-1]) < 1e-12).all():
+        fail('MAE одинаковы для всех `n`: передайте в `predict` параметр `num_iteration=n`.')
+    same_array(v, ref('tree_mae').to_numpy(dtype=float), 'MAE не совпадают: прогноз `booster.predict(C_valid, num_iteration=n)`, где `C_valid` переведена по словарю train.', rtol=1e-5)
+    equal(int(var('best_n', 'number', 'числом')), int(ref('best_n')), 'Лучшее число деревьев — {expected}, а у вас {actual}.')
+  files: [adult.csv]
+  wrong:
+    - code: |
+        C_train, C_valid = as_category(X_train, X_train), as_category(X_valid, X_train)
+        booster = LGBMRegressor(n_estimators=300, learning_rate=0.1, random_state=42, verbosity=-1, n_jobs=1).fit(C_train, y_train)
+        tree_mae = pd.Series({n: mean_absolute_error(y_valid, booster.predict(C_valid)) for n in checkpoints})
+        best_n = tree_mae.idxmin()
+      expect: num_iteration=n
+    - code: |
+        C_train, C_valid = as_category(X_train, X_train), as_category(X_valid, X_train)
+        booster = LGBMRegressor(n_estimators=300, learning_rate=0.1, random_state=42, verbosity=-1, n_jobs=1).fit(C_train, y_train)
+        tree_mae = pd.Series({n: mean_absolute_error(y_valid, booster.predict(C_valid, num_iteration=n)) for n in checkpoints})
+        best_n = tree_mae.idxmax()
+      expect: Лучшее число деревьев
+
+- id: m7-l9-t7
+  title: "Шаг 7. Бустинг под метрику MAE"
+  difficulty: main
+  introduces: []
+  uses: [gradient-boosting, regression-metrics]
+  statement: |
+    Метрика проекта — MAE. Обучите такой же LightGBM, но с `objective='l1'`: он минимизирует абсолютную ошибку (урок 7.7, задание 5). Посчитайте `l1_mae` — Series «число деревьев → MAE на validation» для `checkpoints` и `best_n_l1` — лучшее число деревьев. `gain` — на сколько лучшая MAE с `l1` меньше лучшей MAE обычного LightGBM (`regression_mae` — из шага 6).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import mean_absolute_error
+    from lightgbm import LGBMRegressor
+    data = pd.read_csv('adult.csv').drop_duplicates()
+    X = data.drop(columns=['age', 'fnlwgt', 'education']).copy()
+    y = data['age']
+    X['sex'] = X['sex'].map({'Male': 1, 'Female': 0})
+    X['salary'] = X['salary'].map({'>50K': 1, '<=50K': 0})
+    cat_cols = ['workclass', 'marital-status', 'occupation', 'relationship', 'race', 'native-country']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    def as_category(table, train_table):
+        out = table.copy()
+        for c in cat_cols:
+            cats = sorted(train_table[c].unique())
+            out[c] = pd.Categorical(out[c].where(out[c].isin(cats)), categories=cats)
+        return out
+    checkpoints = [50, 100, 150, 200, 300]
+    regression_mae = 7.598   # лучшая MAE обычного LightGBM из шага 6 (150 деревьев)
+  starter: |
+    C_train, C_valid = as_category(X_train, X_train), as_category(X_valid, X_train)
+    booster_l1 = LGBMRegressor(n_estimators=300, learning_rate=0.1, random_state=42, verbosity=-1, n_jobs=1,
+                               objective=...).fit(C_train, y_train)
+    l1_mae = pd.Series({n: ... for n in checkpoints})
+    best_n_l1 = ...
+    gain = ...
+    print(l1_mae.round(3))
+    print(best_n_l1, round(gain, 3))
+  solution: |
+    C_train, C_valid = as_category(X_train, X_train), as_category(X_valid, X_train)
+    booster_l1 = LGBMRegressor(n_estimators=300, learning_rate=0.1, random_state=42, verbosity=-1, n_jobs=1,
+                               objective='l1').fit(C_train, y_train)
+    l1_mae = pd.Series({n: mean_absolute_error(y_valid, booster_l1.predict(C_valid, num_iteration=n)) for n in checkpoints})
+    best_n_l1 = l1_mae.idxmin()
+    gain = regression_mae - l1_mae.min()
+    print(l1_mae.round(3))
+    print(best_n_l1, round(gain, 3))
+  explanation: |
+    - С `objective='l1'` лучшая MAE — 7,534 на 150 деревьях, на 0,06 года меньше, чем у обычного LightGBM. Выигрыш маленький — меньше 1 %.
+    - Не шум ли это? Проверка на 10 повторных разбиениях train + validation (урок 7.8) показывает: `l1` точнее во всех десяти, на 0,08–0,17 года. Преимущество небольшое, но устойчивое.
+    - Модель с `l1` прогнозирует медиану возраста похожих людей. Возраст скошен вправо (среднее 38,5, медиана 37), поэтому такая модель в среднем чуть занижает, зато типичная ошибка меньше.
+  hints:
+    - "`objective='l1'`."
+    - "MAE — `mean_absolute_error(y_valid, booster_l1.predict(C_valid, num_iteration=n))`."
+    - "`gain = regression_mae - l1_mae.min()`."
+  tests: |
+    import pandas as pd
+    b = var('booster_l1')
+    ensure(getattr(b, 'objective', None) in ('l1', 'mae', 'regression_l1', 'mean_absolute_error'), 'Модель должна учиться под абсолютную ошибку: `objective=\'l1\'`.')
+    s = var('l1_mae', pd.Series, 'Series')
+    ensure([int(v) for v in s.index] == list(ref('checkpoints')), 'Индекс `l1_mae` — значения из `checkpoints`.')
+    same_array(s.to_numpy(dtype=float), ref('l1_mae').to_numpy(dtype=float), 'MAE не совпадают: прогноз по первым `n` деревьям — `num_iteration=n`.', rtol=1e-5)
+    equal(int(var('best_n_l1', 'number', 'числом')), int(ref('best_n_l1')), 'Лучшее число деревьев — {expected}, а у вас {actual}.')
+    g = var('gain', 'number', 'числом')
+    if abs(g + ref('gain')) < 1e-6:
+        fail('`gain` — MAE обычного LightGBM минус лучшая MAE с `l1`, а у вас наоборот.')
+    close(g, ref('gain'), '`gain` — {expected}, а у вас {actual}.', rtol=1e-4)
+  files: [adult.csv]
+  wrong:
+    - code: |
+        C_train, C_valid = as_category(X_train, X_train), as_category(X_valid, X_train)
+        booster_l1 = LGBMRegressor(n_estimators=300, learning_rate=0.1, random_state=42, verbosity=-1, n_jobs=1).fit(C_train, y_train)
+        l1_mae = pd.Series({n: mean_absolute_error(y_valid, booster_l1.predict(C_valid, num_iteration=n)) for n in checkpoints})
+        best_n_l1 = l1_mae.idxmin()
+        gain = regression_mae - l1_mae.min()
+      expect: "objective='l1'"
+    - code: |
+        C_train, C_valid = as_category(X_train, X_train), as_category(X_valid, X_train)
+        booster_l1 = LGBMRegressor(n_estimators=300, learning_rate=0.1, random_state=42, verbosity=-1, n_jobs=1,
+                                   objective='l1').fit(C_train, y_train)
+        l1_mae = pd.Series({n: mean_absolute_error(y_valid, booster_l1.predict(C_valid, num_iteration=n)) for n in checkpoints})
+        best_n_l1 = l1_mae.idxmin()
+        gain = l1_mae.min() - regression_mae
+      expect: а у вас наоборот
+
+- id: m7-l9-t8
+  title: "Шаг 8. Итоговая проверка на test"
+  difficulty: main
+  introduces: []
+  uses: [model-comparison, error-distribution]
+  statement: |
+    Выбор сделан: LightGBM с `objective='l1'`, 150 деревьев, шаг 0,1. Обучите его на train и validation вместе (`X_temp`, `y_temp`; словарь категорий — по `X_temp`) и **один раз** получите прогноз для test — `test_pred`.
+
+    `report` — словарь для отчёта: `'MAE'` — средняя ошибка на test, `'медиана'` — медиана модуля ошибки, `'в пределах 5 лет'` — доля людей, чей возраст угадан с ошибкой не больше 5 лет.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import mean_absolute_error
+    from lightgbm import LGBMRegressor
+    data = pd.read_csv('adult.csv').drop_duplicates()
+    X = data.drop(columns=['age', 'fnlwgt', 'education']).copy()
+    y = data['age']
+    X['sex'] = X['sex'].map({'Male': 1, 'Female': 0})
+    X['salary'] = X['salary'].map({'>50K': 1, '<=50K': 0})
+    cat_cols = ['workclass', 'marital-status', 'occupation', 'relationship', 'race', 'native-country']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    def as_category(table, train_table):
+        out = table.copy()
+        for c in cat_cols:
+            cats = sorted(train_table[c].unique())
+            out[c] = pd.Categorical(out[c].where(out[c].isin(cats)), categories=cats)
+        return out
+  starter: |
+    C_temp, C_test = ..., ...
+    final = LGBMRegressor(n_estimators=150, learning_rate=0.1, random_state=42, verbosity=-1, n_jobs=1,
+                          objective='l1').fit(..., ...)
+    test_pred = ...
+    err = np.abs(y_test - test_pred)
+    report = {'MAE': ..., 'медиана': ..., 'в пределах 5 лет': ...}
+    print({k: round(v, 3) for k, v in report.items()})
+  solution: |
+    C_temp, C_test = as_category(X_temp, X_temp), as_category(X_test, X_temp)
+    final = LGBMRegressor(n_estimators=150, learning_rate=0.1, random_state=42, verbosity=-1, n_jobs=1,
+                          objective='l1').fit(C_temp, y_temp)
+    test_pred = final.predict(C_test)
+    err = np.abs(y_test - test_pred)
+    report = {'MAE': err.mean(), 'медиана': err.median(), 'в пределах 5 лет': (err <= 5).mean()}
+    print({k: round(v, 3) for k, v in report.items()})
+  explanation: |
+    - MAE на test — 7,38 года, медиана ошибки — 5,7 года, у 46 % людей возраст угадан с точностью до 5 лет. Ориентир ошибался на 11,1 года, оценка по семейному положению — на 8,6.
+    - На test ошибка даже чуть меньше, чем на validation (7,53): модель обучена на большем числе людей, а разброс между разбиениями — около 0,1 года.
+    - Это и есть итоговая цифра для отчёта. Её не «улучшают» после проверки: любая правка по итогам test превращает его в ещё одну validation.
+  hints:
+    - "Словарь — по `X_temp`: `as_category(X_temp, X_temp)` и `as_category(X_test, X_temp)`."
+    - "Модель учится на `C_temp, y_temp`; прогноз — `final.predict(C_test)`."
+    - "`report = {'MAE': err.mean(), 'медиана': err.median(), 'в пределах 5 лет': (err <= 5).mean()}`."
+  tests: |
+    import numpy as np
+    tp = np.asarray(var('test_pred'), dtype=float)
+    ensure(tp.shape == (len(ref('y_test')),), '`test_pred` — по прогнозу на каждого человека test.')
+    mae = float(np.mean(np.abs(ref('y_test').to_numpy() - tp)))
+    if not np.allclose(tp, ref('test_pred'), rtol=1e-6) and abs(mae - ref('report')['MAE']) > 0.03:
+        fail('MAE на test — {0:.3f}, а должна быть {1:.3f}. Финальную модель обучают на train и validation вместе (`X_temp`, `y_temp`), словарь категорий — тоже по `X_temp`.'.format(mae, ref('report')['MAE']))
+    same_array(tp, ref('test_pred'), '`test_pred` не совпадает с эталоном: LightGBM `objective=\'l1\'`, 150 деревьев, обучение на `X_temp`.', rtol=1e-6)
+    rep = var('report', dict, 'словарём')
+    ensure(set(rep) == {'MAE', 'медиана', 'в пределах 5 лет'}, 'Ключи `report` — `\'MAE\'`, `\'медиана\'`, `\'в пределах 5 лет\'`.')
+    for k in ['MAE', 'медиана', 'в пределах 5 лет']:
+        close(rep[k], ref('report')[k], '`report[\'{0}\']` — {{expected}}, а у вас {{actual}}.'.format(k))
+  files: [adult.csv]
+  wrong:
+    - code: |
+        C_train, C_test = as_category(X_train, X_train), as_category(X_test, X_train)
+        final = LGBMRegressor(n_estimators=150, learning_rate=0.1, random_state=42, verbosity=-1, n_jobs=1,
+                              objective='l1').fit(C_train, y_train)
+        test_pred = final.predict(C_test)
+        err = np.abs(y_test - test_pred)
+        report = {'MAE': err.mean(), 'медиана': err.median(), 'в пределах 5 лет': (err <= 5).mean()}
+      expect: train и validation вместе
+    - code: |
+        C_temp, C_test = as_category(X_temp, X_temp), as_category(X_test, X_temp)
+        final = LGBMRegressor(n_estimators=150, learning_rate=0.1, random_state=42, verbosity=-1, n_jobs=1,
+                              objective='l1').fit(C_temp, y_temp)
+        test_pred = final.predict(C_test)
+        err = np.abs(y_test - test_pred)
+        report = {'MAE': err.mean(), 'медиана': np.median(test_pred), 'в пределах 5 лет': (err <= 5).mean()}
+      expect: "`report['медиана']`"
+
+- id: m7-l9-t9
+  kind: quiz
+  title: "Шаг 9. Выводы"
+  difficulty: main
+  introduces: []
+  uses: []
+  statement: |
+    Сформулируйте выводы проекта.
+  quiz:
+    - q: Почему одно семейное положение снизило ошибку с 11,1 до 8,6 года, а все признаки в линейной модели — только до 8,2?
+      options:
+        - Возраст сильнее всего связан с семейным положением; остальные признаки добавляют немного, особенно линейно
+        - Линейная модель обучена неправильно
+        - Оценка по группе всегда лучше модели
+      answer: 0
+      explain: "«Никогда не был в браке» — в основном молодые, «вдовец» — пожилые. В LightGBM на семейное положение приходится почти половина важности признаков."
+    - q: Почему Ridge здесь не помог, хотя на машинах помогал?
+      options:
+        - Столбцов 90 на 19 521 человека, категории наполнены — коэффициентам не на чем переобучаться
+        - Ridge не работает с One-Hot
+        - Неправильно выбрано α
+      answer: 0
+      explain: Регуляризация лечит много столбцов при малом числе записей на столбец. Здесь линейная модель и без неё не переобучается.
+    - q: "LightGBM с `objective='l1'` лучше обычного всего на 0,06 года. Почему этот выбор оправдан?"
+      options:
+        - Метрика проекта — MAE, и на повторных разбиениях `l1` выигрывает во всех случаях
+        - Потому что разница положительная
+        - Потому что на test он лучше
+      answer: 0
+      explain: Маленькая, но устойчивая разница в нужной метрике — честное основание. Test для выбора не используют.
+    - q: Какую фразу стоит записать в отчёт?
+      options:
+        - "«Модель ошибается в среднем на 7,4 года; у половины людей — меньше чем на 5,7 года»"
+        - "«Лучшая MAE на validation — 7,53 года»"
+        - "«Модель угадывает возраст»"
+      answer: 0
+      explain: Итог — по test, который не участвовал в выборе, и лучше вместе с квантилями ошибок, а не одним средним.
+  hints:
+    - Вспомните важность признаков, размер данных и то, для чего нужен test.
+    - "Сильный признак — семейное положение; регуляризация нужна при многих столбцах; test — только для итога."
+    - "Ответы: первый вариант во всех четырёх вопросах."

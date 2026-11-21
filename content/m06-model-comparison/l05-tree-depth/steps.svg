@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 260" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="Прогноз дерева регрессии по одному признаку. Слева дерево глубины 2: четыре ступеньки, грубо повторяющие тенденцию. Справа очень глубокое дерево: ступенька почти для каждой точки, линия повторяет шум обучающих данных">
+  <text x="20" y="24" fill="currentColor" font-weight="700">Глубина 2: 4 ступеньки</text>
+  <line x1="20" y1="210" x2="340" y2="210" stroke="currentColor" stroke-opacity="0.6"/>
+  <line x1="20" y1="210" x2="20" y2="40" stroke="currentColor" stroke-opacity="0.6"/>
+  <circle cx="24.2" cy="186.3" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="29.9" cy="193.0" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="40.5" cy="183.5" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="41.0" cy="182.7" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="68.2" cy="172.7" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="95.0" cy="180.8" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="96.1" cy="184.4" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="103.0" cy="182.8" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="116.4" cy="183.3" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="138.4" cy="166.0" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="146.4" cy="171.5" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="162.3" cy="145.4" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="170.5" cy="174.7" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="171.3" cy="165.8" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="172.4" cy="163.9" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="187.4" cy="170.5" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="194.2" cy="123.7" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="209.2" cy="164.8" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="213.3" cy="139.6" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="220.2" cy="139.1" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="223.2" cy="113.8" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="224.5" cy="153.2" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="234.9" cy="114.8" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="248.5" cy="128.0" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="250.0" cy="120.9" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="257.2" cy="123.1" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="262.6" cy="105.9" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="276.3" cy="118.4" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="287.7" cy="100.7" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="288.0" cy="95.8" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="297.0" cy="74.5" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="297.8" cy="120.8" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="301.2" cy="75.6" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="314.8" cy="74.4" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="319.4" cy="87.4" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="338.6" cy="67.5" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <path d="M20.0 175.4 L190.8 175.4 M190.8 141.8 L221.7 141.8 M221.7 122.3 L282.0 122.3 M282.0 87.1 L340.0 87.1 M190.8 175.4 L190.8 141.8 M221.7 141.8 L221.7 122.3 M282.0 122.3 L282.0 87.1" fill="none" stroke="#c2410c" stroke-width="2"/>
+  <text x="180.0" y="228" fill="currentColor" text-anchor="middle" font-size="11">признак (например, год выпуска) →</text>
+  <text x="20" y="250" fill="currentColor" fill-opacity="0.85">Грубо, но устойчиво: недообучение возможно.</text>
+  <text x="410" y="24" fill="currentColor" font-weight="700">Глубина 8: 36 ступенек</text>
+  <line x1="410" y1="210" x2="730" y2="210" stroke="currentColor" stroke-opacity="0.6"/>
+  <line x1="410" y1="210" x2="410" y2="40" stroke="currentColor" stroke-opacity="0.6"/>
+  <circle cx="414.2" cy="186.3" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="419.9" cy="193.0" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="430.5" cy="183.5" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="431.0" cy="182.7" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="458.2" cy="172.7" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="485.0" cy="180.8" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="486.1" cy="184.4" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="493.0" cy="182.8" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="506.4" cy="183.3" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="528.4" cy="166.0" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="536.4" cy="171.5" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="552.3" cy="145.4" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="560.5" cy="174.7" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="561.3" cy="165.8" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="562.4" cy="163.9" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="577.4" cy="170.5" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="584.2" cy="123.7" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="599.2" cy="164.8" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="603.3" cy="139.6" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="610.2" cy="139.1" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="613.2" cy="113.8" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="614.5" cy="153.2" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="624.9" cy="114.8" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="638.5" cy="128.0" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="640.0" cy="120.9" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="647.2" cy="123.1" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="652.6" cy="105.9" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="666.3" cy="118.4" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="677.7" cy="100.7" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="678.0" cy="95.8" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="687.0" cy="74.5" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="687.8" cy="120.8" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="691.2" cy="75.6" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="704.8" cy="74.4" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="709.4" cy="87.4" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <circle cx="728.6" cy="67.5" r="3.2" fill="#3d5bd9" fill-opacity="0.7"/>
+  <path d="M410.0 186.3 L417.1 186.3 M417.1 193.0 L425.2 193.0 M425.2 183.5 L430.7 183.5 M430.7 182.7 L444.6 182.7 M444.6 172.7 L471.6 172.7 M471.6 180.8 L485.6 180.8 M485.6 184.4 L489.6 184.4 M489.6 182.8 L499.7 182.8 M499.7 183.3 L517.4 183.3 M517.4 166.0 L532.4 166.0 M532.4 171.5 L544.3 171.5 M544.3 145.4 L556.4 145.4 M556.4 174.7 L560.9 174.7 M560.9 165.8 L561.9 165.8 M561.9 163.9 L569.9 163.9 M569.9 170.5 L580.8 170.5 M580.8 123.7 L591.7 123.7 M591.7 164.8 L601.2 164.8 M601.2 139.6 L606.7 139.6 M606.7 139.1 L611.7 139.1 M611.7 113.8 L613.8 113.8 M613.8 153.2 L619.7 153.2 M619.7 114.8 L631.7 114.8 M631.7 128.0 L639.3 128.0 M639.3 120.9 L643.6 120.9 M643.6 123.1 L649.9 123.1 M649.9 105.9 L659.5 105.9 M659.5 118.4 L672.0 118.4 M672.0 100.7 L677.8 100.7 M677.8 95.8 L682.5 95.8 M682.5 74.5 L687.4 74.5 M687.4 120.8 L689.5 120.8 M689.5 75.6 L698.0 75.6 M698.0 74.4 L707.1 74.4 M707.1 87.4 L719.0 87.4 M719.0 67.5 L730.0 67.5 M417.1 186.3 L417.1 193.0 M425.2 193.0 L425.2 183.5 M430.7 183.5 L430.7 182.7 M444.6 182.7 L444.6 172.7 M471.6 172.7 L471.6 180.8 M485.6 180.8 L485.6 184.4 M489.6 184.4 L489.6 182.8 M499.7 182.8 L499.7 183.3 M517.4 183.3 L517.4 166.0 M532.4 166.0 L532.4 171.5 M544.3 171.5 L544.3 145.4 M556.4 145.4 L556.4 174.7 M560.9 174.7 L560.9 165.8 M561.9 165.8 L561.9 163.9 M569.9 163.9 L569.9 170.5 M580.8 170.5 L580.8 123.7 M591.7 123.7 L591.7 164.8 M601.2 164.8 L601.2 139.6 M606.7 139.6 L606.7 139.1 M611.7 139.1 L611.7 113.8 M613.8 113.8 L613.8 153.2 M619.7 153.2 L619.7 114.8 M631.7 114.8 L631.7 128.0 M639.3 128.0 L639.3 120.9 M643.6 120.9 L643.6 123.1 M649.9 123.1 L649.9 105.9 M659.5 105.9 L659.5 118.4 M672.0 118.4 L672.0 100.7 M677.8 100.7 L677.8 95.8 M682.5 95.8 L682.5 74.5 M687.4 74.5 L687.4 120.8 M689.5 120.8 L689.5 75.6 M698.0 75.6 L698.0 74.4 M707.1 74.4 L707.1 87.4 M719.0 87.4 L719.0 67.5" fill="none" stroke="#c2410c" stroke-width="2"/>
+  <text x="570.0" y="228" fill="currentColor" text-anchor="middle" font-size="11">признак (например, год выпуска) →</text>
+  <text x="410" y="250" fill="currentColor" fill-opacity="0.85">Повторяет каждую точку — и её шум: переобучение.</text>
+</svg>

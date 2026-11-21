@@ -1,0 +1,440 @@
+- id: m9-l6-t1
+  title: Логиты в вероятности
+  difficulty: warmup
+  introduces: [logits]
+  uses: [binary-classification]
+  statement: |
+    Напишите функцию `to_probs(logits)` — softmax каждой строки таблицы логитов (строка — один текст, столбец — класс). Для `logits` из подготовки получите:
+
+    - `probs = to_probs(logits)`;
+    - `labels` — список названий классов с наибольшей вероятностью (по словарю `id2label`);
+    - `p_positive` — массив вероятностей класса POSITIVE (номер 1).
+  prelude: |
+    import numpy as np
+    id2label = {0: 'NEGATIVE', 1: 'POSITIVE'}
+    logits = np.array([[-2.28, 2.36], [3.40, -2.81], [0.30, 0.10], [-1.00, 1.50]])
+  starter: |
+    def to_probs(logits):
+        e = ...
+        return ...
+
+    probs = to_probs(logits)
+    labels = ...
+    p_positive = ...
+    print(probs.round(4))
+    print(labels, p_positive.round(3))
+  solution: |
+    def to_probs(logits):
+        e = np.exp(logits - logits.max(axis=1, keepdims=True))
+        return e / e.sum(axis=1, keepdims=True)
+
+    probs = to_probs(logits)
+    labels = [id2label[i] for i in probs.argmax(axis=1)]
+    p_positive = probs[:, 1]
+    print(probs.round(4))
+    print(labels, p_positive.round(3))
+  explanation: |
+    - `axis=1, keepdims=True` — максимум и сумма считаются для каждой строки отдельно и остаются столбцом, поэтому вычитание и деление проходят построчно.
+    - Третий текст с логитами [0,30; 0,10] модель отнесла к NEGATIVE с вероятностью всего 0,55: отрыв 0,2 — это почти монетка.
+    - Если нормировать по столбцам (`axis=0`), в сумме 1 дадут вероятности одного класса по всем текстам, а это бессмыслица.
+  hints:
+    - "Вычитайте максимум каждой строки: `logits - logits.max(axis=1, keepdims=True)`."
+    - "Делите на сумму по строке: `e / e.sum(axis=1, keepdims=True)`."
+    - "Метки — `[id2label[i] for i in probs.argmax(axis=1)]`, вероятность POSITIVE — столбец `probs[:, 1]`."
+  tests: |
+    import numpy as np
+    f = var('to_probs')
+    ensure(callable(f), '`to_probs` должна быть функцией.')
+    rng = np.random.default_rng(4)
+    for shape in [(5, 2), (3, 4)]:
+        z = rng.normal(0, 3, size=shape)
+        got = np.asarray(f(z), dtype=float)
+        e = np.exp(z - z.max(axis=1, keepdims=True))
+        exp = e / e.sum(axis=1, keepdims=True)
+        ensure(got.shape == shape, '`to_probs` должна вернуть таблицу той же формы, что логиты.')
+        if np.allclose(got.sum(axis=0), 1) and not np.allclose(got.sum(axis=1), 1):
+            fail('Нормируйте строки, а не столбцы: softmax считают по `axis=1` — для каждого текста.')
+        same_array(got, exp, 'На других логитах `to_probs` неверна: softmax каждой строки.')
+    same_array(np.asarray(var('probs'), dtype=float), ref('probs'), '`probs` — `to_probs(logits)`.')
+    equal(list(var('labels', list, 'списком')), list(ref('labels')), 'Метки — {expected}, а у вас {actual}.')
+    pp = np.asarray(var('p_positive'), dtype=float)
+    if pp.shape == ref('p_positive').shape and np.allclose(pp, ref('probs')[:, 0]):
+        fail('POSITIVE — класс номер 1: это второй столбец, `probs[:, 1]`.')
+    same_array(pp, ref('p_positive'), '`p_positive` — вероятности класса POSITIVE.')
+  wrong:
+    - code: |
+        def to_probs(logits):
+            e = np.exp(logits - logits.max(axis=0, keepdims=True))
+            return e / e.sum(axis=0, keepdims=True)
+        probs = to_probs(logits)
+        labels = [id2label[i] for i in probs.argmax(axis=1)]
+        p_positive = probs[:, 1]
+      expect: не столбцы
+    - code: |
+        def to_probs(logits):
+            e = np.exp(logits - logits.max(axis=1, keepdims=True))
+            return e / e.sum(axis=1, keepdims=True)
+        probs = to_probs(logits)
+        labels = [id2label[i] for i in probs.argmax(axis=1)]
+        p_positive = probs[:, 0]
+      expect: второй столбец
+
+- id: m9-l6-t2
+  title: Pipeline своими руками
+  difficulty: main
+  introduces: []
+  uses: [logits, tokenizer]
+  statement: |
+    Повторите pipeline на всех отзывах: токенизатор → модель → softmax → метка. Получите:
+
+    - `probs` — таблицу вероятностей классов (отзывы × классы);
+    - `labels` — список меток (`'POSITIVE'` или `'NEGATIVE'`);
+    - `max_diff` — наибольшее расхождение между вашей вероятностью выбранной метки и `score` из готового pipeline (`pipe_preds`);
+    - `acc` — долю верных ответов (столбец `label`: 1 — положительный).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
+    name = 'distilbert-base-uncased-finetuned-sst-2-english'
+    tokenizer = AutoTokenizer.from_pretrained(name)
+    model = AutoModelForSequenceClassification.from_pretrained(name)
+    reviews = pd.read_csv('reviews.csv')
+    pipe_preds = pipeline('sentiment-analysis', model=name)(list(reviews['text']))
+    def softmax(z):
+        e = np.exp(z - z.max(axis=-1, keepdims=True))
+        return e / e.sum(axis=-1, keepdims=True)
+  starter: |
+    inputs = tokenizer(..., padding=True, truncation=True, return_tensors='np')
+    logits = ...
+    probs = ...
+    labels = ...
+    max_diff = ...
+    acc = ...
+    print(labels[:5], max_diff, round(acc, 3))
+  solution: |
+    inputs = tokenizer(list(reviews['text']), padding=True, truncation=True, return_tensors='np')
+    logits = model(**inputs).logits
+    probs = softmax(logits)
+    labels = [model.config.id2label[i] for i in probs.argmax(axis=1)]
+    max_diff = np.abs(probs.max(axis=1) - np.array([p['score'] for p in pipe_preds])).max()
+    acc = (probs.argmax(axis=1) == reviews['label']).mean()
+    print(labels[:5], max_diff, round(acc, 3))
+  explanation: |
+    - Ваш расчёт и pipeline расходятся меньше чем на одну десятимиллионную: pipeline делает ровно эти шаги.
+    - Вероятность выбранной метки — наибольшая в строке, `probs.max(axis=1)`. Это и есть `score` у pipeline.
+    - Номер класса совпадает с правильным ответом: 1 — POSITIVE, 0 — NEGATIVE. Поэтому долю верных можно считать прямо по `argmax`. Получается 0,932, как в уроке 9.4.
+  hints:
+    - "`inputs = tokenizer(list(reviews['text']), padding=True, truncation=True, return_tensors='np')`, затем `model(**inputs).logits`."
+    - "Метки — `model.config.id2label[i]` для `i` из `probs.argmax(axis=1)`."
+    - "Расхождение — `np.abs(probs.max(axis=1) - np.array([p['score'] for p in pipe_preds])).max()`."
+  tests: |
+    import numpy as np
+    pr = np.asarray(var('probs'), dtype=float)
+    ensure(pr.shape == ref('probs').shape, '`probs` — таблица {0}: по строке на отзыв, по столбцу на класс.'.format(ref('probs').shape))
+    same_array(pr, ref('probs'), '`probs` — softmax логитов модели для всех отзывов.')
+    equal(list(var('labels', list, 'списком')), list(ref('labels')), 'Метки не совпадают: используйте `model.config.id2label` и `argmax` по строкам.')
+    md = var('max_diff', 'number', 'числом')
+    ensure(md < 1e-5, 'Расхождение с pipeline должно быть почти нулевым, а у вас {0}. Сравнивайте вероятность выбранной метки (`probs.max(axis=1)`) со `score`.'.format(md))
+    close(var('acc', 'number', 'числом'), ref('acc'), 'Доля верных — {expected}, а у вас {actual}.')
+    close(alt('acc'), alt_ref('acc'), HARDCODE_MSG)
+  files: [reviews.csv, distilbert_vocab.txt, sst2_logits.json]
+  wrong:
+    - code: |
+        inputs = tokenizer(list(reviews['text']), padding=True, truncation=True, return_tensors='np')
+        logits = model(**inputs).logits
+        probs = softmax(logits)
+        labels = [model.config.id2label[i] for i in probs.argmax(axis=1)]
+        max_diff = np.abs(probs[:, 1] - np.array([p['score'] for p in pipe_preds])).max()
+        acc = (probs.argmax(axis=1) == reviews['label']).mean()
+      expect: почти нулевым
+    - code: |
+        inputs = tokenizer(list(reviews['text']), padding=True, truncation=True, return_tensors='np')
+        logits = model(**inputs).logits
+        probs = logits
+        labels = [model.config.id2label[i] for i in probs.argmax(axis=1)]
+        max_diff = 0.0
+        acc = (probs.argmax(axis=1) == reviews['label']).mean()
+      expect: softmax логитов
+
+- id: m9-l6-t3
+  title: Отрыв и сигмоида
+  difficulty: main
+  introduces: []
+  uses: [logits, activation-function]
+  statement: |
+    `logits` — логиты модели для всех отзывов `reviews`. Получите:
+
+    - `margin` — массив отрывов: логит POSITIVE минус логит NEGATIVE;
+    - `p_sigmoid` — вероятность POSITIVE как сигмоиду отрыва;
+    - `max_err` — наибольшую разницу между `p_sigmoid` и вторым столбцом softmax логитов (она должна быть почти нулевой);
+    - `doubtful` — Series: сколько отзывов каждого языка `lang` с отрывом меньше 2 по модулю;
+    - `closest_call` — текст отзыва с наименьшим по модулю отрывом.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from transformers import AutoTokenizer, AutoModelForSequenceClassification
+    name = 'distilbert-base-uncased-finetuned-sst-2-english'
+    tokenizer = AutoTokenizer.from_pretrained(name)
+    model = AutoModelForSequenceClassification.from_pretrained(name)
+    reviews = pd.read_csv('reviews.csv')
+    logits = model(**tokenizer(list(reviews['text']), padding=True, truncation=True, return_tensors='np')).logits
+    def softmax(z):
+        e = np.exp(z - z.max(axis=-1, keepdims=True))
+        return e / e.sum(axis=-1, keepdims=True)
+  starter: |
+    margin = ...
+    p_sigmoid = ...
+    max_err = ...
+    doubtful = ...
+    closest_call = ...
+    print(max_err, doubtful.to_dict())
+    print(closest_call)
+  solution: |
+    margin = logits[:, 1] - logits[:, 0]
+    p_sigmoid = 1 / (1 + np.exp(-margin))
+    max_err = np.abs(p_sigmoid - softmax(logits)[:, 1]).max()
+    doubtful = pd.Series(np.abs(margin) < 2, index=reviews.index).groupby(reviews['lang']).sum()
+    closest_call = reviews['text'].iloc[int(np.abs(margin).argmin())]
+    print(max_err, doubtful.to_dict())
+    print(closest_call)
+  explanation: |
+    - Сигмоида отрыва и softmax совпадают до ошибок округления: для двух классов это одна и та же формула.
+    - Отрыв меньше 2 по модулю — вероятность от 0,12 до 0,88. Таких отзывов три среди английских и шесть среди восьми русских.
+    - Ближе всех к границе — «Телефон сломался через неделю.»: отрыв 0,04, вероятность почти ровно 0,5. Модель не знает, что сказать, и ответ здесь — дело случая.
+  hints:
+    - "Отрыв — `logits[:, 1] - logits[:, 0]`, сигмоида — `1 / (1 + np.exp(-margin))`."
+    - "Сравнение — `np.abs(p_sigmoid - softmax(logits)[:, 1]).max()`."
+    - "Маску `np.abs(margin) < 2` превратите в Series с индексом `reviews.index` и сгруппируйте по `reviews['lang']`; наименьший модуль — `np.abs(margin).argmin()`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    m = np.asarray(var('margin'), dtype=float)
+    if m.shape == ref('margin').shape and np.allclose(m, -ref('margin')):
+        fail('Отрыв — логит POSITIVE (столбец 1) минус логит NEGATIVE (столбец 0), а не наоборот.')
+    same_array(m, ref('margin'), '`margin` — разность логитов POSITIVE и NEGATIVE.')
+    same_array(np.asarray(var('p_sigmoid'), dtype=float), ref('p_sigmoid'), '`p_sigmoid` — сигмоида отрыва: `1 / (1 + np.exp(-margin))`.')
+    ensure(var('max_err', 'number', 'числом') < 1e-6, '`max_err` должна быть почти нулевой: сравните `p_sigmoid` со вторым столбцом softmax.')
+    d = var('doubtful', pd.Series, 'Series')
+    if d.reindex(ref('doubtful').index).fillna(0).astype(int).to_dict() == {k: int((ref('reviews')['lang'] == k).sum()) - int(v) for k, v in ref('doubtful').items()}:
+        fail('Нужны отзывы с отрывом меньше 2 по модулю: `np.abs(margin) < 2`.')
+    equal(d.reindex(ref('doubtful').index).fillna(0).astype(int).to_dict(), ref('doubtful').astype(int).to_dict(), 'Сомнительных отзывов по языкам — {expected}, а у вас {actual}.')
+    equal(var('closest_call', str, 'строкой'), ref('closest_call'), 'Ближе всего к границе отзыв {expected}, а у вас {actual}.')
+    equal(alt('doubtful').reindex(alt_ref('doubtful').index).fillna(0).astype(int).to_dict(), alt_ref('doubtful').astype(int).to_dict(), HARDCODE_MSG)
+  files: [reviews.csv, distilbert_vocab.txt, sst2_logits.json]
+  wrong:
+    - code: |
+        margin = logits[:, 0] - logits[:, 1]
+        p_sigmoid = 1 / (1 + np.exp(-margin))
+        max_err = 0.0
+        doubtful = pd.Series(np.abs(margin) < 2, index=reviews.index).groupby(reviews['lang']).sum()
+        closest_call = reviews['text'].iloc[int(np.abs(margin).argmin())]
+      expect: а не наоборот
+    - code: |
+        margin = logits[:, 1] - logits[:, 0]
+        p_sigmoid = 1 / (1 + np.exp(-margin))
+        max_err = np.abs(p_sigmoid - softmax(logits)[:, 1]).max()
+        doubtful = pd.Series(np.abs(margin) >= 2, index=reviews.index).groupby(reviews['lang']).sum()
+        closest_call = reviews['text'].iloc[int(np.abs(margin).argmin())]
+      expect: меньше 2
+
+- id: m9-l6-t4
+  title: Предсказание по частям
+  difficulty: main
+  introduces: []
+  uses: [logits, attention-mask]
+  statement: |
+    Большой набор текстов модели подают по частям — батчами. Напишите функцию `predict_logits(texts, batch_size)`: она берёт тексты по `batch_size` штук, токенизирует каждую часть с `padding=True, truncation=True, return_tensors='np'`, вызывает модель и склеивает логиты всех частей в одну таблицу (`np.concatenate`). Получите:
+
+    - `logits_16 = predict_logits(texts, 16)`;
+    - `same` — совпадают ли они с логитами `logits_all`, посчитанными за один раз (`np.allclose`);
+    - `cells_16` — сколько всего клеток (токенов вместе с [PAD]) в таблицах `input_ids` всех батчей по 16 текстов;
+    - `cells_all` — сколько клеток в одной таблице для всех текстов сразу.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from transformers import AutoTokenizer, AutoModelForSequenceClassification
+    name = 'distilbert-base-uncased-finetuned-sst-2-english'
+    tokenizer = AutoTokenizer.from_pretrained(name)
+    model = AutoModelForSequenceClassification.from_pretrained(name)
+    texts = list(pd.read_csv('reviews.csv')['text'])
+    logits_all = model(**tokenizer(texts, padding=True, truncation=True, return_tensors='np')).logits
+  starter: |
+    def predict_logits(texts, batch_size):
+        parts = []
+        for start in range(0, len(texts), batch_size):
+            batch = tokenizer(..., padding=True, truncation=True, return_tensors='np')
+            parts.append(...)
+        return np.concatenate(parts)
+
+    logits_16 = predict_logits(texts, 16)
+    same = ...
+    cells_16 = sum(tokenizer(texts[s:s + 16], padding=True, return_tensors='np')['input_ids'].size
+                   for s in range(0, len(texts), 16))
+    cells_all = ...
+    print(same, cells_16, cells_all)
+  solution: |
+    def predict_logits(texts, batch_size):
+        parts = []
+        for start in range(0, len(texts), batch_size):
+            batch = tokenizer(texts[start:start + batch_size], padding=True, truncation=True, return_tensors='np')
+            parts.append(model(**batch).logits)
+        return np.concatenate(parts)
+
+    logits_16 = predict_logits(texts, 16)
+    same = bool(np.allclose(logits_16, logits_all))
+    cells_16 = sum(tokenizer(texts[s:s + 16], padding=True, return_tensors='np')['input_ids'].size
+                   for s in range(0, len(texts), 16))
+    cells_all = tokenizer(texts, padding=True, return_tensors='np')['input_ids'].size
+    print(same, cells_16, cells_all)
+  explanation: |
+    - Логиты по частям совпадают с логитами за один раз, потому что маска не даёт модели смотреть на заполнение. Без маски каждый текст «видел» бы [PAD] своего батча, и ответы зависели бы от соседей.
+    - Одна общая таблица — 88 × 38 = 3 344 клетки, хотя настоящих токенов всего 1 207. Батчи по 16 вместе занимают 1 616 клеток: каждый дополняется только до своего самого длинного текста. Длинные русские отзывы попали в последний батч и раздувают только его.
+    - Батчи нужны ещё и потому, что на тысячах текстов одна таблица не поместится в память видеокарты.
+  hints:
+    - "Часть текстов — `texts[start:start + batch_size]`."
+    - "Логиты части — `model(**batch).logits`; общая таблица — `np.concatenate(parts)`."
+    - "Клеток в таблице — `tokenizer(texts, padding=True, return_tensors='np')['input_ids'].size`."
+  tests: |
+    import numpy as np
+    f = var('predict_logits')
+    ensure(callable(f), '`predict_logits` должна быть функцией.')
+    sub = ref('texts')[10:30]
+    for bs in [1, 7]:
+        got = np.asarray(f(sub, bs), dtype=float)
+        ensure(got.shape == (len(sub), 2), 'Для {0} текстов `predict_logits` должна вернуть таблицу {0} × 2, а вернула {1}.'.format(len(sub), got.shape))
+        same_array(got, np.asarray(ref('model')(**ref('tokenizer')(sub, padding=True, truncation=True, return_tensors='np')).logits, dtype=float), 'С батчами по ' + str(bs) + ' логиты не совпали с расчётом за один раз.')
+    same_array(np.asarray(var('logits_16'), dtype=float), np.asarray(ref('logits_all'), dtype=float), '`logits_16` — логиты всех отзывов, посчитанные батчами по 16.')
+    s = var('same')
+    ensure(isinstance(s, (bool, np.bool_)), '`same` — `True` или `False`: результат `np.allclose`.')
+    equal(bool(s), True, '`same` должно быть {expected}, а у вас {actual}.')
+    equal(int(var('cells_all', 'number', 'числом')), int(ref('cells_all')), 'В общей таблице {expected} клеток, а у вас {actual}.')
+    equal(int(var('cells_16', 'number', 'числом')), int(ref('cells_16')), 'В батчах по 16 — {expected} клеток, а у вас {actual}.')
+    equal(int(alt('cells_all')), int(alt_ref('cells_all')), HARDCODE_MSG)
+  files: [reviews.csv, distilbert_vocab.txt, sst2_logits.json]
+  wrong:
+    - code: |
+        def predict_logits(texts, batch_size):
+            parts = []
+            for start in range(0, len(texts), batch_size):
+                batch = tokenizer(texts[start:start + batch_size], padding=True, truncation=True, return_tensors='np')
+                parts.append(model(**batch).logits)
+            return np.concatenate(parts)
+        logits_16 = predict_logits(texts, 16)
+        same = bool(np.allclose(logits_16, logits_all))
+        cells_16 = sum(tokenizer(texts[s:s + 16], padding=True, return_tensors='np')['input_ids'].size for s in range(0, len(texts), 16))
+        cells_all = int(tokenizer(texts, padding=True, return_tensors='np')['attention_mask'].sum())
+      expect: В общей таблице
+    - code: |
+        def predict_logits(texts, batch_size):
+            parts = []
+            for start in range(0, len(texts), batch_size):
+                batch = tokenizer(texts[start:start + batch_size], padding=True, truncation=True, return_tensors='np')
+                parts.append(model(**batch).logits)
+            return np.concatenate(parts[:-1])
+        logits_16 = predict_logits(texts, 16)
+        same = False
+        cells_16 = sum(tokenizer(texts[s:s + 16], padding=True, return_tensors='np')['input_ids'].size for s in range(0, len(texts), 16))
+        cells_all = tokenizer(texts, padding=True, return_tensors='np')['input_ids'].size
+      expect: таблицу
+
+- id: m9-l6-t5
+  title: Температура
+  difficulty: star
+  introduces: []
+  uses: [logits, binary-classification]
+  statement: |
+    Если перед softmax разделить логиты на число T («температуру»), класс с наибольшей вероятностью не изменится, а вероятности станут мягче (T > 1) или резче (T < 1). Подберём T, при которой вероятности модели лучше всего согласуются с правильными ответами. Для каждой температуры из `temps` посчитайте логистическую потерю (log loss, урок 8.7) на всех отзывах:
+
+    $$
+    \text{log loss} = -\frac{1}{n}\sum_i \left[y_i \ln p_i + (1 - y_i)\ln(1 - p_i)\right],
+    $$
+
+    где p — вероятность POSITIVE после softmax логитов, делённых на T, а y — правильный ответ `y`. Получите:
+
+    - `losses` — массив потерь для всех температур;
+    - `T_best` — температуру с наименьшей потерей;
+    - `loss_1` и `loss_best` — потери при T = 1 и при `T_best`;
+    - `p_customer` — уверенность модели в её (ошибочном) ответе NEGATIVE на отзыв «Customer support solved my problem in five minutes.» при `T_best`, то есть вероятность NEGATIVE. Номер этого отзыва — `i`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from transformers import AutoTokenizer, AutoModelForSequenceClassification
+    name = 'distilbert-base-uncased-finetuned-sst-2-english'
+    tokenizer = AutoTokenizer.from_pretrained(name)
+    model = AutoModelForSequenceClassification.from_pretrained(name)
+    reviews = pd.read_csv('reviews.csv')
+    logits = model(**tokenizer(list(reviews['text']), padding=True, truncation=True, return_tensors='np')).logits
+    y = reviews['label'].to_numpy()
+    temps = np.round(np.arange(0.5, 5.01, 0.1), 1)
+    found = np.where(reviews['text'] == 'Customer support solved my problem in five minutes.')[0]
+    i = int(found[0]) if len(found) else 0          # номер отзыва о службе поддержки
+    def softmax(z):
+        e = np.exp(z - z.max(axis=-1, keepdims=True))
+        return e / e.sum(axis=-1, keepdims=True)
+  starter: |
+    def log_loss_at(T):
+        p = ...
+        return ...
+
+    losses = np.array([log_loss_at(T) for T in temps])
+    T_best = ...
+    loss_1 = log_loss_at(1.0)
+    loss_best = ...
+    p_customer = ...
+    print(T_best, round(loss_1, 4), round(loss_best, 4), round(p_customer, 3))
+  solution: |
+    def log_loss_at(T):
+        p = softmax(logits / T)[:, 1]
+        return -np.mean(y * np.log(p) + (1 - y) * np.log(1 - p))
+
+    losses = np.array([log_loss_at(T) for T in temps])
+    T_best = float(temps[losses.argmin()])
+    loss_1 = log_loss_at(1.0)
+    loss_best = losses.min()
+    p_customer = softmax(logits[i] / T_best)[0]
+    print(T_best, round(loss_1, 4), round(loss_best, 4), round(p_customer, 3))
+  explanation: |
+    - Наименьшая потеря — при T = 1,9: 0,184 вместо 0,234 при T = 1. Модель слишком уверена в себе, и, если «смягчить» её вероятности, они лучше согласуются с ответами. Доля верных не меняется: деление на положительное число не меняет, какой логит больше.
+    - Уверенность в самой обидной ошибке падает с 0,991 до 0,922, а на русских отзывах вероятности становятся ещё ближе к 0,5 — честнее.
+    - Так калибруют модели на практике: T подбирают на validation и применяют к новым данным. Здесь мы подбирали T на тех же 88 отзывах, на которых считали потерю, поэтому 0,184 — оптимистичная оценка.
+  hints:
+    - "Вероятность POSITIVE при температуре T — `softmax(logits / T)[:, 1]`."
+    - "Потеря — `-np.mean(y * np.log(p) + (1 - y) * np.log(1 - p))`; лучшая температура — `temps[losses.argmin()]`."
+    - "Вероятность NEGATIVE для отзыва `i` — `softmax(logits[i] / T_best)[0]`."
+  tests: |
+    import numpy as np
+    ls = np.asarray(var('losses'), dtype=float)
+    ensure(ls.shape == ref('losses').shape, '`losses` — по потере на каждую температуру из `temps`, а у вас форма {0}.'.format(ls.shape))
+    if np.allclose(ls, -ref('losses')):
+        fail('Потеря — со знаком минус перед средним: она положительная, и чем меньше, тем лучше.')
+    same_array(ls, ref('losses'), '`losses` — логистическая потеря для каждой температуры.')
+    close(var('T_best', 'number', 'числом'), ref('T_best'), 'Лучшая температура — {expected}, а у вас {actual}.')
+    close(var('loss_1', 'number', 'числом'), ref('loss_1'), 'Потеря при T = 1 — {expected}, а у вас {actual}.')
+    close(var('loss_best', 'number', 'числом'), ref('loss_best'), 'Потеря при лучшей температуре — {expected}, а у вас {actual}.')
+    pc = var('p_customer', 'number', 'числом')
+    if abs(pc - (1 - ref('p_customer'))) < 1e-6:
+        fail('Модель ответила NEGATIVE, поэтому её уверенность — вероятность NEGATIVE (столбец 0).')
+    close(pc, ref('p_customer'), 'Уверенность в ошибочном ответе при лучшей температуре — {expected}, а у вас {actual}.')
+    close(alt('loss_1'), alt_ref('loss_1'), HARDCODE_MSG)
+  files: [reviews.csv, distilbert_vocab.txt, sst2_logits.json]
+  wrong:
+    - code: |
+        def log_loss_at(T):
+            p = softmax(logits / T)[:, 1]
+            return np.mean(y * np.log(p) + (1 - y) * np.log(1 - p))
+        losses = np.array([log_loss_at(T) for T in temps])
+        T_best = float(temps[losses.argmax()])
+        loss_1 = log_loss_at(1.0)
+        loss_best = losses.max()
+        p_customer = softmax(logits[i] / T_best)[0]
+      expect: со знаком минус
+    - code: |
+        def log_loss_at(T):
+            p = softmax(logits / T)[:, 1]
+            return -np.mean(y * np.log(p) + (1 - y) * np.log(1 - p))
+        losses = np.array([log_loss_at(T) for T in temps])
+        T_best = float(temps[losses.argmin()])
+        loss_1 = log_loss_at(1.0)
+        loss_best = losses.min()
+        p_customer = softmax(logits[i] / T_best)[1]
+      expect: вероятность NEGATIVE

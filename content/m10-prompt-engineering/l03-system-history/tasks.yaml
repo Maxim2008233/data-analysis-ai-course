@@ -1,0 +1,410 @@
+- id: m10-l3-t1
+  title: Системный промпт по частям
+  difficulty: warmup
+  introduces: [system-prompt]
+  uses: []
+  statement: |
+    Напишите функцию `build_system(role, instruction, fmt, rules=())`. Она собирает системный промпт в том же виде, что в ноутбуке курса:
+
+    ```
+    роль и задача
+    ## Инструкция
+    инструкция
+    ## Формат ответа
+    формат
+    ```
+
+    Каждая строка, и последняя тоже, заканчивается переводом строки `\n`. Если список ограничений `rules` не пуст, в конец добавляется строка `## Ограничения`, а за ней каждое ограничение отдельной строкой, начиная с `- `.
+
+    Получите:
+
+    - `system` — промпт из частей ноутбука `ROLE`, `INSTRUCTION` и `FMT`: он должен совпасть с `SYSTEM`;
+    - `strict` — тот же промпт с ограничениями `RULES`.
+  prelude: |
+    SYSTEM = ("Ты полезный ассистент для тестирования ГигаЧата. Твоя задача отвечать студенту на учебные вопросы\n"
+              "## Инструкция\n"
+              "Ответ должен подходить студенту начальных курсов бакалавриата, изучающему технологии искусственного интеллекта\n"
+              "## Формат ответа\n"
+              "Текст и таблицы в формате markdown\n")
+    ROLE = "Ты полезный ассистент для тестирования ГигаЧата. Твоя задача отвечать студенту на учебные вопросы"
+    INSTRUCTION = "Ответ должен подходить студенту начальных курсов бакалавриата, изучающему технологии искусственного интеллекта"
+    FMT = "Текст и таблицы в формате markdown"
+    RULES = ["Отвечай не длиннее 10 строк", "Если не знаешь ответа, так и скажи"]
+  starter: |
+    def build_system(role, instruction, fmt, rules=()):
+        text = role + '\n'
+        text += ...
+        text += ...
+        if rules:
+            ...
+        return text
+
+    system = build_system(ROLE, INSTRUCTION, FMT)
+    strict = ...
+    print(system == SYSTEM)
+    print(strict)
+  solution: |
+    def build_system(role, instruction, fmt, rules=()):
+        text = role + '\n'
+        text += '## Инструкция\n' + instruction + '\n'
+        text += '## Формат ответа\n' + fmt + '\n'
+        if rules:
+            text += '## Ограничения\n'
+            for rule in rules:
+                text += '- ' + rule + '\n'
+        return text
+
+    system = build_system(ROLE, INSTRUCTION, FMT)
+    strict = build_system(ROLE, INSTRUCTION, FMT, RULES)
+    print(system == SYSTEM)
+    print(strict)
+  explanation: |
+    - Промпт собирается из кусков, как любая строка. Функция позволяет менять части по отдельности — роль, аудиторию, формат — и сравнивать ответы модели.
+    - Раздел «Ограничения» появляется, только если ограничения есть: пустой заголовок модели ни к чему.
+    - Заголовки `##` делят промпт на понятные части. Модели всё равно, как устроен текст, но такой промпт легко читать и править человеку.
+  hints:
+    - "Раздел — строка заголовка и строка текста: `'## Инструкция\\n' + instruction + '\\n'`."
+    - "Ограничения — цикл по `rules`: к тексту добавляется `'- ' + rule + '\\n'`."
+    - "`strict = build_system(ROLE, INSTRUCTION, FMT, RULES)`."
+  tests: |
+    f = var('build_system')
+    ensure(callable(f), '`build_system` должна быть функцией.')
+    got = f('Роль', 'Аудитория', 'Формат')
+    ensure(isinstance(got, str), '`build_system` должна вернуть строку.')
+    if got == 'Роль\n## Инструкция\nАудитория\n## Формат ответа\nФормат':
+        fail('Каждая строка промпта, и последняя тоже, заканчивается переводом строки `\\n`.')
+    if '## Ограничения' in got:
+        fail('Без ограничений раздела «## Ограничения» быть не должно.')
+    equal(got, 'Роль\n## Инструкция\nАудитория\n## Формат ответа\nФормат\n', 'build_system("Роль", "Аудитория", "Формат") должна дать строки «Роль», «## Инструкция», «Аудитория», «## Формат ответа», «Формат» — каждую с переводом строки в конце.')
+    equal(f('Р', 'И', 'Ф', ['раз', 'два']), 'Р\n## Инструкция\nИ\n## Формат ответа\nФ\n## Ограничения\n- раз\n- два\n', 'С ограничениями ["раз", "два"] в конце должен быть раздел «## Ограничения» и строки «- раз», «- два».')
+    equal(var('system', str, 'строкой'), ref('SYSTEM'), '`system` должен совпасть с системным промптом ноутбука `SYSTEM`.')
+    equal(var('strict', str, 'строкой'), ref('strict'), '`strict` — промпт ноутбука с ограничениями `RULES`.')
+  wrong:
+    - code: |
+        def build_system(role, instruction, fmt, rules=()):
+            parts = [role, '## Инструкция', instruction, '## Формат ответа', fmt]
+            if rules:
+                parts += ['## Ограничения'] + ['- ' + r for r in rules]
+            return '\n'.join(parts)
+        system = build_system(ROLE, INSTRUCTION, FMT)
+        strict = build_system(ROLE, INSTRUCTION, FMT, RULES)
+      expect: и последняя тоже
+    - code: |
+        def build_system(role, instruction, fmt, rules=()):
+            text = role + '\n'
+            text += '## Инструкция\n' + instruction + '\n'
+            text += '## Формат ответа\n' + fmt + '\n'
+            text += '## Ограничения\n'
+            for rule in rules:
+                text += '- ' + rule + '\n'
+            return text
+        system = build_system(ROLE, INSTRUCTION, FMT)
+        strict = build_system(ROLE, INSTRUCTION, FMT, RULES)
+      expect: быть не должно
+
+- id: m10-l3-t2
+  title: Ответ — с ролью assistant
+  difficulty: main
+  introduces: []
+  uses: [system-prompt, llm-chat-api]
+  statement: |
+    В ноутбуке курса ответ модели попал в историю с ролью `user`. Исправим. Напишите функцию `add_turn(history, answer, question)`. Она возвращает **новый** список: старую историю, затем ответ модели `answer` с ролью `assistant`, затем новый вопрос `question` с ролью `user`. Исходный список `history` меняться не должен.
+
+    `notebook` — записи ноутбука по названиям. Получите:
+
+    - `wrong_roles` — список ролей сообщений запроса `notebook['history-100']` из ноутбука (сообщения — `notebook['history-100']['messages']`);
+    - `fixed` — исправленную историю: два первых сообщения того же запроса (системное и первый вопрос), затем ответ модели `notebook['system-100']['response']` и вопрос `'Уточни контент определением ролей'`;
+    - `roles` — список ролей сообщений `fixed`.
+  prelude: |
+    import json
+    with open('gigachat_notebook.json', encoding='utf-8') as fh:
+        notebook = {r['id']: r for r in json.load(fh)['records']}
+  starter: |
+    def add_turn(history, answer, question):
+        return history + [..., ...]
+
+    wrong_roles = [m['role'] for m in notebook['history-100']['messages']]
+    start = notebook['history-100']['messages'][:2]
+    fixed = add_turn(start, ..., 'Уточни контент определением ролей')
+    roles = ...
+    print(wrong_roles)
+    print(roles)
+  solution: |
+    def add_turn(history, answer, question):
+        return history + [{'role': 'assistant', 'content': answer}, {'role': 'user', 'content': question}]
+
+    wrong_roles = [m['role'] for m in notebook['history-100']['messages']]
+    start = notebook['history-100']['messages'][:2]
+    fixed = add_turn(start, notebook['system-100']['response'], 'Уточни контент определением ролей')
+    roles = [m['role'] for m in fixed]
+    print(wrong_roles)
+    print(roles)
+  explanation: |
+    - В ноутбуке роли были `['system', 'user', 'user', 'user']`: модель видела три сообщения пользователя подряд и не могла понять, что второе из них — её собственный ответ.
+    - После исправления роли чередуются: `['system', 'user', 'assistant', 'user']`. Так история выглядит в любом чате.
+    - `history + [...]` создаёт новый список, а старый остаётся прежним. `append`, как в ноутбуке, меняет сам запрос: после него прежний вариант истории уже не вернуть, и повторить первый запрос не получится.
+  hints:
+    - "Сообщение — словарь `{'role': 'assistant', 'content': answer}`."
+    - "Сложение списков `history + [...]` даёт новый список и не меняет `history`."
+    - "Роли — `[m['role'] for m in fixed]`."
+  tests: |
+    import copy
+    f = var('add_turn')
+    ensure(callable(f), '`add_turn` должна быть функцией.')
+    h = [{'role': 'system', 'content': 'S'}, {'role': 'user', 'content': 'Q1'}]
+    before = copy.deepcopy(h)
+    out = f(h, 'A1', 'Q2')
+    if h != before:
+        fail('`add_turn` не должна менять исходный список: верните новый, например `history + [...]`.')
+    ensure(isinstance(out, list) and len(out) == 4, '`add_turn` должна вернуть список: старая история и ещё два сообщения.')
+    if out[2].get('role') == 'user':
+        fail('Ответ модели добавляют в историю с ролью assistant, а не user — именно эта ошибка в ноутбуке.')
+    equal(out, before + [{'role': 'assistant', 'content': 'A1'}, {'role': 'user', 'content': 'Q2'}], 'add_turn(история, "A1", "Q2") должна дать {expected}, а получилось {actual}.')
+    equal(var('wrong_roles', list, 'списком'), ref('wrong_roles'), 'Роли в запросе ноутбука — {expected}, а у вас {actual}.')
+    equal(var('fixed', list, 'списком'), ref('fixed'), '`fixed` — два первых сообщения запроса ноутбука, ответ модели и вопрос про роли.')
+    equal(var('roles', list, 'списком'), ['system', 'user', 'assistant', 'user'], 'Роли исправленной истории — {expected}, а у вас {actual}.')
+  files: [gigachat_notebook.json]
+  wrong:
+    - code: |
+        def add_turn(history, answer, question):
+            return history + [{'role': 'user', 'content': answer}, {'role': 'user', 'content': question}]
+        wrong_roles = [m['role'] for m in notebook['history-100']['messages']]
+        start = notebook['history-100']['messages'][:2]
+        fixed = add_turn(start, notebook['system-100']['response'], 'Уточни контент определением ролей')
+        roles = [m['role'] for m in fixed]
+      expect: с ролью assistant
+    - code: |
+        def add_turn(history, answer, question):
+            history.append({'role': 'assistant', 'content': answer})
+            history.append({'role': 'user', 'content': question})
+            return history
+        wrong_roles = [m['role'] for m in notebook['history-100']['messages']]
+        start = notebook['history-100']['messages'][:2]
+        fixed = add_turn(start, notebook['system-100']['response'], 'Уточни контент определением ролей')
+        roles = [m['role'] for m in fixed]
+      expect: не должна менять
+
+- id: m10-l3-t3
+  title: Сколько ходов поместится в окно
+  difficulty: main
+  introduces: [context-window]
+  uses: [llm-chat-api]
+  statement: |
+    Контекстное окно — запрос и ответ вместе. Запрос помещается, если его токены плюс `max_tokens` (место под ответ) не больше окна. `count_tokens(messages)` — прикидка из урока: длина текста, делённая на 5,09.
+
+    Напишите функцию `turns_until(window, max_tokens)`. Диалог идёт, как в уроке: сначала системный промпт `SYSTEM`, на каждом ходу вопрос `MESSAGE`, затем записанный ответ из `answers` по кругу. Функция возвращает номер первого хода (с 1), на котором запрос вместе с `max_tokens` уже не помещается в окно.
+
+    Получите `t_1000 = turns_until(1000, 200)`, `t_4000 = turns_until(4000, 200)` и `t_4000_long = turns_until(4000, 1000)`.
+  prelude: |
+    import json
+    import math
+    MESSAGE = "Дай определение и Расскажи в 3 коротких пунктах об особенностях prompt engineering, "
+    SYSTEM = ("Ты полезный ассистент для тестирования ГигаЧата. Твоя задача отвечать студенту на учебные вопросы\n"
+              "## Инструкция\n"
+              "Ответ должен подходить студенту начальных курсов бакалавриата, изучающему технологии искусственного интеллекта\n"
+              "## Формат ответа\n"
+              "Текст и таблицы в формате markdown\n")
+    with open('gigachat_notebook.json', encoding='utf-8') as fh:
+        notebook = {r['id']: r for r in json.load(fh)['records']}
+    answers = [notebook[k]['response'] for k in ['definition-1', 'definition-2', 'definition-pro-1', 'definition-pro-2']]
+
+    def count_tokens(messages):
+        return math.ceil(sum(len(m['content']) for m in messages) / 5.09)
+  starter: |
+    def turns_until(window, max_tokens):
+        history = [{'role': 'system', 'content': SYSTEM}]
+        for turn in range(1, 1000):
+            history.append({'role': 'user', 'content': MESSAGE})
+            if ...:
+                return turn
+            history.append({'role': 'assistant', 'content': answers[(turn - 1) % 4]})
+        return None
+
+    t_1000 = turns_until(1000, 200)
+    t_4000 = ...
+    t_4000_long = ...
+    print(t_1000, t_4000, t_4000_long)
+  solution: |
+    def turns_until(window, max_tokens):
+        history = [{'role': 'system', 'content': SYSTEM}]
+        for turn in range(1, 1000):
+            history.append({'role': 'user', 'content': MESSAGE})
+            if count_tokens(history) + max_tokens > window:
+                return turn
+            history.append({'role': 'assistant', 'content': answers[(turn - 1) % 4]})
+        return None
+
+    t_1000 = turns_until(1000, 200)
+    t_4000 = turns_until(4000, 200)
+    t_4000_long = turns_until(4000, 1000)
+    print(t_1000, t_4000, t_4000_long)
+  explanation: |
+    - Каждый ход добавляет к истории вопрос и ответ — примерно 140–170 токенов, поэтому окно заполняется быстро. В окно на 1000 токенов при ответе до 200 токенов помещается только пять ходов: шестой запрос уже не влезает.
+    - Окно в 4000 токенов выдерживает 25 ходов, а если оставить под ответ 1000 токенов — только 19: место под ответ отнимается у истории.
+    - Поэтому `max_tokens` ставят с умом: слишком маленький обрывает ответ (урок 10.1), слишком большой отнимает место у истории.
+  hints:
+    - "Запрос не помещается, если `count_tokens(history) + max_tokens > window`."
+    - "Проверку делайте сразу после того, как добавили вопрос: в запросе есть всё, кроме ответа, который ещё не получен."
+    - "`t_4000 = turns_until(4000, 200)`, `t_4000_long = turns_until(4000, 1000)`."
+  tests: |
+    f = var('turns_until')
+    ensure(callable(f), '`turns_until` должна быть функцией.')
+    g = ref('turns_until')
+    got = f(1000, 0)
+    if got == g(1000, 200) and g(1000, 0) != got:
+        fail('Похоже, функция не учитывает ответ: окно — запрос и ответ вместе, прибавьте max_tokens.')
+    for w, mt in [(1000, 0), (2500, 300), (6000, 800)]:
+        r = f(w, mt)
+        if r == g(w, 0) and g(w, mt) != r:
+            fail('Окно — запрос и ответ вместе: к токенам запроса прибавьте max_tokens.')
+        equal(r, g(w, mt), 'turns_until({0}, {1}) должна дать {{expected}}, а получилось {{actual}}.'.format(w, mt))
+    equal(var('t_1000'), ref('t_1000'), 'Для окна 1000 и ответа 200 — ход {expected}, а у вас {actual}.')
+    equal(var('t_4000'), ref('t_4000'), 'Для окна 4000 и ответа 200 — ход {expected}, а у вас {actual}.')
+    equal(var('t_4000_long'), ref('t_4000_long'), 'Для окна 4000 и ответа 1000 — ход {expected}, а у вас {actual}.')
+  files: [gigachat_notebook.json]
+  wrong:
+    - code: |
+        def turns_until(window, max_tokens):
+            history = [{'role': 'system', 'content': SYSTEM}]
+            for turn in range(1, 1000):
+                history.append({'role': 'user', 'content': MESSAGE})
+                if count_tokens(history) > window:
+                    return turn
+                history.append({'role': 'assistant', 'content': answers[(turn - 1) % 4]})
+            return None
+        t_1000 = turns_until(1000, 200)
+        t_4000 = turns_until(4000, 200)
+        t_4000_long = turns_until(4000, 1000)
+      expect: прибавьте max_tokens
+    - code: |
+        def turns_until(window, max_tokens):
+            history = [{'role': 'system', 'content': SYSTEM}]
+            for turn in range(1, 1000):
+                history.append({'role': 'user', 'content': MESSAGE})
+                history.append({'role': 'assistant', 'content': answers[(turn - 1) % 4]})
+                if count_tokens(history) + max_tokens > window:
+                    return turn
+            return None
+        t_1000 = turns_until(1000, 200)
+        t_4000 = turns_until(4000, 200)
+        t_4000_long = turns_until(4000, 1000)
+      expect: должна дать
+
+- id: m10-l3-t4
+  title: Обрезать историю под бюджет
+  difficulty: star
+  introduces: []
+  uses: [context-window, system-prompt]
+  statement: |
+    Напишите функцию `trim_history(messages, budget)`. В `messages` первое сообщение — системное, последнее — вопрос пользователя. Функция возвращает новый список, который помещается в `budget` токенов (`count_tokens` готова):
+
+    - системное сообщение остаётся всегда;
+    - последний вопрос пользователя остаётся всегда;
+    - из остальных сообщений по одному убираются самые старые, пока история не поместится;
+    - сразу после системного сообщения не может стоять ответ модели (`assistant`): ответ без вопроса тоже убирается.
+
+    Если не помещаются даже системное сообщение и последний вопрос, функция возвращает только их.
+
+    `long_history` — диалог из урока: системный промпт, десять ходов и новый вопрос. Получите `trimmed = trim_history(long_history, 600)`, `n_kept` — сколько в нём сообщений, и `kept_tokens` — сколько в нём токенов.
+  prelude: |
+    import json
+    import math
+    MESSAGE = "Дай определение и Расскажи в 3 коротких пунктах об особенностях prompt engineering, "
+    SYSTEM = ("Ты полезный ассистент для тестирования ГигаЧата. Твоя задача отвечать студенту на учебные вопросы\n"
+              "## Инструкция\n"
+              "Ответ должен подходить студенту начальных курсов бакалавриата, изучающему технологии искусственного интеллекта\n"
+              "## Формат ответа\n"
+              "Текст и таблицы в формате markdown\n")
+    with open('gigachat_notebook.json', encoding='utf-8') as fh:
+        notebook = {r['id']: r for r in json.load(fh)['records']}
+    answers = [notebook[k]['response'] for k in ['definition-1', 'definition-2', 'definition-pro-1', 'definition-pro-2']]
+
+    def count_tokens(messages):
+        return math.ceil(sum(len(m['content']) for m in messages) / 5.09)
+
+    long_history = [{'role': 'system', 'content': SYSTEM}]
+    for turn in range(10):
+        long_history.append({'role': 'user', 'content': MESSAGE})
+        long_history.append({'role': 'assistant', 'content': answers[turn % 4]})
+    long_history.append({'role': 'user', 'content': 'Какой из трёх пунктов самый важный?'})
+  starter: |
+    def trim_history(messages, budget):
+        system, middle, last = messages[0], messages[1:-1], messages[-1]
+        while middle and count_tokens([system] + middle + [last]) > budget:
+            middle = ...
+        while middle and ...:
+            middle = middle[1:]
+        return [system] + middle + [last]
+
+    trimmed = trim_history(long_history, 600)
+    n_kept = ...
+    kept_tokens = ...
+    print([m['role'] for m in trimmed], n_kept, kept_tokens)
+  solution: |
+    def trim_history(messages, budget):
+        system, middle, last = messages[0], messages[1:-1], messages[-1]
+        while middle and count_tokens([system] + middle + [last]) > budget:
+            middle = middle[1:]                       # убираем самое старое сообщение
+        while middle and middle[0]['role'] == 'assistant':
+            middle = middle[1:]                       # ответ без вопроса не нужен
+        return [system] + middle + [last]
+
+    trimmed = trim_history(long_history, 600)
+    n_kept = len(trimmed)
+    kept_tokens = count_tokens(trimmed)
+    print([m['role'] for m in trimmed], n_kept, kept_tokens)
+  explanation: |
+    - Системное сообщение и последний вопрос откладываются отдельно, а обрезается только середина — так их невозможно выбросить по ошибке.
+    - После обрезки под 600 токенов от разговора остаются три последних хода и новый вопрос — вместе с системным промптом 8 сообщений и 510 токенов. Остальные семь ходов модель не увидит.
+    - Если отрезать сообщения по одному, в начале может остаться ответ без вопроса. Модель решила бы, что разговор начала она сама. Второй цикл убирает такой ответ.
+  hints:
+    - "Самое старое сообщение середины — `middle[0]`; без него — `middle[1:]`."
+    - "Ответ без вопроса — когда `middle[0]['role'] == 'assistant'`."
+    - "`n_kept = len(trimmed)`, `kept_tokens = count_tokens(trimmed)`."
+  tests: |
+    import copy
+    f = var('trim_history')
+    ensure(callable(f), '`trim_history` должна быть функцией.')
+    g = ref('trim_history')
+    S = {'role': 'system', 'content': 's' * 102}
+    def turn(k):
+        return [{'role': 'user', 'content': 'q%d' % k + 'x' * 48}, {'role': 'assistant', 'content': 'a%d' % k + 'y' * 98}]
+    msgs = [S] + turn(1) + turn(2) + turn(3) + [{'role': 'user', 'content': 'last' + 'z' * 47}]
+    before = copy.deepcopy(msgs)
+    for budget in [10, 70, 80, 100, 110, 130, 1000]:
+        got = f(msgs, budget)
+        ensure(msgs == before, '`trim_history` не должна менять исходный список.')
+        ensure(isinstance(got, list) and got, '`trim_history` должна вернуть непустой список сообщений.')
+        if got[0] != S:
+            fail('Системное сообщение остаётся всегда — первым в списке.')
+        if got[-1] != msgs[-1]:
+            fail('Последний вопрос пользователя остаётся всегда — последним в списке.')
+        if len(got) > 2 and got[1]['role'] == 'assistant':
+            fail('Сразу после системного сообщения не может стоять ответ модели: история не может начинаться с ответа без вопроса.')
+        equal(got, g(msgs, budget), 'При бюджете {0} токенов должно остаться {1} сообщений, а у вас {2}.'.format(budget, len(g(msgs, budget)), len(got)))
+    trimmed = var('trimmed', list, 'списком')
+    equal(trimmed, ref('trimmed'), '`trimmed` — `long_history`, обрезанная до 600 токенов.')
+    equal(var('n_kept'), ref('n_kept'), 'В обрезанной истории {expected} сообщений, а у вас {actual}.')
+    equal(var('kept_tokens'), ref('kept_tokens'), 'В обрезанной истории {expected} токенов, а у вас {actual}.')
+  files: [gigachat_notebook.json]
+  wrong:
+    - code: |
+        def trim_history(messages, budget):
+            out = list(messages)
+            while len(out) > 1 and count_tokens(out) > budget:
+                out = out[1:]
+            return out
+        trimmed = trim_history(long_history, 600)
+        n_kept = len(trimmed)
+        kept_tokens = count_tokens(trimmed)
+      expect: Системное сообщение остаётся всегда
+    - code: |
+        def trim_history(messages, budget):
+            system, middle, last = messages[0], messages[1:-1], messages[-1]
+            while middle and count_tokens([system] + middle + [last]) > budget:
+                middle = middle[1:]
+            return [system] + middle + [last]
+        trimmed = trim_history(long_history, 600)
+        n_kept = len(trimmed)
+        kept_tokens = count_tokens(trimmed)
+      expect: не может стоять ответ модели

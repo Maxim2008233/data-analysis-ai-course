@@ -1,0 +1,338 @@
+- id: m5-l5-t1
+  title: Создать и обучить модель-ориентир
+  difficulty: warmup
+  introduces: [sk-fit-predict, baseline-model]
+  uses: [sk-split]
+  statement: |
+    Создайте `baseline` — `DummyRegressor`, который предсказывает **медиану**, обучите его на обучающей части и получите `learned` — число, которое модель выучила (атрибут `constant_` — массив формы (1, 1); число из него достаёт `.item()`).
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.dummy import DummyRegressor
+    df = pd.read_csv('cars_processed.csv')
+    X = df[['Year', 'Distance', 'Engine', 'km_year']]
+    y = df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    baseline = ...
+    baseline.fit(...)
+    learned = ...
+    print(learned, y_train.median())
+  solution: |
+    baseline = DummyRegressor(strategy='median')
+    baseline.fit(X_train, y_train)
+    learned = baseline.constant_.item()
+    print(learned, y_train.median())
+  explanation: |
+    - Создание объекта задаёт настройку `strategy='median'`; данные понадобятся только в `fit`.
+    - `fit(X_train, y_train)` — признаки и ответы **обучающей** части; модель запоминает медиану `y_train`.
+    - `constant_` появляется после обучения; `.item()` превращает массив из одного числа в обычное число.
+  hints:
+    - "Создать: `DummyRegressor(strategy=...)`; обучить: `fit` на обучающих признаках и ответах."
+    - "`baseline = DummyRegressor(strategy='median')`; `baseline.fit(X_train, y_train)`."
+    - "`learned = baseline.constant_.item()`."
+  tests: |
+    from sklearn.dummy import DummyRegressor
+    b = var('baseline', DummyRegressor, 'моделью DummyRegressor')
+    ensure(b.strategy == 'median', 'Ориентир должен предсказывать медиану: `strategy=\'median\'`.')
+    ensure(hasattr(b, 'constant_'), 'Модель не обучена — вызовите `baseline.fit(X_train, y_train)`.')
+    l = var('learned', 'number', 'числом')
+    if abs(l - ref('y_valid').median()) < 1e-9 and abs(l - ref('y_train').median()) > 1e-9:
+        fail('Модель обучена на валидационной части. `fit` вызывают на обучающей: `fit(X_train, y_train)`.')
+    close(l, ref('learned'), 'Модель должна выучить медиану обучающих цен — {expected}, а у вас {actual}.')
+    close(alt('learned'), alt_ref('learned'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        baseline = DummyRegressor(strategy='mean')
+        baseline.fit(X_train, y_train)
+        learned = baseline.constant_.item()
+      expect: медиану
+    - code: |
+        baseline = DummyRegressor(strategy='median')
+        baseline.fit(X_valid, y_valid)
+        learned = baseline.constant_.item()
+      expect: на обучающей
+
+- id: m5-l5-t2
+  title: Прогнозы и MAE ориентира
+  difficulty: main
+  introduces: [sk-fit-predict, baseline-model]
+  uses: [metric-mae-mape]
+  statement: |
+    Обученный ориентир `baseline` уже есть. Получите `pred` — его прогнозы для валидационной части — и `baseline_mae` — MAE на валидации функцией `mean_absolute_error`.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.dummy import DummyRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X = df[['Year', 'Distance', 'Engine', 'km_year']]
+    y = df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    baseline = DummyRegressor(strategy='median').fit(X_train, y_train)   # задание 5.5.1
+  starter: |
+    pred = ...
+    baseline_mae = ...
+    print(pred.shape, round(baseline_mae))
+  solution: |
+    pred = baseline.predict(X_valid)
+    baseline_mae = mean_absolute_error(y_valid, pred)
+    print(pred.shape, round(baseline_mae))
+  explanation: |
+    - `predict` получает только признаки валидационных машин и возвращает массив прогнозов той же длины.
+    - `mean_absolute_error(y_valid, pred)`: сначала настоящие цены, затем прогнозы.
+    - Около 6 000 евро — планка, которую должна опустить настоящая модель.
+  hints:
+    - "Прогноз — `predict` по признакам валидации; ошибка — функция из `sklearn.metrics`."
+    - "`pred = baseline.predict(X_valid)`."
+    - "`baseline_mae = mean_absolute_error(y_valid, pred)`."
+  tests: |
+    import numpy as np
+    p = var('pred', np.ndarray, 'массивом прогнозов')
+    if len(p) == len(ref('X_train')):
+        fail('Прогнозы получены для обучающей части. Нужны прогнозы для валидационной: `predict(X_valid)`.')
+    ensure(len(p) == len(ref('X_valid')), 'Прогнозов должно быть столько же, сколько валидационных машин ({0}).'.format(len(ref('X_valid'))))
+    close(var('baseline_mae', 'number', 'числом'), ref('baseline_mae'), 'MAE ориентира на валидации — {expected}, а у вас {actual}.')
+    close(alt('baseline_mae'), alt_ref('baseline_mae'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        pred = baseline.predict(X_train)
+        baseline_mae = mean_absolute_error(y_train, pred)
+      expect: валидационной
+    - code: |
+        pred = baseline.predict(X_valid)
+        baseline_mae = mean_absolute_error(y_valid, pred) / len(pred)
+      expect: MAE ориентира
+
+- id: m5-l5-t3
+  title: MAE руками на трёх машинах
+  difficulty: main
+  introduces: [baseline-model]
+  uses: [metric-mae-mape, vectorization]
+  statement: |
+    Для первых трёх валидационных машин получите `three_true` (цены, массив NumPy) и `three_pred` (прогнозы ориентира), `errors` = прогноз − цена, `mae_by_hand` — MAE руками и `mae_sklearn` — то же функцией `mean_absolute_error`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.dummy import DummyRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X = df[['Year', 'Distance', 'Engine', 'km_year']]
+    y = df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    baseline = DummyRegressor(strategy='median').fit(X_train, y_train)
+    pred = baseline.predict(X_valid)
+  starter: |
+    three_true = ...
+    three_pred = ...
+    errors = ...
+    mae_by_hand = ...
+    mae_sklearn = ...
+    print(three_true, three_pred, errors, mae_by_hand, mae_sklearn)
+  solution: |
+    three_true = y_valid.iloc[:3].to_numpy()
+    three_pred = pred[:3]
+    errors = three_pred - three_true
+    mae_by_hand = np.abs(errors).mean()
+    mae_sklearn = mean_absolute_error(three_true, three_pred)
+    print(three_true, three_pred, errors, mae_by_hand, mae_sklearn)
+  explanation: |
+    - `iloc[:3]` — первые три строки валидации по позиции (урок 2.4), `to_numpy()` — массив.
+    - Ошибки с направлением: плюс — ориентир завысил цену, минус — занизил.
+    - MAE руками и функцией совпадают: функция делает ровно то же — среднее модулей.
+  hints:
+    - "Первые три цены — `y_valid.iloc[:3]`; первые три прогноза — срез массива `pred`."
+    - "`errors = three_pred - three_true`; `mae_by_hand = np.abs(errors).mean()`."
+    - "`mae_sklearn = mean_absolute_error(three_true, three_pred)`."
+  tests: |
+    import numpy as np
+    same_array(np.asarray(var('three_true', None, 'массивом')), ref('three_true'), 'Цены первых трёх валидационных машин не совпадают: `y_valid.iloc[:3]`.')
+    same_array(np.asarray(var('three_pred', None, 'массивом')), ref('three_pred'), 'Прогнозы для первых трёх машин — `pred[:3]`.')
+    e = np.asarray(var('errors', None, 'массивом'))
+    if np.allclose(e, -ref('errors')) and not np.allclose(ref('errors'), 0):
+        fail('Знак ошибки перевёрнут: прогноз минус цена.')
+    same_array(e, ref('errors'), 'Ошибки не совпадают.')
+    close(var('mae_by_hand', 'number', 'числом'), ref('mae_by_hand'), 'MAE руками — {expected}, а у вас {actual}.')
+    close(var('mae_sklearn', 'number', 'числом'), ref('mae_sklearn'), 'MAE функцией — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        three_true = y_valid.iloc[:3].to_numpy()
+        three_pred = pred[:3]
+        errors = three_true - three_pred
+        mae_by_hand = np.abs(errors).mean()
+        mae_sklearn = mean_absolute_error(three_true, three_pred)
+      expect: перевёрнут
+    - code: |
+        three_true = y_valid.iloc[:3].to_numpy()
+        three_pred = pred[:3]
+        errors = three_pred - three_true
+        mae_by_hand = errors.mean()
+        mae_sklearn = mean_absolute_error(three_true, three_pred)
+      expect: MAE руками
+
+- id: m5-l5-t4
+  kind: quiz
+  title: fit, predict и атрибуты
+  difficulty: main
+  introduces: [sk-fit-predict, baseline-model]
+  uses: []
+  statement: |
+    Проверьте, как устроены модели scikit-learn.
+  quiz:
+    - q: "Что произойдёт при обращении к `baseline.constant_` до `fit`?"
+      options:
+        - Ошибка — у необученной модели этого атрибута нет
+        - Вернётся 0
+        - Вернётся медиана по всем данным
+      answer: 0
+      explain: Атрибуты с `_` появляются только после обучения.
+    - q: Модель-ориентир на валидации ошиблась в среднем на 6 000 евро, линейная модель — на 5 900. Что можно сказать?
+      options:
+        - Линейная модель отличная
+        - Линейная модель почти не лучше простейшего прогноза — признаки использованы плохо или их недостаточно
+        - Ориентир лучше
+      answer: 1
+      explain: Польза модели — насколько она опускает планку ориентира.
+    - q: "Какие строки передают в `fit`?"
+      options:
+        - Только обучающие признаки и ответы
+        - Все данные — так модель выучит больше
+        - Валидационные, чтобы сразу проверить
+      answer: 0
+      explain: Иначе проверка на validation и test перестанет быть честной.
+  hints:
+    - Вспомните, когда появляются атрибуты с `_`, зачем нужен ориентир и на чём обучают.
+    - "Атрибуты — после fit; польза — относительно ориентира; fit — только train."
+    - "Ответы: ошибка; почти не лучше ориентира; только обучающие."
+
+- id: m5-l5-t5
+  title: Медиана или среднее
+  difficulty: main
+  introduces: [baseline-model]
+  uses: [mean-median, metric-mae-mape]
+  statement: |
+    Обучите два ориентира — `DummyRegressor(strategy='median')` и `DummyRegressor(strategy='mean')` — и получите `mae_median`, `mae_mean` (MAE на валидации) и `better` — строку `'median'` или `'mean'`: у кого MAE меньше.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.dummy import DummyRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X = df[['Year', 'Distance', 'Engine', 'km_year']]
+    y = df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    by_median = ...
+    by_mean = ...
+    mae_median = ...
+    mae_mean = ...
+    better = ...
+    print(round(mae_median), round(mae_mean), better)
+  solution: |
+    by_median = DummyRegressor(strategy='median').fit(X_train, y_train)
+    by_mean = DummyRegressor(strategy='mean').fit(X_train, y_train)
+    mae_median = mean_absolute_error(y_valid, by_median.predict(X_valid))
+    mae_mean = mean_absolute_error(y_valid, by_mean.predict(X_valid))
+    better = 'median' if mae_median < mae_mean else 'mean'
+    print(round(mae_median), round(mae_mean), better)
+  explanation: |
+    - `fit` возвращает саму модель, поэтому создание и обучение можно записать в одну строку.
+    - Медиана даёт меньшую MAE: из всех констант именно она минимизирует среднюю абсолютную ошибку (урок 5.0), а среднее завышено дорогими машинами (урок 1.6).
+  hints:
+    - "Два ориентира с разными `strategy`, обученные на train; MAE — на валидации."
+    - "`DummyRegressor(strategy='mean').fit(X_train, y_train)`; `mean_absolute_error(y_valid, модель.predict(X_valid))`."
+    - "`better = 'median' if mae_median < mae_mean else 'mean'`."
+  tests: |
+    close(var('mae_median', 'number', 'числом'), ref('mae_median'), 'MAE ориентира-медианы — {expected}, а у вас {actual}.')
+    close(var('mae_mean', 'number', 'числом'), ref('mae_mean'), 'MAE ориентира-среднего — {expected}, а у вас {actual}.')
+    equal(var('better', str, 'строкой'), ref('better'), 'Меньшая MAE у {expected}, а у вас {actual}.')
+    close(alt('mae_mean'), alt_ref('mae_mean'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        by_median = DummyRegressor(strategy='median').fit(X_train, y_train)
+        by_mean = DummyRegressor(strategy='mean').fit(X_train, y_train)
+        mae_median = mean_absolute_error(y_valid, by_median.predict(X_valid))
+        mae_mean = mean_absolute_error(y_valid, by_mean.predict(X_valid))
+        better = 'median' if mae_median > mae_mean else 'mean'
+      expect: Меньшая MAE
+    - code: |
+        by_median = DummyRegressor(strategy='median').fit(X_train, y_train)
+        by_mean = DummyRegressor(strategy='median').fit(X_train, y_train)
+        mae_median = mean_absolute_error(y_valid, by_median.predict(X_valid))
+        mae_mean = mean_absolute_error(y_valid, by_mean.predict(X_valid))
+        better = 'median' if mae_median < mae_mean else 'mean'
+      expect: ориентира-среднего
+
+- id: m5-l5-t6
+  title: "Ориентир посильнее: медиана цены года выпуска"
+  difficulty: star
+  introduces: [baseline-model]
+  uses: [pd-groupby, metric-mae-mape, sk-split]
+  statement: |
+    Ориентир можно сделать «умнее», не используя никаких моделей: оценивать цену медианой цен **обучающих** машин того же года выпуска. Получите `year_median` — медианы цены по году на train, `est` — оценки для валидационных машин (годов, которых нет в train, — медиана всех цен train), `mae_year` — MAE на валидации и `gain` — на сколько это лучше `DummyRegressor` с медианой (`baseline_mae - mae_year`).
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.dummy import DummyRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X = df[['Year', 'Distance', 'Engine', 'km_year']]
+    y = df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    baseline_mae = mean_absolute_error(y_valid, DummyRegressor(strategy='median').fit(X_train, y_train).predict(X_valid))
+  starter: |
+    year_median = ...
+    est = ...
+    mae_year = ...
+    gain = ...
+    print(round(mae_year), round(gain))
+  solution: |
+    year_median = y_train.groupby(X_train['Year']).median()
+    est = X_valid['Year'].map(year_median).fillna(y_train.median())
+    mae_year = mean_absolute_error(y_valid, est)
+    gain = baseline_mae - mae_year
+    print(round(mae_year), round(gain))
+  explanation: |
+    - `y_train.groupby(X_train['Year'])` группирует цены обучения по году соответствующих машин — метки строк у них общие (урок 3.2).
+    - `map` подставляет каждой валидационной машине медиану её года; редкий год, которого нет в train, получает общую медиану.
+    - MAE падает почти на 2 000 евро — до 4 000. Такой простой ориентир окажется сильным соперником линейной регрессии в уроках 5.6–5.7: модель должна обыгрывать не только константу.
+  hints:
+    - "Медианы цен train по году: группировка `y_train` по колонке `X_train['Year']`."
+    - "`year_median = y_train.groupby(X_train['Year']).median()`; оценки — `X_valid['Year'].map(year_median).fillna(y_train.median())`."
+    - "`mae_year = mean_absolute_error(y_valid, est)`; `gain = baseline_mae - mae_year`."
+  tests: |
+    import pandas as pd
+    ym = var('year_median', pd.Series, 'Series')
+    full = pd.concat([ref('y_train'), ref('y_valid'), ref('y_test')]).groupby(ref('X')['Year']).median()
+    if len(ym) == len(full) and abs((ym - full.reindex(ym.index)).abs().max()) < 1e-9:
+        fail('Медианы посчитаны по всем данным — это утечка. Считайте только по обучающей части.')
+    same_frame(ym, ref('year_median'), 'Медианы цен по году (по train) не совпадают.')
+    e = var('est', pd.Series, 'Series')
+    ensure(e.isna().sum() == 0, 'В оценках остались пропуски — заполните общей медианой цен train.')
+    close(var('mae_year', 'number', 'числом'), ref('mae_year'), 'MAE «медианы года» — {expected}, а у вас {actual}.')
+    close(var('gain', 'number', 'числом'), ref('gain'), 'Выигрыш относительно ориентира — {expected}, а у вас {actual}.')
+    close(alt('mae_year'), alt_ref('mae_year'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        year_median = df.groupby('Year')['Price'].median()
+        est = X_valid['Year'].map(year_median).fillna(y_train.median())
+        mae_year = mean_absolute_error(y_valid, est)
+        gain = baseline_mae - mae_year
+      expect: утечка
+    - code: |
+        year_median = y_train.groupby(X_train['Year']).median()
+        est = X_valid['Year'].map(year_median)
+        mae_year = mean_absolute_error(y_valid, est.fillna(0))
+        gain = baseline_mae - mae_year
+      expect: пропуски

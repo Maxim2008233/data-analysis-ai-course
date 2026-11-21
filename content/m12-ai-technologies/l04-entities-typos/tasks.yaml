@@ -1,0 +1,576 @@
+- id: m12-l4-t1
+  title: Не та раскладка
+  difficulty: warmup
+  introduces: []
+  uses: [py-dicts]
+  statement: |
+    Самая частая «опечатка» в поиске — забыли переключить раскладку и набрали `ghbdtn` вместо «привет». Строка `EN` — клавиши английской раскладки, `RU` — русские буквы на тех же клавишах, по порядку.
+
+    Напишите функцию `to_russian(text)`: каждый символ из `EN` заменить символом `RU` с той же позиции. Заглавные латинские буквы становятся заглавными русскими (`G` → `П`). Остальные символы — пробелы, цифры, знаки, которых нет в `EN`, — не меняются. Получите `fixed` — исправленные запросы `queries`.
+  prelude: |
+    EN = "`qwertyuiop[]asdfghjkl;'zxcvbnm,."
+    RU = "ёйцукенгшщзхъфывапролджэячсмитьбю"
+    queries = ['ghbdtn', 'vfibyyjt j,extybt', 'Vjcrdf', 'ytqhjctnm', 'lj,hsq ltym']
+  starter: |
+    table = dict(zip(EN, RU))
+    for e, r in zip(EN, RU):
+        if e.isalpha():
+            table[...] = ...
+
+    def to_russian(text):
+        return ''.join(... for ch in text)
+
+    fixed = [to_russian(q) for q in queries]
+    print(fixed)
+  solution: |
+    table = dict(zip(EN, RU))
+    for e, r in zip(EN, RU):
+        if e.isalpha():
+            table[e.upper()] = r.upper()
+
+    def to_russian(text):
+        return ''.join(table.get(ch, ch) for ch in text)
+
+    fixed = [to_russian(q) for q in queries]
+    print(fixed)
+  explanation: |
+    - `dict(zip(EN, RU))` — пары «клавиша → русская буква на той же клавише». На русской раскладке на клавишах `,` `.` `;` `[` стоят буквы б, ю, ж, х, поэтому знаки из `EN` тоже заменяются: `lj,hsq` — это «добрый».
+    - Заглавная буква — та же клавиша с Shift. Пары `e.upper() → r.upper()` добавляем только для букв: у `[` заглавной формы нет.
+    - `table.get(ch, ch)` возвращает пару символа, а если её нет — сам символ. Поэтому пробелы и цифры остаются.
+    - Поисковики исправляют раскладку так же, но осторожно. Слепая замена портит настоящие английские слова: `GigaChat` станет «ПшпфСрфе». Поэтому сначала проверяют, есть ли исправленное слово в словаре, — как в исправителе опечаток из урока.
+  hints:
+    - "Таблица замены — словарь `dict(zip(EN, RU))`: клавиша → русская буква на той же клавише."
+    - "Заглавные — та же клавиша с Shift: для букв добавьте пары `table[e.upper()] = r.upper()`."
+    - "Замена символа — `table.get(ch, ch)`: символ без пары остаётся. Строку собирает `''.join(...)`."
+  tests: |
+    f = var('to_russian')
+    ensure(callable(f), '`to_russian` должна быть функцией.')
+    equal(f('ghbdtn'), 'привет', '«ghbdtn» должно стать «привет», а у вас {actual}.')
+    got = f('Ghbdtn vbh 2026')
+    if isinstance(got, str) and got.startswith('G'):
+        fail('Заглавная «G» осталась латинской. Заглавная буква — та же клавиша с Shift: «G» → «П».')
+    equal(got, 'Привет мир 2026', '«Ghbdtn vbh 2026» должно стать {expected}, а у вас {actual}. Пробелы и цифры не меняются.')
+    got = f('lj,hsq ltym')
+    if got == 'до,рый день':
+        fail('Запятая осталась запятой, а на русской раскладке на этой клавише буква «б». Заменяйте все символы из EN, не только буквы.')
+    equal(got, 'добрый день', '«lj,hsq ltym» должно стать {expected}, а у вас {actual}.')
+    equal(f('!?'), '!?', 'Символы, которых нет в EN, остаются как есть, а у вас {actual}.')
+    equal(var('fixed', list, 'списком'), ref('fixed'), 'Исправленные запросы — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        table = dict(zip(EN, RU))
+        def to_russian(text):
+            return ''.join(table.get(ch, ch) for ch in text)
+        fixed = [to_russian(q) for q in queries]
+      expect: Заглавная «G» осталась латинской
+    - code: |
+        table = {e: r for e, r in zip(EN, RU) if e.isalpha()}
+        table.update({e.upper(): r.upper() for e, r in zip(EN, RU) if e.isalpha()})
+        def to_russian(text):
+            return ''.join(table.get(ch, ch) for ch in text)
+        fixed = [to_russian(q) for q in queries]
+      expect: Запятая осталась запятой
+
+- id: m12-l4-t2
+  title: Ссылки на уроки
+  difficulty: main
+  introduces: [named-entities]
+  uses: []
+  statement: |
+    Ссылка на урок — сущность по шаблону. Напишите функцию `lesson_refs(text)`: список номеров уроков (строки вида `'11.2'`), на которые ссылается текст, по порядку.
+
+    - Номер — ссылка, только если перед ним слово «урок» в любой форме и с любой буквы: «Урок 2.1», «в уроке 11.2».
+    - После номера может идти список: «уроки 1.3, 1.5 и 1.7» — три ссылки, «уроках 2.3 и 2.5» — две.
+    - Числа без слова «урок» — не ссылки: «версия 3.14».
+
+    Для разделов курса `texts` получите `n_refs` — сколько всего ссылок, и `top_lesson` — номер урока, на который ссылаются чаще всех.
+  prelude: |
+    import json
+    import re
+    from collections import Counter
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    texts = [d['section'] + '. ' + d['text'] for d in docs]
+  starter: |
+    LIST = ...      # шаблон: «урок» в любой форме, номер, а дальше, может быть, ещё номера через запятую или «и»
+
+    def lesson_refs(text):
+        found = []
+        for m in re.finditer(LIST, text):
+            found += re.findall(r'\d+\.\d+', m.group())
+        return found
+
+    refs = Counter(r for t in texts for r in lesson_refs(t))
+    n_refs = sum(refs.values())
+    top_lesson = refs.most_common(1)[0][0]
+    print(lesson_refs('См. урок 5.4 и уроки 1.3, 1.5 и 1.7.'), n_refs, top_lesson)
+  solution: |
+    LIST = r'\b[Уу]рок\w*\s+\d+\.\d+(?:(?:,\s*|\s+и\s+)\d+\.\d+)*'
+
+    def lesson_refs(text):
+        found = []
+        for m in re.finditer(LIST, text):
+            found += re.findall(r'\d+\.\d+', m.group())
+        return found
+
+    refs = Counter(r for t in texts for r in lesson_refs(t))
+    n_refs = sum(refs.values())
+    top_lesson = refs.most_common(1)[0][0]
+    print(lesson_refs('См. урок 5.4 и уроки 1.3, 1.5 и 1.7.'), n_refs, top_lesson)
+  explanation: |
+    - `\b[Уу]рок\w*` — слово «урок» с большой или маленькой буквы и с любым окончанием, `\s+\d+\.\d+` — пробел и первый номер.
+    - `(?:(?:,\s*|\s+и\s+)\d+\.\d+)*` — продолжение списка: запятая или «и», затем ещё номер, сколько угодно раз. Группа `(?:…)` только объединяет части шаблона и в ответ не попадает.
+    - Шаблон находит кусок «уроки 1.3, 1.5 и 1.7» целиком, а номера из него достаёт второй, простой шаблон `\d+\.\d+`. Два простых шаблона читать легче, чем один сложный.
+    - В курсе 292 ссылки на уроки, на одну больше, чем в примере урока: список «уроках 2.3 и 2.5» дал вторую ссылку. Чаще всех упоминается урок 1.5 о масках: маски нужны почти в каждом модуле.
+  hints:
+    - 'Начало шаблона — `\b[Уу]рок\w*\s+\d+\.\d+`: слово «урок» в любой форме и первый номер.'
+    - 'Продолжение списка — `(?:(?:,\s*|\s+и\s+)\d+\.\d+)*`: запятая или «и», затем номер, сколько угодно раз.'
+    - 'Шаблон целиком — `r''\b[Уу]рок\w*\s+\d+\.\d+(?:(?:,\s*|\s+и\s+)\d+\.\d+)*''`.'
+  tests: |
+    f = var('lesson_refs')
+    ensure(callable(f), '`lesson_refs` должна быть функцией.')
+    got = f('См. урок 5.4 и уроки 1.3, 1.5 и 1.7. В уроке 11.2 — поиск. Версия 3.14 — не урок.')
+    ensure(isinstance(got, list), '`lesson_refs` должна вернуть список номеров-строк.')
+    if '3.14' in got:
+        fail('«3.14» — номер версии, а не урока. Номер считается ссылкой, только если перед ним слово «урок» в какой-нибудь форме.')
+    if got == ['5.4', '1.3', '11.2']:
+        fail('Нашлись только первые номера после слова «урок». В «уроки 1.3, 1.5 и 1.7» три ссылки: после номера может идти «, номер» или « и номер».')
+    equal(got, ['5.4', '1.3', '1.5', '1.7', '11.2'], 'Для фразы со ссылками ожидалось {expected}, а у вас {actual}.')
+    equal(f('Урок 2.1 и урок 2.2.'), ['2.1', '2.2'], 'В начале предложения «Урок» пишется с большой буквы — такие ссылки тоже нужны. Ожидалось {expected}, а у вас {actual}.')
+    equal(f('Без ссылок.'), [], 'В тексте без ссылок — пустой список, а у вас {actual}.')
+    equal(int(var('n_refs', 'number', 'числом')), int(ref('n_refs')), 'Ссылок в курсе — {expected}, а у вас {actual}.')
+    equal(var('top_lesson', str, 'строкой'), ref('top_lesson'), 'Чаще всех упоминается урок {expected}, а у вас {actual}.')
+  files: [course_docs.json]
+  wrong:
+    - code: |
+        LIST = r'\b[Уу]рок\w*\s+\d+\.\d+'
+        def lesson_refs(text):
+            found = []
+            for m in re.finditer(LIST, text):
+                found += re.findall(r'\d+\.\d+', m.group())
+            return found
+        refs = Counter(r for t in texts for r in lesson_refs(t))
+        n_refs = sum(refs.values())
+        top_lesson = refs.most_common(1)[0][0]
+      expect: Нашлись только первые номера
+    - code: |
+        def lesson_refs(text):
+            return re.findall(r'\d+\.\d+', text)
+        refs = Counter(r for t in texts for r in lesson_refs(t))
+        n_refs = sum(refs.values())
+        top_lesson = refs.most_common(1)[0][0]
+      expect: номер версии
+
+- id: m12-l4-t3
+  title: Компании в текстах курса
+  difficulty: main
+  introduces: []
+  uses: [named-entities]
+  statement: |
+    Напишите функцию `find_names(text, names)` — поиск названий по словарю. Она возвращает список пар `(позиция, название)` по порядку в тексте:
+
+    - название ищется как слово: «Meta» внутри «Metan» и «GigaChat» внутри «authGigaChat» не считаются;
+    - после названия может стоять русское окончание до трёх букв: «Яндекса», «Сбером»;
+    - «Сбербанк» — уже другое слово, не «Сбер».
+
+    Получите `mentions` — `Counter`: сколько раз каждое название из `NAMES` упоминается в разделах курса.
+  prelude: |
+    import json
+    import re
+    from collections import Counter
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    texts = [d['section'] + '. ' + d['text'] for d in docs]
+    NAMES = ['Яндекс', 'Сбер', 'VK', 'GigaChat', 'SaluteSpeech', 'Hugging Face', 'OpenAI', 'Microsoft', 'Meta',
+             'Google', 'LangChain', 'Colab', 'IBM']
+  starter: |
+    def find_names(text, names):
+        found = []
+        for name in names:
+            pattern = ...
+            for m in re.finditer(pattern, text):
+                found.append((m.start(), name))
+        return sorted(found)
+
+    mentions = Counter(name for t in texts for _, name in find_names(t, NAMES))
+    print(mentions.most_common())
+  solution: |
+    def find_names(text, names):
+        found = []
+        for name in names:
+            pattern = r'\b' + re.escape(name) + r'[а-яё]{0,3}\b'
+            for m in re.finditer(pattern, text):
+                found.append((m.start(), name))
+        return sorted(found)
+
+    mentions = Counter(name for t in texts for _, name in find_names(t, NAMES))
+    print(mentions.most_common())
+  explanation: |
+    - `\b` перед названием не даёт найти его внутри слова: в «authGigaChat» перед «G» стоит буква, границы нет.
+    - `[а-яё]{0,3}\b` — до трёх русских букв окончания, а потом конец слова. Поэтому «Яндекса» найдётся, а «Metan» и «Сбербанк» — нет: после «Meta» идёт латинская «n», после «Сбер» — четыре буквы «банк».
+    - `re.escape` экранирует особые символы названия: в «Hugging Face» это пробел, а в названиях вроде «Яндекс.Диск» — точка, которая иначе значила бы «любой символ».
+    - Чаще всех в курсе упоминается GigaChat — 30 раз, затем Colab и LangChain. «Meta» не упоминается ни разу, а поиск подстроки нашёл бы её один раз — в «Metan».
+  hints:
+    - '`\b` — граница слова: перед названием не должно быть буквы, иначе найдётся «authGigaChat».'
+    - 'Место под окончание — `[а-яё]{0,3}`: до трёх русских букв, а после них снова `\b`.'
+    - 'Шаблон целиком — `r''\b'' + re.escape(name) + r''[а-яё]{0,3}\b''`.'
+  tests: |
+    f = var('find_names')
+    ensure(callable(f), '`find_names` должна быть функцией.')
+    s = 'Яндекс и Сбер. CatBoost от Яндекса, ключ Сбера лежит в authGigaChat.txt, а отвечает GigaChat. Metan — не Meta. Сбербанк тоже банк.'
+    got = f(s, ['Яндекс', 'Сбер', 'GigaChat', 'Meta'])
+    ensure(isinstance(got, list), '`find_names` должна вернуть список пар (позиция, название).')
+    got = [tuple(x) for x in got]
+    starts = [p for p, _ in got]
+    if 59 in starts or 94 in starts:
+        fail('Название нашлось внутри другого слова — в «authGigaChat.txt» или «Metan». Ищите слово целиком: `\\b` перед названием и после окончания.')
+    if 111 in starts:
+        fail('«Сбербанк» — не «Сбер» с окончанием: окончание — не больше трёх русских букв.')
+    if (27, 'Яндекс') not in got or (41, 'Сбер') not in got:
+        fail('Не нашлись формы с окончанием — «Яндекса», «Сбера». После названия разрешите до трёх русских букв: `[а-яё]{0,3}`.')
+    equal(got, [(0, 'Яндекс'), (9, 'Сбер'), (27, 'Яндекс'), (41, 'Сбер'), (84, 'GigaChat'), (105, 'Meta')], 'Для тестовой фразы ожидалось {expected}, а у вас {actual}. Пары (позиция, название) — по порядку в тексте.')
+    equal(f('Здесь нет названий.', ['Яндекс']), [], 'В тексте без названий — пустой список, а у вас {actual}.')
+    equal(var('mentions'), ref('mentions'), 'Упоминания в курсе — {expected}, а у вас {actual}.')
+  files: [course_docs.json]
+  wrong:
+    - code: |
+        def find_names(text, names):
+            found = []
+            for name in names:
+                for m in re.finditer(re.escape(name), text):
+                    found.append((m.start(), name))
+            return sorted(found)
+        mentions = Counter(name for t in texts for _, name in find_names(t, NAMES))
+      expect: внутри другого слова
+    - code: |
+        def find_names(text, names):
+            found = []
+            for name in names:
+                for m in re.finditer(r'\b' + re.escape(name) + r'\b', text):
+                    found.append((m.start(), name))
+            return sorted(found)
+        mentions = Counter(name for t in texts for _, name in find_names(t, NAMES))
+      expect: формы с окончанием
+
+- id: m12-l4-t4
+  title: Расстояние Левенштейна
+  difficulty: main
+  introduces: [edit-distance]
+  uses: []
+  statement: |
+    Напишите функцию `levenshtein(a, b)` — минимальное число вставок, удалений и замен букв, чтобы превратить строку `a` в строку `b`. Считайте таблицей по строкам: хватит двух списков — прошлой строки и текущей.
+
+    Затем найдите `near_model` — шесть слов словаря `vocab`, ближайших к слову «модель»: список пар `(расстояние, слово)` по возрастанию, при равном расстоянии — по алфавиту.
+  prelude: |
+    import json
+    import re
+    from collections import Counter
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    texts = [d['section'] + '. ' + d['text'] for d in docs]
+    words = Counter(w for t in texts for w in re.findall(r'[а-яё]+', t.lower()))
+    vocab = {w: c for w, c in words.items() if c >= 2}
+  starter: |
+    def levenshtein(a, b):
+        prev = list(range(len(b) + 1))
+        for i in range(1, len(a) + 1):
+            cur = [i] + [0] * len(b)
+            for j in range(1, len(b) + 1):
+                cur[j] = min(...)
+            prev = cur
+        return prev[-1]
+
+    near_model = sorted((levenshtein('модель', w), w) for w in vocab)[:6]
+    print(levenshtein('кот', 'скат'), near_model)
+  solution: |
+    def levenshtein(a, b):
+        prev = list(range(len(b) + 1))
+        for i in range(1, len(a) + 1):
+            cur = [i] + [0] * len(b)
+            for j in range(1, len(b) + 1):
+                cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] != b[j - 1]))
+            prev = cur
+        return prev[-1]
+
+    near_model = sorted((levenshtein('модель', w), w) for w in vocab)[:6]
+    print(levenshtein('кот', 'скат'), near_model)
+  explanation: |
+    - `prev` — прошлая строка таблицы, `cur` — текущая. В начале `prev` — расстояния от пустой строки до первых `j` букв `b`: 0, 1, 2, …
+    - `cur[0] = i`: из первых `i` букв `a` в пустую строку — `i` удалений.
+    - Клетка — минимум из трёх путей: `prev[j] + 1` — удалить букву `a`, `cur[j - 1] + 1` — вставить букву `b`, `prev[j - 1] + (a[i - 1] != b[j - 1])` — заменить букву, а если буквы совпали, пройти бесплатно.
+    - Ближе всего к «модели» — её же формы: «модели» и «моделью» на расстоянии 1, «моделей» и «моделях» на расстоянии 2. Но на расстоянии 1 оказался и «модуль» — совсем другое слово. Поэтому опечатку «модль» исправитель может превратить и в то, и в другое — выбирает частота.
+  hints:
+    - "Клетка — минимум из трёх путей: удалить, вставить, заменить."
+    - "Удалить — `prev[j] + 1`, вставить — `cur[j - 1] + 1`, заменить — `prev[j - 1] + (a[i - 1] != b[j - 1])`."
+    - "Целиком: `cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] != b[j - 1]))`."
+  tests: |
+    f = var('levenshtein')
+    ensure(callable(f), '`levenshtein` должна быть функцией.')
+    if f('', 'abc') == 0:
+        fail('Из пустой строки в «abc» — три вставки, а у вас 0. Первая строка таблицы — 0, 1, 2, …, len(b), а каждая следующая начинается с номера строки i.')
+    if f('кот', 'скат') == 4:
+        fail('Буквы сравниваются по позициям, а так нельзя: «скат» — это «кот» со вставкой «с» и одной заменой, всего 2. Нужна таблица, где каждая клетка — минимум из трёх соседних.')
+    for a, b, d in [('кот', 'скат', 2), ('', 'abc', 3), ('abc', '', 3), ('abc', 'abc', 0), ('kitten', 'sitting', 3), ('модль', 'модель', 1), ('мдоель', 'модель', 2), ('ab', 'ba', 2)]:
+        equal(f(a, b), d, f'Расстояние между «{a}» и «{b}» — {d}, а у вас {{actual}}.')
+    equal(f('скат', 'кот'), f('кот', 'скат'), 'Расстояние не зависит от порядка слов.')
+    equal(var('near_model', list, 'списком'), ref('near_model'), 'Ближайшие к «модель» слова — {expected}, а у вас {actual}.')
+  files: [course_docs.json]
+  wrong:
+    - code: |
+        def levenshtein(a, b):
+            return sum(x != y for x, y in zip(a, b)) + abs(len(a) - len(b))
+        near_model = sorted((levenshtein('модель', w), w) for w in vocab)[:6]
+      expect: сравниваются по позициям
+    - code: |
+        def levenshtein(a, b):
+            prev = [0] * (len(b) + 1)
+            for i in range(1, len(a) + 1):
+                cur = [i] + [0] * len(b)
+                for j in range(1, len(b) + 1):
+                    cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] != b[j - 1]))
+                prev = cur
+            return prev[-1]
+        near_model = sorted((levenshtein('модель', w), w) for w in vocab)[:6]
+      expect: три вставки
+
+- id: m12-l4-t5
+  title: Исправитель опечаток
+  difficulty: main
+  introduces: []
+  uses: [edit-distance]
+  statement: |
+    Напишите функцию `correct(word, vocab, max_d=2)`. `vocab` — словарь «слово → частота».
+
+    - Если слово есть в словаре, вернуть его.
+    - Иначе вернуть слово словаря на расстоянии Левенштейна не больше `max_d`: ближайшее, среди равных — самое частое, а при равной частоте — первое по алфавиту.
+    - Если такого слова нет, вернуть `word` как есть.
+
+    Функция `levenshtein` уже есть. Проверьте исправитель на 16 опечатках `pairs` — пары «опечатка, правильное слово»:
+
+    - `fixed` — исправления в порядке `pairs`;
+    - `accuracy` — доля верных исправлений;
+    - `missed` — опечатки, исправленные неверно, по порядку.
+  prelude: |
+    import json
+    import re
+    from collections import Counter
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    texts = [d['section'] + '. ' + d['text'] for d in docs]
+    words = Counter(w for t in texts for w in re.findall(r'[а-яё]+', t.lower()))
+    vocab = {w: c for w, c in words.items() if c >= 2}
+
+    def levenshtein(a, b):
+        prev = list(range(len(b) + 1))
+        for i in range(1, len(a) + 1):
+            cur = [i] + [0] * len(b)
+            for j in range(1, len(b) + 1):
+                cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] != b[j - 1]))
+            prev = cur
+        return prev[-1]
+
+    pairs = [('модль', 'модель'), ('класификация', 'классификация'), ('регресия', 'регрессия'), ('градиетный', 'градиентный'),
+             ('признкаи', 'признаки'), ('паралельно', 'параллельно'), ('выборкаа', 'выборка'), ('переобучени', 'переобучение'),
+             ('утечька', 'утечка'), ('нейросетб', 'нейросеть'), ('дифузия', 'диффузия'), ('точьность', 'точность'),
+             ('матрца', 'матрица'), ('обучющая', 'обучающая'), ('кластеризаця', 'кластеризация'), ('ансамбль', 'ансамбль')]
+  starter: |
+    def correct(word, vocab, max_d=2):
+        ...
+
+    fixed = [correct(t, vocab) for t, _ in pairs]
+    accuracy = ...
+    missed = ...
+    print(fixed, accuracy, missed)
+  solution: |
+    def correct(word, vocab, max_d=2):
+        if word in vocab:
+            return word
+        best = None
+        for v, c in vocab.items():
+            if abs(len(v) - len(word)) > max_d:
+                continue
+            d = levenshtein(word, v)
+            if d <= max_d and (best is None or (d, -c, v) < best):
+                best = (d, -c, v)
+        return best[2] if best else word
+
+    fixed = [correct(t, vocab) for t, _ in pairs]
+    accuracy = sum(f == g for f, (_, g) in zip(fixed, pairs)) / len(pairs)
+    missed = [t for f, (t, g) in zip(fixed, pairs) if f != g]
+    print(fixed, accuracy, missed)
+  explanation: |
+    - Кандидат — кортеж `(d, -c, v)`. Кортежи сравниваются по порядку: сначала расстояние, потом частота с минусом — частое слово «меньше», — потом само слово. Поэтому наименьший кортеж — ближайшее, затем самое частое, затем первое по алфавиту.
+    - `abs(len(v) - len(word)) > max_d` — быстрый отсев. Если длины отличаются больше чем на `max_d`, расстояние точно больше: одних вставок или удалений нужно столько.
+    - Верно исправлено 12 опечаток из 16, доля 0,75. «Нейросетб» стала «нейросети»: обе формы на расстоянии 1, и победила более частая.
+    - Остальные три промаха — правильных слов нет в словаре. «Диффузия» не встречается в модулях 0–10, а «обучающая» и «кластеризация» — по одному разу, словарь же собран из слов, встретившихся хотя бы дважды. Словарь побольше исправил бы их, но в нём чаще попадались бы опечатки самих текстов.
+  hints:
+    - "Сначала — `if word in vocab: return word`."
+    - "Кандидат — кортеж `(d, -c, v)`: `min` по таким кортежам выберет ближайшее слово, затем самое частое, затем первое по алфавиту."
+    - "Если ни одного слова на расстоянии `<= max_d` нет, верните `word`. Доля верных — `sum(f == g for f, (_, g) in zip(fixed, pairs)) / len(pairs)`."
+  tests: |
+    f = var('correct')
+    ensure(callable(f), '`correct` должна быть функцией.')
+    v = {'кот': 10, 'код': 50, 'кит': 5, 'скат': 3, 'дом': 5, 'дым': 5}
+    equal(f('кот', v), 'кот', 'Слово из словаря остаётся как есть, даже если рядом есть более частое: «кот» → «кот», а у вас {actual}.')
+    if f('скот', v) == 'код':
+        fail('Выбрано самое частое слово, а не ближайшее: до «кот» от «скот» 1 шаг, а до «код» — 2. Сначала — расстояние, потом частота.')
+    equal(f('скот', v), 'кот', '«скот»: на расстоянии 1 «кот» (10 раз) и «скат» (3 раза) — нужен «кот», а у вас {actual}.')
+    equal(f('ко', v), 'код', '«ко»: на расстоянии 1 «кот» и «код» — побеждает более частый «код», а у вас {actual}.')
+    equal(f('дим', v), 'дом', '«дим»: «дом» и «дым» на расстоянии 1 и одинаково часты — берём первое по алфавиту, «дом», а у вас {actual}.')
+    equal(f('зебра', v), 'зебра', 'Если в словаре нет слова на расстоянии не больше max_d, слово остаётся как есть: «зебра» → «зебра», а у вас {actual}.')
+    equal(f('скат', {'кот': 10}, 1), 'скат', 'При max_d=1 «скат» не исправляется в «кот» — до него 2 шага, а у вас {actual}.')
+    equal(f('скат', {'кот': 10}, 2), 'кот', 'При max_d=2 «скат» исправляется в «кот», а у вас {actual}.')
+    equal(var('fixed', list, 'списком'), ref('fixed'), 'Исправления — {expected}, а у вас {actual}.')
+    close(var('accuracy', 'number', 'числом'), ref('accuracy'), 'Доля верных исправлений — {expected}, а у вас {actual}.')
+    equal(var('missed', list, 'списком'), ref('missed'), 'Неверно исправленные опечатки — {expected}, а у вас {actual}.')
+  files: [course_docs.json]
+  wrong:
+    - code: |
+        def correct(word, vocab, max_d=2):
+            if word in vocab:
+                return word
+            best = None
+            for v, c in vocab.items():
+                d = levenshtein(word, v)
+                if d <= max_d and (best is None or (-c, d, v) < best):
+                    best = (-c, d, v)
+            return best[2] if best else word
+        fixed = [correct(t, vocab) for t, _ in pairs]
+        accuracy = sum(f == g for f, (_, g) in zip(fixed, pairs)) / len(pairs)
+        missed = [t for f, (t, g) in zip(fixed, pairs) if f != g]
+      expect: самое частое слово, а не ближайшее
+    - code: |
+        def correct(word, vocab, max_d=2):
+            return min(vocab, key=lambda v: (levenshtein(word, v), -vocab[v], v))
+        fixed = [correct(t, vocab) for t, _ in pairs]
+        accuracy = sum(f == g for f, (_, g) in zip(fixed, pairs)) / len(pairs)
+        missed = [t for f, (t, g) in zip(fixed, pairs) if f != g]
+      expect: остаётся как есть
+
+- id: m12-l4-t6
+  title: Перестановка — одна ошибка
+  difficulty: star
+  introduces: []
+  uses: [edit-distance]
+  statement: |
+    Две соседние буквы, переставленные местами («мдоель»), — частая опечатка, а Левенштейн считает её двумя заменами. Вариант Дамерау — Левенштейна считает её одним шагом.
+
+    Напишите функцию `osa(a, b)`: та же таблица, что у Левенштейна, плюс ещё один путь в клетку `d[i][j]`. Если две последние буквы переставлены — `a[i-1] == b[j-2]` и `a[i-2] == b[j-1]`, — в клетку можно прийти из `d[i-2][j-2]` за один шаг.
+
+    Затем сравните исправители на 30 опечатках-перестановках `swaps` — пары «опечатка, правильное слово». `acc_lev` — доля верных исправлений с расстоянием `levenshtein`, `acc_osa` — с `osa`. Функция `correct(word, vocab, dist)` уже есть и принимает функцию расстояния третьим аргументом.
+  prelude: |
+    import json
+    import re
+    from collections import Counter
+    import numpy as np
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    texts = [d['section'] + '. ' + d['text'] for d in docs]
+    words = Counter(w for t in texts for w in re.findall(r'[а-яё]+', t.lower()))
+    vocab = {w: c for w, c in words.items() if c >= 2}
+
+    def levenshtein(a, b):
+        prev = list(range(len(b) + 1))
+        for i in range(1, len(a) + 1):
+            cur = [i] + [0] * len(b)
+            for j in range(1, len(b) + 1):
+                cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] != b[j - 1]))
+            prev = cur
+        return prev[-1]
+
+    def correct(word, vocab, dist, max_d=2):
+        if word in vocab:
+            return word
+        best = None
+        for v, c in vocab.items():
+            if abs(len(v) - len(word)) <= max_d:
+                d = dist(word, v)
+                if d <= max_d and (best is None or (d, -c, v) < best):
+                    best = (d, -c, v)
+        return best[2] if best else word
+
+    swaps = [('превращате', 'превращает'), ('паадет', 'падает'), ('малеьнких', 'маленьких'), ('вбыорок', 'выборок'),
+             ('ргафик', 'график'), ('станадртное', 'стандартное'), ('объявлнеиях', 'объявлениях'), ('рассотяние', 'расстояние'),
+             ('случанйо', 'случайно'), ('буудщих', 'будущих'), ('смылсу', 'смыслу'), ('использйуте', 'используйте'),
+             ('категоири', 'категории'), ('певрую', 'первую'), ('енбольшая', 'небольшая'), ('уровнеь', 'уровень'),
+             ('спсика', 'списка'), ('ответво', 'ответов'), ('итоогвая', 'итоговая'), ('одианковые', 'одинаковые'),
+             ('вдигателя', 'двигателя'), ('непсутых', 'непустых'), ('валидцаией', 'валидацией'), ('редикй', 'редкий'),
+             ('ставиьт', 'ставить'), ('кирвой', 'кривой'), ('коэффиицент', 'коэффициент'), ('сказтаь', 'сказать'),
+             ('сборать', 'собрать'), ('умлочанию', 'умолчанию')]
+  starter: |
+    def osa(a, b):
+        d = [[0] * (len(b) + 1) for _ in range(len(a) + 1)]
+        for i in range(len(a) + 1):
+            d[i][0] = i
+        for j in range(len(b) + 1):
+            d[0][j] = j
+        for i in range(1, len(a) + 1):
+            for j in range(1, len(b) + 1):
+                d[i][j] = min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] != b[j - 1]))
+                if ...:
+                    d[i][j] = min(d[i][j], ...)
+        return d[-1][-1]
+
+    acc_lev = np.mean([correct(t, vocab, levenshtein) == w for t, w in swaps])
+    acc_osa = ...
+    print(osa('мдоель', 'модель'), acc_lev, acc_osa)
+  solution: |
+    def osa(a, b):
+        d = [[0] * (len(b) + 1) for _ in range(len(a) + 1)]
+        for i in range(len(a) + 1):
+            d[i][0] = i
+        for j in range(len(b) + 1):
+            d[0][j] = j
+        for i in range(1, len(a) + 1):
+            for j in range(1, len(b) + 1):
+                d[i][j] = min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] != b[j - 1]))
+                if i > 1 and j > 1 and a[i - 1] == b[j - 2] and a[i - 2] == b[j - 1]:
+                    d[i][j] = min(d[i][j], d[i - 2][j - 2] + 1)
+        return d[-1][-1]
+
+    acc_lev = np.mean([correct(t, vocab, levenshtein) == w for t, w in swaps])
+    acc_osa = np.mean([correct(t, vocab, osa) == w for t, w in swaps])
+    print(osa('мдоель', 'модель'), acc_lev, acc_osa)
+  explanation: |
+    - Новый путь — перестановка: если `a[i - 1] == b[j - 2]` и `a[i - 2] == b[j - 1]`, две последние буквы поменялись местами, и `d[i - 2][j - 2] + 1` — цена такого исправления.
+    - Условие `i > 1 and j > 1` обязательно. Без него при `i = 1` индекс `a[i - 2]` равен `a[-1]` — Python возьмёт последнюю букву слова, и таблица испортится.
+    - Это вариант «оптимального выравнивания» (optimal string alignment): каждый кусок строки правят не больше одного раза. Полный Дамерау — Левенштейн устроен чуть сложнее, но для опечаток разница почти не видна.
+    - С Левенштейном исправлено 76,7 % перестановок, с перестановкой за один шаг — все 30. Правильное слово теперь на расстоянии 1 и обгоняет слова на расстоянии 2, даже более частые.
+  hints:
+    - "Перестановка — когда `a[i - 1] == b[j - 2]` и `a[i - 2] == b[j - 1]`. Проверяйте это только при `i > 1 and j > 1`."
+    - "Тогда `d[i][j] = min(d[i][j], d[i - 2][j - 2] + 1)`."
+    - "`acc_osa` — то же, что `acc_lev`, но с `osa` третьим аргументом `correct`."
+  tests: |
+    f = var('osa')
+    ensure(callable(f), '`osa` должна быть функцией.')
+    if f('ab', 'ba') == 2:
+        fail('«ab» → «ba» стоит 2 — как у обычного Левенштейна. Перестановка двух соседних букв должна стоить 1.')
+    if f('ab', 'ba') == 0:
+        fail('Перестановка — тоже ошибка: «ab» → «ba» стоит 1, а не 0. Прибавьте 1 к d[i - 2][j - 2].')
+    for a, b, dd in [('ab', 'ba', 1), ('мдоель', 'модель', 1), ('кот', 'скат', 2), ('', 'abc', 3), ('abc', 'abc', 0), ('kitten', 'sitting', 3), ('abcd', 'badc', 2)]:
+        equal(f(a, b), dd, f'Расстояние «{a}» → «{b}» — {dd}, а у вас {{actual}}.')
+    close(var('acc_lev', 'number', 'числом'), ref('acc_lev'), 'С расстоянием Левенштейна доля верных — {expected}, а у вас {actual}.')
+    close(var('acc_osa', 'number', 'числом'), ref('acc_osa'), 'С перестановками доля верных — {expected}, а у вас {actual}.')
+  files: [course_docs.json]
+  wrong:
+    - code: |
+        osa = levenshtein
+        acc_lev = np.mean([correct(t, vocab, levenshtein) == w for t, w in swaps])
+        acc_osa = np.mean([correct(t, vocab, osa) == w for t, w in swaps])
+      expect: как у обычного Левенштейна
+    - code: |
+        def osa(a, b):
+            d = [[0] * (len(b) + 1) for _ in range(len(a) + 1)]
+            for i in range(len(a) + 1):
+                d[i][0] = i
+            for j in range(len(b) + 1):
+                d[0][j] = j
+            for i in range(1, len(a) + 1):
+                for j in range(1, len(b) + 1):
+                    d[i][j] = min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] != b[j - 1]))
+                    if i > 1 and j > 1 and a[i - 1] == b[j - 2] and a[i - 2] == b[j - 1]:
+                        d[i][j] = min(d[i][j], d[i - 2][j - 2])
+            return d[-1][-1]
+        acc_lev = np.mean([correct(t, vocab, levenshtein) == w for t, w in swaps])
+        acc_osa = np.mean([correct(t, vocab, osa) == w for t, w in swaps])
+      expect: тоже ошибка

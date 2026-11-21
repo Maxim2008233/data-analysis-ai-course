@@ -1,0 +1,345 @@
+- id: m5-l6-t1
+  title: Линейная регрессия по году выпуска
+  difficulty: warmup
+  introduces: [linear-regression]
+  uses: [sk-fit-predict, param-model]
+  statement: |
+    Обучите `year_model` — `LinearRegression` по одному признаку `Year` (таблицей!) на обучающей части — и получите `w` — коэффициент при годе — и `b` — свободный член.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.linear_model import LinearRegression
+    df = pd.read_csv('cars_processed.csv')
+    X = df[['Year', 'Distance', 'Engine', 'km_year']]
+    y = df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    year_model = ...
+    year_model.fit(...)
+    w = ...
+    b = ...
+    print(round(w, 2), round(b))
+  solution: |
+    year_model = LinearRegression()
+    year_model.fit(X_train[['Year']], y_train)
+    w = year_model.coef_[0]
+    b = year_model.intercept_
+    print(round(w, 2), round(b))
+  explanation: |
+    - `X_train[['Year']]` — таблица из одной колонки: модели ждут двумерные признаки.
+    - После `fit` у модели появляются `coef_` (массив коэффициентов — здесь один) и `intercept_`.
+    - w ≈ 717: с каждым годом выпуска прогноз растёт на ≈ 717 евро.
+  hints:
+    - "Модель — `LinearRegression()`; признак — таблица из одной колонки `[['Year']]`."
+    - "`year_model.fit(X_train[['Year']], y_train)`."
+    - "`w = year_model.coef_[0]`; `b = year_model.intercept_`."
+  tests: |
+    from sklearn.linear_model import LinearRegression
+    m = var('year_model', LinearRegression, 'моделью LinearRegression')
+    ensure(hasattr(m, 'coef_'), 'Модель не обучена — вызовите `fit`.')
+    ensure(len(m.coef_) == 1, 'Модель должна быть обучена на одном признаке `Year`, а коэффициентов {0}.'.format(len(m.coef_)))
+    close(var('w', 'number', 'числом'), ref('w'), 'Коэффициент при годе — {expected}, а у вас {actual}.', rtol=1e-6)
+    close(var('b', 'number', 'числом'), ref('b'), 'Свободный член — {expected}, а у вас {actual}.', rtol=1e-6)
+    close(alt('w'), alt_ref('w'), HARDCODE_MSG, rtol=1e-6)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        year_model = LinearRegression()
+        year_model.fit(X_train, y_train)
+        w = year_model.coef_[0]
+        b = year_model.intercept_
+      expect: на одном признаке
+    - code: |
+        year_model = LinearRegression()
+        year_model.fit(X_valid[['Year']], y_valid)
+        w = year_model.coef_[0]
+        b = year_model.intercept_
+      expect: Коэффициент при годе
+
+- id: m5-l6-t2
+  title: Прогнозы и выигрыш у ориентира
+  difficulty: main
+  introduces: [linear-regression]
+  uses: [baseline-model, metric-mae-mape]
+  statement: |
+    Модель по году `year_model` обучена. Получите `year_pred` — прогнозы для валидационной части, `year_mae` — MAE на валидации и `gain` — на сколько евро MAE модели меньше MAE ориентира `baseline_mae`.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.linear_model import LinearRegression
+    from sklearn.dummy import DummyRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X = df[['Year', 'Distance', 'Engine', 'km_year']]
+    y = df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    year_model = LinearRegression().fit(X_train[['Year']], y_train)
+    baseline_mae = mean_absolute_error(y_valid, DummyRegressor(strategy='median').fit(X_train, y_train).predict(X_valid))
+  starter: |
+    year_pred = ...
+    year_mae = ...
+    gain = ...
+    print(round(year_mae), round(gain))
+  solution: |
+    year_pred = year_model.predict(X_valid[['Year']])
+    year_mae = mean_absolute_error(y_valid, year_pred)
+    gain = baseline_mae - year_mae
+    print(round(year_mae), round(gain))
+  explanation: |
+    - В `predict` — та же форма признаков, что при обучении: таблица с колонкой `Year`.
+    - Модель лучше константы примерно на 900 евро — признак года несёт информацию о цене.
+  hints:
+    - "Прогноз — по таблице `X_valid[['Year']]`; ошибка — `mean_absolute_error`."
+    - "`year_pred = year_model.predict(X_valid[['Year']])`."
+    - "`gain = baseline_mae - year_mae`."
+  tests: |
+    import numpy as np
+    p = var('year_pred', np.ndarray, 'массивом прогнозов')
+    ensure(len(p) == len(ref('X_valid')), 'Нужны прогнозы для всех валидационных машин.')
+    close(var('year_mae', 'number', 'числом'), ref('year_mae'), 'MAE модели по году — {expected}, а у вас {actual}.')
+    g = var('gain', 'number', 'числом')
+    if abs(g + ref('gain')) < 1e-6:
+        fail('Знак выигрыша перевёрнут: `baseline_mae - year_mae`.')
+    close(g, ref('gain'), 'Выигрыш у ориентира — {expected}, а у вас {actual}.')
+    close(alt('year_mae'), alt_ref('year_mae'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        year_pred = year_model.predict(X_valid[['Year']])
+        year_mae = mean_absolute_error(y_valid, year_pred)
+        gain = year_mae - baseline_mae
+      expect: перевёрнут
+    - code: |
+        year_pred = year_model.predict(X_train[['Year']])
+        year_mae = mean_absolute_error(y_train, year_pred)
+        gain = baseline_mae - year_mae
+      expect: всех валидационных
+
+- id: m5-l6-t3
+  title: Прогноз для одной машины по формуле
+  difficulty: main
+  introduces: [error-analysis]
+  uses: [linear-regression, param-model]
+  statement: |
+    Возьмите **пятую** машину валидации (`one_car` — таблица из одной строки с колонкой `Year`, `iloc[[4]]`). Получите `one_pred` — прогноз модели, `by_formula` — тот же прогноз по формуле `intercept_ + coef_[0] · год`, `one_true` — настоящую цену и `one_error` = прогноз − цена.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.linear_model import LinearRegression
+    df = pd.read_csv('cars_processed.csv')
+    X = df[['Year', 'Distance', 'Engine', 'km_year']]
+    y = df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    year_model = LinearRegression().fit(X_train[['Year']], y_train)
+  starter: |
+    one_car = ...
+    one_pred = ...
+    by_formula = ...
+    one_true = ...
+    one_error = ...
+    print(one_car, round(one_pred), round(by_formula), one_true, round(one_error))
+  solution: |
+    one_car = X_valid[['Year']].iloc[[4]]
+    one_pred = year_model.predict(one_car)[0]
+    by_formula = year_model.intercept_ + year_model.coef_[0] * one_car['Year'].iloc[0]
+    one_true = y_valid.iloc[4]
+    one_error = one_pred - one_true
+    print(one_car, round(one_pred), round(by_formula), one_true, round(one_error))
+  explanation: |
+    - `iloc[[4]]` с двойными скобками — таблица из одной строки; `iloc[4]` дал бы Series, и `predict` бы не принял её.
+    - `predict` возвращает массив даже для одной машины — берём `[0]`.
+    - Прогноз и формула совпадают: модель — это просто прямая с выученными параметрами.
+  hints:
+    - "Одна строка таблицей — `iloc[[номер]]`; пятая строка — номер 4."
+    - "`one_pred = year_model.predict(one_car)[0]`; `by_formula = year_model.intercept_ + year_model.coef_[0] * one_car['Year'].iloc[0]`."
+    - "`one_true = y_valid.iloc[4]`; `one_error = one_pred - one_true`."
+  tests: |
+    import pandas as pd
+    oc = var('one_car', pd.DataFrame, 'таблицей из одной строки — `iloc[[4]]`')
+    ensure(oc.shape == (1, 1), '`one_car` — таблица из одной строки и одной колонки `Year`, а форма у вас {0}.'.format(oc.shape))
+    ensure(oc.index[0] == ref('one_car').index[0], 'Нужна пятая машина валидации — `iloc[[4]]`.')
+    close(var('one_pred', 'number', 'числом'), ref('one_pred'), 'Прогноз — {expected}, а у вас {actual}.')
+    close(var('by_formula', 'number', 'числом'), ref('one_pred'), 'Формула `intercept_ + coef_[0] * год` должна дать тот же прогноз — {expected}, а у вас {actual}.')
+    close(var('one_true', 'number', 'числом'), ref('one_true'), 'Цена машины — {expected}, а у вас {actual}.')
+    close(var('one_error', 'number', 'числом'), ref('one_error'), 'Ошибка (прогноз − цена) — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        one_car = X_valid[['Year']].iloc[[5]]
+        one_pred = year_model.predict(one_car)[0]
+        by_formula = year_model.intercept_ + year_model.coef_[0] * one_car['Year'].iloc[0]
+        one_true = y_valid.iloc[5]
+        one_error = one_pred - one_true
+      expect: пятая машина
+    - code: |
+        one_car = X_valid[['Year']].iloc[[4]]
+        one_pred = year_model.predict(one_car)[0]
+        by_formula = year_model.coef_[0] + year_model.intercept_ * one_car['Year'].iloc[0]
+        one_true = y_valid.iloc[4]
+        one_error = one_pred - one_true
+      expect: тот же прогноз
+
+- id: m5-l6-t4
+  kind: quiz
+  title: Коэффициенты и свободный член
+  difficulty: main
+  introduces: [linear-regression, error-analysis]
+  uses: []
+  statement: |
+    Разберитесь, что говорят параметры и ошибки модели.
+  quiz:
+    - q: "Модель по пробегу: коэффициент −0,033. Как прочитать?"
+      options:
+        - С каждым километром пробега цена падает на 0,033 евро — это доказано
+        - При росте пробега на 10 000 км прогноз модели уменьшается примерно на 330 евро
+        - Модель бесполезна, раз коэффициент маленький
+      answer: 1
+      explain: Коэффициент — в евро на километр; величина зависит от единиц признака, а не от «полезности».
+    - q: Средняя ошибка (прогноз − цена) модели почти 0, но у дорогих машин ошибка в среднем −8 000 евро. Что это значит?
+      options:
+        - Модель точна
+        - Модель систематически занижает цены дорогих машин, а дешёвых — завышает; ошибки компенсируются в среднем
+        - Нужно удалить дорогие машины
+      answer: 1
+      explain: Средняя ошибка ничего не говорит о перекосах; их видно по группам и на графике.
+    - q: Для старых машин модель даёт отрицательные цены. Что поможет?
+      options:
+        - Другой вид зависимости, например модель для логарифма цены (урок 5.9), или дополнительные признаки
+        - Округлить прогнозы
+        - Оставить как есть — средняя ошибка же уменьшилась
+      answer: 0
+      explain: Отрицательная цена — признак того, что прямая плохо описывает зависимость.
+  hints:
+    - Вспомните единицы коэффициента и что показывает разбор ошибок по группам.
+    - "Коэффициент — евро на единицу признака; нулевая средняя ошибка может скрывать перекосы; отрицательные цены — другой вид модели."
+    - "Ответы: 330 евро на 10 000 км; систематический перекос; другой вид зависимости."
+
+- id: m5-l6-t5
+  title: С какого года прогнозы отрицательны
+  difficulty: main
+  introduces: [error-analysis]
+  uses: [linear-regression, pd-bool-filter]
+  statement: |
+    Прямая `ŷ = b + w · год` пересекает ноль в году `year_zero` = −b / w. Получите `year_zero`, `n_negative` — число отрицательных прогнозов на валидации — и `share_negative` — их долю.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.linear_model import LinearRegression
+    df = pd.read_csv('cars_processed.csv')
+    X = df[['Year', 'Distance', 'Engine', 'km_year']]
+    y = df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    year_model = LinearRegression().fit(X_train[['Year']], y_train)
+    year_pred = year_model.predict(X_valid[['Year']])
+  starter: |
+    year_zero = ...
+    n_negative = ...
+    share_negative = ...
+    print(round(year_zero, 1), n_negative, round(share_negative, 3))
+  solution: |
+    year_zero = -year_model.intercept_ / year_model.coef_[0]
+    n_negative = int((year_pred < 0).sum())
+    share_negative = n_negative / len(year_pred)
+    print(round(year_zero, 1), n_negative, round(share_negative, 3))
+  explanation: |
+    - Ноль прямой: b + w · год = 0 → год = −b / w ≈ 1995. Все машины старше получают отрицательную «цену».
+    - Маска «прогноз меньше нуля» и её сумма (урок 2.5): около 6 % валидационных машин.
+    - Это не редкий сбой, а свойство вида модели — прямая не знает, что цена положительна.
+  hints:
+    - "Ноль прямой: из b + w · год = 0; параметры — `intercept_` и `coef_[0]`."
+    - "`year_zero = -year_model.intercept_ / year_model.coef_[0]`."
+    - "`n_negative = int((year_pred < 0).sum())`; доля — разделить на число прогнозов."
+  tests: |
+    yz = var('year_zero', 'number', 'числом')
+    if abs(yz - ref('year_model').intercept_ / ref('year_model').coef_[0]) < 1e-6:
+        fail('Знак перевёрнут: год нуля — `-intercept_ / coef_[0]`.')
+    close(yz, ref('year_zero'), 'Прямая пересекает ноль в {expected} году, а у вас {actual}.')
+    close(var('n_negative', 'number', 'числом'), ref('n_negative'), 'Отрицательных прогнозов {expected}, а у вас {actual}.')
+    close(var('share_negative', 'number', 'числом'), ref('share_negative'), 'Доля отрицательных прогнозов — {expected}, а у вас {actual}.')
+    close(alt('n_negative'), alt_ref('n_negative'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        year_zero = year_model.intercept_ / year_model.coef_[0]
+        n_negative = int((year_pred < 0).sum())
+        share_negative = n_negative / len(year_pred)
+      expect: перевёрнут
+    - code: |
+        year_zero = -year_model.intercept_ / year_model.coef_[0]
+        n_negative = int((year_pred <= 1000).sum())
+        share_negative = n_negative / len(year_pred)
+      expect: Отрицательных прогнозов
+
+- id: m5-l6-t6
+  title: Какой признак в одиночку полезнее всех
+  difficulty: star
+  introduces: [linear-regression]
+  uses: [sk-fit-predict, baseline-model, metric-mae-mape]
+  statement: |
+    Для каждого из четырёх признаков (`features`) обучите отдельную `LinearRegression` только по нему и получите `mae_by_feature` — словарь «признак → MAE на валидации». Затем `best_feature` — признак с наименьшей MAE и `useless` — список признаков (в порядке `features`), чьи модели **не лучше** ориентира (`MAE >= baseline_mae`).
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.linear_model import LinearRegression
+    from sklearn.dummy import DummyRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X = df[features]
+    y = df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    baseline_mae = mean_absolute_error(y_valid, DummyRegressor(strategy='median').fit(X_train, y_train).predict(X_valid))
+  starter: |
+    mae_by_feature = {}
+    for f in features:
+        model = ...
+        mae_by_feature[f] = ...
+    best_feature = ...
+    useless = ...
+    print({k: round(v) for k, v in mae_by_feature.items()}, best_feature, useless)
+  solution: |
+    mae_by_feature = {}
+    for f in features:
+        model = LinearRegression().fit(X_train[[f]], y_train)
+        mae_by_feature[f] = mean_absolute_error(y_valid, model.predict(X_valid[[f]]))
+    best_feature = min(mae_by_feature, key=mae_by_feature.get)
+    useless = [f for f in features if mae_by_feature[f] >= baseline_mae]
+    print({k: round(v) for k, v in mae_by_feature.items()}, best_feature, useless)
+  explanation: |
+    - Для признака `f` таблица из одной колонки — `X_train[[f]]` (список из одного имени).
+    - `min(словарь, key=словарь.get)` — ключ с наименьшим значением.
+    - Только год выпуска в одиночку полезен; модели по пробегу, объёму или пробегу в год не лучше константы: линейная связь этих признаков с ценой слабая. Это не значит, что они бесполезны вместе с годом — проверим в уроке 5.7.
+  hints:
+    - "В цикле: модель по `X_train[[f]]`, MAE по `X_valid[[f]]`; запишите в словарь."
+    - "`LinearRegression().fit(X_train[[f]], y_train)`; `mean_absolute_error(y_valid, model.predict(X_valid[[f]]))`."
+    - "`best_feature = min(mae_by_feature, key=mae_by_feature.get)`; `useless = [f for f in features if mae_by_feature[f] >= baseline_mae]`."
+  tests: |
+    d = var('mae_by_feature', dict, 'словарём')
+    ensure(set(d.keys()) == set(ref('features')), 'Ключи словаря — все четыре признака.')
+    for f in ref('features'):
+        close(d[f], ref('mae_by_feature')[f], 'MAE модели по признаку {0} — {{expected}}, а у вас {{actual}}.'.format(f))
+    equal(var('best_feature', str, 'строкой'), ref('best_feature'), 'Лучший одиночный признак — {expected}, а у вас {actual}.')
+    equal(list(var('useless', list, 'списком')), list(ref('useless')), 'Признаки не лучше ориентира: {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        mae_by_feature = {}
+        for f in features:
+            model = LinearRegression().fit(X_train[[f]], y_train)
+            mae_by_feature[f] = mean_absolute_error(y_train, model.predict(X_train[[f]]))
+        best_feature = min(mae_by_feature, key=mae_by_feature.get)
+        useless = [f for f in features if mae_by_feature[f] >= baseline_mae]
+      expect: MAE модели по признаку
+    - code: |
+        mae_by_feature = {}
+        for f in features:
+            model = LinearRegression().fit(X_train[[f]], y_train)
+            mae_by_feature[f] = mean_absolute_error(y_valid, model.predict(X_valid[[f]]))
+        best_feature = max(mae_by_feature, key=mae_by_feature.get)
+        useless = [f for f in features if mae_by_feature[f] >= baseline_mae]
+      expect: Лучший одиночный признак

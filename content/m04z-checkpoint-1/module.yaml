@@ -1,0 +1,13 @@
+id: k1
+number: 4
+label: КТ 1
+kind: checkpoint
+lessonPrefix: КТ1
+title: "Контрольная точка 1: модули 1–4"
+short: Контрольная 1
+description: >-
+  Смешанный блок из 14 задач средней сложности по модулям 1–4 — NumPy, загрузка и подготовка данных в Pandas,
+  сводный анализ, графики и дата-история — без новых понятий. Результаты сохраняются в прогрессе, как у обычных заданий.
+sources:
+  - "Workshops/примерная программа 2026.xlsx — неделя «контрольная» (вместо КР на elearn)"
+warmupReviews: [bool-mask, mask-combine, quantiles-iqr, joint-mask, rng-sample, sampling-variability, mean-median, nan-inf]

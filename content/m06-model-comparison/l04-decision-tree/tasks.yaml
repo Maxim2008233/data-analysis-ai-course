@@ -1,0 +1,478 @@
+- id: m6-l4-t1
+  title: Дерево глубины 3 — своими руками
+  difficulty: warmup
+  introduces: [decision-tree]
+  uses: [py-functions]
+  statement: |
+    Правила обученного дерева глубины 3 (вывод `export_text`) напечатаны ниже. Напишите функцию `tree_price(year, engine)`, которая проходит по этим правилам вложенными `if` и возвращает значение листа. Затем `price_a` — прогноз для машины 2010 года с двигателем 2 500 см³.
+
+    ```
+    Year <= 2012.5
+    |   Year <= 2007.5
+    |   |   Engine <= 2052.0  → 3379.6
+    |   |   Engine >  2052.0  → 6231.7
+    |   Year >  2007.5
+    |   |   Engine <= 1999.5  → 6235.3
+    |   |   Engine >  1999.5  → 12660.8
+    Year >  2012.5
+    |   Engine <= 2891.0
+    |   |   Engine <= 1915.0  → 10872.7
+    |   |   Engine >  1915.0  → 20557.2
+    |   Engine >  2891.0
+    |   |   Year <= 2017.5    → 35974.3
+    |   |   Year >  2017.5    → 67834.1
+    ```
+  starter: |
+    def tree_price(year, engine):
+        if year <= 2012.5:
+            if year <= 2007.5:
+                ...
+            else:
+                ...
+        else:
+            ...
+
+    price_a = tree_price(2010, 2500)
+    print(price_a)
+  solution: |
+    def tree_price(year, engine):
+        if year <= 2012.5:
+            if year <= 2007.5:
+                return 3379.6 if engine <= 2052.0 else 6231.7
+            else:
+                return 6235.3 if engine <= 1999.5 else 12660.8
+        else:
+            if engine <= 2891.0:
+                return 10872.7 if engine <= 1915.0 else 20557.2
+            else:
+                return 35974.3 if year <= 2017.5 else 67834.1
+
+    price_a = tree_price(2010, 2500)
+    print(price_a)
+  explanation: |
+    - Дерево — это и есть вложенные `if`: каждый узел — условие, каждый лист — `return` числа.
+    - Машина 2010 года с двигателем 2 500 см³: не новее 2012,5 → новее 2007,5 → объём больше 1 999,5 → 12 660,8 евро.
+    - Обратите внимание: третий вопрос для новых машин с большим двигателем — снова про год. Дерево само решает, какой признак спросить в каждой ветке.
+  hints:
+    - "Для каждой ветки допишите вопрос третьего уровня: `if engine <= ...: return ... else: return ...`."
+    - "Правая ветка корня: сначала `engine <= 2891.0`, а внутри — `engine <= 1915.0` или `year <= 2017.5`."
+    - "Короткая запись листа — `return 3379.6 if engine <= 2052.0 else 6231.7`."
+  tests: |
+    import numpy as np
+    f = var('tree_price')
+    ensure(callable(f), '`tree_price` должна быть функцией.')
+    cases = [(2001, 1900, 3379.6), (2005, 2500, 6231.7), (2010, 1600, 6235.3), (2010, 2500, 12660.8),
+             (2015, 1600, 10872.7), (2016, 2000, 20557.2), (2016, 3000, 35974.3), (2019, 3500, 67834.1),
+             (2012, 2052, 12660.8), (2007, 2052, 3379.6), (2013, 2891, 20557.2), (2018, 2900, 67834.1)]
+    for yr, eng, exp in cases:
+        got = f(yr, eng)
+        ensure(got is not None, 'Для машины {0} года, {1} см³ функция ничего не вернула — в какой-то ветке нет `return`.'.format(yr, eng))
+        close(float(got), exp, 'Для машины {0} года с двигателем {1} см³ лист — {{expected}}, а у вас {{actual}}.'.format(yr, eng))
+    close(var('price_a', 'number', 'числом'), 12660.8, 'Прогноз для машины 2010 года, 2 500 см³ — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        def tree_price(year, engine):
+            if year <= 2012.5:
+                if year <= 2007.5:
+                    return 3379.6 if engine <= 2052.0 else 6231.7
+                else:
+                    return 6235.3 if engine <= 1999.5 else 12660.8
+            else:
+                if engine <= 2891.0:
+                    return 10872.7 if engine <= 1915.0 else 20557.2
+                else:
+                    return 35974.3 if engine <= 2017.5 else 67834.1
+
+        price_a = tree_price(2010, 2500)
+      expect: "3000 см³"
+    - code: |
+        def tree_price(year, engine):
+            if year < 2012:
+                if year < 2007:
+                    return 3379.6 if engine <= 2052.0 else 6231.7
+                else:
+                    return 6235.3 if engine <= 1999.5 else 12660.8
+            else:
+                if engine <= 2891.0:
+                    return 10872.7 if engine <= 1915.0 else 20557.2
+                else:
+                    return 35974.3 if year <= 2017.5 else 67834.1
+
+        price_a = tree_price(2010, 2500)
+      expect: "2012 года"
+
+- id: m6-l4-t2
+  title: Обучить дерево и прочитать корень
+  difficulty: main
+  introduces: [decision-tree]
+  uses: [hyperparameter, regression-metrics]
+  statement: |
+    Обучите `tree` — `DecisionTreeRegressor` глубины 3 с `random_state=42`, посчитайте `tree_mae` на validation и `n_leaves` — число листьев. Из устройства дерева достаньте первый вопрос: `root_feature` — имя признака и `root_threshold` — порог. У обученного дерева номера признаков узлов лежат в `tree.tree_.feature`, пороги — в `tree.tree_.threshold`, корень — элемент 0.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    from sklearn.tree import DecisionTreeRegressor
+
+    tree = ...
+    tree_mae = ...
+    n_leaves = ...
+    root_feature = features[...]
+    root_threshold = ...
+    print(round(tree_mae, 1), n_leaves, root_feature, root_threshold)
+  solution: |
+    from sklearn.tree import DecisionTreeRegressor
+
+    tree = DecisionTreeRegressor(max_depth=3, random_state=42).fit(X_train, y_train)
+    tree_mae = mean_absolute_error(y_valid, tree.predict(X_valid))
+    n_leaves = tree.get_n_leaves()
+    root_feature = features[tree.tree_.feature[0]]
+    root_threshold = tree.tree_.threshold[0]
+    print(round(tree_mae, 1), n_leaves, root_feature, root_threshold)
+  explanation: |
+    - `tree_` хранит устройство обученного дерева массивами по узлам: `feature` — номер признака вопроса, `threshold` — порог. Узел 0 — корень.
+    - Корень — «Year ≤ 2012,5», листьев 8, MAE ≈ 3 467. Глубина 3 — это до 2³ = 8 листьев.
+    - Порог лежит посередине между соседними значениями признака (2012 и 2013), поэтому он дробный.
+  hints:
+    - "`DecisionTreeRegressor(max_depth=3, random_state=42).fit(X_train, y_train)`; листья — `tree.get_n_leaves()`."
+    - "Номер признака корня — `tree.tree_.feature[0]`, имя — `features[...]` по этому номеру."
+    - "`root_threshold = tree.tree_.threshold[0]`."
+  tests: |
+    from sklearn.tree import DecisionTreeRegressor
+    t = var('tree', DecisionTreeRegressor, 'моделью DecisionTreeRegressor')
+    ensure(hasattr(t, 'tree_'), 'Дерево не обучено: `.fit(X_train, y_train)`.')
+    ensure(t.max_depth == 3, 'Глубина дерева — 3: `max_depth=3`, а у вас {0}.'.format(t.max_depth))
+    close(var('tree_mae', 'number', 'числом'), ref('tree_mae'), 'MAE дерева на validation — {expected}, а у вас {actual}.')
+    equal(var('n_leaves', 'number', 'числом'), ref('n_leaves'), 'Листьев — {expected}, а у вас {actual}.')
+    equal(var('root_feature', str, 'строкой'), ref('root_feature'), 'Признак первого вопроса — «{expected}», а у вас «{actual}».')
+    close(var('root_threshold', 'number', 'числом'), ref('root_threshold'), 'Порог первого вопроса — {expected}, а у вас {actual}.')
+    close(alt('tree_mae'), alt_ref('tree_mae'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        from sklearn.tree import DecisionTreeRegressor
+        tree = DecisionTreeRegressor(random_state=42).fit(X_train, y_train)
+        tree_mae = mean_absolute_error(y_valid, tree.predict(X_valid))
+        n_leaves = tree.get_n_leaves()
+        root_feature = features[tree.tree_.feature[0]]
+        root_threshold = tree.tree_.threshold[0]
+      expect: "max_depth=3"
+    - code: |
+        from sklearn.tree import DecisionTreeRegressor
+        tree = DecisionTreeRegressor(max_depth=3, random_state=42).fit(X_train, y_train)
+        tree_mae = mean_absolute_error(y_valid, tree.predict(X_valid))
+        n_leaves = tree.get_n_leaves()
+        root_feature = features[tree.tree_.feature[1]]
+        root_threshold = tree.tree_.threshold[1]
+      expect: Порог первого вопроса
+
+- id: m6-l4-t3
+  title: Лучший порог по году — перебором
+  difficulty: main
+  introduces: [tree-split]
+  uses: [loss-mse]
+  statement: |
+    Найдите лучший первый вопрос по году так же, как это делает дерево. Кандидаты — середины между соседними различными годами обучающей части (`thresholds` уже в заготовке). Для каждого порога посчитайте `sse` — сумму квадратов отклонений цен от средних двух частей. Получите `shares` — Series «порог → доля оставшегося разброса» (SSE, делённая на сумму квадратов отклонений всех цен от их среднего), `best_threshold` — порог с наименьшей долей и `best_share` — эту долю.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    year = X_train['Year'].to_numpy()
+    price = y_train.to_numpy()
+  starter: |
+    years = np.unique(year)
+    thresholds = (years[:-1] + years[1:]) / 2
+    total = ((price - price.mean()) ** 2).sum()
+    result = {}
+    for t in thresholds:
+        left, right = price[year <= t], price[year > t]
+        sse = ...
+        result[t] = sse / total
+    shares = pd.Series(result)
+    best_threshold = ...
+    best_share = ...
+    print(best_threshold, round(best_share, 4))
+  solution: |
+    years = np.unique(year)
+    thresholds = (years[:-1] + years[1:]) / 2
+    total = ((price - price.mean()) ** 2).sum()
+    result = {}
+    for t in thresholds:
+        left, right = price[year <= t], price[year > t]
+        sse = ((left - left.mean()) ** 2).sum() + ((right - right.mean()) ** 2).sum()
+        result[t] = sse / total
+    shares = pd.Series(result)
+    best_threshold = shares.idxmin()
+    best_share = shares.min()
+    print(best_threshold, round(best_share, 4))
+  explanation: |
+    - Для каждого порога SSE — сумма двух «разбросов»: цен слева от их среднего и цен справа от их среднего. Это та же квадратичная ошибка, что у MSE (урок 5.2), только у модели «среднее своей группы».
+    - Лучший порог — 2012,5: после него остаётся 74,9 % исходного разброса. Ровно этот вопрос дерево выбрало корнем (задание 6.4.2).
+    - Пороги — середины между соседними значениями: любой порог между 2012 и 2013 делит машины одинаково, середина — договорённость.
+  hints:
+    - "SSE — сумма квадратов отклонений `left` от `left.mean()` плюс то же для `right`."
+    - "`sse = ((left - left.mean()) ** 2).sum() + ((right - right.mean()) ** 2).sum()`."
+    - "Лучший порог — `shares.idxmin()`, его доля — `shares.min()`."
+  tests: |
+    import pandas as pd
+    s = var('shares', pd.Series, 'Series')
+    ensure(len(s) == len(ref('shares')), 'Порогов должно быть {0} — по одному между соседними годами.'.format(len(ref('shares'))))
+    same_array(s.to_numpy(dtype=float), ref('shares').to_numpy(dtype=float), 'Доли оставшегося разброса не совпадают: SSE — сумма квадратов отклонений **каждой** части от **её** среднего.')
+    b = var('best_threshold', 'number', 'числом')
+    if abs(b - ref('shares').idxmax()) < 1e-9:
+        fail('Это худший порог. Лучший — с **наименьшей** долей оставшегося разброса: `idxmin`.')
+    close(b, ref('best_threshold'), 'Лучший порог — {expected}, а у вас {actual}.')
+    close(var('best_share', 'number', 'числом'), ref('best_share'), 'Доля оставшегося разброса — {expected}, а у вас {actual}.')
+    close(alt('best_share'), alt_ref('best_share'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        years = np.unique(year)
+        thresholds = (years[:-1] + years[1:]) / 2
+        total = ((price - price.mean()) ** 2).sum()
+        result = {}
+        for t in thresholds:
+            left, right = price[year <= t], price[year > t]
+            sse = ((left - price.mean()) ** 2).sum() + ((right - price.mean()) ** 2).sum()
+            result[t] = sse / total
+        shares = pd.Series(result)
+        best_threshold = shares.idxmin()
+        best_share = shares.min()
+      expect: "**её** среднего"
+    - code: |
+        years = np.unique(year)
+        thresholds = (years[:-1] + years[1:]) / 2
+        total = ((price - price.mean()) ** 2).sum()
+        result = {}
+        for t in thresholds:
+            left, right = price[year <= t], price[year > t]
+            sse = ((left - left.mean()) ** 2).sum() + ((right - right.mean()) ** 2).sum()
+            result[t] = sse / total
+        shares = pd.Series(result)
+        best_threshold = shares.idxmax()
+        best_share = shares.max()
+      expect: худший порог
+
+- id: m6-l4-t4
+  kind: quiz
+  title: Читаем дерево
+  difficulty: main
+  introduces: [decision-tree]
+  uses: []
+  statement: |
+    Ответьте по рисунку дерева глубины 3 из урока (вопросы в узлах, число машин и средняя цена в листьях).
+  quiz:
+    - q: Сколько разных цен может предсказать это дерево?
+      options:
+        - "8 — по одной на лист"
+        - "3 — по одной на уровень"
+        - Сколько угодно — прогноз плавный
+      answer: 0
+      explain: Каждая машина попадает в один из восьми листьев и получает его среднюю цену.
+    - q: В лист «67 834 €» попали 113 обучающих машин. Что это за машины?
+      options:
+        - Новее 2017,5 года с двигателем больше 2 891 см³
+        - Старше 2007,5 года с большим двигателем
+        - Самые дешёвые машины
+      answer: 0
+      explain: Путь — Year > 2012,5 → Engine > 2 891 → Year > 2017,5.
+    - q: Почему в одной ветке третий вопрос — об объёме двигателя, а в другой — о годе?
+      options:
+        - В каждой группе дерево заново ищет вопрос, который лучше всего делит именно её машины
+        - Признаки чередуются по очереди
+        - Это ошибка обучения
+      answer: 0
+      explain: Разбиение выбирается отдельно внутри каждого узла — жадно, по наименьшей сумме квадратов.
+  hints:
+    - Вспомните, что выдаёт лист и как выбирается вопрос в каждом узле.
+    - "Листьев 8; путь к листу — цепочка ответов; вопросы выбираются отдельно в каждом узле."
+    - "Ответы: 8; новее 2017,5 с двигателем больше 2 891; в каждой группе свой лучший вопрос."
+
+- id: m6-l4-t5
+  title: "Деревья для классов: энтропия и прирост информации"
+  difficulty: main
+  introduces: [tree-split]
+  uses: [py-functions]
+  statement: |
+    Для деревьев классификации чистоту узла измеряют энтропией. Напишите функцию `entropy(counts)` — энтропию узла по числам объектов каждого класса: H = −Σ pₖ log₂ pₖ (классы с нулём объектов пропускаются). Затем `gain` — прирост информации разбиения: в родителе 10 машин с автоматом и 10 с механикой, слева после вопроса — 8 и 2, справа — 2 и 8. Прирост — энтропия родителя минус взвешенная по числу объектов энтропия частей.
+  starter: |
+    import numpy as np
+
+    def entropy(counts):
+        counts = np.asarray(counts, dtype=float)
+        p = ...
+        p = p[p > 0]
+        return ...
+
+    gain = ...
+    print(round(entropy([10, 10]), 3), round(entropy([8, 2]), 3), round(gain, 3))
+  solution: |
+    import numpy as np
+
+    def entropy(counts):
+        counts = np.asarray(counts, dtype=float)
+        p = counts / counts.sum()
+        p = p[p > 0]
+        return -(p * np.log2(p)).sum()
+
+    gain = entropy([10, 10]) - (10 / 20) * entropy([8, 2]) - (10 / 20) * entropy([2, 8])
+    print(round(entropy([10, 10]), 3), round(entropy([8, 2]), 3), round(gain, 3))
+  explanation: |
+    - Доли классов — числа, делённые на их сумму; энтропия — минус сумма p·log₂p. Нули пропускаем: log₂0 не определён, а вклад такого класса равен нулю.
+    - Родитель «10 и 10» — максимальная неопределённость, H = 1. Части «8 и 2» почище: H ≈ 0,722.
+    - Прирост 1 − 0,722 ≈ 0,278: вопрос заметно упорядочил классы. Дерево классификации выбирает вопрос с наибольшим приростом — так работает алгоритм ID3 из лекции.
+  hints:
+    - "Доли — `counts / counts.sum()`; энтропия — `-(p * np.log2(p)).sum()`."
+    - "Веса частей — доли объектов: 10 из 20 слева и 10 из 20 справа."
+    - "`gain = entropy([10, 10]) - 0.5 * entropy([8, 2]) - 0.5 * entropy([2, 8])`."
+  tests: |
+    import numpy as np
+    f = var('entropy')
+    ensure(callable(f), '`entropy` должна быть функцией.')
+    v10 = float(f([10, 10]))
+    if abs(v10 - np.log(2)) < 1e-9:
+        fail('Похоже, использован натуральный логарифм: энтропия узла «10 и 10» вышла 0,693. В формуле — логарифм по основанию 2: `np.log2`.')
+    close(v10, 1.0, 'Энтропия узла «10 и 10» — {expected}, а у вас {actual}.')
+    ensure(abs(float(f([7, 0]))) < 1e-12, 'Энтропия чистого узла (все объекты одного класса) — 0. Классы с нулём объектов пропускайте: `p = p[p > 0]`.')
+    close(float(f([1, 3])), 0.8112781244591328, 'Энтропия узла «1 и 3» — {expected}, а у вас {actual}.')
+    close(float(f([2, 3, 5])), 1.4854752972273344, 'Энтропия узла «2, 3, 5» (три класса) — {expected}, а у вас {actual}.')
+    close(var('gain', 'number', 'числом'), 0.2780719051126377, 'Прирост информации — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        import numpy as np
+
+        def entropy(counts):
+            counts = np.asarray(counts, dtype=float)
+            p = counts / counts.sum()
+            p = p[p > 0]
+            return -(p * np.log(p)).sum()
+
+        gain = entropy([10, 10]) - 0.5 * entropy([8, 2]) - 0.5 * entropy([2, 8])
+      expect: натуральный логарифм
+    - code: |
+        import numpy as np
+
+        def entropy(counts):
+            counts = np.asarray(counts, dtype=float)
+            p = counts / counts.sum()
+            p = p[p > 0]
+            return -(p * np.log2(p)).sum()
+
+        gain = entropy([10, 10]) - entropy([8, 2]) - entropy([2, 8])
+      expect: Прирост информации
+
+- id: m6-l4-t6
+  title: Первый вопрос дерева на NumPy
+  difficulty: star
+  introduces: [tree-split]
+  uses: [loss-mse]
+  statement: |
+    Напишите функцию `best_split(X, y)` — лучший первый вопрос дерева регрессии по **всем** признакам: для каждого признака перебираются пороги — середины между соседними различными значениями, — и выбирается пара «признак, порог» с наименьшей суммой квадратов отклонений в двух частях. `X` — массив n × m, `y` — массив n. Функция возвращает `(номер признака, порог)`. Затем `split_small` — результат для обучающей выборки `X_small`, `y_small` (3 000 машин).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    X_small = X_train.to_numpy()[:3000]
+    y_small = y_train.to_numpy()[:3000]
+  starter: |
+    def best_split(X, y):
+        best_sse, best_feature, best_threshold = np.inf, None, None
+        for j in range(X.shape[1]):
+            values = np.unique(X[:, j])
+            for t in (values[:-1] + values[1:]) / 2:
+                ...
+        return best_feature, best_threshold
+
+    split_small = best_split(X_small, y_small)
+    print(split_small)
+  solution: |
+    def best_split(X, y):
+        best_sse, best_feature, best_threshold = np.inf, None, None
+        for j in range(X.shape[1]):
+            order = np.argsort(X[:, j], kind='stable')
+            xs, ys = X[order, j], y[order]
+            n = len(ys)
+            csum, csum2 = np.cumsum(ys), np.cumsum(ys ** 2)
+            i = np.arange(1, n)                               # слева первые i строк
+            ok = xs[1:] != xs[:-1]                            # порог только между разными значениями
+            left_sse = csum2[i - 1] - csum[i - 1] ** 2 / i
+            right_sum = csum[-1] - csum[i - 1]
+            right_sse = (csum2[-1] - csum2[i - 1]) - right_sum ** 2 / (n - i)
+            sse = np.where(ok, left_sse + right_sse, np.inf)
+            k = np.argmin(sse)
+            if sse[k] < best_sse:
+                best_sse, best_feature, best_threshold = sse[k], j, (xs[k] + xs[k + 1]) / 2
+        return best_feature, best_threshold
+
+    split_small = best_split(X_small, y_small)
+    print(split_small)
+  explanation: |
+    - Прямой перебор (для каждого порога заново делить массив и считать суммы) работает, но медленно: у пробега тысячи различных значений.
+    - Быстрый приём — отсортировать признак и накопленные суммы `cumsum`: сумма квадратов отклонений части равна Σy² − (Σy)²/n, а Σy и Σy² для «первых i строк» дают накопленные суммы сразу для всех порогов.
+    - На 3 000 машинах лучший вопрос — снова год (признак 0); `DecisionTreeRegressor(max_depth=1)` находит тот же признак и порог. Так устроен поиск разбиения и в scikit-learn — только на C и с оптимизациями.
+  hints:
+    - "Простой путь: для каждого порога `left = y[X[:, j] <= t]`, `right = y[X[:, j] > t]`, SSE как в задании 6.4.3; запоминайте лучший результат."
+    - "Если медленно: отсортируйте признак; SSE части = Σy² − (Σy)²/n, а Σy и Σy² для первых i строк — `np.cumsum`."
+    - "Сравнивайте `sse < best_sse` и сохраняйте `j` и `t`; функция возвращает `(best_feature, best_threshold)`."
+  tests: |
+    import numpy as np
+    from sklearn.tree import DecisionTreeRegressor
+    f = var('best_split')
+    ensure(callable(f), '`best_split` должна быть функцией.')
+    rng = np.random.default_rng(5)
+    for trial in range(3):
+        Xr = np.round(rng.normal(size=(200, 3)), 2)
+        yr = 3 * (Xr[:, trial] > 0.3) + rng.normal(scale=0.3, size=200)
+        got = f(Xr, yr)
+        sk = DecisionTreeRegressor(max_depth=1).fit(Xr, yr).tree_
+        ensure(got is not None and len(got) == 2, 'Функция должна вернуть пару `(номер признака, порог)`.')
+        ensure(got[0] is not None and got[1] is not None, 'Функция вернула `(None, None)` — лучший вопрос не найден. Допишите перебор: считайте SSE каждого порога и запоминайте наименьшую.')
+        ensure(int(got[0]) == int(sk.feature[0]), 'На проверочных данных лучший признак — {0}, а функция вернула {1}. Сравнивайте SSE всех признаков и порогов и берите наименьшую.'.format(int(sk.feature[0]), got[0]))
+        close(float(got[1]), float(sk.threshold[0]), 'Порог на проверочных данных — {expected}, а у вас {actual}: порог — середина между соседними различными значениями.', atol=1e-6)
+    s = var('split_small')
+    sk = DecisionTreeRegressor(max_depth=1).fit(ref('X_small'), ref('y_small')).tree_
+    ensure(int(s[0]) == int(sk.feature[0]) and abs(float(s[1]) - float(sk.threshold[0])) < 1e-6, 'Для `X_small` лучший вопрос — признак {0}, порог {1}.'.format(int(sk.feature[0]), float(sk.threshold[0])))
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def best_split(X, y):
+            best_sse, best_feature, best_threshold = np.inf, None, None
+            for j in range(X.shape[1]):
+                values = np.unique(X[:, j])
+                for t in (values[:-1] + values[1:]) / 2:
+                    left, right = y[X[:, j] <= t], y[X[:, j] > t]
+                    sse = ((left - y.mean()) ** 2).sum() + ((right - y.mean()) ** 2).sum()
+                    if sse < best_sse:
+                        best_sse, best_feature, best_threshold = sse, j, t
+            return best_feature, best_threshold
+
+        split_small = best_split(X_small, y_small)
+      expect: Порог на проверочных данных
+    - code: |
+        def best_split(X, y):
+            best_sse, best_feature, best_threshold = np.inf, None, None
+            for j in range(X.shape[1]):
+                values = np.unique(X[:, j])
+                for t in values[:-1]:
+                    left, right = y[X[:, j] <= t], y[X[:, j] > t]
+                    sse = ((left - left.mean()) ** 2).sum() + ((right - right.mean()) ** 2).sum()
+                    if sse < best_sse:
+                        best_sse, best_feature, best_threshold = sse, j, t
+            return best_feature, best_threshold
+
+        split_small = best_split(X_small, y_small)
+      expect: середина

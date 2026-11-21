@@ -1,0 +1,553 @@
+- id: m10-l4-t1
+  title: Варианты с номерами
+  difficulty: warmup
+  introduces: []
+  uses: [llm-chat-api]
+  statement: |
+    Напишите функцию `format_options(options)`: список вариантов превращается в строку, где каждый вариант стоит на своей строке со своим номером с нуля — `0) …`, `1) …` и так далее. Строки соединяются переводом строки `\n`, в конце перевода строки нет.
+
+    Получите `prompt5` — промпт для вопроса номер 5 из `qa` по шаблону `TEMPLATE` (варианты списком — в столбце `options`).
+  prelude: |
+    import ast
+    import json
+    import warnings
+    import pandas as pd
+    qa = pd.read_csv('qa_train.csv')
+
+    def parse_options(s):
+        try:
+            return json.loads(s)
+        except json.JSONDecodeError:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', SyntaxWarning)
+                return ast.literal_eval(s)
+
+    qa['options'] = qa['варианты'].apply(parse_options)
+    TEMPLATE = """Вопрос: {question}
+    Варианты ответа:
+    {options}
+    Ответ:"""
+  starter: |
+    def format_options(options):
+        lines = [... for i, o in enumerate(options)]
+        return ...
+
+    row = qa.loc[5]
+    prompt5 = TEMPLATE.format(question=..., options=...)
+    print(prompt5)
+  solution: |
+    def format_options(options):
+        lines = [f'{i}) {o}' for i, o in enumerate(options)]
+        return '\n'.join(lines)
+
+    row = qa.loc[5]
+    prompt5 = TEMPLATE.format(question=row['вопрос'], options=format_options(row['options']))
+    print(prompt5)
+  explanation: |
+    - `enumerate` выдаёт пары «номер, вариант», номера с нуля — как в столбце `ответ`. Модели не нужно считать позиции самой.
+    - `'\n'.join(lines)` ставит перевод строки между строками, но не после последней.
+    - Шаблон заполняется именованными значениями: `question=…`, `options=…`. Одинаковые имена в шаблоне и в `format` — обязательное условие.
+  hints:
+    - "Строка варианта — f-строка `f'{i}) {o}'`."
+    - "Соединить строки — `'\\n'.join(lines)`."
+    - "`TEMPLATE.format(question=row['вопрос'], options=format_options(row['options']))`."
+  tests: |
+    f = var('format_options')
+    ensure(callable(f), '`format_options` должна быть функцией.')
+    got = f(['да', 'нет'])
+    ensure(isinstance(got, str), '`format_options` должна вернуть строку.')
+    if got == '1) да\n2) нет':
+        fail('Номера вариантов считаются с нуля, как в столбце `ответ`: «0) да», «1) нет».')
+    if got in ('0) да, 1) нет', '0) да 1) нет'):
+        fail('Каждый вариант — с новой строки: соедините строки через `\\n`.')
+    if got.endswith('\n'):
+        fail('После последнего варианта перевода строки быть не должно.')
+    equal(got, '0) да\n1) нет', "format_options(['да', 'нет']) должна дать '0) да\\n1) нет', а получилось {actual}.")
+    ten = f([str(k * k) for k in range(10)])
+    equal(ten.split('\n')[-1], '9) 81', 'У десяти вариантов последняя строка — {expected}, а у вас {actual}.')
+    equal(var('prompt5', str, 'строкой'), ref('prompt5'), '`prompt5` — шаблон, заполненный вопросом 5 и его пронумерованными вариантами.')
+  files: [qa_train.csv]
+  wrong:
+    - code: |
+        def format_options(options):
+            return '\n'.join(f'{i}) {o}' for i, o in enumerate(options, start=1))
+        row = qa.loc[5]
+        prompt5 = TEMPLATE.format(question=row['вопрос'], options=format_options(row['options']))
+      expect: считаются с нуля
+    - code: |
+        def format_options(options):
+            return ', '.join(f'{i}) {o}' for i, o in enumerate(options))
+        row = qa.loc[5]
+        prompt5 = TEMPLATE.format(question=row['вопрос'], options=format_options(row['options']))
+      expect: с новой строки
+
+- id: m10-l4-t2
+  title: Шаблон с ответом в JSON
+  difficulty: main
+  introduces: []
+  uses: [llm-chat-api]
+  statement: |
+    Нужен шаблон `ANSWER_TEMPLATE` с местами `{question}` и `{options}`. `ANSWER_TEMPLATE.format(question=Q, options=O)` должен давать ровно такой текст:
+
+    ```
+    Вопрос: Q
+    Варианты ответа:
+    O
+    Ответь только JSON без пояснений: {"answer": номер правильного варианта}
+    ```
+
+    Получите `prompt` — промпт для вопроса номер 12 (`format_options` готова).
+  prelude: |
+    import ast
+    import json
+    import warnings
+    import pandas as pd
+    qa = pd.read_csv('qa_train.csv')
+
+    def parse_options(s):
+        try:
+            return json.loads(s)
+        except json.JSONDecodeError:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', SyntaxWarning)
+                return ast.literal_eval(s)
+
+    qa['options'] = qa['варианты'].apply(parse_options)
+
+    def format_options(options):
+        return '\n'.join(f'{i}) {o}' for i, o in enumerate(options))
+  starter: |
+    ANSWER_TEMPLATE = """Вопрос: {question}
+    Варианты ответа:
+    {options}
+    Ответь только JSON без пояснений: ..."""
+
+    row = qa.loc[12]
+    prompt = ANSWER_TEMPLATE.format(question=row['вопрос'], options=format_options(row['options']))
+    print(prompt)
+  solution: |
+    ANSWER_TEMPLATE = """Вопрос: {question}
+    Варианты ответа:
+    {options}
+    Ответь только JSON без пояснений: {{"answer": номер правильного варианта}}"""
+
+    row = qa.loc[12]
+    prompt = ANSWER_TEMPLATE.format(question=row['вопрос'], options=format_options(row['options']))
+    print(prompt)
+  explanation: |
+    - Двойные скобки `{{` и `}}` — единственный способ вписать фигурную скобку в шаблон для `format`. После подстановки в промпте останутся одинарные.
+    - Места подстановки `{question}` и `{options}` остаются с одинарными скобками — их `format` и заполняет.
+    - Ответ в JSON проще разобрать программой: `json.loads(ответ)['answer']`. Как проверять такие ответы и что делать, если модель всё-таки написала лишнее, — урок 10.5.
+  hints:
+    - "Одинарные скобки вокруг `\"answer\": …` `format` примет за место подстановки и упадёт."
+    - "Чтобы в тексте осталась скобка `{`, в шаблоне пишут `{{`, а для `}` — `}}`."
+    - "Последняя строка шаблона — `Ответь только JSON без пояснений: {{\"answer\": номер правильного варианта}}`."
+  tests: |
+    t = var('ANSWER_TEMPLATE', str, 'строкой')
+    try:
+        got = t.format(question='Сколько будет 2 + 2?', options='0) 3\n1) 4')
+    except (KeyError, ValueError, IndexError):
+        fail('`ANSWER_TEMPLATE.format(...)` падает: фигурные скобки JSON в шаблоне нужно удвоить — `{{` и `}}`.')
+    want = 'Вопрос: Сколько будет 2 + 2?\nВарианты ответа:\n0) 3\n1) 4\nОтветь только JSON без пояснений: {"answer": номер правильного варианта}'
+    if '{{' in got or '}}' in got:
+        fail('В готовом промпте скобки должны быть одинарными: в шаблоне их удваивают ровно один раз.')
+    equal(got, want, 'Шаблон с вопросом «Сколько будет 2 + 2?» дал другой текст. Ожидалось:\n' + want)
+    equal(var('prompt', str, 'строкой'), ref('prompt'), '`prompt` — шаблон, заполненный вопросом 12.')
+  files: [qa_train.csv]
+  wrong:
+    - code: |
+        ANSWER_TEMPLATE = """Вопрос: {question}
+        Варианты ответа:
+        {options}
+        Ответь только JSON без пояснений: {"answer": номер правильного варианта}"""
+        row = qa.loc[12]
+        prompt = ANSWER_TEMPLATE.format(question=row['вопрос'], options=format_options(row['options']))
+      expect: Фигурные скобки
+    - code: |
+        ANSWER_TEMPLATE = """Вопрос: {question}
+        Варианты ответа: {options}
+        Ответь только JSON без пояснений: {{"answer": номер правильного варианта}}"""
+        row = qa.loc[12]
+        prompt = ANSWER_TEMPLATE.format(question=row['вопрос'], options=format_options(row['options']))
+      expect: дал другой текст
+
+- id: m10-l4-t3
+  title: Примеры без утечки
+  difficulty: main
+  introduces: [few-shot]
+  uses: []
+  statement: |
+    Напишите функцию `pick_examples(df, i, k)`. Она возвращает список меток строк `df` — `k` примеров для вопроса с меткой `i`:
+
+    - сам вопрос `i` в примеры не попадает никогда;
+    - сначала идут вопросы той же категории, в порядке таблицы. Категория «-» значит «не указана», похожих по ней не ищут;
+    - если таких меньше `k`, список добирают остальными вопросами в порядке таблицы.
+
+    Получите:
+
+    - `ex12 = pick_examples(qa, 12, 2)` и `ex0 = pick_examples(qa, 0, 2)`;
+    - `n_same` — у скольких вопросов `qa` оба примера из `pick_examples(qa, i, 2)` той же категории, что и сам вопрос (вопросы с категорией «-» не считаются).
+  prelude: |
+    import pandas as pd
+    qa = pd.read_csv('qa_train.csv')
+  starter: |
+    def pick_examples(df, i, k):
+        others = df.drop(index=i)                          # все вопросы, кроме самого
+        cat = df.loc[i, 'категория']
+        if cat != '-':
+            same = list(others.index[...])
+        else:
+            same = []
+        rest = [j for j in others.index if j not in same]
+        return ...
+
+    ex12 = pick_examples(qa, 12, 2)
+    ex0 = pick_examples(qa, 0, 2)
+    n_same = 0
+    for i in qa.index:
+        cat = qa.loc[i, 'категория']
+        if cat != '-' and all(...):
+            n_same += 1
+    print(ex12, ex0, n_same)
+  solution: |
+    def pick_examples(df, i, k):
+        others = df.drop(index=i)                          # все вопросы, кроме самого
+        cat = df.loc[i, 'категория']
+        if cat != '-':
+            same = list(others.index[others['категория'] == cat])
+        else:
+            same = []
+        rest = [j for j in others.index if j not in same]
+        return (same + rest)[:k]
+
+    ex12 = pick_examples(qa, 12, 2)
+    ex0 = pick_examples(qa, 0, 2)
+    n_same = 0
+    for i in qa.index:
+        cat = qa.loc[i, 'категория']
+        if cat != '-' and all(qa.loc[j, 'категория'] == cat for j in pick_examples(qa, i, 2)):
+            n_same += 1
+    print(ex12, ex0, n_same)
+  explanation: |
+    - `df.drop(index=i)` убирает сам вопрос до всякого выбора — так утечка невозможна при любом `k`.
+    - `(same + rest)[:k]` — сначала похожие, потом остальные, и берётся `k` первых. Если похожих хватает, остальные просто не понадобятся.
+    - Двумя примерами своей темы обеспечены 57 вопросов из 87. Для вопросов без категории и для редких тем, где всего один-два вопроса, примеры приходят из других тем.
+  hints:
+    - "Метки вопросов той же категории — `others.index[others['категория'] == cat]`."
+    - "Сначала похожие, потом остальные: `(same + rest)[:k]`."
+    - "Проверка категорий примеров — `all(qa.loc[j, 'категория'] == cat for j in pick_examples(qa, i, 2))`."
+  tests: |
+    import pandas as pd
+    f = var('pick_examples')
+    ensure(callable(f), '`pick_examples` должна быть функцией.')
+    df = pd.DataFrame({'категория': ['А', 'Б', 'А', '-', 'А', '-'], 'ответ': [0, 1, 2, 0, 1, 3]}, index=[10, 11, 12, 13, 14, 15])
+    got = list(f(df, 12, 2))
+    if 12 in got:
+        fail('Сам вопрос не должен попадать в свои примеры — иначе в промпте окажется его правильный ответ.')
+    equal(got, [10, 14], 'Для вопроса 12 категории «А» примеры — сначала вопросы той же категории: ожидалось {expected}, а получилось {actual}.')
+    equal(list(f(df, 12, 4)), [10, 14, 11, 13], 'Если похожих не хватает, список добирают остальными в порядке таблицы: ожидалось {expected}, а получилось {actual}.')
+    if list(f(df, 13, 2)) != [10, 11]:
+        fail('Категория «-» значит «не указана»: для такого вопроса примеры берутся просто по порядку таблицы. Для вопроса 13 ожидалось [10, 11].')
+    equal(list(f(df, 11, 1)), [10], 'У вопроса 11 категории «Б» других вопросов этой категории нет, и примеры идут по порядку таблицы: ожидалось {expected}, а получилось {actual}.')
+    equal([int(x) for x in var('ex12', list, 'списком')], ref('ex12'), '`ex12` — {expected}, а у вас {actual}.')
+    equal([int(x) for x in var('ex0', list, 'списком')], ref('ex0'), '`ex0` — {expected}, а у вас {actual}.')
+    equal(int(var('n_same', 'number', 'числом')), ref('n_same'), 'Двумя примерами своей категории обеспечены {expected} вопросов, а у вас {actual}.')
+    equal(int(alt('n_same')), alt_ref('n_same'), HARDCODE_MSG)
+  files: [qa_train.csv]
+  wrong:
+    - code: |
+        def pick_examples(df, i, k):
+            cat = df.loc[i, 'категория']
+            same = list(df.index[df['категория'] == cat])
+            rest = [j for j in df.index if j not in same]
+            return (same + rest)[:k]
+        ex12 = pick_examples(qa, 12, 2)
+        ex0 = pick_examples(qa, 0, 2)
+        n_same = sum(1 for i in qa.index if qa.loc[i, 'категория'] != '-' and all(qa.loc[j, 'категория'] == qa.loc[i, 'категория'] for j in pick_examples(qa, i, 2)))
+      expect: Сам вопрос не должен
+    - code: |
+        def pick_examples(df, i, k):
+            others = df.drop(index=i)
+            same = list(others.index[others['категория'] == df.loc[i, 'категория']])
+            rest = [j for j in others.index if j not in same]
+            return (same + rest)[:k]
+        ex12 = pick_examples(qa, 12, 2)
+        ex0 = pick_examples(qa, 0, 2)
+        n_same = sum(1 for i in qa.index if qa.loc[i, 'категория'] != '-' and all(qa.loc[j, 'категория'] == qa.loc[i, 'категория'] for j in pick_examples(qa, i, 2)))
+      expect: значит «не указана»
+
+- id: m10-l4-t4
+  title: Примеры как диалог
+  difficulty: main
+  introduces: []
+  uses: [few-shot, system-prompt]
+  statement: |
+    Напишите функцию `few_shot_messages(examples, row, system)`. `examples` — таблица решённых вопросов, `row` — вопрос, на который нужен ответ. Функция возвращает список сообщений:
+
+    - первым — системное сообщение `system`;
+    - для каждого примера — вопрос по шаблону `TEMPLATE` с ролью `user`, затем его ответ с ролью `assistant`. Ответ — строка с номером: `'2'`, а не число `2`;
+    - последним — вопрос `row` по шаблону с ролью `user`.
+
+    Получите `msgs` для вопроса 12 и его примеров `pick_examples(qa, 12, 2)` с системным промптом `SYSTEM`, `roles` — список ролей `msgs`, и `n_tokens` — прикидку токенов всех сообщений вместе: `count_tokens` от склеенного текста всех `content`.
+  prelude: |
+    import ast
+    import json
+    import math
+    import warnings
+    import pandas as pd
+    qa = pd.read_csv('qa_train.csv')
+
+    def parse_options(s):
+        try:
+            return json.loads(s)
+        except json.JSONDecodeError:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', SyntaxWarning)
+                return ast.literal_eval(s)
+
+    qa['options'] = qa['варианты'].apply(parse_options)
+    TEMPLATE = """Вопрос: {question}
+    Варианты ответа:
+    {options}
+    Ответ:"""
+    SYSTEM = 'Ты решаешь тест. Отвечай одной цифрой — номером правильного варианта.'
+
+    def format_options(options):
+        return '\n'.join(f'{i}) {o}' for i, o in enumerate(options))
+
+    def ask(r):
+        return TEMPLATE.format(question=r['вопрос'], options=format_options(r['options']))
+
+    def pick_examples(df, i, k):
+        others = df.drop(index=i)
+        cat = df.loc[i, 'категория']
+        same = list(others.index[others['категория'] == cat]) if cat != '-' else []
+        return (same + [j for j in others.index if j not in same])[:k]
+
+    def count_tokens(text):
+        return math.ceil(len(text) / 5.09)
+  starter: |
+    def few_shot_messages(examples, row, system):
+        msgs = [{'role': 'system', 'content': system}]
+        for _, ex in examples.iterrows():
+            msgs.append({'role': 'user', 'content': ask(ex)})
+            msgs.append(...)
+        msgs.append(...)
+        return msgs
+
+    msgs = few_shot_messages(qa.loc[pick_examples(qa, 12, 2)], qa.loc[12], SYSTEM)
+    roles = ...
+    n_tokens = ...
+    print(roles, n_tokens)
+  solution: |
+    def few_shot_messages(examples, row, system):
+        msgs = [{'role': 'system', 'content': system}]
+        for _, ex in examples.iterrows():
+            msgs.append({'role': 'user', 'content': ask(ex)})
+            msgs.append({'role': 'assistant', 'content': str(ex['ответ'])})
+        msgs.append({'role': 'user', 'content': ask(row)})
+        return msgs
+
+    msgs = few_shot_messages(qa.loc[pick_examples(qa, 12, 2)], qa.loc[12], SYSTEM)
+    roles = [m['role'] for m in msgs]
+    n_tokens = count_tokens(''.join(m['content'] for m in msgs))
+    print(roles, n_tokens)
+  explanation: |
+    - Пример — пара сообщений: вопрос пользователя и ответ ассистента. Модель видит «свои» прошлые ответы одной цифрой и отвечает так же.
+    - `content` — всегда строка: так сообщение уходит в JSON. Число `2` пришлось бы превращать при отправке, а сравнивать ответы модели удобнее строками.
+    - Две пары примеров увеличивают запрос вдвое с лишним: 90 токенов вместо 42 без примеров. Для 786 вопросов теста это ощутимо, поэтому число примеров подбирают проверкой.
+  hints:
+    - "Ответ примера — `{'role': 'assistant', 'content': str(ex['ответ'])}`."
+    - "Последнее сообщение — `{'role': 'user', 'content': ask(row)}`."
+    - "`roles = [m['role'] for m in msgs]`; токены — `count_tokens(''.join(m['content'] for m in msgs))`."
+  tests: |
+    import pandas as pd
+    f = var('few_shot_messages')
+    ensure(callable(f), '`few_shot_messages` должна быть функцией.')
+    ex = pd.DataFrame({'вопрос': ['2 + 2?', '3 + 3?'], 'options': [['3', '4'], ['6', '7']], 'ответ': [1, 0]})
+    q = pd.Series({'вопрос': '5 + 5?', 'options': ['10', '11']})
+    got = f(ex, q, 'S')
+    ensure(isinstance(got, list), '`few_shot_messages` должна вернуть список сообщений.')
+    ensure(len(got) == 6, 'Для двух примеров должно получиться 6 сообщений: системное, две пары «вопрос — ответ» и вопрос, а у вас {0}.'.format(len(got)))
+    if [m.get('role') for m in got] == ['system', 'user', 'user', 'user', 'user', 'user']:
+        fail('Ответы примеров идут с ролью assistant: модель должна принять их за свои прошлые ответы.')
+    if any(not isinstance(m.get('content'), str) for m in got):
+        fail('`content` каждого сообщения — строка. Ответ примера превратите в строку: `str(ex[\"ответ\"])`.')
+    want = [{'role': 'system', 'content': 'S'},
+            {'role': 'user', 'content': 'Вопрос: 2 + 2?\nВарианты ответа:\n0) 3\n1) 4\nОтвет:'},
+            {'role': 'assistant', 'content': '1'},
+            {'role': 'user', 'content': 'Вопрос: 3 + 3?\nВарианты ответа:\n0) 6\n1) 7\nОтвет:'},
+            {'role': 'assistant', 'content': '0'},
+            {'role': 'user', 'content': 'Вопрос: 5 + 5?\nВарианты ответа:\n0) 10\n1) 11\nОтвет:'}]
+    equal(got, want, 'На двух примерах сообщения получились не те: ожидалось {expected}, а получилось {actual}.')
+    equal(var('msgs', list, 'списком'), ref('msgs'), '`msgs` — сообщения для вопроса 12 с примерами `pick_examples(qa, 12, 2)`.')
+    equal(var('roles', list, 'списком'), ref('roles'), 'Роли — {expected}, а у вас {actual}.')
+    equal(int(var('n_tokens', 'number', 'числом')), ref('n_tokens'), 'Токенов во всех сообщениях — {expected}, а у вас {actual}.')
+  files: [qa_train.csv]
+  wrong:
+    - code: |
+        def few_shot_messages(examples, row, system):
+            msgs = [{'role': 'system', 'content': system}]
+            for _, ex in examples.iterrows():
+                msgs.append({'role': 'user', 'content': ask(ex)})
+                msgs.append({'role': 'assistant', 'content': ex['ответ']})
+            msgs.append({'role': 'user', 'content': ask(row)})
+            return msgs
+        msgs = few_shot_messages(qa.loc[pick_examples(qa, 12, 2)], qa.loc[12], SYSTEM)
+        roles = [m['role'] for m in msgs]
+        n_tokens = count_tokens(''.join(str(m['content']) for m in msgs))
+      expect: каждого сообщения — строка
+    - code: |
+        def few_shot_messages(examples, row, system):
+            msgs = [{'role': 'system', 'content': system}]
+            for _, ex in examples.iterrows():
+                msgs.append({'role': 'user', 'content': ask(ex)})
+                msgs.append({'role': 'user', 'content': str(ex['ответ'])})
+            msgs.append({'role': 'user', 'content': ask(row)})
+            return msgs
+        msgs = few_shot_messages(qa.loc[pick_examples(qa, 12, 2)], qa.loc[12], SYSTEM)
+        roles = [m['role'] for m in msgs]
+        n_tokens = count_tokens(''.join(m['content'] for m in msgs))
+      expect: с ролью assistant
+
+- id: m10-l4-t5
+  title: Примеры с разными ответами
+  difficulty: star
+  introduces: []
+  uses: [few-shot]
+  statement: |
+    Модели склонны повторять ответ, который чаще встречался в примерах. Напишите функцию `pick_balanced(df, i, k)` — как `pick_examples`, но с разными ответами:
+
+    1. Кандидаты — те же, что у `pick_examples`, и в том же порядке: сначала вопросы той же категории, потом остальные, без самого вопроса `i`.
+    2. Первый проход: кандидаты берутся по порядку, но только если их ответа (столбец `ответ`) ещё нет среди выбранных. Набралось `k` — стоп.
+    3. Если примеров меньше `k`, второй проход добирает невыбранных кандидатов по порядку, уже не глядя на ответы.
+
+    Возвращается список меток в порядке выбора. Получите:
+
+    - `bal12 = pick_balanced(qa, 12, 2)` и `bal12_answers` — ответы этих примеров;
+    - `n_repeat_plain` — у скольких вопросов `qa` среди трёх примеров `pick_examples(qa, i, 3)` есть повторяющиеся ответы;
+    - `n_repeat_bal` — то же для `pick_balanced(qa, i, 3)`.
+  prelude: |
+    import pandas as pd
+    qa = pd.read_csv('qa_train.csv')
+
+    def candidates(df, i):
+        others = df.drop(index=i)
+        cat = df.loc[i, 'категория']
+        same = list(others.index[others['категория'] == cat]) if cat != '-' else []
+        return same + [j for j in others.index if j not in same]
+
+    def pick_examples(df, i, k):
+        return candidates(df, i)[:k]
+  starter: |
+    def pick_balanced(df, i, k):
+        cands = candidates(df, i)
+        chosen, used = [], set()
+        for j in cands:                       # первый проход: только новые ответы
+            if len(chosen) == k:
+                break
+            if ...:
+                chosen.append(j)
+                used.add(df.loc[j, 'ответ'])
+        for j in cands:                       # второй проход: добираем по порядку
+            ...
+        return chosen
+
+    def has_repeat(df, idx):
+        answers = list(df.loc[idx, 'ответ'])
+        return len(set(answers)) < len(answers)
+
+    bal12 = pick_balanced(qa, 12, 2)
+    bal12_answers = ...
+    n_repeat_plain = sum(has_repeat(qa, pick_examples(qa, i, 3)) for i in qa.index)
+    n_repeat_bal = ...
+    print(bal12, bal12_answers, n_repeat_plain, n_repeat_bal)
+  solution: |
+    def pick_balanced(df, i, k):
+        cands = candidates(df, i)
+        chosen, used = [], set()
+        for j in cands:                       # первый проход: только новые ответы
+            if len(chosen) == k:
+                break
+            if df.loc[j, 'ответ'] not in used:
+                chosen.append(j)
+                used.add(df.loc[j, 'ответ'])
+        for j in cands:                       # второй проход: добираем по порядку
+            if len(chosen) == k:
+                break
+            if j not in chosen:
+                chosen.append(j)
+        return chosen
+
+    def has_repeat(df, idx):
+        answers = list(df.loc[idx, 'ответ'])
+        return len(set(answers)) < len(answers)
+
+    bal12 = pick_balanced(qa, 12, 2)
+    bal12_answers = list(qa.loc[bal12, 'ответ'])
+    n_repeat_plain = sum(has_repeat(qa, pick_examples(qa, i, 3)) for i in qa.index)
+    n_repeat_bal = sum(has_repeat(qa, pick_balanced(qa, i, 3)) for i in qa.index)
+    print(bal12, bal12_answers, n_repeat_plain, n_repeat_bal)
+  explanation: |
+    - Для вопроса 12 простой выбор давал два примера с ответом 2 — тем же, что неверно выбрала модель. Сбалансированный выбор оставляет первый пример, а вместо второго берёт вопрос 23 той же темы с ответом 0.
+    - Повторы ответов среди трёх примеров были у 67 вопросов из 87, а стали у 0: разных правильных номеров в данных хватает, и второй проход здесь не понадобился.
+    - Разные ответы не гарантируют верного ответа модели. Они лишь убирают подсказку «здесь обычно отвечают 2». Помогло ли это на самом деле, показывает только проверка на размеченных вопросах.
+  hints:
+    - "Новый ответ — `df.loc[j, 'ответ'] not in used`."
+    - "Второй проход: пока выбранных меньше `k`, добавляйте кандидатов, которых ещё нет в `chosen`."
+    - "`bal12_answers = list(qa.loc[bal12, 'ответ'])`; `n_repeat_bal` считается как `n_repeat_plain`, но с `pick_balanced`."
+  tests: |
+    import pandas as pd
+    f = var('pick_balanced')
+    ensure(callable(f), '`pick_balanced` должна быть функцией.')
+    df = pd.DataFrame({'категория': ['А', 'А', 'А', 'А', 'Б', 'Б'], 'ответ': [2, 2, 2, 0, 1, 3]}, index=[0, 1, 2, 3, 4, 5])
+    got = [int(x) for x in f(df, 0, 2)]
+    if 0 in got:
+        fail('Сам вопрос не должен попадать в свои примеры.')
+    if got == [1, 2]:
+        fail('У примеров 1 и 2 одинаковый ответ 2. Первый проход берёт кандидата, только если его ответа ещё нет среди выбранных.')
+    equal(got, [1, 3], 'Для вопроса 0 категории «А» ожидались примеры {expected}, а получилось {actual}.')
+    got3 = [int(x) for x in f(df, 0, 3)]
+    equal(got3, [1, 3, 4], 'Разные ответы важнее категории: третьим идёт первый кандидат с новым ответом, ожидалось {expected}, а получилось {actual}.')
+    same_answer = pd.DataFrame({'категория': ['А'] * 4, 'ответ': [1, 1, 1, 1]})
+    g4 = [int(x) for x in f(same_answer, 0, 3)]
+    if len(g4) < 3:
+        fail('Если разных ответов не хватает, второй проход добирает кандидатов по порядку: у вопроса с тремя одинаково отвеченными соседями должно быть 3 примера, а у вас {0}.'.format(len(g4)))
+    equal(g4, [1, 2, 3], 'Второй проход добирает кандидатов по порядку: ожидалось {expected}, а получилось {actual}.')
+    equal([int(x) for x in var('bal12', list, 'списком')], ref('bal12'), '`bal12` — {expected}, а у вас {actual}.')
+    equal([int(x) for x in var('bal12_answers', list, 'списком')], [int(x) for x in ref('bal12_answers')], 'Ответы примеров — {expected}, а у вас {actual}.')
+    equal(int(var('n_repeat_plain', 'number', 'числом')), ref('n_repeat_plain'), 'Простой выбор даёт повторы у {expected} вопросов, а у вас {actual}.')
+    equal(int(var('n_repeat_bal', 'number', 'числом')), ref('n_repeat_bal'), 'Сбалансированный выбор даёт повторы у {expected} вопросов, а у вас {actual}.')
+    equal(int(alt('n_repeat_bal')), alt_ref('n_repeat_bal'), HARDCODE_MSG)
+  files: [qa_train.csv]
+  wrong:
+    - code: |
+        def pick_balanced(df, i, k):
+            return candidates(df, i)[:k]
+        def has_repeat(df, idx):
+            answers = list(df.loc[idx, 'ответ'])
+            return len(set(answers)) < len(answers)
+        bal12 = pick_balanced(qa, 12, 2)
+        bal12_answers = list(qa.loc[bal12, 'ответ'])
+        n_repeat_plain = sum(has_repeat(qa, pick_examples(qa, i, 3)) for i in qa.index)
+        n_repeat_bal = sum(has_repeat(qa, pick_balanced(qa, i, 3)) for i in qa.index)
+      expect: одинаковый ответ 2
+    - code: |
+        def pick_balanced(df, i, k):
+            cands = candidates(df, i)
+            chosen, used = [], set()
+            for j in cands:
+                if len(chosen) == k:
+                    break
+                if df.loc[j, 'ответ'] not in used:
+                    chosen.append(j)
+                    used.add(df.loc[j, 'ответ'])
+            return chosen
+        def has_repeat(df, idx):
+            answers = list(df.loc[idx, 'ответ'])
+            return len(set(answers)) < len(answers)
+        bal12 = pick_balanced(qa, 12, 2)
+        bal12_answers = list(qa.loc[bal12, 'ответ'])
+        n_repeat_plain = sum(has_repeat(qa, pick_examples(qa, i, 3)) for i in qa.index)
+        n_repeat_bal = sum(has_repeat(qa, pick_balanced(qa, i, 3)) for i in qa.index)
+      expect: второй проход добирает

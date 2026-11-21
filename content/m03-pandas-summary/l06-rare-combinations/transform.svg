@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 226" font-family="Inter, Arial, sans-serif" font-size="12.5" role="img" aria-label="transform возвращает для каждой строки медиану её группы: у Golf медиана объёма 1600, у Passat — 1900; пропуски заполняются медианой своей группы, а не общей">
+  <defs><marker id="t" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor" fill-opacity="0.65"/></marker></defs>
+  <g font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor">
+    <text x="20" y="28" font-weight="700">Model    Engine</text>
+    <text x="20" y="52">Golf     1400</text><text x="20" y="72">Golf     1600</text><text x="20" y="92">Golf     <tspan fill="#c2410c" font-weight="700">NaN</tspan></text>
+    <text x="20" y="112">Golf     1800</text><text x="20" y="132">Passat   1900</text><text x="20" y="152">Passat   <tspan fill="#c2410c" font-weight="700">NaN</tspan></text>
+    <text x="20" y="172">Passat   2000</text><text x="20" y="192">Passat   1800</text>
+    <text x="270" y="28" font-weight="700">transform('median')</text>
+    <text x="300" y="52">1600</text><text x="300" y="72">1600</text><text x="300" y="92">1600</text><text x="300" y="112">1600</text>
+    <text x="300" y="132">1900</text><text x="300" y="152">1900</text><text x="300" y="172">1900</text><text x="300" y="192">1900</text>
+    <text x="500" y="28" font-weight="700">после fillna</text>
+    <text x="520" y="52">1400</text><text x="520" y="72">1600</text><text x="520" y="92" fill="#3d5bd9" font-weight="700">1600</text><text x="520" y="112">1800</text>
+    <text x="520" y="132">1900</text><text x="520" y="152" fill="#3d5bd9" font-weight="700">1900</text><text x="520" y="172">2000</text><text x="520" y="192">1800</text>
+  </g>
+  <rect x="290" y="38" width="70" height="82" rx="4" fill="#3d5bd9" fill-opacity="0.08" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <rect x="290" y="118" width="70" height="82" rx="4" fill="#c2410c" fill-opacity="0.08" stroke="#c2410c" stroke-opacity="0.6"/>
+  <path d="M150 112 L262 112" stroke="currentColor" stroke-opacity="0.6" marker-end="url(#t)"/>
+  <path d="M372 112 L490 112" stroke="currentColor" stroke-opacity="0.6" marker-end="url(#t)"/>
+  <text x="600" y="86" fill="currentColor" font-size="12">та же длина,</text>
+  <text x="600" y="104" fill="currentColor" font-size="12">что и таблица:</text>
+  <text x="600" y="122" fill="currentColor" font-size="12">каждой строке —</text>
+  <text x="600" y="140" fill="currentColor" font-size="12">медиана её группы</text>
+  <text x="20" y="218" fill="currentColor" fill-opacity="0.75" font-size="12">Медиана группы считается по известным значениям; цену (целевую переменную) так не заполняют.</text>
+</svg>

@@ -1,0 +1,469 @@
+- id: b1-l0-t1
+  title: Доля автоматов по кузову
+  difficulty: warmup
+  introduces: []
+  uses: [binary-classification, pd-groupby]
+  statement: |
+    `by_style` — таблица по типу кузова `Style`: `n` — число машин, `auto_share` — доля автоматов (`AutoTransmission`). Оставьте только кузова, где машин не меньше 300, и отсортируйте по убыванию `auto_share`. `top_style` — кузов с наибольшей долей автоматов среди них.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    cars = pd.read_csv('cars_processed.csv')
+  starter: |
+    by_style = cars.groupby('Style').agg(n=('AutoTransmission', 'size'), auto_share=('AutoTransmission', ...))
+    by_style = by_style[...].sort_values(..., ascending=False)
+    top_style = ...
+    print(top_style)
+    by_style.round(3)
+  solution: |
+    by_style = cars.groupby('Style').agg(n=('AutoTransmission', 'size'), auto_share=('AutoTransmission', 'mean'))
+    by_style = by_style[by_style['n'] >= 300].sort_values('auto_share', ascending=False)
+    top_style = by_style.index[0]
+    print(top_style)
+    by_style.round(3)
+  explanation: |
+    - Метка автомата — 0 или 1, поэтому её среднее в группе — доля автоматов в этой группе.
+    - Больше всего автоматов у внедорожников (75 %) и кроссоверов (71 %), меньше всего — у комби (12 %) и минивэнов (21 %). Кузов, как и топливо, подсказывает класс, но не решает его.
+    - Фильтр по числу машин убирает редкие кузова — кабриолеты, пикапы, родстеры. Доля по двум десяткам машин слишком шумная, чтобы ставить её в один ряд с долей по тысячам.
+  hints:
+    - "Доля автоматов — среднее метки: `auto_share=('AutoTransmission', 'mean')`."
+    - "Фильтр — `by_style[by_style['n'] >= 300]`, сортировка — `.sort_values('auto_share', ascending=False)`."
+    - "Первая строка отсортированной таблицы — `by_style.index[0]`."
+  tests: |
+    bs = var('by_style', 'DataFrame', 'таблицей')
+    ensure(list(bs.columns) == ['n', 'auto_share'], 'Столбцы by_style — n и auto_share, а у вас {0}.'.format(list(bs.columns)))
+    if bs['auto_share'].max() > 1:
+        fail("Доля автоматов — среднее метки ('mean'), а не сумма: доля не бывает больше 1.")
+    if (bs['n'] < 300).any():
+        fail("Оставьте только кузова, где машин не меньше 300: by_style[by_style['n'] >= 300].")
+    same_frame(bs, ref('by_style'), 'Таблица by_style не совпадает с ожидаемой: проверьте фильтр и сортировку по убыванию auto_share.')
+    equal(var('top_style'), ref('top_style'), 'Кузов с наибольшей долей автоматов — {expected}, а у вас {actual}.')
+    same_frame(alt('by_style'), alt_ref('by_style'), 'На другой части данных таблица получилась другой — вычисляйте её из данных, а не вписывайте вручную.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        by_style = cars.groupby('Style').agg(n=('AutoTransmission', 'size'), auto_share=('AutoTransmission', 'sum'))
+        by_style = by_style[by_style['n'] >= 300].sort_values('auto_share', ascending=False)
+        top_style = by_style.index[0]
+      expect: а не сумма
+    - code: |
+        by_style = cars.groupby('Style').agg(n=('AutoTransmission', 'size'), auto_share=('AutoTransmission', 'mean'))
+        by_style = by_style.sort_values('auto_share', ascending=False)
+        top_style = by_style.index[0]
+      expect: не меньше 300
+
+- id: b1-l0-t2
+  title: Ориентир и правило «дороже медианы»
+  difficulty: warmup
+  introduces: []
+  uses: [train-valid-test, sk-split, baseline-model]
+  statement: |
+    Данные уже разбиты на три части: `X_train`, `X_valid`, `X_test` и метки `y_train`, `y_valid`, `y_test`.
+
+    - `acc_dummy` — доля верных ориентира `DummyClassifier(strategy='most_frequent')` на валидации;
+    - `price_median` — медиана цены `Price` в обучающей части;
+    - `acc_rule` — доля верных правила «цена не ниже `price_median` — автомат, иначе механика» на валидации.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.dummy import DummyClassifier
+    cars = pd.read_csv('cars_processed.csv')
+    y = cars['AutoTransmission'].astype(int)
+    X = cars[['Year', 'Distance', 'Engine', 'Price']]
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    acc_dummy = float(DummyClassifier(strategy='most_frequent').fit(X_train, y_train).score(..., ...))
+    price_median = float(...)
+    rule = (X_valid['Price'] >= price_median).astype(int)
+    acc_rule = float(...)
+    print(round(acc_dummy, 4), price_median, round(acc_rule, 4))
+  solution: |
+    acc_dummy = float(DummyClassifier(strategy='most_frequent').fit(X_train, y_train).score(X_valid, y_valid))
+    price_median = float(X_train['Price'].median())
+    rule = (X_valid['Price'] >= price_median).astype(int)
+    acc_rule = float((rule == y_valid).mean())
+    print(round(acc_dummy, 4), price_median, round(acc_rule, 4))
+  explanation: |
+    - Ориентир верен в 54,8 % случаев: в обучающей части механик больше, и он всегда отвечает «механика».
+    - Правило из одного сравнения с медианой цены — 6800 евро — даёт уже 76,1 %. Дорогие машины чаще продают с автоматом, и цена — сильный признак для классификации.
+    - Медиану берут по обучающей части: правило — тоже модель, и «обучать» его на валидации или на всех данных — утечка. По всем данным медиана была бы 6700 евро.
+  hints:
+    - "Доля верных ориентира — `.score(X_valid, y_valid)`."
+    - "Медиана обучающей части — `X_train['Price'].median()`."
+    - "Доля верных правила — `(rule == y_valid).mean()`."
+  tests: |
+    X_, Xv_, yv_, Xt_, yt_ = ref('X'), ref('X_valid'), ref('y_valid'), ref('X_test'), ref('y_test')
+    close(var('acc_dummy', 'number', 'числом'), ref('acc_dummy'), 'Доля верных ориентира на валидации — {expected}, а у вас {actual}.')
+    pm = var('price_median', 'number', 'числом')
+    if abs(pm - float(X_['Price'].median())) < 1e-9 and abs(pm - ref('price_median')) > 1e-9:
+        fail('Медиану считают только по обучающей части: X_train. Медиана по всем данным знает цены проверочных машин.')
+    close(pm, ref('price_median'), 'Медиана цены в обучающей части — {expected}, а у вас {actual}.')
+    acc = var('acc_rule', 'number', 'числом')
+    on_test = float(((Xt_['Price'] >= ref('price_median')).astype(int) == yt_).mean())
+    if abs(acc - on_test) < 1e-9:
+        fail('Правило проверяют на валидации — тест открывают один раз в самом конце.')
+    close(acc, ref('acc_rule'), 'Доля верных правила на валидации — {expected}, а у вас {actual}.')
+    close(alt('acc_rule'), alt_ref('acc_rule'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        acc_dummy = float(DummyClassifier(strategy='most_frequent').fit(X_train, y_train).score(X_valid, y_valid))
+        price_median = float(X['Price'].median())
+        rule = (X_valid['Price'] >= price_median).astype(int)
+        acc_rule = float((rule == y_valid).mean())
+      expect: только по обучающей части
+    - code: |
+        acc_dummy = float(DummyClassifier(strategy='most_frequent').fit(X_train, y_train).score(X_valid, y_valid))
+        price_median = float(X_train['Price'].median())
+        rule = (X_test['Price'] >= price_median).astype(int)
+        acc_rule = float((rule == y_test).mean())
+      expect: проверяют на валидации
+
+- id: b1-l0-t3
+  title: Масштаб — по обучающей части
+  difficulty: main
+  introduces: []
+  uses: [standard-scaler, data-leakage]
+  statement: |
+    Обучите `scaler = StandardScaler()` на `X_train` и преобразуйте им обе части: `Z_train` и `Z_valid`. Найдите `train_means` и `valid_means` — средние столбцов `Z_train` и `Z_valid` (по 4 числа) и `valid_stds` — стандартные отклонения столбцов `Z_valid`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    cars = pd.read_csv('cars_processed.csv')
+    y = cars['AutoTransmission'].astype(int)
+    X = cars[['Year', 'Distance', 'Engine', 'Price']]
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    scaler = StandardScaler().fit(...)
+    Z_train = scaler.transform(X_train)
+    Z_valid = ...
+    train_means = Z_train.mean(axis=0)
+    valid_means = ...
+    valid_stds = ...
+    print(train_means.round(4), valid_means.round(4), valid_stds.round(4))
+  solution: |
+    scaler = StandardScaler().fit(X_train)
+    Z_train = scaler.transform(X_train)
+    Z_valid = scaler.transform(X_valid)
+    train_means = Z_train.mean(axis=0)
+    valid_means = Z_valid.mean(axis=0)
+    valid_stds = Z_valid.std(axis=0)
+    print(train_means.round(4), valid_means.round(4), valid_stds.round(4))
+  explanation: |
+    - На обучающей части средние — ровно 0, отклонения — 1: так устроена стандартизация.
+    - На валидации средние — от −0,007 до 0,004, отклонения — от 0,97 до 1,01. Так и должно быть: масштаб взят из обучающей части, а валидационные машины немного другие.
+    - Если заново обучить scaler на валидации (`fit_transform`), средние станут ровно 0, но это уже другой масштаб: модель получит признаки не в тех единицах, в которых училась. А обучение scaler на всех данных до разбиения — утечка (урок 5.4): в масштаб попадают проверочные машины.
+  hints:
+    - "Масштаб обучают только на обучающей части — `StandardScaler().fit(X_train)`."
+    - "Валидацию только преобразуют: `scaler.transform(X_valid)`, без `fit`."
+    - "Средние и отклонения столбцов — `.mean(axis=0)` и `.std(axis=0)`."
+  tests: |
+    import numpy as np
+    from sklearn.preprocessing import StandardScaler
+    vm = np.asarray(var('valid_means'), dtype=float)
+    vs = np.asarray(var('valid_stds'), dtype=float)
+    ensure(vm.shape == (4,) and vs.shape == (4,), 'valid_means и valid_stds — по 4 числа, по одному на столбец: .mean(axis=0) и .std(axis=0).')
+    if np.allclose(vm, 0, atol=1e-9) and np.allclose(vs, 1, atol=1e-9):
+        fail('Вы заново обучили масштаб на валидации (fit_transform). Валидационную часть только преобразуют: scaler.transform(X_valid).')
+    leaky = StandardScaler().fit(ref('X')).transform(ref('X_valid')).mean(axis=0)
+    if np.allclose(vm, leaky, atol=1e-9):
+        fail('Масштаб обучают только на обучающей части: StandardScaler().fit(X_train). Обучение на всех данных до разбиения — утечка (урок 5.4).')
+    same_array(np.asarray(var('train_means'), dtype=float), ref('train_means'), 'Средние столбцов Z_train должны быть нулями.', atol=1e-9)
+    same_array(vm, ref('valid_means'), 'Средние столбцов Z_valid не совпадают с ожидаемыми.', atol=1e-9)
+    same_array(vs, ref('valid_stds'), 'Отклонения столбцов Z_valid не совпадают с ожидаемыми.', atol=1e-9)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        scaler = StandardScaler().fit(X_train)
+        Z_train = scaler.transform(X_train)
+        Z_valid = StandardScaler().fit_transform(X_valid)
+        train_means = Z_train.mean(axis=0)
+        valid_means = Z_valid.mean(axis=0)
+        valid_stds = Z_valid.std(axis=0)
+      expect: заново обучили масштаб
+    - code: |
+        scaler = StandardScaler().fit(X)
+        Z_train = scaler.transform(X_train)
+        Z_valid = scaler.transform(X_valid)
+        train_means = Z_train.mean(axis=0)
+        valid_means = Z_valid.mean(axis=0)
+        valid_stds = Z_valid.std(axis=0)
+      expect: только на обучающей части
+
+- id: b1-l0-t4
+  title: Конвейер с One-Hot
+  difficulty: main
+  introduces: []
+  uses: [sk-pipeline, column-transformer, one-hot-encoding]
+  statement: |
+    Предскажем цену, как в модулях 6–7. `cars_train` и `cars_valid` — строки `cars` для обучающей и валидационной частей.
+
+    1. `num_model` — конвейер из `StandardScaler` и `LinearRegression` на числовых столбцах `num`.
+    2. `cat_model` — конвейер из `make_column_transformer` (`StandardScaler` для `num` и `OneHotEncoder(handle_unknown='ignore')` для `cat`) и `LinearRegression` на столбцах `num + cat`.
+    3. `mae_num` и `mae_cat` — MAE обеих моделей на валидации, `n_columns` — сколько столбцов получает `LinearRegression` во второй модели.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.compose import make_column_transformer
+    from sklearn.preprocessing import StandardScaler, OneHotEncoder
+    from sklearn.pipeline import make_pipeline
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import mean_absolute_error
+    cars = pd.read_csv('cars_processed.csv')
+    y = cars['AutoTransmission'].astype(int)
+    X = cars[['Year', 'Distance', 'Engine', 'Price']]
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    cars_train, cars_valid = cars.loc[X_train.index], cars.loc[X_valid.index]
+    num, cat = ['Year', 'Distance', 'Engine'], ['Fuel_type', 'Style']
+  starter: |
+    num_model = make_pipeline(StandardScaler(), LinearRegression()).fit(cars_train[num], cars_train['Price'])
+    prep = make_column_transformer((StandardScaler(), num), (..., cat))
+    cat_model = make_pipeline(prep, LinearRegression()).fit(cars_train[num + cat], cars_train['Price'])
+    mae_num = float(mean_absolute_error(cars_valid['Price'], num_model.predict(cars_valid[num])))
+    mae_cat = float(...)
+    n_columns = int(cat_model[0].transform(cars_valid[num + cat].head(1)).shape[...])
+    print(round(mae_num, 1), round(mae_cat, 1), n_columns)
+  solution: |
+    num_model = make_pipeline(StandardScaler(), LinearRegression()).fit(cars_train[num], cars_train['Price'])
+    prep = make_column_transformer((StandardScaler(), num), (OneHotEncoder(handle_unknown='ignore'), cat))
+    cat_model = make_pipeline(prep, LinearRegression()).fit(cars_train[num + cat], cars_train['Price'])
+    mae_num = float(mean_absolute_error(cars_valid['Price'], num_model.predict(cars_valid[num])))
+    mae_cat = float(mean_absolute_error(cars_valid['Price'], cat_model.predict(cars_valid[num + cat])))
+    n_columns = int(cat_model[0].transform(cars_valid[num + cat].head(1)).shape[1])
+    print(round(mae_num, 1), round(mae_cat, 1), n_columns)
+  explanation: |
+    - `cat_model[0]` — первый шаг конвейера, подготовка столбцов. К 3 числовым столбцам One-Hot добавил 6 видов топлива и 12 типов кузова — всего 21 столбец.
+    - MAE упала с 4300 до 4121 евро — на 4 %. Для сравнения: ориентир «медиана цены» ошибается на 6007 евро (урок 5.5).
+    - `handle_unknown='ignore'` нужен, чтобы новая категория на валидации не ломала модель: у такой машины все её столбцы One-Hot — нули.
+  hints:
+    - "Для категорий — `OneHotEncoder(handle_unknown='ignore')`."
+    - "MAE второй модели — `mean_absolute_error(cars_valid['Price'], cat_model.predict(cars_valid[num + cat]))`."
+    - "Число столбцов — второй элемент формы: `.shape[1]`."
+  tests: |
+    from sklearn.metrics import mean_absolute_error
+    ensure(hasattr(var('cat_model'), 'predict'), 'cat_model — обученный конвейер.')
+    m = var('mae_cat', 'number', 'числом')
+    ct = ref('cars_train')
+    on_train = float(mean_absolute_error(ct['Price'], ref('cat_model').predict(ct[ref('num') + ref('cat')])))
+    if abs(m - on_train) < 1e-6:
+        fail('MAE считают на валидации: на обучающей части модель уже видела ответы.')
+    close(var('mae_num', 'number', 'числом'), ref('mae_num'), 'MAE модели на числовых признаках — {expected}, а у вас {actual}.')
+    close(m, ref('mae_cat'), 'MAE модели с One-Hot — {expected}, а у вас {actual}.')
+    nc = var('n_columns', 'int', 'целым числом')
+    if nc == 18:
+        fail('Числовые столбцы тоже идут в модель: 3 стандартизованных столбца плюс 18 столбцов One-Hot.')
+    equal(int(nc), ref('n_columns'), 'Столбцов после подготовки — {expected}, а у вас {actual}.')
+    close(alt('mae_cat'), alt_ref('mae_cat'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        num_model = make_pipeline(StandardScaler(), LinearRegression()).fit(cars_train[num], cars_train['Price'])
+        prep = make_column_transformer((StandardScaler(), num), (OneHotEncoder(handle_unknown='ignore'), cat))
+        cat_model = make_pipeline(prep, LinearRegression()).fit(cars_train[num + cat], cars_train['Price'])
+        mae_num = float(mean_absolute_error(cars_valid['Price'], num_model.predict(cars_valid[num])))
+        mae_cat = float(mean_absolute_error(cars_train['Price'], cat_model.predict(cars_train[num + cat])))
+        n_columns = int(cat_model[0].transform(cars_valid[num + cat].head(1)).shape[1])
+      expect: считают на валидации
+    - code: |
+        num_model = make_pipeline(StandardScaler(), LinearRegression()).fit(cars_train[num], cars_train['Price'])
+        prep = make_column_transformer((StandardScaler(), num), (OneHotEncoder(handle_unknown='ignore'), cat))
+        cat_model = make_pipeline(prep, LinearRegression()).fit(cars_train[num + cat], cars_train['Price'])
+        mae_num = float(mean_absolute_error(cars_valid['Price'], num_model.predict(cars_valid[num])))
+        mae_cat = float(mean_absolute_error(cars_valid['Price'], cat_model.predict(cars_valid[num + cat])))
+        n_columns = cars_train['Fuel_type'].nunique() + cars_train['Style'].nunique()
+      expect: Числовые столбцы тоже идут
+
+- id: b1-l0-t5
+  title: Градиентный спуск для прямой
+  difficulty: main
+  introduces: []
+  uses: [gradient-descent]
+  statement: |
+    Подберите прямую `t ≈ w1·z + w0` для логарифма цены `t` по стандартизованному году `z` градиентным спуском, как в уроке 5.2. Функция `descend(lr)` делает 300 шагов из нулей и возвращает `(w1, w0)`; допишите в ней шаги.
+
+    - `w1`, `w0` — результат спуска с `lr = 0.1`;
+    - `w1_sk`, `w0_sk` — коэффициент и свободный член `LinearRegression` на тех же данных;
+    - `w1_big` — коэффициент после спуска с `lr = 1.1`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.linear_model import LinearRegression
+    cars = pd.read_csv('cars_processed.csv')
+    y = cars['AutoTransmission'].astype(int)
+    X = cars[['Year', 'Distance', 'Engine', 'Price']]
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    z = (X_train['Year'] - X_train['Year'].mean()) / X_train['Year'].std()     # стандартизованный год
+    t = np.log(X_train['Price'])                                                # логарифм цены
+  starter: |
+    def descend(lr, steps=300):
+        w1, w0 = 0.0, 0.0
+        for step in range(steps):
+            error = w0 + w1 * z - t
+            w1 -= ...
+            w0 -= ...
+        return w1, w0
+
+    w1, w0 = descend(0.1)
+    sk = LinearRegression().fit(z.to_frame(), t)
+    w1_sk, w0_sk = float(sk.coef_[0]), float(sk.intercept_)
+    w1_big, _ = descend(1.1)
+    print(round(w1, 4), round(w0, 4), '| sklearn:', round(w1_sk, 4), round(w0_sk, 4), '| lr = 1.1:', w1_big)
+  solution: |
+    def descend(lr, steps=300):
+        w1, w0 = 0.0, 0.0
+        for step in range(steps):
+            error = w0 + w1 * z - t
+            w1 -= lr * 2 * (error * z).mean()
+            w0 -= lr * 2 * error.mean()
+        return w1, w0
+
+    w1, w0 = descend(0.1)
+    sk = LinearRegression().fit(z.to_frame(), t)
+    w1_sk, w0_sk = float(sk.coef_[0]), float(sk.intercept_)
+    w1_big, _ = descend(1.1)
+    print(round(w1, 4), round(w0, 4), '| sklearn:', round(w1_sk, 4), round(w0_sk, 4), '| lr = 1.1:', w1_big)
+  explanation: |
+    - Градиент MSE по `w1` — 2·mean(error·z), по `w0` — 2·mean(error). Шаг против градиента уменьшает потери.
+    - За 300 шагов спуск пришёл к решению `LinearRegression`: w1 = 0,675, w0 = 8,772. Свободный член — средний логарифм цены, e^8,772 ≈ 6450 евро. Год новее на одно стандартное отклонение, 7,4 года, — и цена больше примерно в e^0,675 ≈ 2 раза.
+    - С `lr = 1.1` шаги перепрыгивают минимум всё дальше, и коэффициент улетает к −3,7·10²³: спуск расходится. В уроке Б.1 тем же спуском будем уменьшать log loss.
+  hints:
+    - "Шаг по `w1` — `lr * 2 * (error * z).mean()`."
+    - "Шаг по `w0` — `lr * 2 * error.mean()`."
+    - "Знак минус уже стоит: `-=` — шаг против градиента."
+  tests: |
+    w1_ = var('w1')
+    if hasattr(w1_, '__len__'):
+        fail('w1 стал столбцом: градиент — одно число, среднее по всем машинам. Добавьте .mean().')
+    w1_ = var('w1', 'number', 'числом')
+    if abs(w1_) > 1e3:
+        fail('Спуск разошёлся уже при lr = 0.1. Шаг делают против градиента: w1 -= lr · градиент.')
+    close(w1_, ref('w1_sk'), 'После 300 шагов w1 должен совпасть с LinearRegression: {expected}, а у вас {actual}.', atol=1e-6)
+    close(var('w0', 'number', 'числом'), ref('w0_sk'), 'После 300 шагов w0 должен совпасть с LinearRegression: {expected}, а у вас {actual}.', atol=1e-6)
+    close(var('w1_sk', 'number', 'числом'), ref('w1_sk'), 'Коэффициент LinearRegression — {expected}, а у вас {actual}.')
+    ensure(abs(var('w1_big', 'number', 'числом')) > 1e6, 'С lr = 1.1 спуск должен разойтись: |w1| огромный. Проверьте, что descend(1.1) использует переданный lr.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def descend(lr, steps=300):
+            w1, w0 = 0.0, 0.0
+            for step in range(steps):
+                error = w0 + w1 * z - t
+                w1 += lr * 2 * (error * z).mean()
+                w0 += lr * 2 * error.mean()
+            return w1, w0
+        w1, w0 = descend(0.1)
+        sk = LinearRegression().fit(z.to_frame(), t)
+        w1_sk, w0_sk = float(sk.coef_[0]), float(sk.intercept_)
+      expect: против градиента
+    - code: |
+        def descend(lr, steps=300):
+            w1, w0 = 0.0, 0.0
+            for step in range(steps):
+                error = w0 + w1 * z - t
+                w1 -= lr * 2 * (error * z)
+                w0 -= lr * 2 * error
+            return w1, w0
+        w1, w0 = descend(0.1)
+        sk = LinearRegression().fit(z.to_frame(), t)
+        w1_sk, w0_sk = float(sk.coef_[0]), float(sk.intercept_)
+      expect: Добавьте .mean()
+
+- id: b1-l0-t6
+  title: Первый вопрос дерева
+  difficulty: main
+  introduces: []
+  uses: [decision-tree, tree-split]
+  statement: |
+    Обучите `tree = DecisionTreeClassifier(max_depth=1, random_state=0)` на `X_train`, `y_train` — дерево с одним вопросом.
+
+    1. `feature` — название признака вопроса: `X_train.columns[tree.tree_.feature[0]]`; `threshold` — порог: `tree.tree_.threshold[0]`.
+    2. Проверьте дерево вручную. `left_share` и `right_share` — доли автоматов в обучающей части слева (признак не больше порога) и справа. `acc_by_hand` — доля верных ответа «справа — автомат, слева — механика» на валидации.
+    3. `acc_tree` — `tree.score` на валидации.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.tree import DecisionTreeClassifier
+    cars = pd.read_csv('cars_processed.csv')
+    y = cars['AutoTransmission'].astype(int)
+    X = cars[['Year', 'Distance', 'Engine', 'Price']]
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    tree = DecisionTreeClassifier(max_depth=1, random_state=0).fit(X_train, y_train)
+    feature = X_train.columns[tree.tree_.feature[0]]
+    threshold = float(tree.tree_.threshold[0])
+    left = X_train[feature] <= threshold
+    left_share = float(...)
+    right_share = float(...)
+    pred = (X_valid[feature] > threshold).astype(int)
+    acc_by_hand = float(...)
+    acc_tree = float(tree.score(X_valid, y_valid))
+    print(feature, threshold, round(left_share, 3), round(right_share, 3), round(acc_by_hand, 4), round(acc_tree, 4))
+  solution: |
+    tree = DecisionTreeClassifier(max_depth=1, random_state=0).fit(X_train, y_train)
+    feature = X_train.columns[tree.tree_.feature[0]]
+    threshold = float(tree.tree_.threshold[0])
+    left = X_train[feature] <= threshold
+    left_share = float(y_train[left].mean())
+    right_share = float(y_train[~left].mean())
+    pred = (X_valid[feature] > threshold).astype(int)
+    acc_by_hand = float((pred == y_valid).mean())
+    acc_tree = float(tree.score(X_valid, y_valid))
+    print(feature, threshold, round(left_share, 3), round(right_share, 3), round(acc_by_hand, 4), round(acc_tree, 4))
+  explanation: |
+    - Первый вопрос — о цене. Среди машин не дороже 8794,5 евро автоматов 25 %, среди более дорогих — 81 %. Лист отвечает самым частым классом: слева механика, справа автомат.
+    - Ручной ответ совпал с `tree.score`: 77,8 % верных против 54,8 % у ориентира. Правило «дороже медианы» из задания 2 давало 76,1 %: порог дерева подобран по данным лучше медианы.
+    - Доли в листьях считают по обучающей части — по ней дерево и выбирало ответы листьев. Как дерево ищет сам порог, разберём в уроке Б.6.
+  hints:
+    - "Доля автоматов слева — `y_train[left].mean()`, справа — `y_train[~left].mean()`."
+    - "Доля верных ручного ответа — `(pred == y_valid).mean()`."
+    - "`~left` — отрицание маски: машины, у которых признак больше порога."
+  tests: |
+    equal(var('feature'), ref('feature'), 'Признак первого вопроса — {expected}, а у вас {actual}.')
+    close(var('threshold', 'number', 'числом'), ref('threshold'), 'Порог первого вопроса — {expected}, а у вас {actual}.')
+    ls = var('left_share', 'number', 'числом')
+    Xv_, yv_ = ref('X_valid'), ref('y_valid')
+    lv = Xv_[ref('feature')] <= ref('threshold')
+    if abs(ls - float(yv_[lv].mean())) < 1e-9:
+        fail('Доли в листьях считают по обучающей части: по ней дерево и выбирало ответы листьев.')
+    close(ls, ref('left_share'), 'Доля автоматов слева — {expected}, а у вас {actual}.')
+    close(var('right_share', 'number', 'числом'), ref('right_share'), 'Доля автоматов справа — {expected}, а у вас {actual}.')
+    ah = var('acc_by_hand', 'number', 'числом')
+    if abs(ah - (1 - ref('acc_by_hand'))) < 1e-9:
+        fail('Ответы листьев перепутаны: слева автоматов 25 %, там лист отвечает «механика», справа — «автомат».')
+    close(ah, ref('acc_by_hand'), 'Доля верных ручного ответа — {expected}, а у вас {actual}.')
+    close(var('acc_tree', 'number', 'числом'), ah, 'Ручной ответ должен совпасть с tree.score: у дерева {actual}, вручную {expected}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        tree = DecisionTreeClassifier(max_depth=1, random_state=0).fit(X_train, y_train)
+        feature = X_train.columns[tree.tree_.feature[0]]
+        threshold = float(tree.tree_.threshold[0])
+        left = X_valid[feature] <= threshold
+        left_share = float(y_valid[left].mean())
+        right_share = float(y_valid[~left].mean())
+        pred = (X_valid[feature] > threshold).astype(int)
+        acc_by_hand = float((pred == y_valid).mean())
+        acc_tree = float(tree.score(X_valid, y_valid))
+      expect: по обучающей части
+    - code: |
+        tree = DecisionTreeClassifier(max_depth=1, random_state=0).fit(X_train, y_train)
+        feature = X_train.columns[tree.tree_.feature[0]]
+        threshold = float(tree.tree_.threshold[0])
+        left = X_train[feature] <= threshold
+        left_share = float(y_train[left].mean())
+        right_share = float(y_train[~left].mean())
+        pred = (X_valid[feature] <= threshold).astype(int)
+        acc_by_hand = float((pred == y_valid).mean())
+        acc_tree = float(tree.score(X_valid, y_valid))
+      expect: Ответы листьев перепутаны

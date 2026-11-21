@@ -1,0 +1,528 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Оформление «Лабораторный журнал»:
+ *  светлая тема — тёплая бумага, синие чернила, карандашная охра для акцентов;
+ *  тёмная тема — ночная лаборатория: чернильно-синий фон, янтарные акценты.
+ */
+:root {
+  --bg: #f4efe4;
+  --bg-elev: #fffcf5;
+  --bg-soft: #ebe3d2;
+  --bg-code: #fbf7ee;
+  --bg-side: #ece4d3;
+  --grid-line: rgba(31, 79, 122, 0.07);
+  --border: #dcd1bb;
+  --border-strong: #c3b496;
+  --text: #22201b;
+  --muted: #6c6456;
+  --accent: #1f4f7a;
+  --accent-soft: #dfe7ef;
+  --accent-text: #1c4a73;
+  --warm: #c25e1b;
+  --warm-soft: #f6e2cf;
+  --warm-text: #9a4610;
+  --ok: #2e7a47;
+  --ok-soft: #dcefe1;
+  --warn: #a7690f;
+  --warn-soft: #f7ebcf;
+  --bad: #b3261e;
+  --bad-soft: #f8dfdb;
+  --info: #2a6a8c;
+  --info-soft: #dcecf3;
+  --note: #fff3b8;
+  --note-border: #e6d27a;
+  --shadow: 0 1px 0 rgba(60, 45, 20, 0.06), 0 6px 18px -10px rgba(60, 45, 20, 0.25);
+
+  --tok-keyword: #8a3ab9;
+  --tok-string: #2c7a3c;
+  --tok-number: #b4580f;
+  --tok-comment: #8c8577;
+  --tok-function: #1f4f9a;
+  --tok-operator: #4b463c;
+  --tok-builtin: #0f6d78;
+}
+
+.dark {
+  --bg: #0f1726;
+  --bg-elev: #152035;
+  --bg-soft: #1b2942;
+  --bg-code: #0c1422;
+  --bg-side: #0c1321;
+  --grid-line: rgba(140, 180, 230, 0.06);
+  --border: #26365a;
+  --border-strong: #35487a;
+  --text: #ebe6da;
+  --muted: #9ca5b8;
+  --accent: #86c2ea;
+  --accent-soft: #1b2f4d;
+  --accent-text: #a9d4f3;
+  --warm: #f0a35e;
+  --warm-soft: #3a2a1c;
+  --warm-text: #f6bd85;
+  --ok: #6fcf97;
+  --ok-soft: #15301f;
+  --warn: #f2c14e;
+  --warn-soft: #362c14;
+  --bad: #ff8a7a;
+  --bad-soft: #3a1c1b;
+  --info: #7cc6e6;
+  --info-soft: #132d3a;
+  --note: #3a3318;
+  --note-border: #6a5a22;
+  --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.6);
+
+  --tok-keyword: #d49af5;
+  --tok-string: #9ad69a;
+  --tok-number: #f3a75e;
+  --tok-comment: #7a8296;
+  --tok-function: #8eb8ff;
+  --tok-operator: #cfcabd;
+  --tok-builtin: #6fd0e0;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-elev: var(--bg-elev);
+  --color-soft: var(--bg-soft);
+  --color-code: var(--bg-code);
+  --color-side: var(--bg-side);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-ink: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-text);
+  --color-warm: var(--warm);
+  --color-warm-soft: var(--warm-soft);
+  --color-warm-ink: var(--warm-text);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-note: var(--note);
+  --color-note-line: var(--note-border);
+  --font-sans: var(--font-text), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-serif: var(--font-display), Georgia, "Times New Roman", serif;
+  --font-mono: var(--font-code), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --shadow-paper: var(--shadow);
+}
+
+html {
+  background: var(--bg);
+  color: var(--text);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+:focus-visible {
+  outline: 2px solid var(--warm);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* миллиметровка */
+.graph-paper {
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.font-display {
+  font-family: var(--font-serif);
+  letter-spacing: -0.01em;
+}
+
+/* «бумажная» карточка */
+.paper {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+}
+
+/* отметка-штамп */
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+  padding: 0.05rem 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transform: rotate(-3deg);
+}
+
+/* ---------- подсветка кода (@lezer/highlight classHighlighter) ---------- */
+.tok-keyword,
+.tok-controlKeyword,
+.tok-definitionKeyword,
+.tok-moduleKeyword,
+.tok-operatorKeyword {
+  color: var(--tok-keyword);
+}
+.tok-string,
+.tok-string2,
+.tok-special {
+  color: var(--tok-string);
+}
+.tok-number,
+.tok-bool,
+.tok-atom {
+  color: var(--tok-number);
+}
+.tok-comment,
+.tok-lineComment,
+.tok-meta {
+  color: var(--tok-comment);
+  font-style: italic;
+}
+.tok-variableName.tok-definition,
+.tok-function {
+  color: var(--tok-function);
+}
+.tok-propertyName {
+  color: var(--tok-builtin);
+}
+.tok-operator,
+.tok-punctuation {
+  color: var(--tok-operator);
+}
+.tok-className,
+.tok-typeName {
+  color: var(--tok-builtin);
+}
+
+/* ---------- текст урока ---------- */
+.lesson-prose {
+  font-size: 1.0625rem;
+  line-height: 1.72;
+  overflow-wrap: break-word;
+}
+.lesson-prose > * + * {
+  margin-top: 1em;
+}
+.lesson-prose h2 {
+  font-family: var(--font-serif);
+  font-size: 1.6rem;
+  line-height: 1.25;
+  font-weight: 600;
+  margin-top: 2.4em;
+  padding-bottom: 0.3em;
+  border-bottom: 2px solid var(--border);
+  scroll-margin-top: 5rem;
+}
+.lesson-prose h2::before {
+  content: "§ ";
+  color: var(--warm);
+  font-weight: 500;
+}
+.lesson-prose h3 {
+  font-family: var(--font-serif);
+  font-size: 1.22rem;
+  font-weight: 600;
+  margin-top: 1.8em;
+  scroll-margin-top: 5rem;
+}
+.lesson-prose h4 {
+  font-weight: 650;
+  margin-top: 1.4em;
+}
+.lesson-prose ul {
+  list-style: none;
+  padding-left: 1.2em;
+}
+.lesson-prose ul > li {
+  position: relative;
+}
+.lesson-prose ul > li::before {
+  content: "—";
+  position: absolute;
+  left: -1.2em;
+  color: var(--warm);
+}
+.lesson-prose ol {
+  list-style: decimal;
+  padding-left: 1.6em;
+}
+.lesson-prose ol > li::marker {
+  color: var(--warm);
+  font-weight: 600;
+}
+.lesson-prose li + li {
+  margin-top: 0.35em;
+}
+.lesson-prose a {
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.lesson-prose strong {
+  font-weight: 650;
+}
+.lesson-prose blockquote {
+  border-left: 3px solid var(--warm);
+  padding-left: 1em;
+  color: var(--muted);
+  font-style: italic;
+}
+.lesson-prose :not(pre) > code,
+.md :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: var(--bg-soft);
+  border-radius: 3px;
+  padding: 0.08em 0.35em;
+  white-space: break-spaces;
+}
+.lesson-prose hr {
+  border-color: var(--border);
+  margin: 2em 0;
+}
+.table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elev);
+}
+.lesson-prose table,
+.md table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.95em;
+}
+.lesson-prose th,
+.lesson-prose td,
+.md th,
+.md td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.5em 0.8em;
+  text-align: left;
+  vertical-align: top;
+}
+.lesson-prose th,
+.md th {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  background: var(--bg-soft);
+}
+.lesson-prose tr:last-child td {
+  border-bottom: none;
+}
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.6em 0;
+}
+.md > * + * {
+  margin-top: 0.7em;
+}
+.md ul {
+  list-style: disc;
+  padding-left: 1.3em;
+}
+.md ol {
+  list-style: decimal;
+  padding-left: 1.5em;
+}
+.md a {
+  color: var(--accent-text);
+  text-decoration: underline;
+}
+.md strong {
+  font-weight: 650;
+}
+
+/* статичный код */
+.code-block {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.65;
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  white-space: pre;
+  tab-size: 4;
+}
+
+.svg-figure svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  color: var(--text);
+}
+
+/* ---------- ячейки «как в тетради» ---------- */
+.nb-cell {
+  display: grid;
+  grid-template-columns: 4.2rem minmax(0, 1fr);
+}
+.nb-prompt {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent-text);
+  text-align: right;
+  padding: 0.7rem 0.6rem 0 0;
+  user-select: none;
+}
+.nb-prompt.out {
+  color: var(--warm-text);
+}
+@media (max-width: 640px) {
+  .nb-cell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .nb-prompt {
+    text-align: left;
+    padding: 0.35rem 0 0.2rem 0.1rem;
+  }
+}
+
+/* ---------- вывод кода ---------- */
+.py-output {
+  font-family: var(--font-mono);
+  font-size: 0.83rem;
+  line-height: 1.55;
+}
+.py-output pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.py-html {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.py-html table {
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+}
+.py-html table th,
+.py-html table td {
+  border: 1px solid var(--border);
+  padding: 0.25em 0.6em;
+  text-align: right;
+  white-space: nowrap;
+}
+.py-html table thead th {
+  background: var(--bg-soft);
+}
+.py-html table tbody th {
+  background: var(--bg-soft);
+  font-weight: 600;
+}
+.py-html table tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--bg-soft) 40%, transparent);
+}
+.py-html img {
+  max-width: 100%;
+}
+.dark .py-output img.py-plot {
+  background: #fffcf5;
+  border-radius: 4px;
+}
+
+/* ---------- CodeMirror ---------- */
+.cm-editor {
+  font-size: 0.87rem;
+  background: var(--bg-code);
+  color: var(--text);
+}
+.cm-editor.cm-focused {
+  outline: none;
+}
+.cm-scroller {
+  font-family: var(--font-mono) !important;
+  line-height: 1.65 !important;
+}
+.cm-gutters {
+  background: var(--bg-code) !important;
+  color: var(--muted) !important;
+  border-right: 1px dashed var(--border) !important;
+}
+.cm-activeLine {
+  background: color-mix(in srgb, var(--warm-soft) 45%, transparent) !important;
+}
+.cm-activeLineGutter {
+  background: color-mix(in srgb, var(--warm-soft) 70%, transparent) !important;
+}
+.cm-cursor {
+  border-left-color: var(--warm) !important;
+  border-left-width: 2px !important;
+}
+.cm-selectionBackground,
+.cm-focused .cm-selectionBackground,
+.cm-content ::selection {
+  background: color-mix(in srgb, var(--accent) 25%, transparent) !important;
+}
+.cm-tooltip {
+  background: var(--bg-elev) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+}
+.cm-tooltip-autocomplete ul li[aria-selected] {
+  background: var(--accent-soft) !important;
+  color: var(--text) !important;
+}
+.cm-readonly-editor .cm-activeLine,
+.cm-readonly-editor .cm-activeLineGutter {
+  background: transparent !important;
+}
+.cm-error-line {
+  background: color-mix(in srgb, var(--bad) 14%, transparent) !important;
+}
+
+/* ---------- клетки прогресса ---------- */
+.cells {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.cell {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+}
+.cell.solved {
+  background: var(--ok);
+  border-color: var(--ok);
+}
+.cell.progress {
+  border-color: var(--warm);
+  background: repeating-linear-gradient(135deg, var(--warm) 0 2px, transparent 2px 4px);
+}
+
+@media print {
+  aside,
+  header,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+}

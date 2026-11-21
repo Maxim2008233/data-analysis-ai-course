@@ -1,0 +1,386 @@
+- id: m10-l1-t1
+  title: Запрос словарём
+  difficulty: warmup
+  introduces: [llm-chat-api]
+  uses: [py-dicts]
+  statement: |
+    На сервер запрос уходит словарём в формате JSON. Напишите функцию `make_request(question, system=None, temperature=0.7, max_tokens=200)`, которая возвращает словарь:
+
+    - `"model"` — `"GigaChat"`;
+    - `"messages"` — список сообщений-словарей `{"role": ..., "content": ...}`: сначала системное (роль `"system"`), если `system` задан, потом вопрос (роль `"user"`);
+    - `"temperature"` и `"max_tokens"` — из аргументов.
+
+    Получите `request` — запрос с вопросом `MESSAGE` и системным промптом `SYSTEM`, и `request_json` — его JSON-строку (`json.dumps(..., ensure_ascii=False)`).
+  prelude: |
+    import json
+    MESSAGE = "Дай определение и Расскажи в 3 коротких пунктах об особенностях prompt engineering, "
+    SYSTEM = "Ты полезный ассистент. Отвечай кратко."
+  starter: |
+    def make_request(question, system=None, temperature=0.7, max_tokens=200):
+        messages = []
+        if system is not None:
+            messages.append(...)
+        messages.append(...)
+        return {'model': 'GigaChat', 'messages': messages, 'temperature': ..., 'max_tokens': ...}
+
+    request = make_request(MESSAGE, system=SYSTEM)
+    request_json = ...
+    print(request_json)
+  solution: |
+    def make_request(question, system=None, temperature=0.7, max_tokens=200):
+        messages = []
+        if system is not None:
+            messages.append({'role': 'system', 'content': system})
+        messages.append({'role': 'user', 'content': question})
+        return {'model': 'GigaChat', 'messages': messages, 'temperature': temperature, 'max_tokens': max_tokens}
+
+    request = make_request(MESSAGE, system=SYSTEM)
+    request_json = json.dumps(request, ensure_ascii=False)
+    print(request_json)
+  explanation: |
+    - Системное сообщение идёт первым: оно задаёт поведение модели на весь разговор. Вопрос пользователя — последним.
+    - `ensure_ascii=False` оставляет русские буквы как есть. Без него JSON будет состоять из кодов вида `Д`: сервер поймёт, но человеку читать трудно.
+    - Библиотека gigachat собирает ровно такой словарь из объекта `Chat` — вы только что сделали её работу вручную.
+  hints:
+    - "Сообщение — словарь `{'role': 'user', 'content': question}`."
+    - "Системное сообщение добавляйте, только если `system is not None`."
+    - "`json.dumps(request, ensure_ascii=False)`."
+  tests: |
+    import json
+    f = var('make_request')
+    ensure(callable(f), '`make_request` должна быть функцией.')
+    r = f('Сколько будет 2 + 2?')
+    ensure(isinstance(r, dict), '`make_request` должна вернуть словарь.')
+    equal(r.get('messages'), [{'role': 'user', 'content': 'Сколько будет 2 + 2?'}], 'Без system в messages должно быть одно сообщение пользователя: ожидалось {expected}, а получилось {actual}.')
+    r2 = f('Вопрос', system='Инструкция', temperature=0.1, max_tokens=50)
+    msgs = r2.get('messages') or []
+    if len(msgs) == 2 and msgs[0].get('role') == 'user':
+        fail('Системное сообщение идёт первым, вопрос пользователя — после него.')
+    equal(msgs, [{'role': 'system', 'content': 'Инструкция'}, {'role': 'user', 'content': 'Вопрос'}], 'С system сообщения — {expected}, а у вас {actual}.')
+    equal((r2.get('temperature'), r2.get('max_tokens'), r2.get('model')), (0.1, 50, 'GigaChat'), 'temperature, max_tokens и model берутся из аргументов: ожидалось {expected}, а получилось {actual}.')
+    rj = var('request_json', str, 'строкой')
+    ensure('\\u04' not in rj, 'Передайте `ensure_ascii=False`: русские буквы должны остаться буквами.')
+    equal(json.loads(rj), ref('request'), '`request_json` — JSON-строка запроса `request`.')
+  wrong:
+    - code: |
+        def make_request(question, system=None, temperature=0.7, max_tokens=200):
+            messages = [{'role': 'user', 'content': question}]
+            if system is not None:
+                messages.append({'role': 'system', 'content': system})
+            return {'model': 'GigaChat', 'messages': messages, 'temperature': temperature, 'max_tokens': max_tokens}
+        request = make_request(MESSAGE, system=SYSTEM)
+        request_json = json.dumps(request, ensure_ascii=False)
+      expect: идёт первым
+    - code: |
+        def make_request(question, system=None, temperature=0.7, max_tokens=200):
+            messages = []
+            if system is not None:
+                messages.append({'role': 'system', 'content': system})
+            messages.append({'role': 'user', 'content': question})
+            return {'model': 'GigaChat', 'messages': messages, 'temperature': temperature, 'max_tokens': max_tokens}
+        request = make_request(MESSAGE, system=SYSTEM)
+        request_json = json.dumps(request)
+      expect: ensure_ascii=False
+
+- id: m10-l1-t2
+  title: Разбор ответа API
+  difficulty: main
+  introduces: []
+  uses: [llm-chat-api, py-dicts]
+  statement: |
+    `api_response` — пример ответа GigaChat API в виде словаря, как он приходит по сети (числа токенов в примере условные). Напишите функцию `read_reply(resp)`, которая возвращает кортеж `(text, finish_reason, total_tokens)`: текст первого варианта ответа, причину остановки и общее число токенов. Получите для `api_response`:
+
+    - `text`, `finish_reason`, `total_tokens` — результат `read_reply`;
+    - `is_cut` — оборван ли ответ (`True`, если модель упёрлась в лимит длины).
+  prelude: |
+    api_response = {
+        'choices': [{'message': {'role': 'assistant',
+                                 'content': '**Prompt Engineering (инженерия подсказок)** — это процесс создания оптимальных запросов...'},
+                     'index': 0,
+                     'finish_reason': 'length'}],
+        'created': 1762425600,
+        'model': 'GigaChat-2-Pro',
+        'usage': {'prompt_tokens': 96, 'completion_tokens': 100, 'total_tokens': 196},
+        'object': 'chat.completion',
+    }
+  starter: |
+    def read_reply(resp):
+        choice = resp['choices'][0]
+        return ..., ..., ...
+
+    text, finish_reason, total_tokens = read_reply(api_response)
+    is_cut = ...
+    print(finish_reason, total_tokens, is_cut)
+  solution: |
+    def read_reply(resp):
+        choice = resp['choices'][0]
+        return choice['message']['content'], choice['finish_reason'], resp['usage']['total_tokens']
+
+    text, finish_reason, total_tokens = read_reply(api_response)
+    is_cut = finish_reason == 'length'
+    print(finish_reason, total_tokens, is_cut)
+  explanation: |
+    - Текст лежит глубоко: `resp['choices'][0]['message']['content']`. Вариантов ответа может быть несколько, поэтому `choices` — список.
+    - `finish_reason = 'length'` значит, что ответ оборван: здесь ровно 100 токенов ответа — столько разрешал `max_tokens`.
+    - `total_tokens` — вопрос и ответ вместе. За них и платят: длинный системный промпт стоит токенов в каждом запросе.
+  hints:
+    - "Первый вариант ответа — `resp['choices'][0]`."
+    - "Текст — `choice['message']['content']`, токены — `resp['usage']['total_tokens']`."
+    - "`is_cut = finish_reason == 'length'`."
+  tests: |
+    f = var('read_reply')
+    ensure(callable(f), '`read_reply` должна быть функцией.')
+    other = {'choices': [{'message': {'role': 'assistant', 'content': 'Ответ: 2'}, 'index': 0, 'finish_reason': 'stop'}],
+             'model': 'GigaChat', 'usage': {'prompt_tokens': 30, 'completion_tokens': 4, 'total_tokens': 34}}
+    got = f(other)
+    ensure(isinstance(got, tuple) and len(got) == 3, '`read_reply` должна вернуть кортеж из трёх значений.')
+    equal(tuple(got), ('Ответ: 2', 'stop', 34), 'Для другого ответа ожидалось {expected}, а получилось {actual}.')
+    equal(var('finish_reason', str, 'строкой'), 'length', 'Причина остановки — {expected}, а у вас {actual}.')
+    equal(int(var('total_tokens', 'number', 'числом')), 196, 'Всего токенов — {expected}, а у вас {actual}.')
+    ic = var('is_cut')
+    ensure(isinstance(ic, bool), '`is_cut` — `True` или `False`: сравните `finish_reason` с `\'length\'`.')
+    equal(ic, True, 'Ответ с finish_reason = length оборван: `is_cut` должно быть {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        def read_reply(resp):
+            choice = resp['choices'][0]
+            return choice['message']['content'], choice['finish_reason'], resp['usage']['completion_tokens']
+        text, finish_reason, total_tokens = read_reply(api_response)
+        is_cut = finish_reason == 'length'
+      expect: Для другого ответа
+    - code: |
+        def read_reply(resp):
+            choice = resp['choices'][0]
+            return choice['message']['content'], choice['finish_reason'], resp['usage']['total_tokens']
+        text, finish_reason, total_tokens = read_reply(api_response)
+        is_cut = finish_reason == 'stop'
+      expect: оборван
+
+- id: m10-l1-t3
+  title: Запрос с системным промптом
+  difficulty: main
+  introduces: []
+  uses: [llm-chat-api]
+  statement: |
+    Повторите запрос из ноутбука курса: модель `'GigaChat-2-Pro'`, объект `Chat` из двух сообщений — системного `SYSTEM` и вопроса `MESSAGE` — с `temperature=0.7` и `max_tokens=100`. Учебная версия вернёт записанный ответ GigaChat. Получите:
+
+    - `payload` — объект `Chat`;
+    - `reply` — текст ответа, `reason` — причина остановки;
+    - `n_points` — сколько пунктов из обещанных трёх успела написать модель: число строк ответа, начинающихся с цифры и точки (`1.`, `2.`…).
+  prelude: |
+    import re
+    from gigachat import GigaChat
+    from gigachat.models import Chat, Messages, MessagesRole
+    MESSAGE = "Дай определение и Расскажи в 3 коротких пунктах об особенностях prompt engineering, "
+    SYSTEM = ("Ты полезный ассистент для тестирования ГигаЧата. Твоя задача отвечать студенту на учебные вопросы\n"
+              "## Инструкция\n"
+              "Ответ должен подходить студенту начальных курсов бакалавриата, изучающему технологии искусственного интеллекта\n"
+              "## Формат ответа\n"
+              "Текст и таблицы в формате markdown\n")
+    model = GigaChat(model='GigaChat-2-Pro', credentials='ваш-ключ', verify_ssl_certs=False)
+  starter: |
+    payload = Chat(
+        messages=[...],
+        temperature=...,
+        max_tokens=...,
+    )
+    response = model.chat(payload)
+    reply = ...
+    reason = ...
+    n_points = len(re.findall(r'^\d+\.', reply, flags=re.M))
+    print(reason, n_points)
+    print(reply)
+  solution: |
+    payload = Chat(
+        messages=[Messages(role=MessagesRole.SYSTEM, content=SYSTEM),
+                  Messages(role=MessagesRole.USER, content=MESSAGE)],
+        temperature=0.7,
+        max_tokens=100,
+    )
+    response = model.chat(payload)
+    reply = response.choices[0].message.content
+    reason = response.choices[0].finish_reason
+    n_points = len(re.findall(r'^\d+\.', reply, flags=re.M))
+    print(reason, n_points)
+    print(reply)
+  explanation: |
+    - Модель успела написать два пункта из трёх: лимит в 100 токенов кончился, `finish_reason = 'length'`.
+    - `re.findall(r'^\d+\.', reply, flags=re.M)` ищет цифры с точкой в начале строк: `^` с флагом `re.M` означает «начало любой строки», а не только всего текста.
+    - В Colab с настоящим GigaChat ответ будет другим — модель отвечает случайно. Но с таким лимитом он почти наверняка снова оборвётся.
+  hints:
+    - "Сообщения — `Messages(role=MessagesRole.SYSTEM, content=SYSTEM)` и `Messages(role=MessagesRole.USER, content=MESSAGE)`."
+    - "Параметры — `temperature=0.7, max_tokens=100`."
+    - "Текст — `response.choices[0].message.content`, причина — `response.choices[0].finish_reason`."
+  tests: |
+    pl = var('payload')
+    ensure(type(pl).__name__ == 'Chat', '`payload` должен быть объектом `Chat`.')
+    roles = [str(m.role) for m in pl.messages]
+    if roles == ['user', 'system']:
+        fail('Системное сообщение идёт первым.')
+    equal(roles, ['system', 'user'], 'Роли сообщений — {expected}, а у вас {actual}.')
+    equal((pl.temperature, pl.max_tokens), (0.7, 100), 'temperature и max_tokens — {expected}, а у вас {actual}.')
+    equal(var('reason', str, 'строкой'), 'length', 'Причина остановки — {expected}, а у вас {actual}.')
+    equal(var('reply', str, 'строкой'), ref('reply'), '`reply` — текст ответа модели.')
+    equal(int(var('n_points', 'number', 'числом')), int(ref('n_points')), 'Пунктов в ответе — {expected}, а у вас {actual}.')
+  files: [gigachat_notebook.json]
+  wrong:
+    - code: |
+        payload = Chat(
+            messages=[Messages(role=MessagesRole.USER, content=MESSAGE),
+                      Messages(role=MessagesRole.SYSTEM, content=SYSTEM)],
+            temperature=0.7,
+            max_tokens=100,
+        )
+        reply = ''
+        reason = 'length'
+        n_points = 0
+      expect: идёт первым
+    - code: |
+        payload = Chat(
+            messages=[Messages(role=MessagesRole.SYSTEM, content=SYSTEM),
+                      Messages(role=MessagesRole.USER, content=MESSAGE)],
+            temperature=0.7,
+            max_tokens=200,
+        )
+        reply = ''
+        reason = 'length'
+        n_points = 0
+      expect: temperature и max_tokens
+
+- id: m10-l1-t4
+  title: Проверка запроса перед отправкой
+  difficulty: star
+  introduces: []
+  uses: [llm-chat-api, py-dicts]
+  statement: |
+    Каждый запрос стоит денег и времени, поэтому запрос проверяют до отправки. Напишите функцию `check_request(req)`, которая возвращает список найденных проблем (пустой — если всё в порядке). Проверьте по порядку и добавьте в список строку-код для каждой проблемы:
+
+    - `'no_messages'` — нет ключа `messages` или список пуст (дальше сообщения не проверяйте);
+    - `'bad_role'` — у какого-то сообщения роль не из `system`, `user`, `assistant`, `function`;
+    - `'empty_content'` — у какого-то сообщения пустой `content` (после удаления пробелов по краям);
+    - `'system_not_first'` — сообщение `system` стоит не первым;
+    - `'last_not_user'` — последнее сообщение не от `user` (модели не на что отвечать);
+    - `'bad_temperature'` — `temperature` задана и не лежит в диапазоне от 0 до 2;
+    - `'bad_max_tokens'` — `max_tokens` задан и не является целым положительным числом.
+
+    Получите `problems` — проблемы для каждого запроса из `requests` (список списков).
+  prelude: |
+    requests = [
+        {'messages': [{'role': 'system', 'content': 'Отвечай кратко'}, {'role': 'user', 'content': 'Что такое токен?'}], 'temperature': 0.7},
+        {'messages': []},
+        {'messages': [{'role': 'user', 'content': 'Привет'}, {'role': 'system', 'content': 'Ты пират'}], 'temperature': 3},
+        {'messages': [{'role': 'human', 'content': 'Вопрос'}, {'role': 'assistant', 'content': '  '}], 'max_tokens': 0},
+    ]
+  starter: |
+    ROLES = {'system', 'user', 'assistant', 'function'}
+
+    def check_request(req):
+        problems = []
+        messages = req.get('messages') or []
+        if not messages:
+            return ['no_messages']
+        if any(...):
+            problems.append('bad_role')
+        ...
+        return problems
+
+    problems = [check_request(r) for r in requests]
+    print(problems)
+  solution: |
+    ROLES = {'system', 'user', 'assistant', 'function'}
+
+    def check_request(req):
+        problems = []
+        messages = req.get('messages') or []
+        if not messages:
+            return ['no_messages']
+        if any(m.get('role') not in ROLES for m in messages):
+            problems.append('bad_role')
+        if any(not str(m.get('content', '')).strip() for m in messages):
+            problems.append('empty_content')
+        if any(m.get('role') == 'system' for m in messages[1:]):
+            problems.append('system_not_first')
+        if messages[-1].get('role') != 'user':
+            problems.append('last_not_user')
+        t = req.get('temperature')
+        if t is not None and not (0 <= t <= 2):
+            problems.append('bad_temperature')
+        mt = req.get('max_tokens')
+        if mt is not None and not (isinstance(mt, int) and mt > 0):
+            problems.append('bad_max_tokens')
+        return problems
+
+    problems = [check_request(r) for r in requests]
+    print(problems)
+  explanation: |
+    - Первый запрос в порядке. Во втором нет сообщений. В третьем системное сообщение стоит после вопроса, последнее сообщение — не вопрос, а температура 3 вне допустимого диапазона.
+    - В четвёртом роль `human` — так называют пользователя в LangChain, но API ждёт `user`. Ответ ассистента пустой, а `max_tokens = 0`.
+    - Такая проверка дешевле ошибки от сервера: запрос с ошибкой всё равно потратит время, а иногда и токены.
+  hints:
+    - "Роль вне списка — `any(m.get('role') not in ROLES for m in messages)`."
+    - "Системное не первым — есть ли `system` среди `messages[1:]`; последнее — `messages[-1].get('role') != 'user'`."
+    - "Температура — `t is not None and not (0 <= t <= 2)`; max_tokens — целое и больше нуля."
+  tests: |
+    f = var('check_request')
+    ensure(callable(f), '`check_request` должна быть функцией.')
+    cases = [
+        ({'messages': [{'role': 'user', 'content': 'Q'}]}, []),
+        ({}, ['no_messages']),
+        ({'messages': [{'role': 'user', 'content': 'Q'}], 'temperature': -0.1}, ['bad_temperature']),
+        ({'messages': [{'role': 'user', 'content': 'Q'}], 'temperature': 1.5}, []),
+        ({'messages': [{'role': 'user', 'content': 'Q'}], 'max_tokens': 2.5}, ['bad_max_tokens']),
+        ({'messages': [{'role': 'user', 'content': 'Q'}, {'role': 'assistant', 'content': 'A'}]}, ['last_not_user']),
+        ({'messages': [{'role': 'bot', 'content': ''}, {'role': 'user', 'content': 'Q'}]}, ['bad_role', 'empty_content']),
+    ]
+    for req, exp in cases:
+        equal(list(f(req)), exp, 'Для запроса ' + repr(req) + ' ожидались проблемы {expected}, а получилось {actual}.')
+    equal([list(p) for p in var('problems', list, 'списком')], [list(p) for p in ref('problems')], 'Проблемы запросов — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        ROLES = {'system', 'user', 'assistant', 'function'}
+        def check_request(req):
+            problems = []
+            messages = req.get('messages') or []
+            if not messages:
+                return ['no_messages']
+            if any(m.get('role') not in ROLES for m in messages):
+                problems.append('bad_role')
+            if any(not str(m.get('content', '')).strip() for m in messages):
+                problems.append('empty_content')
+            if any(m.get('role') == 'system' for m in messages[1:]):
+                problems.append('system_not_first')
+            if messages[-1].get('role') != 'user':
+                problems.append('last_not_user')
+            t = req.get('temperature')
+            if t is not None and not (0 <= t <= 1):
+                problems.append('bad_temperature')
+            mt = req.get('max_tokens')
+            if mt is not None and not (isinstance(mt, int) and mt > 0):
+                problems.append('bad_max_tokens')
+            return problems
+        problems = [check_request(r) for r in requests]
+      expect: ожидались проблемы
+    - code: |
+        ROLES = {'system', 'user', 'assistant', 'function'}
+        def check_request(req):
+            problems = []
+            messages = req.get('messages') or []
+            if not messages:
+                return ['no_messages']
+            if any(m.get('role') not in ROLES for m in messages):
+                problems.append('bad_role')
+            if any(not m.get('content') for m in messages):
+                problems.append('empty_content')
+            if any(m.get('role') == 'system' for m in messages[1:]):
+                problems.append('system_not_first')
+            if messages[-1].get('role') != 'user':
+                problems.append('last_not_user')
+            t = req.get('temperature')
+            if t is not None and not (0 <= t <= 2):
+                problems.append('bad_temperature')
+            mt = req.get('max_tokens')
+            if mt is not None and not (isinstance(mt, int) and mt > 0):
+                problems.append('bad_max_tokens')
+            return problems
+        problems = [check_request(r) for r in requests]
+      expect: Проблемы запросов

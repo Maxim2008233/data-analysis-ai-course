@@ -1,0 +1,663 @@
+- id: m9-l10-t1
+  title: "Шаг 1. Функция точности и базовое решение"
+  difficulty: main
+  introduces: []
+  uses: [zero-shot, prompt-template]
+  statement: |
+    Напишите функцию `accuracy(E, part)`: `E` — матрица векторов подписей классов (349 строк в порядке `classes`), `part` — логическая маска картинок. Функция выбирает для каждой картинки класс с наибольшим косинусом и возвращает долю верных среди картинок `part`. Получите:
+
+    - `E_base` — векторы подписей варианта `'pipeline'` («This is a photo of {класс}.»);
+    - `base_dev` — точность базового решения на `dev`.
+
+    На `test` пока не смотрим: его проверим один раз в шаге 4.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    images = pd.read_csv('zs_public.csv')
+    X = np.load('zs_public.npy').astype(np.float32)
+    with np.load('zs_prompts.npz') as data:
+        prompts = pd.DataFrame({k: [str(x) for x in data[k]] for k in ['class', 'group', 'language', 'variant', 'prompt']})
+        prompt_emb = data['emb'].astype(np.float32)
+    raw = prompts[prompts['variant'] == 'raw']
+    classes = raw['class'].to_numpy()
+    dev = (images.groupby('class').cumcount() % 2 == 0).to_numpy()
+    test = ~dev
+  starter: |
+    def accuracy(E, part):
+        pred = ...
+        return ...
+
+    E_base = ...
+    base_dev = accuracy(E_base, dev)
+    print(round(base_dev, 3))
+  solution: |
+    def accuracy(E, part):
+        pred = classes[(X @ E.T).argmax(axis=1)]
+        return (pred == images['class'].to_numpy())[part].mean()
+
+    E_base = prompt_emb[(prompts['variant'] == 'pipeline').to_numpy()]
+    base_dev = accuracy(E_base, dev)
+    print(round(base_dev, 3))
+  explanation: |
+    - Базовое решение соревнования — названия классов в шаблоне pipeline — даёт на `dev` 0,592.
+    - Функция понадобится во всех шагах: с ней любой вариант подписей проверяется одной строкой.
+    - Маску части применяем к массиву верных ответов: `(pred == ...)[part]`. Так предсказание считается для всех картинок сразу, а доля — только по нужной части.
+  hints:
+    - "Ответы — `classes[(X @ E.T).argmax(axis=1)]`."
+    - "Доля верных в части — `(pred == images['class'].to_numpy())[part].mean()`."
+    - "Векторы варианта — `prompt_emb[(prompts['variant'] == 'pipeline').to_numpy()]`."
+  tests: |
+    import numpy as np
+    f = var('accuracy')
+    ensure(callable(f), '`accuracy` должна быть функцией.')
+    g = ref('accuracy')
+    pe, pr = ref('prompt_emb'), ref('prompts')
+    for v, part in [('en', ref('test')), ('photo', ref('dev'))]:
+        E = pe[(pr['variant'] == v).to_numpy()]
+        close(float(f(E, part)), float(g(E, part)), 'Для варианта «' + v + '» точность {expected}, а `accuracy` дала {actual}.')
+    same_array(np.asarray(var('E_base'), dtype=float), np.asarray(ref('E_base'), dtype=float), '`E_base` — векторы подписей варианта `pipeline`.')
+    close(var('base_dev', 'number', 'числом'), ref('base_dev'), 'Точность базового решения на dev — {expected}, а у вас {actual}.')
+    close(alt('base_dev'), alt_ref('base_dev'), HARDCODE_MSG)
+  files: [zs_public.csv, zs_public.npy, zs_prompts.npz]
+  wrong:
+    - code: |
+        def accuracy(E, part):
+            pred = classes[(X @ E.T).argmax(axis=1)]
+            return (pred == images['class'].to_numpy()).mean()
+        E_base = prompt_emb[(prompts['variant'] == 'pipeline').to_numpy()]
+        base_dev = accuracy(E_base, dev)
+      expect: "`accuracy` дала"
+    - code: |
+        def accuracy(E, part):
+            pred = classes[(X @ E.T).argmax(axis=1)]
+            return (pred == images['class'].to_numpy())[part].mean()
+        E_base = prompt_emb[(prompts['variant'] == 'raw').to_numpy()]
+        base_dev = accuracy(E_base, dev)
+      expect: "`pipeline`"
+
+- id: m9-l10-t2
+  title: "Шаг 2. Кандидаты своей группы и языка"
+  difficulty: main
+  introduces: []
+  uses: [zero-shot, prompt-template]
+  statement: |
+    Группа и язык класса известны для каждой картинки, в том числе в соревновании. Постройте `allowed` — логическую матрицу «картинки × классы»: совпадают ли группа и язык картинки и класса (группы и языки классов — в таблице `raw`). Напишите функцию `accuracy_r(E, part)` — как `accuracy`, но кандидаты только из `allowed`. Получите `base_r_dev` — точность подписей `E_base` с такими кандидатами на `dev`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    images = pd.read_csv('zs_public.csv')
+    X = np.load('zs_public.npy').astype(np.float32)
+    with np.load('zs_prompts.npz') as data:
+        prompts = pd.DataFrame({k: [str(x) for x in data[k]] for k in ['class', 'group', 'language', 'variant', 'prompt']})
+        prompt_emb = data['emb'].astype(np.float32)
+    raw = prompts[prompts['variant'] == 'raw']
+    classes = raw['class'].to_numpy()
+    dev = (images.groupby('class').cumcount() % 2 == 0).to_numpy()
+    test = ~dev
+    E_base = prompt_emb[(prompts['variant'] == 'pipeline').to_numpy()]
+  starter: |
+    allowed = ...
+
+    def accuracy_r(E, part):
+        S = np.where(allowed, X @ E.T, -np.inf)
+        pred = ...
+        return ...
+
+    base_r_dev = accuracy_r(E_base, dev)
+    print(allowed.shape, round(base_r_dev, 3))
+  solution: |
+    allowed = ((images['group'].to_numpy()[:, None] == raw['group'].to_numpy()[None, :]) &
+               (images['language'].to_numpy()[:, None] == raw['language'].to_numpy()[None, :]))
+
+    def accuracy_r(E, part):
+        S = np.where(allowed, X @ E.T, -np.inf)
+        pred = classes[S.argmax(axis=1)]
+        return (pred == images['class'].to_numpy())[part].mean()
+
+    base_r_dev = accuracy_r(E_base, dev)
+    print(allowed.shape, round(base_r_dev, 3))
+  explanation: |
+    - Одно только ограничение кандидатов поднимает базовое решение на `dev` с 0,592 до 0,654: синонимы на других языках перестают мешать.
+    - `np.where(allowed, ..., -np.inf)` — у чужих классов оценка минус бесконечность, и `argmax` их никогда не выберет.
+  hints:
+    - "Совпадение групп — `images['group'].to_numpy()[:, None] == raw['group'].to_numpy()[None, :]`; так же для языков, условия соединяют через `&`."
+    - "Ответы — `classes[S.argmax(axis=1)]`."
+    - "Доля верных в части — `(pred == images['class'].to_numpy())[part].mean()`."
+  tests: |
+    import numpy as np
+    al = np.asarray(var('allowed'), dtype=bool)
+    ensure(al.shape == ref('allowed').shape, '`allowed` — матрица {0}: картинки × классы.'.format(ref('allowed').shape))
+    same_array(al.astype(float), ref('allowed').astype(float), '`allowed` — совпадают ли группа и язык картинки и класса.')
+    f = var('accuracy_r')
+    ensure(callable(f), '`accuracy_r` должна быть функцией.')
+    E = ref('prompt_emb')[(ref('prompts')['variant'] == 'photo').to_numpy()]
+    close(float(f(E, ref('test'))), float(ref('accuracy_r')(E, ref('test'))), 'Для подписей «photo» на test `accuracy_r` дала {actual}, а должно быть {expected}.')
+    close(var('base_r_dev', 'number', 'числом'), ref('base_r_dev'), 'Точность базового решения со своими кандидатами на dev — {expected}, а у вас {actual}.')
+    close(alt('base_r_dev'), alt_ref('base_r_dev'), HARDCODE_MSG)
+  files: [zs_public.csv, zs_public.npy, zs_prompts.npz]
+  wrong:
+    - code: |
+        allowed = ((images['group'].to_numpy()[:, None] == raw['group'].to_numpy()[None, :]) |
+                   (images['language'].to_numpy()[:, None] == raw['language'].to_numpy()[None, :]))
+        def accuracy_r(E, part):
+            S = np.where(allowed, X @ E.T, -np.inf)
+            pred = classes[S.argmax(axis=1)]
+            return (pred == images['class'].to_numpy())[part].mean()
+        base_r_dev = accuracy_r(E_base, dev)
+      expect: совпадают ли группа и язык
+    - code: |
+        allowed = ((images['group'].to_numpy()[:, None] == raw['group'].to_numpy()[None, :]) &
+                   (images['language'].to_numpy()[:, None] == raw['language'].to_numpy()[None, :]))
+        def accuracy_r(E, part):
+            S = X @ E.T
+            pred = classes[S.argmax(axis=1)]
+            return (pred == images['class'].to_numpy())[part].mean()
+        base_r_dev = accuracy_r(E_base, dev)
+      expect: "`accuracy_r` дала"
+
+- id: m9-l10-t3
+  title: "Шаг 3. Шаблоны и ансамбли на dev"
+  difficulty: main
+  introduces: []
+  uses: [prompt-template, zero-shot]
+  statement: |
+    Сравните на `dev` (с кандидатами своей группы и языка) все десять вариантов подписей и два ансамбля из урока 9.8: `'ens6'` — среднее шести шаблонов `six`, `'ens3'` — среднее трёх шаблонов `three`. Средние нормируйте к длине 1. Получите:
+
+    - `configs` — словарь «название → матрица векторов подписей» из 12 вариантов;
+    - `dev_table` — Series: точность каждого варианта на `dev`, по убыванию.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    images = pd.read_csv('zs_public.csv')
+    X = np.load('zs_public.npy').astype(np.float32)
+    with np.load('zs_prompts.npz') as data:
+        prompts = pd.DataFrame({k: [str(x) for x in data[k]] for k in ['class', 'group', 'language', 'variant', 'prompt']})
+        prompt_emb = data['emb'].astype(np.float32)
+    raw = prompts[prompts['variant'] == 'raw']
+    classes = raw['class'].to_numpy()
+    dev = (images.groupby('class').cumcount() % 2 == 0).to_numpy()
+    test = ~dev
+    allowed = ((images['group'].to_numpy()[:, None] == raw['group'].to_numpy()[None, :]) &
+               (images['language'].to_numpy()[:, None] == raw['language'].to_numpy()[None, :]))
+    def accuracy_r(E, part):
+        pred = classes[np.where(allowed, X @ E.T, -np.inf).argmax(axis=1)]
+        return (pred == images['class'].to_numpy())[part].mean()
+    def emb(variant):
+        return prompt_emb[(prompts['variant'] == variant).to_numpy()]
+    six = ['photo', 'photo_group', 'closeup', 'bad_photo', 'photo_the', 'drawing']
+    three = ['photo', 'photo_group', 'bad_photo']
+  starter: |
+    def ensemble(variants):
+        E = ...
+        return ...
+
+    configs = {v: emb(v) for v in prompts['variant'].unique()}
+    configs['ens6'] = ...
+    configs['ens3'] = ...
+    dev_table = ...
+    print(dev_table.round(3))
+  solution: |
+    def ensemble(variants):
+        E = np.mean([emb(v) for v in variants], axis=0)
+        return E / np.linalg.norm(E, axis=1, keepdims=True)
+
+    configs = {v: emb(v) for v in prompts['variant'].unique()}
+    configs['ens6'] = ensemble(six)
+    configs['ens3'] = ensemble(three)
+    dev_table = pd.Series({name: accuracy_r(E, dev) for name, E in configs.items()}).sort_values(ascending=False)
+    print(dev_table.round(3))
+  explanation: |
+    - На `dev` лучший — одиночный шаблон `photo_group` (0,878). За ним `closeup` (0,873), `photo` и ансамбль трёх шаблонов (по 0,867). Ансамбли здесь не обогнали лучший одиночный шаблон.
+    - Варианты без перевода (`raw`, `clean`, `pipeline`) отстают на 20 с лишним пунктов: перевод — главное улучшение.
+    - Разница между первыми пятью вариантами — один-пять верных ответов из 353. Такую разницу легко получить случайно, и это стоит помнить при выборе.
+  hints:
+    - "Ансамбль — `np.mean([emb(v) for v in variants], axis=0)`, затем нормировка строк."
+    - "`configs['ens6'] = ensemble(six)` и `configs['ens3'] = ensemble(three)`."
+    - "Таблица — `pd.Series({name: accuracy_r(E, dev) for name, E in configs.items()}).sort_values(ascending=False)`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    cf = var('configs', dict, 'словарём')
+    ensure(set(cf) == set(ref('configs')), '`configs` — 10 вариантов подписей и два ансамбля: `ens6` и `ens3`.')
+    for name in ['ens6', 'ens3']:
+        E = np.asarray(cf[name], dtype=float)
+        if not np.allclose(np.linalg.norm(E, axis=1), 1, atol=1e-4):
+            fail('Строки ансамбля `' + name + '` должны иметь длину 1: нормируйте среднее.')
+        same_array(E, np.asarray(ref('configs')[name], dtype=float), '`' + name + '` — нормированное среднее векторов шаблонов.', atol=1e-5)
+    dt = var('dev_table', pd.Series, 'Series')
+    same_array(dt.reindex(ref('dev_table').index).to_numpy(dtype=float), ref('dev_table').to_numpy(dtype=float), '`dev_table` — точность каждого варианта на dev.')
+    ensure(dt.is_monotonic_decreasing, 'Отсортируйте `dev_table` по убыванию точности.')
+    if np.allclose(dt.reindex(ref('dev_table').index).to_numpy(dtype=float), [ref('accuracy_r')(ref('configs')[k], ref('test')) for k in ref('dev_table').index]):
+        fail('Сравнивайте варианты на `dev`: test откладываем до шага 4.')
+    same_array(alt('dev_table').sort_index().to_numpy(dtype=float), alt_ref('dev_table').sort_index().to_numpy(dtype=float), HARDCODE_MSG)
+  files: [zs_public.csv, zs_public.npy, zs_prompts.npz]
+  wrong:
+    - code: |
+        def ensemble(variants):
+            return np.mean([emb(v) for v in variants], axis=0)
+        configs = {v: emb(v) for v in prompts['variant'].unique()}
+        configs['ens6'] = ensemble(six)
+        configs['ens3'] = ensemble(three)
+        dev_table = pd.Series({name: accuracy_r(E, dev) for name, E in configs.items()}).sort_values(ascending=False)
+      expect: длину 1
+    - code: |
+        def ensemble(variants):
+            E = np.mean([emb(v) for v in variants], axis=0)
+            return E / np.linalg.norm(E, axis=1, keepdims=True)
+        configs = {v: emb(v) for v in prompts['variant'].unique()}
+        configs['ens6'] = ensemble(six)
+        configs['ens3'] = ensemble(three)
+        dev_table = pd.Series({name: accuracy_r(E, test) for name, E in configs.items()}).sort_values(ascending=False)
+      expect: точность каждого варианта на dev
+
+- id: m9-l10-t4
+  title: "Шаг 4. Выбор и одна проверка на test"
+  difficulty: main
+  introduces: []
+  uses: [prompt-template, zero-shot]
+  statement: |
+    Выберите вариант с наибольшей точностью на `dev` (`dev_table` уже посчитана) и один раз проверьте его на `test`. Для сравнения проверьте на `test` и базовое решение из шага 1 — подписи `pipeline` без ограничения кандидатов. Получите:
+
+    - `chosen` — название выбранного варианта;
+    - `test_chosen` — его точность на `test` (с кандидатами своей группы и языка);
+    - `test_base` — точность базового решения на `test`;
+    - `gain` — прирост `test_chosen − test_base`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    images = pd.read_csv('zs_public.csv')
+    X = np.load('zs_public.npy').astype(np.float32)
+    with np.load('zs_prompts.npz') as data:
+        prompts = pd.DataFrame({k: [str(x) for x in data[k]] for k in ['class', 'group', 'language', 'variant', 'prompt']})
+        prompt_emb = data['emb'].astype(np.float32)
+    raw = prompts[prompts['variant'] == 'raw']
+    classes = raw['class'].to_numpy()
+    y = images['class'].to_numpy()
+    dev = (images.groupby('class').cumcount() % 2 == 0).to_numpy()
+    test = ~dev
+    allowed = ((images['group'].to_numpy()[:, None] == raw['group'].to_numpy()[None, :]) &
+               (images['language'].to_numpy()[:, None] == raw['language'].to_numpy()[None, :]))
+    def accuracy(E, part):
+        return (classes[(X @ E.T).argmax(axis=1)] == y)[part].mean()
+    def accuracy_r(E, part):
+        return (classes[np.where(allowed, X @ E.T, -np.inf).argmax(axis=1)] == y)[part].mean()
+    def emb(variant):
+        return prompt_emb[(prompts['variant'] == variant).to_numpy()]
+    def ensemble(variants):
+        E = np.mean([emb(v) for v in variants], axis=0)
+        return E / np.linalg.norm(E, axis=1, keepdims=True)
+    configs = {v: emb(v) for v in prompts['variant'].unique()}
+    configs['ens6'] = ensemble(['photo', 'photo_group', 'closeup', 'bad_photo', 'photo_the', 'drawing'])
+    configs['ens3'] = ensemble(['photo', 'photo_group', 'bad_photo'])
+    dev_table = pd.Series({name: accuracy_r(E, dev) for name, E in configs.items()}).sort_values(ascending=False)
+  starter: |
+    chosen = ...
+    test_chosen = ...
+    test_base = ...
+    gain = ...
+    print(chosen, round(test_chosen, 3), round(test_base, 3), round(gain, 3))
+  solution: |
+    chosen = dev_table.idxmax()
+    test_chosen = accuracy_r(configs[chosen], test)
+    test_base = accuracy(configs['pipeline'], test)
+    gain = test_chosen - test_base
+    print(chosen, round(test_chosen, 3), round(test_base, 3), round(gain, 3))
+  explanation: |
+    - Выбран `photo_group`: на `dev` 0,878, на `test` 0,873. Оценка почти подтвердилась, а базовое решение даёт на `test` 0,598 — прирост 27 пунктов.
+    - На `test` лучше всех оказались бы `bad_photo` и ансамбль шести шаблонов (0,878). Но выбрать их можно было только подглядев в test, и тогда оценка 0,878 была бы нечестной.
+    - Именно такую оценку — по данным, которые не участвовали в выборе, — стоит ожидать и на скрытой половине соревнования.
+  hints:
+    - "Выбранный вариант — `dev_table.idxmax()`."
+    - "Точность на test — `accuracy_r(configs[chosen], test)`; базовое решение — `accuracy(configs['pipeline'], test)`."
+    - "`gain = test_chosen - test_base`."
+  tests: |
+    ch = var('chosen', str, 'строкой')
+    if ch != ref('chosen') and ch == max(ref('configs'), key=lambda k: ref('accuracy_r')(ref('configs')[k], ref('test'))):
+        fail('Вариант выбирают по `dev`, а не по `test`: `dev_table.idxmax()`.')
+    equal(ch, ref('chosen'), 'По dev выбирается {expected}, а у вас {actual}.')
+    close(var('test_chosen', 'number', 'числом'), ref('test_chosen'), 'Точность выбранного варианта на test — {expected}, а у вас {actual}.')
+    tb = var('test_base', 'number', 'числом')
+    if abs(tb - float(ref('accuracy_r')(ref('configs')['pipeline'], ref('test')))) < 1e-9:
+        fail('Базовое решение — подписи `pipeline` без ограничения кандидатов: функция `accuracy`, а не `accuracy_r`.')
+    close(tb, ref('test_base'), 'Точность базового решения на test — {expected}, а у вас {actual}.')
+    close(var('gain', 'number', 'числом'), ref('gain'), 'Прирост — {expected}, а у вас {actual}.')
+    close(alt('gain'), alt_ref('gain'), HARDCODE_MSG)
+  files: [zs_public.csv, zs_public.npy, zs_prompts.npz]
+  wrong:
+    - code: |
+        chosen = dev_table.idxmax()
+        test_chosen = accuracy_r(configs[chosen], test)
+        test_base = accuracy_r(configs['pipeline'], test)
+        gain = test_chosen - test_base
+      expect: без ограничения кандидатов
+    - code: |
+        chosen = dev_table.idxmax()
+        test_chosen = accuracy_r(configs[chosen], dev)
+        test_base = accuracy(configs['pipeline'], test)
+        gain = test_chosen - test_base
+      expect: на test
+
+- id: m9-l10-t5
+  title: "Шаг 5. Разбор ошибок на test"
+  difficulty: main
+  introduces: []
+  uses: [zero-shot, pd-groupby]
+  statement: |
+    `pred` — ответы выбранного варианта (`photo_group` с кандидатами своей группы и языка) для всех картинок. Разберите ошибки на `test`. Получите:
+
+    - `test_df` — строки `images` из `test` со столбцами `pred` и `ok` (верен ли ответ);
+    - `n_errors` — число ошибок на `test`;
+    - `acc_by_lang` — Series: точность на `test` для каждого языка;
+    - `acc_big` — Series: точность на `test` в трёх больших группах (Animalia, Dishes, Other).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    images = pd.read_csv('zs_public.csv')
+    X = np.load('zs_public.npy').astype(np.float32)
+    with np.load('zs_prompts.npz') as data:
+        prompts = pd.DataFrame({k: [str(x) for x in data[k]] for k in ['class', 'group', 'language', 'variant', 'prompt']})
+        prompt_emb = data['emb'].astype(np.float32)
+    raw = prompts[prompts['variant'] == 'raw']
+    classes = raw['class'].to_numpy()
+    dev = (images.groupby('class').cumcount() % 2 == 0).to_numpy()
+    test = ~dev
+    allowed = ((images['group'].to_numpy()[:, None] == raw['group'].to_numpy()[None, :]) &
+               (images['language'].to_numpy()[:, None] == raw['language'].to_numpy()[None, :]))
+    E = prompt_emb[(prompts['variant'] == 'photo_group').to_numpy()]
+    pred = classes[np.where(allowed, X @ E.T, -np.inf).argmax(axis=1)]
+  starter: |
+    test_df = images[test].copy()
+    test_df['pred'] = ...
+    test_df['ok'] = ...
+    n_errors = ...
+    acc_by_lang = ...
+    acc_big = ...
+    print(n_errors)
+    print(acc_by_lang.round(3), acc_big.round(3))
+    print(test_df.loc[~test_df['ok'], ['class', 'pred']].head(8))
+  solution: |
+    test_df = images[test].copy()
+    test_df['pred'] = pred[test]
+    test_df['ok'] = test_df['pred'] == test_df['class']
+    n_errors = int((~test_df['ok']).sum())
+    acc_by_lang = test_df.groupby('language')['ok'].mean()
+    acc_big = test_df[test_df['group'].isin(['Animalia', 'Dishes', 'Other'])].groupby('group')['ok'].mean()
+    print(n_errors)
+    print(acc_by_lang.round(3), acc_big.round(3))
+    print(test_df.loc[~test_df['ok'], ['class', 'pred']].head(8))
+  explanation: |
+    - На `test` 45 ошибок из 353. Испанские классы безошибочны, английские — 0,89, латинские — 0,84.
+    - Посмотрите на сами ошибки: «breakfast_burrito → huevos_rancheros», «icterus-gularis → icterus-spurius» (два вида иволг), «eunectes-murinus → pantherophis-alleghaniensis» (две змеи). Модель путает похожие блюда и близкие виды — это трудные случаи и для человека.
+    - Дальше улучшать подписи почти некуда: чтобы различать близкие виды, нужны примеры картинок и обучение (урок 9.9).
+  hints:
+    - "Ответы части — `pred[test]`, верность — сравнение со столбцом `class`."
+    - "Точность по языкам — `test_df.groupby('language')['ok'].mean()`."
+    - "Три группы — `test_df[test_df['group'].isin([...])]`, затем `groupby('group')['ok'].mean()`."
+  tests: |
+    import pandas as pd
+    td = var('test_df', pd.DataFrame, 'таблицей')
+    ensure(len(td) == len(ref('test_df')), '`test_df` — только картинки из `test`: {0} строки.'.format(len(ref('test_df'))))
+    ensure('pred' in td.columns and 'ok' in td.columns, 'Добавьте в `test_df` столбцы `pred` и `ok`.')
+    equal(list(td['pred']), list(ref('test_df')['pred']), 'Ответы `pred` для картинок test не совпадают: возьмите `pred[test]`.')
+    equal(int(var('n_errors', 'number', 'числом')), int(ref('n_errors')), 'Ошибок на test — {expected}, а у вас {actual}.')
+    al = var('acc_by_lang', pd.Series, 'Series')
+    same_array(al.reindex(ref('acc_by_lang').index).to_numpy(dtype=float), ref('acc_by_lang').to_numpy(dtype=float), '`acc_by_lang` — точность на test по языкам.')
+    ab = var('acc_big', pd.Series, 'Series')
+    same_array(ab.reindex(ref('acc_big').index).to_numpy(dtype=float), ref('acc_big').to_numpy(dtype=float), '`acc_big` — точность на test в группах Animalia, Dishes и Other.')
+    equal(int(alt('n_errors')), int(alt_ref('n_errors')), HARDCODE_MSG)
+  files: [zs_public.csv, zs_public.npy, zs_prompts.npz]
+  wrong:
+    - code: |
+        test_df = images[test].copy()
+        test_df['pred'] = pred[test]
+        test_df['ok'] = test_df['pred'] == test_df['class']
+        n_errors = int(test_df['ok'].sum())
+        acc_by_lang = test_df.groupby('language')['ok'].mean()
+        acc_big = test_df[test_df['group'].isin(['Animalia', 'Dishes', 'Other'])].groupby('group')['ok'].mean()
+      expect: Ошибок на test
+    - code: |
+        test_df = images[test].copy()
+        test_df['pred'] = pred[test]
+        test_df['ok'] = test_df['pred'] == test_df['class']
+        n_errors = int((~test_df['ok']).sum())
+        acc_by_lang = images.assign(ok=pred == images['class']).groupby('language')['ok'].mean()
+        acc_big = test_df[test_df['group'].isin(['Animalia', 'Dishes', 'Other'])].groupby('group')['ok'].mean()
+      expect: точность на test по языкам
+
+- id: m9-l10-t6
+  title: "Шаг 6. Уверенность и отказ от ответа"
+  difficulty: main
+  introduces: []
+  uses: [zero-shot, logits]
+  statement: |
+    `S` — косинусы картинок с подписями выбранного варианта, у чужих классов — `-np.inf`. Вероятности CLIP — softmax от `100 · S` по строкам (у чужих классов вероятность 0). Получите:
+
+    - `top_p` — массив: наибольшая вероятность для каждой картинки;
+    - `conf` — DataFrame для порогов `thresholds`: столбцы `coverage` (доля картинок `test`, где `top_p` не ниже порога) и `accuracy` (точность среди них), индекс — пороги;
+    - `p_ok` и `p_err` — средняя `top_p` на верных и на ошибочных ответах в `test`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    images = pd.read_csv('zs_public.csv')
+    X = np.load('zs_public.npy').astype(np.float32)
+    with np.load('zs_prompts.npz') as data:
+        prompts = pd.DataFrame({k: [str(x) for x in data[k]] for k in ['class', 'group', 'language', 'variant', 'prompt']})
+        prompt_emb = data['emb'].astype(np.float32)
+    raw = prompts[prompts['variant'] == 'raw']
+    classes = raw['class'].to_numpy()
+    dev = (images.groupby('class').cumcount() % 2 == 0).to_numpy()
+    test = ~dev
+    allowed = ((images['group'].to_numpy()[:, None] == raw['group'].to_numpy()[None, :]) &
+               (images['language'].to_numpy()[:, None] == raw['language'].to_numpy()[None, :]))
+    E = prompt_emb[(prompts['variant'] == 'photo_group').to_numpy()]
+    S = np.where(allowed, X @ E.T, -np.inf)
+    ok = classes[S.argmax(axis=1)] == images['class'].to_numpy()
+    thresholds = [0.3, 0.5, 0.7, 0.9]
+    def softmax(z):
+        e = np.exp(z - z.max(axis=-1, keepdims=True))
+        return e / e.sum(axis=-1, keepdims=True)
+  starter: |
+    P = softmax(100 * S)
+    top_p = ...
+    rows = []
+    for t in thresholds:
+        sure = test & (top_p >= t)
+        rows.append({'coverage': ..., 'accuracy': ...})
+    conf = pd.DataFrame(rows, index=thresholds)
+    p_ok = ...
+    p_err = ...
+    print(conf.round(3))
+    print(round(p_ok, 3), round(p_err, 3))
+  solution: |
+    P = softmax(100 * S)
+    top_p = P.max(axis=1)
+    rows = []
+    for t in thresholds:
+        sure = test & (top_p >= t)
+        rows.append({'coverage': sure.sum() / test.sum(), 'accuracy': ok[sure].mean()})
+    conf = pd.DataFrame(rows, index=thresholds)
+    p_ok = top_p[test & ok].mean()
+    p_err = top_p[test & ~ok].mean()
+    print(conf.round(3))
+    print(round(p_ok, 3), round(p_err, 3))
+  explanation: |
+    - `-np.inf` после умножения на 100 остаётся минус бесконечностью, и softmax даёт чужим классам ровно 0.
+    - На верных ответах средняя уверенность 0,91, на ошибках — 0,55. Если модель отвечает только при уверенности не ниже 0,9, она берётся за 65 % картинок и ошибается лишь в 2 % из них. Остальные можно отдать на ручную проверку.
+    - В соревновании отказаться от ответа нельзя — ответ нужен для каждой картинки. Но та же уверенность подскажет, где искать ошибки и какие классы проверить глазами.
+  hints:
+    - "Наибольшая вероятность в строке — `P.max(axis=1)`."
+    - "Доля отвеченных — `sure.sum() / test.sum()`, точность — `ok[sure].mean()`."
+    - "Средние — `top_p[test & ok].mean()` и `top_p[test & ~ok].mean()`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    tp = np.asarray(var('top_p'), dtype=float)
+    ensure(tp.shape == ref('top_p').shape, '`top_p` — по числу на каждую картинку.')
+    if np.allclose(tp, np.where(np.isfinite(ref('S')), ref('S'), -np.inf).max(axis=1)):
+        fail('Это наибольший косинус, а нужна наибольшая вероятность: softmax от `100 * S`.')
+    same_array(tp, ref('top_p'), '`top_p` — наибольшая вероятность для каждой картинки.', atol=1e-6)
+    cf = var('conf', pd.DataFrame, 'таблицей')
+    ensure(set(['coverage', 'accuracy']) <= set(cf.columns), 'В `conf` нужны столбцы `coverage` и `accuracy`.')
+    cov = cf['coverage'].to_numpy(dtype=float)
+    if np.allclose(cov, [float((ref('top_p') >= t).mean()) for t in ref('thresholds')]):
+        fail('Долю отвеченных считайте среди картинок `test`: `sure = test & (top_p >= t)`, делите на `test.sum()`.')
+    same_array(cf[['coverage', 'accuracy']].to_numpy(dtype=float), ref('conf')[['coverage', 'accuracy']].to_numpy(dtype=float), '`conf` — доля отвеченных и точность среди них для каждого порога.')
+    close(var('p_ok', 'number', 'числом'), ref('p_ok'), 'Средняя уверенность на верных ответах — {expected}, а у вас {actual}.')
+    close(var('p_err', 'number', 'числом'), ref('p_err'), 'Средняя уверенность на ошибках — {expected}, а у вас {actual}.')
+    close(alt('p_err'), alt_ref('p_err'), HARDCODE_MSG)
+  files: [zs_public.csv, zs_public.npy, zs_prompts.npz]
+  wrong:
+    - code: |
+        P = softmax(100 * S)
+        top_p = P.max(axis=1)
+        rows = []
+        for t in thresholds:
+            sure = top_p >= t
+            rows.append({'coverage': sure.mean(), 'accuracy': ok[sure].mean()})
+        conf = pd.DataFrame(rows, index=thresholds)
+        p_ok = top_p[test & ok].mean()
+        p_err = top_p[test & ~ok].mean()
+      expect: среди картинок `test`
+    - code: |
+        P = softmax(S)
+        top_p = P.max(axis=1)
+        rows = []
+        for t in thresholds:
+            sure = test & (top_p >= t)
+            rows.append({'coverage': sure.sum() / test.sum(), 'accuracy': ok[sure].mean() if sure.any() else 0.0})
+        conf = pd.DataFrame(rows, index=thresholds)
+        p_ok = top_p[test & ok].mean()
+        p_err = top_p[test & ~ok].mean()
+      expect: "`top_p`"
+
+- id: m9-l10-t7
+  title: "Шаг 7. Ответы в формате соревнования"
+  difficulty: main
+  introduces: []
+  uses: [zero-shot, prompt-template]
+  statement: |
+    В соревновании для скрытых картинок известны `ID`, `group` и `language` и есть их векторы, а класса нет. Ответ — таблица со столбцами `ID` и `predicted_class`. Напишите функцию `make_submission(table, emb)`: `table` — таблица картинок с колонками `ID`, `group`, `language`, `emb` — их векторы (строки в том же порядке). Функция выбирает для каждой картинки класс среди классов той же группы и языка по подписям `E` и возвращает DataFrame с колонками `ID` и `predicted_class`. Получите:
+
+    - `sub` — ответы для картинок `test` (возьмите из `images` только колонки `ID`, `group`, `language` — класс функции не нужен);
+    - `sub_acc` — точность `sub` по настоящим классам картинок `test`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    images = pd.read_csv('zs_public.csv')
+    X = np.load('zs_public.npy').astype(np.float32)
+    with np.load('zs_prompts.npz') as data:
+        prompts = pd.DataFrame({k: [str(x) for x in data[k]] for k in ['class', 'group', 'language', 'variant', 'prompt']})
+        prompt_emb = data['emb'].astype(np.float32)
+    raw = prompts[prompts['variant'] == 'raw']
+    classes = raw['class'].to_numpy()
+    cls_group, cls_lang = raw['group'].to_numpy(), raw['language'].to_numpy()
+    dev = (images.groupby('class').cumcount() % 2 == 0).to_numpy()
+    test = ~dev
+    E = prompt_emb[(prompts['variant'] == 'photo_group').to_numpy()]
+  starter: |
+    def make_submission(table, emb):
+        allowed = ...
+        S = np.where(allowed, emb @ E.T, -np.inf)
+        return pd.DataFrame({'ID': table['ID'].to_numpy(), 'predicted_class': ...})
+
+    sub = make_submission(images.loc[test, ['ID', 'group', 'language']], X[test])
+    sub_acc = ...
+    print(sub.head())
+    print(len(sub), round(sub_acc, 3))
+  solution: |
+    def make_submission(table, emb):
+        allowed = ((table['group'].to_numpy()[:, None] == cls_group[None, :]) &
+                   (table['language'].to_numpy()[:, None] == cls_lang[None, :]))
+        S = np.where(allowed, emb @ E.T, -np.inf)
+        return pd.DataFrame({'ID': table['ID'].to_numpy(), 'predicted_class': classes[S.argmax(axis=1)]})
+
+    sub = make_submission(images.loc[test, ['ID', 'group', 'language']], X[test])
+    sub_acc = (sub['predicted_class'].to_numpy() == images.loc[test, 'class'].to_numpy()).mean()
+    print(sub.head())
+    print(len(sub), round(sub_acc, 3))
+  explanation: |
+    - Функция не видит настоящих классов — как и в соревновании. Ей хватает того, что известно о скрытых картинках: группы, языка и вектора.
+    - Точность ответов 0,873 — та же, что в шаге 4. Так мы проверили, что функция делает ровно то, что мы выбрали и оценили.
+    - Для соревнования останется вызвать её на скрытых картинках и отправить таблицу. Проверьте, что в ней по строке на каждую картинку и все классы — из списка `classes`.
+  hints:
+    - "Маска кандидатов строится по колонкам `table`: `table['group'].to_numpy()[:, None] == cls_group[None, :]` и так же для языка."
+    - "Ответы — `classes[S.argmax(axis=1)]`."
+    - "Точность — сравнение `sub['predicted_class']` с `images.loc[test, 'class']`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    f = var('make_submission')
+    ensure(callable(f), '`make_submission` должна быть функцией.')
+    imgs, XX = ref('images'), ref('X')
+    part = imgs.index[ref('dev')][:40]
+    tbl = imgs.loc[part, ['ID', 'group', 'language']].reset_index(drop=True)
+    res = f(tbl, XX[part])
+    ensure(isinstance(res, pd.DataFrame), '`make_submission` должна вернуть DataFrame.')
+    ensure(list(res.columns) == ['ID', 'predicted_class'], 'Колонки ответа — `ID` и `predicted_class`, а у вас {0}.'.format(list(res.columns)))
+    exp = ref('make_submission')(tbl, XX[part])
+    equal(list(res['ID']), list(exp['ID']), 'В ответе должны быть ID переданных картинок в том же порядке.')
+    equal(list(res['predicted_class']), list(exp['predicted_class']), 'На других картинках ответы функции не совпали: кандидаты — классы той же группы и языка.')
+    s = var('sub', pd.DataFrame, 'таблицей')
+    equal(len(s), int(ref('test').sum()), 'В `sub` должно быть по строке на каждую картинку test: {expected}, а у вас {actual}.')
+    close(var('sub_acc', 'number', 'числом'), ref('sub_acc'), 'Точность ответов — {expected}, а у вас {actual}.')
+    close(alt('sub_acc'), alt_ref('sub_acc'), HARDCODE_MSG)
+  files: [zs_public.csv, zs_public.npy, zs_prompts.npz]
+  wrong:
+    - code: |
+        def make_submission(table, emb):
+            S = emb @ E.T
+            return pd.DataFrame({'ID': table['ID'].to_numpy(), 'predicted_class': classes[S.argmax(axis=1)]})
+        sub = make_submission(images.loc[test, ['ID', 'group', 'language']], X[test])
+        sub_acc = (sub['predicted_class'].to_numpy() == images.loc[test, 'class'].to_numpy()).mean()
+      expect: той же группы и языка
+    - code: |
+        def make_submission(table, emb):
+            allowed = ((table['group'].to_numpy()[:, None] == cls_group[None, :]) &
+                       (table['language'].to_numpy()[:, None] == cls_lang[None, :]))
+            S = np.where(allowed, emb @ E.T, -np.inf)
+            return pd.DataFrame({'id': table['ID'].to_numpy(), 'class': classes[S.argmax(axis=1)]})
+        sub = make_submission(images.loc[test, ['ID', 'group', 'language']], X[test])
+        sub_acc = (sub['class'].to_numpy() == images.loc[test, 'class'].to_numpy()).mean()
+      expect: Колонки ответа
+
+- id: m9-l10-t8
+  kind: quiz
+  title: "Шаг 8. Выводы"
+  difficulty: main
+  introduces: []
+  uses: [zero-shot, prompt-template]
+  statement: |
+    Подведите итоги проекта.
+  quiz:
+    - q: Почему вариант подписей выбирали по dev, а test проверили один раз?
+      options:
+        - Чтобы оценка на test была честной — по картинкам, которые не участвовали в выборе
+        - Потому что на test модель работает медленнее
+        - Потому что на dev больше картинок
+      answer: 0
+      explain: "По test лучшими были бы другие варианты (0,878), но выбрать их можно было только подглядев. Честная оценка выбора — 0,873."
+    - q: Какие два шага дали основной прирост над базовым решением (0,598 → 0,873)?
+      options:
+        - Перевод названий на английский с шаблоном и ограничение кандидатов известными группой и языком
+        - Ансамбль из шести шаблонов и softmax
+        - Умножение косинусов на 100 и сортировка ответов
+      answer: 0
+      explain: "Ансамбли здесь не обогнали лучший одиночный шаблон, а softmax и множитель 100 не меняют, какой класс выбран."
+    - q: Что показал разбор ошибок на test?
+      options:
+        - Модель путает похожие блюда и близкие виды животных — трудные случаи, где одних подписей мало
+        - Модель ошибается в основном на испанских классах
+        - Ошибки распределены совершенно случайно
+      answer: 0
+      explain: "Испанские классы после ограничения кандидатов безошибочны; ошибки — «icterus-gularis → icterus-spurius» и подобные."
+    - q: Модель отвечает, только если уверенность не ниже 0,9. Что получится?
+      options:
+        - Она возьмётся примерно за 65 % картинок и ошибётся лишь в 2 % из них, остальные пойдут на ручную проверку
+        - Точность не изменится
+        - Модель откажется от всех ответов
+      answer: 0
+      explain: "На верных ответах средняя уверенность 0,91, на ошибках — 0,55: уверенность помогает отделить сомнительные ответы."
+  hints:
+    - Вспомните шаги 3–6.
+    - "Выбор — по dev; главные улучшения — перевод с шаблоном и ограничение кандидатов; ошибки — близкие классы; порог 0,9 — 65 % ответов с точностью 0,98."
+    - "Ответы: первый вариант во всех четырёх вопросах."

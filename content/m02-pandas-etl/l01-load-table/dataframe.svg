@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 272" font-family="Inter, Arial, sans-serif" font-size="13" role="img" aria-label="Устройство DataFrame: слева индекс с метками строк, сверху имена колонок; одна колонка — Series, одна строка — одно объявление; df.shape равно (41007, 9)">
+  <!-- подсветка колонки и строки -->
+  <rect x="450" y="44" width="112" height="164" rx="4" fill="#3d5bd9" fill-opacity="0.13" stroke="#3d5bd9" stroke-width="1.5"/>
+  <rect x="64" y="104" width="498" height="26" rx="3" fill="#c2410c" fill-opacity="0.10" stroke="#c2410c" stroke-dasharray="4 3"/>
+  <!-- сетка -->
+  <g stroke="currentColor" stroke-opacity="0.25" fill="none">
+    <rect x="64" y="50" width="498" height="156"/>
+    <line x1="64" y1="76" x2="562" y2="76" stroke-opacity="0.6"/>
+    <line x1="64" y1="102" x2="562" y2="102"/><line x1="64" y1="128" x2="562" y2="128"/>
+    <line x1="64" y1="154" x2="562" y2="154"/><line x1="64" y1="180" x2="562" y2="180"/>
+    <line x1="118" y1="50" x2="118" y2="206" stroke-opacity="0.6"/>
+    <line x1="220" y1="50" x2="220" y2="206"/><line x1="340" y1="50" x2="340" y2="206"/>
+    <line x1="398" y1="50" x2="398" y2="206"/><line x1="450" y1="50" x2="450" y2="206"/>
+  </g>
+  <g font-family="JetBrains Mono, monospace" font-size="12" fill="currentColor">
+    <!-- заголовок -->
+    <g font-weight="700">
+      <text x="126" y="68">Make</text><text x="228" y="68">Model</text><text x="348" y="68">Year</text>
+      <text x="414" y="68">…</text><text x="458" y="68">Price(euro)</text>
+    </g>
+    <!-- индекс -->
+    <g fill-opacity="0.65">
+      <text x="104" y="94" text-anchor="end">0</text><text x="104" y="120" text-anchor="end">1</text>
+      <text x="104" y="146" text-anchor="end">2</text><text x="104" y="172" text-anchor="end">…</text>
+      <text x="112" y="198" text-anchor="end">41006</text>
+    </g>
+    <text x="126" y="94">Toyota</text><text x="228" y="94">Prius</text><text x="348" y="94">2011</text><text x="414" y="94">…</text><text x="554" y="94" text-anchor="end">7750.0</text>
+    <text x="126" y="120">Renault</text><text x="228" y="120">Grand Scenic</text><text x="348" y="120">2014</text><text x="414" y="120">…</text><text x="554" y="120" text-anchor="end">8550.0</text>
+    <text x="126" y="146">Volkswagen</text><text x="228" y="146">Golf</text><text x="348" y="146">1998</text><text x="414" y="146">…</text><text x="554" y="146" text-anchor="end">2200.0</text>
+    <text x="126" y="172">…</text><text x="228" y="172">…</text><text x="348" y="172">…</text><text x="414" y="172">…</text><text x="554" y="172" text-anchor="end">…</text>
+    <text x="126" y="198">Renault</text><text x="228" y="198">Grand Scenic</text><text x="348" y="198">2006</text><text x="414" y="198">…</text><text x="554" y="198" text-anchor="end">4000.0</text>
+  </g>
+  <!-- подписи -->
+  <text x="300" y="30" fill="currentColor" text-anchor="middle"><tspan font-family="JetBrains Mono, monospace" font-weight="700">df.columns</tspan> — имена колонок</text>
+  <path d="M300 36 L300 48" stroke="currentColor" stroke-opacity="0.6"/>
+  <text x="18" y="236" fill="currentColor"><tspan font-family="JetBrains Mono, monospace" font-weight="700">df.index</tspan> — метки строк</text>
+  <path d="M60 226 L84 210" stroke="currentColor" stroke-opacity="0.6"/>
+  <text x="584" y="70" fill="#3d5bd9" font-family="JetBrains Mono, monospace" font-weight="700">df['Price(euro)']</text>
+  <text x="584" y="88" fill="#3d5bd9">одна колонка — Series</text>
+  <path d="M580 80 L566 80" stroke="#3d5bd9" stroke-width="1.5"/>
+  <text x="584" y="120" fill="#c2410c">одна строка —</text>
+  <text x="584" y="138" fill="#c2410c">одно объявление</text>
+  <path d="M580 117 L566 117" stroke="#c2410c" stroke-width="1.5"/>
+  <text x="300" y="236" fill="currentColor"><tspan font-family="JetBrains Mono, monospace" font-weight="700">df.shape</tspan> → (41007, 9): 41 007 строк, 9 колонок</text>
+  <text x="300" y="258" fill="currentColor" fill-opacity="0.7"><tspan font-family="JetBrains Mono, monospace">df.size</tspan> → 369063 ячеек = 41 007 × 9</text>
+</svg>

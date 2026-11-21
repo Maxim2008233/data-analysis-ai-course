@@ -1,0 +1,157 @@
+# Справочник: машинное обучение и первая модель в Scikit-learn (модуль 5).
+- id: supervised-learning
+  term: Обучение с учителем, без учителя, с подкреплением
+  category: Машинное обучение
+  aliases: [supervised learning, unsupervised learning, reinforcement learning, размеченные данные, с учителем]
+  summary: "**С учителем** — в данных есть правильные ответы (цены, классы), модель учится их предсказывать. **Без учителя** — ответов нет, модель ищет структуру (группы похожих объектов). **С подкреплением** — агент действует в среде и учится по положительным и отрицательным сигналам (игры, роботы)."
+- id: regression-classification
+  term: Регрессия, классификация, кластеризация
+  category: Машинное обучение
+  aliases: [регрессия, классификация, кластеризация, виды задач]
+  summary: "Регрессия предсказывает число (цену автомобиля), классификация — класс из конечного набора (автомат или механика), кластеризация делит объекты на группы без заданных ответов (сегменты клиентов). Ещё бывают ранжирование, рекомендации, поиск аномалий."
+- id: parametric-model
+  term: Параметрическая модель
+  category: Машинное обучение
+  aliases: [семейство функций, параметры модели, веса, w]
+  summary: "Модель задаёт вид зависимости с параметрами, которые подбираются по данным: линейная ŷ = w₀ + w₁x₁ + … + wₙxₙ, где w — веса, w₀ — свободный член (сдвиг). Обучение модели — поиск таких параметров."
+  example: |
+    y_hat = w0 + w1 * x1 + w2 * x2
+- id: loss-function
+  term: Функция потерь
+  category: Машинное обучение
+  aliases: [loss, функция ошибки, функционал качества]
+  summary: "Число, которое показывает, насколько прогнозы модели отличаются от правильных ответов на обучающих данных. Обучение — минимизация функции потерь. Для регрессии чаще всего MSE; функция должна быть неотрицательной и (для градиентного спуска) гладкой."
+- id: mse
+  term: MSE (средняя квадратичная ошибка)
+  category: Метрики
+  aliases: [mean squared error, среднеквадратичная ошибка, квадратичная ошибка]
+  summary: "MSE = (1/N) · Σ (ŷᵢ − yᵢ)². Квадрат сильно штрафует большие ошибки; единицы — квадрат единиц y (евро²). Корень из MSE — RMSE — снова в евро."
+  syntax: |
+    mse = ((y_hat - y) ** 2).mean()
+    mean_squared_error(y_true, y_pred)
+- id: least-squares
+  term: Метод наименьших квадратов
+  category: Машинное обучение
+  aliases: [МНК, OLS, polyfit, нормальное уравнение]
+  summary: "Выбирает параметры линейной модели с наименьшей суммой квадратов ошибок. Для прямой y = ax + b есть точная формула; `np.polyfit(x, y, 1)` возвращает `a, b`. `LinearRegression` в scikit-learn решает ту же задачу для многих признаков."
+  example: |
+    a, b = np.polyfit(df['Year'], df['Price'], 1)
+- id: gradient-descent
+  term: Градиентный спуск
+  category: Машинное обучение
+  aliases: [gradient descent, градиент, антиградиент, шаг обучения, learning rate]
+  summary: "Приближённый способ минимизировать функцию потерь: начинают с произвольных параметров, считают градиент (направление наискорейшего роста потерь) и делают маленький шаг в обратную сторону; повторяют. Шаг `lr` (learning rate) слишком большой — расходится, слишком маленький — учится долго."
+  example: |
+    for _ in range(200):
+        err = w * x + b - y
+        w -= lr * 2 * (err * x).mean()
+        b -= lr * 2 * err.mean()
+- id: generalization
+  term: Обобщающая способность
+  category: Машинное обучение
+  aliases: [generalization, работа на новых данных]
+  summary: "Способность модели выучить общие закономерности и давать разумные прогнозы на новых объектах, которых не было при обучении. Её оценивают на отложенных данных — валидационной и тестовой выборках."
+- id: overfitting
+  term: Переобучение и недообучение
+  category: Машинное обучение
+  aliases: [overfitting, underfitting, переобучение, недообучение]
+  summary: "Переобучение — модель подстроилась под шум обучающих данных: ошибка на train маленькая, на новых данных — заметно больше. Недообучение — модель слишком проста и ошибается и на train, и на новых данных. Признак переобучения — большой разрыв между ошибками train и validation."
+- id: train-valid-test
+  term: Обучающая, валидационная и тестовая выборки
+  category: Машинное обучение
+  aliases: [train, validation, test, валидация, отложенная выборка, 60/20/20]
+  summary: "Train — на ней модель обучается; validation — на ней сравнивают модели и подбирают настройки; test — откладывают до конца и используют один раз для итоговой оценки. Части не должны пересекаться. Частое деление — 60/20/20."
+- id: train-test-split
+  term: train_test_split
+  category: Scikit-learn
+  aliases: [разбиение, разделение выборки, test_size, random_state]
+  summary: "`from sklearn.model_selection import train_test_split`. Делит одну или несколько таблиц согласованно (строки X и y остаются парами) и случайно: `test_size` — доля отложенной части, `random_state` — фиксирует случайность, чтобы результат повторялся."
+  syntax: |
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+- id: data-leakage
+  term: Утечка данных
+  category: Машинное обучение
+  aliases: [leakage, утечка, подсматривание в ответ]
+  summary: "Модель при обучении получает информацию, которой не будет при настоящем прогнозе: ответ или его копия среди признаков, общие строки у train и test, параметры подготовки (средние, σ), посчитанные по всем данным. Качество на проверке выглядит лучше, чем будет в работе."
+- id: sk-estimator
+  term: fit, predict и атрибуты модели
+  category: Scikit-learn
+  aliases: [estimator, fit, predict, transform, атрибуты с подчёркиванием, coef_]
+  summary: "Все модели scikit-learn устроены одинаково: создать объект с настройками → `fit(X, y)` обучить → `predict(X)` получить прогнозы. Подготовка данных (scaler) — `fit` и `transform`. То, что найдено при обучении, лежит в атрибутах с `_` на конце."
+  syntax: |
+    model = Model(параметры)
+    model.fit(X_train, y_train)
+    pred = model.predict(X_valid)
+- id: dummy-regressor
+  term: DummyRegressor
+  category: Scikit-learn
+  aliases: [baseline, модель-ориентир, константный прогноз]
+  summary: "`from sklearn.dummy import DummyRegressor` — модель-ориентир: предсказывает одно и то же число для всех объектов (`strategy='mean'` или `'median'` по обучающим ответам). Её ошибка — планка, которую любая полезная модель должна заметно опустить."
+  example: |
+    baseline = DummyRegressor(strategy='median').fit(X_train, y_train)
+    baseline.constant_
+- id: linear-regression
+  term: LinearRegression
+  category: Scikit-learn
+  aliases: [линейная регрессия, LinearRegression, linear model]
+  summary: "`from sklearn.linear_model import LinearRegression` — линейная модель ŷ = intercept_ + Σ coef_ᵢ · xᵢ, параметры подбираются методом наименьших квадратов. Ожидает двумерную таблицу признаков даже для одного признака: `X[['Year']]`."
+  example: |
+    model = LinearRegression().fit(X_train[['Year']], y_train)
+    pred = model.predict(X_valid[['Year']])
+- id: coef-intercept
+  term: coef_ и intercept_
+  category: Scikit-learn
+  aliases: [коэффициенты, свободный член, веса модели, интерпретация коэффициентов]
+  summary: "`coef_` — коэффициенты при признаках (по одному на признак), `intercept_` — свободный член. Коэффициент показывает изменение **прогноза** при росте признака на единицу при прочих равных; при масштабированных признаках — на одно стандартное отклонение. Причину он не доказывает."
+- id: standard-scaler
+  term: StandardScaler
+  category: Scikit-learn
+  aliases: [стандартизация, масштабирование, z-оценка, scaler, fit_transform]
+  summary: "`from sklearn.preprocessing import StandardScaler` вычитает среднее и делит на стандартное отклонение каждого признака: z = (x − μ) / σ. μ и σ (`mean_`, `scale_`) находят `fit` **только по обучающей выборке**, а `transform` применяют ко всем частям. Распределение нормальным не становится."
+  example: |
+    scaler = StandardScaler().fit(X_train)
+    X_valid_scaled = scaler.transform(X_valid)
+- id: rmse
+  term: RMSE
+  category: Метрики
+  aliases: [root mean squared error, корень из MSE, root_mean_squared_error]
+  summary: "RMSE = √MSE — ошибка в единицах y, которая сильнее MAE реагирует на большие промахи. Если RMSE намного больше MAE, у модели есть редкие очень большие ошибки."
+  syntax: |
+    root_mean_squared_error(y_true, y_pred)
+- id: r2-score
+  term: R² (коэффициент детерминации)
+  category: Метрики
+  aliases: [R2, r2_score, коэффициент детерминации, доля объяснённой дисперсии]
+  summary: "R² = 1 − Σ(y − ŷ)² / Σ(y − ȳ)²: какая доля разброса y объяснена моделью. 1 — идеальные прогнозы, 0 — не лучше прогноза средним, меньше 0 — хуже среднего. Безразмерная, удобна для сравнения моделей на одних данных."
+  syntax: |
+    r2_score(y_true, y_pred)
+- id: sk-metrics
+  term: Функции метрик sklearn.metrics
+  category: Scikit-learn
+  aliases: [mean_absolute_error, mean_absolute_percentage_error, metrics]
+  summary: "`from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score, mean_absolute_percentage_error`. Первый аргумент — настоящие ответы, второй — прогнозы. MAPE в sklearn возвращается долей (0,41 = 41 %). Функции ничего не обучают — только считают."
+  example: |
+    mae = mean_absolute_error(y_valid, pred)
+- id: business-metric
+  term: Бизнес-метрика
+  category: Метрики
+  aliases: [онлайн-метрика, офлайн-метрика, метрика сервиса, A/B-тест]
+  summary: "То, ради чего строится модель: выручка, доля сделок, время на сайте. Её измеряют **онлайн** у работающего сервиса. **Офлайн**-метрики (MAE, RMSE, доля верных ответов) считают по историческим данным до запуска; они помогают выбрать модель, но пользу для бизнеса не гарантируют."
+- id: residuals
+  term: Ошибка прогноза (остатки)
+  category: Машинное обучение
+  aliases: [остатки, residuals, ошибка, завышение, занижение]
+  summary: "Ошибка с направлением eᵢ = ŷᵢ − yᵢ: плюс — модель завысила, минус — занизила; |eᵢ| — величина ошибки. Распределение ошибок и самые большие из них показывают, где модели не хватает информации."
+- id: pred-true-plot
+  term: График «известное значение — прогноз»
+  category: Визуализация
+  aliases: [predicted vs actual, диагональ, прогноз против факта]
+  summary: "Диаграмма рассеяния: по X — настоящие значения проверочной выборки, по Y — прогнозы; пунктир y = x — идеальные прогнозы. Выше диагонали модель завышает, ниже — занижает; форма облака показывает систематические ошибки."
+- id: log-target
+  term: Логарифм целевой переменной
+  category: Машинное обучение
+  aliases: [log target, логарифмирование цены, np.log, np.exp]
+  summary: "Для положительной целевой переменной с длинным хвостом модель учат на log(y), а прогноз возвращают в исходные единицы через `np.exp`. Модель учится на относительных различиях, прогнозы всегда положительны; метрики считают после `np.exp`."
+  example: |
+    model.fit(X_train_s, np.log(y_train))
+    pred = np.exp(model.predict(X_valid_s))

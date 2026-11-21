@@ -1,0 +1,185 @@
+- id: m0-l5-t1
+  kind: predict
+  title: Типы и операции
+  difficulty: main
+  introduces: []
+  uses: [py-variables]
+  statement: |
+    Ответьте, не запуская код.
+  quiz:
+    - q: Что напечатает код?
+      code: |
+        x = '5' + '5'
+        y = 5 + 5
+        print(x, y)
+      options:
+        - "10 10"
+        - "55 10"
+        - Ошибку
+      answer: 1
+      explain: Сложение строк — склейка, сложение чисел — арифметика.
+    - q: Что напечатает код?
+      code: |
+        price = 7750.456
+        print(f'{price:.1f}')
+      options:
+        - "7750.4"
+        - "7750.5"
+        - "7750"
+      answer: 1
+      explain: Формат `.1f` округляет до одного знака после запятой.
+  hints:
+    - Обратите внимание на кавычки и на формат после двоеточия.
+    - "`'5'` — строка, `5` — число; `.1f` — один знак после запятой с округлением."
+    - "55 10; 7750.5."
+
+- id: m0-l5-t2
+  title: Средняя цена из списка
+  difficulty: main
+  introduces: []
+  uses: [py-lists, py-fstrings]
+  statement: |
+    Дан список цен `prices`. Получите `mean_price` — среднюю цену (сумма / количество) — и строку `report` вида `Средняя цена: 6450.00 евро` (два знака после запятой).
+  prelude: |
+    prices = [7750, 8550, 2200, 6550, 4100, 9550]
+  starter: |
+    mean_price = ...
+    report = ...
+    print(report)
+  solution: |
+    mean_price = sum(prices) / len(prices)
+    report = f'Средняя цена: {mean_price:.2f} евро'
+    print(report)
+  explanation: |
+    - `sum` складывает элементы списка, `len` — их количество.
+    - f-строка с форматом `.2f` выводит два знака после запятой.
+  hints:
+    - Среднее — сумма, делённая на количество; для списка есть встроенные функции.
+    - "`sum(prices)` и `len(prices)`; формат — `f'{x:.2f}'`."
+    - "`mean_price = sum(prices) / len(prices)`, `report = f'Средняя цена: {mean_price:.2f} евро'`."
+  tests: |
+    close(var('mean_price', 'number', 'числом'), 6450.0, 'Средняя цена должна быть {expected}, а у вас {actual}.')
+    equal(var('report', 'str', 'строкой'), 'Средняя цена: 6450.00 евро', 'Строка не совпадает: нужно «{expected}», у вас {actual}.')
+  wrong:
+    - code: |
+        mean_price = sum(prices) / 5
+        report = f'Средняя цена: {mean_price:.2f} евро'
+      expect: Средняя цена должна быть
+    - code: |
+        mean_price = sum(prices) / len(prices)
+        report = f'Средняя цена: {mean_price} евро'
+      expect: Строка не совпадает
+
+- id: m0-l5-t3
+  title: Словарь и поиск по ключу
+  difficulty: main
+  introduces: []
+  uses: [py-dicts, py-loops]
+  statement: |
+    Словарь `counts` хранит число объявлений по маркам. Получите `top_make` — марку с наибольшим числом объявлений — и `total` — сумму всех объявлений. Не вписывайте ответ вручную.
+  prelude: |
+    counts = {'Toyota': 4981, 'Volkswagen': 4123, 'Mercedes': 3400, 'BMW': 3055, 'Renault': 2870}
+  starter: |
+    top_make = ...
+    total = ...
+    print(top_make, total)
+  solution: |
+    top_make = max(counts, key=counts.get)
+    total = sum(counts.values())
+    print(top_make, total)
+  explanation: |
+    - `max(counts, key=counts.get)` перебирает ключи и сравнивает их по значению.
+    - `counts.values()` — все значения словаря; `sum` их складывает.
+  alternatives:
+    - |
+      top_make = None
+      for make, n in counts.items():
+          if top_make is None or n > counts[top_make]:
+              top_make = make
+      total = 0
+      for n in counts.values():
+          total += n
+  hints:
+    - Нужно пройти по парам «марка — число» и запомнить марку с наибольшим числом.
+    - "`max(словарь, key=словарь.get)` или цикл по `counts.items()`; сумма — `sum(counts.values())`."
+    - "`top_make = max(counts, key=counts.get)`, `total = sum(counts.values())`."
+  tests: |
+    equal(var('top_make', 'str', 'строкой'), 'Toyota', 'Больше всего объявлений у {expected}, а у вас {actual}. max(словарь) без key сравнивает ключи по алфавиту.')
+    equal(var('total', 'int', 'целым числом'), 18429, 'Сумма должна быть {expected}, а у вас {actual}.')
+    ensure("'Toyota'" not in source() and '"Toyota"' not in source(), 'Найдите марку по данным, а не впишите её вручную.')
+  wrong:
+    - code: |
+        top_make = max(counts)
+        total = sum(counts.values())
+      expect: Больше всего объявлений
+    - code: |
+        top_make = 'Toyota'
+        total = sum(counts.values())
+      expect: вручную
+
+- id: m0-l5-t4
+  title: Функция с условием
+  difficulty: main
+  introduces: []
+  uses: [py-functions, py-loops]
+  statement: |
+    Напишите функцию `price_class(price)`, которая возвращает строку:
+
+    - `'дешёвая'`, если цена меньше 5000;
+    - `'средняя'`, если от 5000 до 15000 (включительно 5000, не включая 15000);
+    - `'дорогая'`, если 15000 и больше.
+
+    Затем получите `classes` — список классов для всех цен из `prices`.
+  prelude: |
+    prices = [7750, 2200, 15000, 4999, 5000, 23000]
+  starter: |
+    def price_class(price):
+        ...
+
+    classes = ...
+    print(classes)
+  solution: |
+    def price_class(price):
+        if price < 5000:
+            return 'дешёвая'
+        elif price < 15000:
+            return 'средняя'
+        else:
+            return 'дорогая'
+
+    classes = [price_class(p) for p in prices]
+    print(classes)
+  explanation: |
+    - Условия проверяются сверху вниз: первое истинное определяет результат.
+    - Генератор списка применяет функцию к каждой цене.
+  hints:
+    - Используйте `if / elif / else` и `return`; список — циклом или генератором списка.
+    - "Проверьте границы: 4999 — дешёвая, 5000 — средняя, 15000 — дорогая."
+    - "`if price < 5000: return 'дешёвая'`, `elif price < 15000: return 'средняя'`, иначе `'дорогая'`; `classes = [price_class(p) for p in prices]`."
+  tests: |
+    f = var('price_class')
+    ensure(callable(f), 'price_class должна быть функцией.')
+    for p, want in [(4999, 'дешёвая'), (5000, 'средняя'), (14999, 'средняя'), (15000, 'дорогая'), (100, 'дешёвая')]:
+        got = f(p)
+        ensure(got == want, 'price_class(%s) должна вернуть %r, а вернула %r. Проверьте границы.' % (p, want, got))
+    equal(var('classes', 'list', 'списком'), ['средняя', 'дешёвая', 'дорогая', 'дешёвая', 'средняя', 'дорогая'], 'Список классов не совпадает: нужно {expected}, у вас {actual}.')
+  wrong:
+    - code: |
+        def price_class(price):
+            if price <= 5000:
+                return 'дешёвая'
+            elif price < 15000:
+                return 'средняя'
+            return 'дорогая'
+        classes = [price_class(p) for p in prices]
+      expect: Проверьте границы
+    - code: |
+        def price_class(price):
+            if price < 5000:
+                print('дешёвая')
+            elif price < 15000:
+                print('средняя')
+            else:
+                print('дорогая')
+        classes = [price_class(p) for p in prices]
+      expect: вернуть

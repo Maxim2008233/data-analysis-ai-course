@@ -1,0 +1,372 @@
+- id: m6-l0-t1
+  title: Те же X, y и части 60/20/20
+  difficulty: warmup
+  introduces: []
+  uses: [target-features, sk-split]
+  statement: |
+    Восстановите данные модуля 5: `X` — признаки `Year`, `Distance`, `Engine`, `km_year`, `y` — цена `Price`, и части 60/20/20 в два шага с `random_state=42` (сначала отделяется test — 20 %, затем из остатка validation — 25 %).
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X = ...
+    y = ...
+    X_temp, X_test, y_temp, y_test = ...
+    X_train, X_valid, y_train, y_valid = ...
+    print(len(X_train), len(X_valid), len(X_test))
+  solution: |
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X = df[features]
+    y = df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    print(len(X_train), len(X_valid), len(X_test))
+  explanation: |
+    - Тот же код, что в уроке 5.4, даёт те же части: 19 239 / 6 414 / 6 414 машин. Поэтому все MAE модуля 6 можно сравнивать с числами модуля 5.
+    - Если поменять `random_state` или долю, части станут другими — и сравнение с прошлыми результатами потеряет смысл.
+  hints:
+    - "Первый вызов — `train_test_split(X, y, test_size=0.2, random_state=42)`."
+    - "Второй — от остатка: `train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)`."
+    - "`X = df[features]`, `y = df['Price']`."
+  tests: |
+    import pandas as pd
+    Xs = var('X', pd.DataFrame, 'таблицей DataFrame')
+    ensure('Price' not in Xs.columns, 'Цена попала в признаки `X` — ответ должен быть только в `y`.')
+    ensure(list(Xs.columns) == ['Year', 'Distance', 'Engine', 'km_year'], 'Колонки `X` — Year, Distance, Engine, km_year, в этом порядке.')
+    n = (len(var('X_train')), len(var('X_valid')), len(var('X_test')))
+    if n == (20522, 5131, 6414):
+        fail('Во втором разбиении нужен `test_size=0.25`: четверть остатка — это 20 % всех данных.')
+    equal(n, (19239, 6414, 6414), 'Размеры частей (train, validation, test) — {expected}, а у вас {actual}.')
+    ensure(list(var('X_valid').index) == list(ref('X_valid').index), 'Состав validation не совпадает с модулем 5: оба вызова — с `random_state=42`.')
+    ensure(list(var('y_train').index) == list(var('X_train').index), '`y_train` должен соответствовать `X_train` — разбивайте X и y одним вызовом.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        features = ['Year', 'Distance', 'Engine', 'km_year']
+        X = df[features]
+        y = df['Price']
+        X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.2, random_state=42)
+      expect: "test_size=0.25"
+    - code: |
+        features = ['Year', 'Distance', 'Engine', 'km_year']
+        X = df[features]
+        y = df['Price']
+        X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
+        X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=0)
+      expect: "random_state=42"
+
+- id: m6-l0-t2
+  title: Два ориентира для сравнения
+  difficulty: warmup
+  introduces: []
+  uses: [baseline-model, linear-regression, regression-metrics]
+  statement: |
+    Посчитайте на validation `baseline_mae` — MAE ориентира-медианы (`DummyRegressor`) и `linear_mae` — MAE линейной регрессии по четырём признакам. Это два числа, которые новые модели должны обогнать.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    from sklearn.dummy import DummyRegressor
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import mean_absolute_error
+
+    baseline = ...
+    linear = ...
+    baseline_mae = ...
+    linear_mae = ...
+    print(round(baseline_mae), round(linear_mae))
+  solution: |
+    from sklearn.dummy import DummyRegressor
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import mean_absolute_error
+
+    baseline = DummyRegressor(strategy='median').fit(X_train, y_train)
+    linear = LinearRegression().fit(X_train, y_train)
+    baseline_mae = mean_absolute_error(y_valid, baseline.predict(X_valid))
+    linear_mae = mean_absolute_error(y_valid, linear.predict(X_valid))
+    print(round(baseline_mae), round(linear_mae))
+  explanation: |
+    - Ориентир ошибается на ≈ 6 007 евро, линейная модель — на ≈ 4 270. Для линейной регрессии масштаб признаков прогнозы не меняет (урок 5.7), поэтому scaler здесь не нужен.
+    - `fit` возвращает саму модель, поэтому создание и обучение можно записать в одну строку.
+  hints:
+    - "Создать → `fit` на train → `predict` для validation → MAE."
+    - "`DummyRegressor(strategy='median').fit(X_train, y_train)`; `LinearRegression().fit(X_train, y_train)`."
+    - "`baseline_mae = mean_absolute_error(y_valid, baseline.predict(X_valid))` — так же для `linear`."
+  tests: |
+    close(var('baseline_mae', 'number', 'числом'), ref('baseline_mae'), 'MAE ориентира на validation — {expected}, а у вас {actual}.')
+    from sklearn.metrics import mean_absolute_error
+    l = var('linear_mae', 'number', 'числом')
+    if abs(l - mean_absolute_error(ref('y_train'), ref('linear').predict(ref('X_train')))) < 1e-6:
+        fail('Это MAE на обучающей части. Сравниваем на validation: `linear.predict(X_valid)` и `y_valid`.')
+    close(l, ref('linear_mae'), 'MAE линейной модели на validation — {expected}, а у вас {actual}.')
+    close(alt('linear_mae'), alt_ref('linear_mae'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        from sklearn.dummy import DummyRegressor
+        from sklearn.linear_model import LinearRegression
+        from sklearn.metrics import mean_absolute_error
+        baseline = DummyRegressor(strategy='mean').fit(X_train, y_train)
+        linear = LinearRegression().fit(X_train, y_train)
+        baseline_mae = mean_absolute_error(y_valid, baseline.predict(X_valid))
+        linear_mae = mean_absolute_error(y_valid, linear.predict(X_valid))
+      expect: MAE ориентира
+    - code: |
+        from sklearn.dummy import DummyRegressor
+        from sklearn.linear_model import LinearRegression
+        from sklearn.metrics import mean_absolute_error
+        baseline = DummyRegressor(strategy='median').fit(X_train, y_train)
+        linear = LinearRegression().fit(X_train, y_train)
+        baseline_mae = mean_absolute_error(y_valid, baseline.predict(X_valid))
+        linear_mae = mean_absolute_error(y_train, linear.predict(X_train))
+      expect: обучающей части
+
+- id: m6-l0-t3
+  title: "Похожие машины: группы «год + объём двигателя»"
+  difficulty: warmup
+  introduces: []
+  uses: [pd-groupby, pd-agg]
+  statement: |
+    В таблице `train` — обучающие машины вместе с ценой. Сгруппируйте их по году и объёму двигателя и получите `groups` — таблицу с колонками `median` (медиана цены) и `size` (число машин) для каждой пары. Затем `n_small` — сколько групп содержат меньше 5 машин, и `share_cars_small` — какая доля **машин** обучающей части приходится на такие маленькие группы.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    train = X_train.assign(Price=y_train)
+  starter: |
+    groups = ...
+    n_small = ...
+    share_cars_small = ...
+    print(len(groups), n_small, round(share_cars_small, 3))
+  solution: |
+    groups = train.groupby(['Year', 'Engine'])['Price'].agg(['median', 'size'])
+    n_small = int((groups['size'] < 5).sum())
+    share_cars_small = groups.loc[groups['size'] < 5, 'size'].sum() / len(train)
+    print(len(groups), n_small, round(share_cars_small, 3))
+  explanation: |
+    - `groupby` по двум колонкам даёт группу на каждую пару «год, объём»; `agg(['median', 'size'])` — две колонки с этими именами (урок 3.2).
+    - Маленьких групп много — 1 874 из 2 409, но машин в них мало: около 15 % (редкие сочетания года и объёма, чаще всего с большими двигателями 2,3–4 л). Большинство машин живёт в крупных группах — до 247 машин в группе «2015, 2 000 см³», поэтому медиана группы работает неплохо.
+    - Для машин из маленьких групп оценка ненадёжна: медиана двух машин — почти случайное число (урок 3.3). Метод соседей решит это иначе: возьмёт k самых похожих машин, даже если точного совпадения нет.
+  hints:
+    - "Две колонки группировки — список: `groupby(['Year', 'Engine'])`; статистики — `agg(['median', 'size'])`."
+    - "Маленькие группы — маска `groups['size'] < 5`; число групп — её сумма, число машин в них — сумма `size` по маске."
+    - "`share_cars_small = groups.loc[groups['size'] < 5, 'size'].sum() / len(train)`."
+  tests: |
+    import pandas as pd
+    g = var('groups', pd.DataFrame, 'таблицей DataFrame')
+    ensure({'median', 'size'} <= set(g.columns), 'В `groups` нужны колонки `median` и `size`: `agg([\'median\', \'size\'])`.')
+    ensure(len(g) == len(ref('groups')), 'Групп должно быть {0} — по одной на пару (Year, Engine), а у вас {1}.'.format(len(ref('groups')), len(g)))
+    same_array(g['size'].to_numpy(), ref('groups')['size'].to_numpy(), 'Размеры групп не совпадают.')
+    same_array(g['median'].to_numpy(dtype=float), ref('groups')['median'].to_numpy(dtype=float), 'Медианы групп не совпадают.')
+    n = var('n_small', 'number', 'числом')
+    if n == int((ref('groups')['size'] <= 5).sum()):
+        fail('Нужны группы **меньше** 5 машин: `< 5`, а не `<= 5`.')
+    equal(n, ref('n_small'), 'Маленьких групп — {expected}, а у вас {actual}.')
+    s = var('share_cars_small', 'number', 'числом')
+    if abs(s - ref('n_small') / len(ref('groups'))) < 1e-9:
+        fail('Это доля **групп**. Нужна доля **машин**: сумма `size` маленьких групп, делённая на число машин в `train`.')
+    close(s, ref('share_cars_small'), 'Доля машин в маленьких группах — {expected}, а у вас {actual}.')
+    close(alt('share_cars_small'), alt_ref('share_cars_small'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        groups = train.groupby(['Year', 'Engine'])['Price'].agg(['median', 'size'])
+        n_small = int((groups['size'] < 5).sum())
+        share_cars_small = n_small / len(groups)
+      expect: доля **групп**
+    - code: |
+        groups = train.groupby(['Year', 'Engine'])['Price'].agg(['median', 'size'])
+        n_small = int((groups['size'] <= 5).sum())
+        share_cars_small = groups.loc[groups['size'] <= 5, 'size'].sum() / len(train)
+      expect: "`< 5`"
+
+- id: m6-l0-t4
+  title: Таблица результатов
+  difficulty: warmup
+  introduces: []
+  uses: [metric-mae-mape, pd-sort-values]
+  statement: |
+    В `estimate` — оценки цен машин validation по медиане группы «год + объём» (если группы нет — по медиане года). Посчитайте `groups_mae` — MAE этих оценок **без** функций scikit-learn. Затем соберите `results` — Series «способ → MAE» из словаря `maes` с добавленной строкой `'медиана года и двигателя'`, отсортированную по возрастанию, и `best` — название лучшего способа.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    train = X_train.assign(Price=y_train)
+    group_median = train.groupby(['Year', 'Engine'])['Price'].median()
+    year_median = train.groupby('Year')['Price'].median()
+    key = pd.MultiIndex.from_frame(X_valid[['Year', 'Engine']])
+    by_group = group_median.reindex(key).to_numpy()
+    by_year = X_valid['Year'].map(year_median).fillna(y_train.median()).to_numpy()
+    estimate = np.where(np.isnan(by_group), by_year, by_group)
+    maes = {'медиана': 6007.2, 'линейная': 4269.9, 'медиана года': 4036.1}
+  starter: |
+    groups_mae = ...
+    maes['медиана года и двигателя'] = groups_mae
+    results = ...
+    best = ...
+    print(results.round(1))
+    print(best)
+  solution: |
+    groups_mae = np.abs(estimate - y_valid.to_numpy()).mean()
+    maes['медиана года и двигателя'] = groups_mae
+    results = pd.Series(maes).sort_values()
+    best = results.index[0]
+    print(results.round(1))
+    print(best)
+  explanation: |
+    - MAE — среднее модулей ошибок (урок 3.7): ≈ 2 699 евро, почти вдвое лучше линейной регрессии.
+    - `pd.Series(словарь)` делает из словаря Series с именами в индексе; `sort_values()` сортирует по возрастанию — лучший способ (наименьшая ошибка) оказывается первым (урок 2.2).
+    - Такая таблица результатов будет в каждом уроке модуля: новый способ появляется в ней строкой и честно сравнивается с прежними.
+  hints:
+    - "MAE руками — `np.abs(оценки - ответы).mean()`; ответы — `y_valid.to_numpy()`."
+    - "`results = pd.Series(maes).sort_values()`."
+    - "Первая строка после сортировки — `results.index[0]`."
+  tests: |
+    import pandas as pd
+    close(var('groups_mae', 'number', 'числом'), ref('groups_mae'), 'MAE оценок по группам — {expected}, а у вас {actual}.')
+    r = var('results', pd.Series, 'Series')
+    ensure(len(r) == 4 and 'медиана года и двигателя' in r.index, 'В `results` должно быть четыре способа, включая «медиана года и двигателя».')
+    if list(r.index) == list(ref('results').index[::-1]):
+        fail('Сортировка в обратную сторону: лучшая — наименьшая MAE, `sort_values()` по возрастанию.')
+    equal(list(r.index), list(ref('results').index), 'Порядок способов — {expected}, а у вас {actual}: сортируйте по возрастанию MAE.')
+    equal(var('best', str, 'строкой'), ref('best'), 'Лучший способ — «{expected}», а у вас «{actual}».')
+    close(alt('groups_mae'), alt_ref('groups_mae'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        groups_mae = np.abs(estimate - y_valid.to_numpy()).mean()
+        maes['медиана года и двигателя'] = groups_mae
+        results = pd.Series(maes).sort_values(ascending=False)
+        best = results.index[0]
+      expect: обратную сторону
+    - code: |
+        groups_mae = (estimate - y_valid.to_numpy()).mean()
+        maes['медиана года и двигателя'] = groups_mae
+        results = pd.Series(maes).sort_values()
+        best = results.index[0]
+      expect: MAE оценок по группам
+
+- id: m6-l0-t5
+  title: Scaler без утечки
+  difficulty: warmup
+  introduces: []
+  uses: [standard-scaler, data-leakage]
+  statement: |
+    Обучите `scaler` на обучающей части и преобразуйте обе части: `X_train_s` и `X_valid_s`. Получите `train_means` и `valid_means` — средние каждого признака после преобразования (массивы из четырёх чисел).
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    from sklearn.preprocessing import StandardScaler
+
+    scaler = StandardScaler()
+    scaler.fit(...)
+    X_train_s = ...
+    X_valid_s = ...
+    train_means = ...
+    valid_means = ...
+    print(train_means.round(3), valid_means.round(3))
+  solution: |
+    from sklearn.preprocessing import StandardScaler
+
+    scaler = StandardScaler()
+    scaler.fit(X_train)
+    X_train_s = scaler.transform(X_train)
+    X_valid_s = scaler.transform(X_valid)
+    train_means = X_train_s.mean(axis=0)
+    valid_means = X_valid_s.mean(axis=0)
+    print(train_means.round(3), valid_means.round(3))
+  explanation: |
+    - На train средние ровно 0, на validation — близки к нулю, но не равны: μ и σ взяты из train, как и должно быть (урок 5.7).
+    - Если бы средние validation тоже были ровно нулевыми, это значило бы, что scaler учился на validation — утечка.
+    - В уроке 6.1 эти четыре строки спрячутся внутрь Pipeline — и перепутать части станет невозможно.
+  hints:
+    - "`scaler.fit(X_train)`, затем `transform` для обеих частей — без второго `fit`."
+    - "Средние по столбцам массива — `.mean(axis=0)`."
+    - "`X_valid_s = scaler.transform(X_valid)`; `valid_means = X_valid_s.mean(axis=0)`."
+  tests: |
+    import numpy as np
+    from sklearn.preprocessing import StandardScaler
+    sc = var('scaler', StandardScaler, 'объектом StandardScaler')
+    ensure(hasattr(sc, 'mean_'), 'Scaler не обучен: `scaler.fit(X_train)`.')
+    if np.allclose(sc.mean_, ref('X_valid').mean().to_numpy()):
+        fail('Scaler обучен на validation — это утечка. `fit` — только на `X_train`.')
+    same_array(sc.mean_, ref('scaler').mean_, 'Scaler должен учиться на `X_train`: `scaler.fit(X_train)`.')
+    vm = np.asarray(var('valid_means'), dtype=float)
+    if vm.shape == (4,) and np.allclose(vm, 0, atol=1e-9):
+        fail('Средние validation получились ровно нулевыми — значит, validation преобразована отдельным scaler, обученным на ней самой. Используйте тот же `scaler`: `scaler.transform(X_valid)`.')
+    same_array(vm, ref('valid_means'), 'Средние признаков validation после преобразования не совпадают: `X_valid_s.mean(axis=0)` — по столбцам.')
+    same_array(np.asarray(var('train_means'), dtype=float), ref('train_means'), 'Средние признаков train после преобразования не совпадают: `X_train_s.mean(axis=0)`.', atol=1e-9)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        from sklearn.preprocessing import StandardScaler
+        scaler = StandardScaler()
+        scaler.fit(X_train)
+        X_train_s = scaler.transform(X_train)
+        X_valid_s = StandardScaler().fit_transform(X_valid)
+        train_means = X_train_s.mean(axis=0)
+        valid_means = X_valid_s.mean(axis=0)
+      expect: отдельным scaler
+    - code: |
+        from sklearn.preprocessing import StandardScaler
+        scaler = StandardScaler()
+        scaler.fit(X_train)
+        X_train_s = scaler.transform(X_train)
+        X_valid_s = scaler.transform(X_valid)
+        train_means = X_train_s.mean(axis=0)
+        valid_means = X_valid_s.mean(axis=1)
+      expect: "axis=0"
+
+- id: m6-l0-t6
+  kind: quiz
+  title: Правила честного сравнения
+  difficulty: warmup
+  introduces: []
+  uses: [train-valid-test]
+  statement: |
+    Перед сравнением моделей вспомним правила.
+  quiz:
+    - q: Модель A проверили на validation из одного разбиения, модель B — из другого. У B MAE меньше. Какой вывод?
+      options:
+        - Сравнивать нельзя — модели проверены на разных машинах
+        - B лучше
+        - A лучше
+      answer: 0
+      explain: Разные проверочные части дают разные числа даже для одной модели. Сравнивают на одних и тех же данных.
+    - q: Можно ли выбирать число соседей или глубину дерева по test?
+      options:
+        - Нет — настройки выбирают по validation; test нужен для одной итоговой проверки
+        - Да, если сделать это один раз
+        - Да, test для этого и отложен
+      answer: 0
+      explain: Выбор по test превращает его во вторую validation, и итоговая оценка становится оптимистичной.
+    - q: В группе «2009 год, 1 598 см³» одна машина за 3 000 евро. Насколько надёжна оценка «медиана группы = 3 000»?
+      options:
+        - Ненадёжна — одна машина может оказаться случайной
+        - Надёжна — это точное совпадение по двум признакам
+        - Надёжна, если машина из train
+      answer: 0
+      explain: Маленькие группы дают шумные оценки (урок 3.3). Методу соседей это знакомо по случаю k = 1.
+  hints:
+    - Вспомните, на каких данных сравнивают модели и зачем откладывают test.
+    - "Одни данные для всех кандидатов; test — один раз; маленькая группа — шумная оценка."
+    - "Ответы: сравнивать нельзя; нет; ненадёжна."

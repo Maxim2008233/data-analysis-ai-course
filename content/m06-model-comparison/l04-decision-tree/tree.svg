@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 330" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="Дерево решений глубины 3 для цены автомобиля. Первый вопрос: год выпуска не позже 2012,5. Для старых машин второй вопрос — год не позже 2007,5, для новых — объём двигателя не больше 2 891. Третий уровень спрашивает об объёме двигателя или годе. В восьми листьях — средние цены обучающих машин: от 3 380 до 67 834 евро">
+  <defs><marker id="dt-a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor" fill-opacity="0.6"/></marker></defs>
+  <line x1="380" y1="60.0" x2="190" y2="90.0" stroke="currentColor" stroke-opacity="0.5" marker-end="url(#dt-a)"/>
+  <text x="279.0" y="76.0" fill="currentColor" fill-opacity="0.7" font-size="11" text-anchor="end">да</text>
+  <line x1="380" y1="60.0" x2="570" y2="90.0" stroke="currentColor" stroke-opacity="0.5" marker-end="url(#dt-a)"/>
+  <text x="481.0" y="76.0" fill="currentColor" fill-opacity="0.7" font-size="11" text-anchor="start">нет</text>
+  <line x1="190" y1="132.0" x2="95" y2="162.0" stroke="currentColor" stroke-opacity="0.5" marker-end="url(#dt-a)"/>
+  <text x="136.5" y="148.0" fill="currentColor" fill-opacity="0.7" font-size="11" text-anchor="end">да</text>
+  <line x1="190" y1="132.0" x2="285" y2="162.0" stroke="currentColor" stroke-opacity="0.5" marker-end="url(#dt-a)"/>
+  <text x="243.5" y="148.0" fill="currentColor" fill-opacity="0.7" font-size="11" text-anchor="start">нет</text>
+  <line x1="570" y1="132.0" x2="475" y2="162.0" stroke="currentColor" stroke-opacity="0.5" marker-end="url(#dt-a)"/>
+  <text x="516.5" y="148.0" fill="currentColor" fill-opacity="0.7" font-size="11" text-anchor="end">да</text>
+  <line x1="570" y1="132.0" x2="665" y2="162.0" stroke="currentColor" stroke-opacity="0.5" marker-end="url(#dt-a)"/>
+  <text x="623.5" y="148.0" fill="currentColor" fill-opacity="0.7" font-size="11" text-anchor="start">нет</text>
+  <line x1="95" y1="204.0" x2="47.5" y2="244.0" stroke="currentColor" stroke-opacity="0.5" marker-end="url(#dt-a)"/>
+  <line x1="95" y1="204.0" x2="142.5" y2="244.0" stroke="currentColor" stroke-opacity="0.5" marker-end="url(#dt-a)"/>
+  <line x1="285" y1="204.0" x2="237.5" y2="244.0" stroke="currentColor" stroke-opacity="0.5" marker-end="url(#dt-a)"/>
+  <line x1="285" y1="204.0" x2="332.5" y2="244.0" stroke="currentColor" stroke-opacity="0.5" marker-end="url(#dt-a)"/>
+  <line x1="475" y1="204.0" x2="427.5" y2="244.0" stroke="currentColor" stroke-opacity="0.5" marker-end="url(#dt-a)"/>
+  <line x1="475" y1="204.0" x2="522.5" y2="244.0" stroke="currentColor" stroke-opacity="0.5" marker-end="url(#dt-a)"/>
+  <line x1="665" y1="204.0" x2="617.5" y2="244.0" stroke="currentColor" stroke-opacity="0.5" marker-end="url(#dt-a)"/>
+  <line x1="665" y1="204.0" x2="712.5" y2="244.0" stroke="currentColor" stroke-opacity="0.5" marker-end="url(#dt-a)"/>
+  <rect x="5.5" y="246.0" width="84" height="44" rx="6" fill="#c2410c" fill-opacity="0.10" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="47.5" y="265" fill="currentColor" text-anchor="middle" font-weight="700">3 380 €</text>
+  <text x="47.5" y="281" fill="currentColor" fill-opacity="0.75" text-anchor="middle" font-size="11">5 530 машин</text>
+  <rect x="100.5" y="246.0" width="84" height="44" rx="6" fill="#c2410c" fill-opacity="0.17" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="142.5" y="265" fill="currentColor" text-anchor="middle" font-weight="700">6 232 €</text>
+  <text x="142.5" y="281" fill="currentColor" fill-opacity="0.75" text-anchor="middle" font-size="11">2 193 машин</text>
+  <rect x="195.5" y="246.0" width="84" height="44" rx="6" fill="#c2410c" fill-opacity="0.25" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="237.5" y="265" fill="currentColor" text-anchor="middle" font-weight="700">6 235 €</text>
+  <text x="237.5" y="281" fill="currentColor" fill-opacity="0.75" text-anchor="middle" font-size="11">3 549 машин</text>
+  <rect x="290.5" y="246.0" width="84" height="44" rx="6" fill="#c2410c" fill-opacity="0.32" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="332.5" y="265" fill="currentColor" text-anchor="middle" font-weight="700">12 661 €</text>
+  <text x="332.5" y="281" fill="currentColor" fill-opacity="0.75" text-anchor="middle" font-size="11">1 715 машин</text>
+  <rect x="385.5" y="246.0" width="84" height="44" rx="6" fill="#c2410c" fill-opacity="0.40" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="427.5" y="265" fill="currentColor" text-anchor="middle" font-weight="700">10 873 €</text>
+  <text x="427.5" y="281" fill="currentColor" fill-opacity="0.75" text-anchor="middle" font-size="11">3 224 машин</text>
+  <rect x="480.5" y="246.0" width="84" height="44" rx="6" fill="#c2410c" fill-opacity="0.47" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="522.5" y="265" fill="currentColor" text-anchor="middle" font-weight="700">20 557 €</text>
+  <text x="522.5" y="281" fill="currentColor" fill-opacity="0.75" text-anchor="middle" font-size="11">2 568 машин</text>
+  <rect x="575.5" y="246.0" width="84" height="44" rx="6" fill="#c2410c" fill-opacity="0.55" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="617.5" y="265" fill="currentColor" text-anchor="middle" font-weight="700">35 974 €</text>
+  <text x="617.5" y="281" fill="currentColor" fill-opacity="0.75" text-anchor="middle" font-size="11">347 машин</text>
+  <rect x="670.5" y="246.0" width="84" height="44" rx="6" fill="#c2410c" fill-opacity="0.62" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="712.5" y="265" fill="currentColor" text-anchor="middle" font-weight="700">67 834 €</text>
+  <text x="712.5" y="281" fill="currentColor" fill-opacity="0.75" text-anchor="middle" font-size="11">113 машин</text>
+  <rect x="305.0" y="20.0" width="150" height="40" rx="6" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="380" y="37" fill="currentColor" text-anchor="middle" font-weight="700">Year ≤ 2012,5?</text>
+  <text x="380" y="53" fill="currentColor" fill-opacity="0.75" text-anchor="middle" font-size="11">19 239 машин · 9 574 €</text>
+  <rect x="115.0" y="92.0" width="150" height="40" rx="6" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="190" y="109" fill="currentColor" text-anchor="middle" font-weight="700">Year ≤ 2007,5?</text>
+  <text x="190" y="125" fill="currentColor" fill-opacity="0.75" text-anchor="middle" font-size="11">12 987 · 5 867 €</text>
+  <rect x="495.0" y="92.0" width="150" height="40" rx="6" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="570" y="109" fill="currentColor" text-anchor="middle" font-weight="700">Engine ≤ 2 891?</text>
+  <text x="570" y="125" fill="currentColor" fill-opacity="0.75" text-anchor="middle" font-size="11">6 252 · 17 273 €</text>
+  <rect x="20.0" y="164.0" width="150" height="40" rx="6" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="95" y="181" fill="currentColor" text-anchor="middle" font-weight="700">Engine ≤ 2 052?</text>
+  <text x="95" y="197" fill="currentColor" fill-opacity="0.75" text-anchor="middle" font-size="11">7 723</text>
+  <rect x="210.0" y="164.0" width="150" height="40" rx="6" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="285" y="181" fill="currentColor" text-anchor="middle" font-weight="700">Engine ≤ 1 999,5?</text>
+  <text x="285" y="197" fill="currentColor" fill-opacity="0.75" text-anchor="middle" font-size="11">5 264</text>
+  <rect x="400.0" y="164.0" width="150" height="40" rx="6" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="475" y="181" fill="currentColor" text-anchor="middle" font-weight="700">Engine ≤ 1 915?</text>
+  <text x="475" y="197" fill="currentColor" fill-opacity="0.75" text-anchor="middle" font-size="11">5 792</text>
+  <rect x="590.0" y="164.0" width="150" height="40" rx="6" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="665" y="181" fill="currentColor" text-anchor="middle" font-weight="700">Year ≤ 2017,5?</text>
+  <text x="665" y="197" fill="currentColor" fill-opacity="0.75" text-anchor="middle" font-size="11">460</text>
+  <text x="12" y="318" fill="currentColor" fill-opacity="0.8">В узле — вопрос, число обучающих машин и их средняя цена. Лист выдаёт среднюю цену своих машин: это и есть прогноз.</text>
+</svg>

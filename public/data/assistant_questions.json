@@ -1,0 +1,431 @@
+{
+ "note": "Вопросы для проверки помощника по курсу (модуль 11): 30 вопросов по материалам уроков 0.1–10.9 (lessons — уроки, где есть ответ) и 30 вопросов не по курсу. part: dev — для подбора настроек (урок 11.3), test — для итоговой оценки (мини-проект 11.9). Разметка составителей сайта.",
+ "questions": [
+  {
+   "question": "Как бороться с переобучением?",
+   "about_course": true,
+   "lessons": [
+    "5.3",
+    "8.5"
+   ],
+   "part": "dev"
+  },
+  {
+   "question": "Зачем нужна валидационная выборка?",
+   "about_course": true,
+   "lessons": [
+    "5.3",
+    "5.4"
+   ],
+   "part": "test"
+  },
+  {
+   "question": "Что такое температура языковой модели?",
+   "about_course": true,
+   "lessons": [
+    "10.2"
+   ],
+   "part": "dev"
+  },
+  {
+   "question": "Почему нельзя хранить ключ авторизации в коде?",
+   "about_course": true,
+   "lessons": [
+    "10.1"
+   ],
+   "part": "test"
+  },
+  {
+   "question": "Чем медиана лучше среднего при выбросах?",
+   "about_course": true,
+   "lessons": [
+    "1.6"
+   ],
+   "part": "dev"
+  },
+  {
+   "question": "Как заполнить пропуски в таблице?",
+   "about_course": true,
+   "lessons": [
+    "2.6"
+   ],
+   "part": "test"
+  },
+  {
+   "question": "Что такое утечка данных?",
+   "about_course": true,
+   "lessons": [
+    "5.4"
+   ],
+   "part": "dev"
+  },
+  {
+   "question": "Зачем стандартизировать признаки?",
+   "about_course": true,
+   "lessons": [
+    "5.7"
+   ],
+   "part": "test"
+  },
+  {
+   "question": "Как работает градиентный бустинг?",
+   "about_course": true,
+   "lessons": [
+    "7.7"
+   ],
+   "part": "dev"
+  },
+  {
+   "question": "Что показывает коэффициент детерминации?",
+   "about_course": true,
+   "lessons": [
+    "5.8"
+   ],
+   "part": "test"
+  },
+  {
+   "question": "Как выбрать число соседей в kNN?",
+   "about_course": true,
+   "lessons": [
+    "6.3"
+   ],
+   "part": "dev"
+  },
+  {
+   "question": "Что такое эмбеддинг слова?",
+   "about_course": true,
+   "lessons": [
+    "9.2"
+   ],
+   "part": "test"
+  },
+  {
+   "question": "Как устроен механизм внимания?",
+   "about_course": true,
+   "lessons": [
+    "9.3"
+   ],
+   "part": "dev"
+  },
+  {
+   "question": "Чем few-shot отличается от zero-shot?",
+   "about_course": true,
+   "lessons": [
+    "10.4"
+   ],
+   "part": "test"
+  },
+  {
+   "question": "Что такое кросс-валидация?",
+   "about_course": true,
+   "lessons": [
+    "6.8"
+   ],
+   "part": "dev"
+  },
+  {
+   "question": "Зачем нужна логарифмическая шкала на графике?",
+   "about_course": true,
+   "lessons": [
+    "4.5",
+    "3.8"
+   ],
+   "part": "test"
+  },
+  {
+   "question": "Как закодировать категориальные признаки?",
+   "about_course": true,
+   "lessons": [
+    "7.1",
+    "7.4"
+   ],
+   "part": "dev"
+  },
+  {
+   "question": "Что делает функция активации в нейроне?",
+   "about_course": true,
+   "lessons": [
+    "8.1"
+   ],
+   "part": "test"
+  },
+  {
+   "question": "Как модель выбирает следующее слово?",
+   "about_course": true,
+   "lessons": [
+    "9.1",
+    "10.2"
+   ],
+   "part": "dev"
+  },
+  {
+   "question": "Что такое токенизатор?",
+   "about_course": true,
+   "lessons": [
+    "9.5"
+   ],
+   "part": "test"
+  },
+  {
+   "question": "Что такое тест Тьюринга?",
+   "about_course": true,
+   "lessons": [
+    "0.1"
+   ],
+   "part": "dev"
+  },
+  {
+   "question": "Как сгруппировать таблицу и посчитать средние?",
+   "about_course": true,
+   "lessons": [
+    "3.2"
+   ],
+   "part": "test"
+  },
+  {
+   "question": "Зачем нужна ранняя остановка обучения сети?",
+   "about_course": true,
+   "lessons": [
+    "8.5"
+   ],
+   "part": "dev"
+  },
+  {
+   "question": "Что такое случайный лес?",
+   "about_course": true,
+   "lessons": [
+    "6.6"
+   ],
+   "part": "test"
+  },
+  {
+   "question": "Что такое бэггинг?",
+   "about_course": true,
+   "lessons": [
+    "6.6"
+   ],
+   "part": "dev"
+  },
+  {
+   "question": "Как читать боксплот?",
+   "about_course": true,
+   "lessons": [
+    "4.6"
+   ],
+   "part": "test"
+  },
+  {
+   "question": "Что такое one-hot кодирование?",
+   "about_course": true,
+   "lessons": [
+    "7.4"
+   ],
+   "part": "dev"
+  },
+  {
+   "question": "Как работает обратное распространение ошибки?",
+   "about_course": true,
+   "lessons": [
+    "8.3"
+   ],
+   "part": "test"
+  },
+  {
+   "question": "Зачем нужен системный промпт?",
+   "about_course": true,
+   "lessons": [
+    "10.3"
+   ],
+   "part": "dev"
+  },
+  {
+   "question": "Чем RMSE отличается от MAE?",
+   "about_course": true,
+   "lessons": [
+    "5.8",
+    "3.7"
+   ],
+   "part": "test"
+  },
+  {
+   "question": "Рецепт борща",
+   "about_course": false,
+   "lessons": [],
+   "part": "dev"
+  },
+  {
+   "question": "Какая завтра погода в Екатеринбурге?",
+   "about_course": false,
+   "lessons": [],
+   "part": "test"
+  },
+  {
+   "question": "Сколько стоит билет на самолёт до Сочи?",
+   "about_course": false,
+   "lessons": [],
+   "part": "dev"
+  },
+  {
+   "question": "Как починить проколотое колесо велосипеда?",
+   "about_course": false,
+   "lessons": [],
+   "part": "test"
+  },
+  {
+   "question": "Какой курс доллара сегодня?",
+   "about_course": false,
+   "lessons": [],
+   "part": "dev"
+  },
+  {
+   "question": "Как вырастить помидоры на балконе?",
+   "about_course": false,
+   "lessons": [],
+   "part": "test"
+  },
+  {
+   "question": "Сколько лап у паука?",
+   "about_course": false,
+   "lessons": [],
+   "part": "dev"
+  },
+  {
+   "question": "Как научиться играть на гитаре?",
+   "about_course": false,
+   "lessons": [],
+   "part": "test"
+  },
+  {
+   "question": "Что посмотреть в Санкт-Петербурге?",
+   "about_course": false,
+   "lessons": [],
+   "part": "dev"
+  },
+  {
+   "question": "Как сварить вкусный кофе?",
+   "about_course": false,
+   "lessons": [],
+   "part": "test"
+  },
+  {
+   "question": "Почему небо голубое?",
+   "about_course": false,
+   "lessons": [],
+   "part": "dev"
+  },
+  {
+   "question": "Как ухаживать за кошкой?",
+   "about_course": false,
+   "lessons": [],
+   "part": "test"
+  },
+  {
+   "question": "Когда начинается чемпионат мира по футболу?",
+   "about_course": false,
+   "lessons": [],
+   "part": "dev"
+  },
+  {
+   "question": "Как написать резюме?",
+   "about_course": false,
+   "lessons": [],
+   "part": "test"
+  },
+  {
+   "question": "Как быстро уснуть?",
+   "about_course": false,
+   "lessons": [],
+   "part": "dev"
+  },
+  {
+   "question": "Сколько калорий в яблоке?",
+   "about_course": false,
+   "lessons": [],
+   "part": "test"
+  },
+  {
+   "question": "Как перевести деньги на карту?",
+   "about_course": false,
+   "lessons": [],
+   "part": "dev"
+  },
+  {
+   "question": "Кто изобрёл телефон?",
+   "about_course": false,
+   "lessons": [],
+   "part": "test"
+  },
+  {
+   "question": "Как выучить английский язык?",
+   "about_course": false,
+   "lessons": [],
+   "part": "dev"
+  },
+  {
+   "question": "Какие витамины пить зимой?",
+   "about_course": false,
+   "lessons": [],
+   "part": "test"
+  },
+  {
+   "question": "Как убрать снег с крыши?",
+   "about_course": false,
+   "lessons": [],
+   "part": "dev"
+  },
+  {
+   "question": "Как испечь блины?",
+   "about_course": false,
+   "lessons": [],
+   "part": "test"
+  },
+  {
+   "question": "Где отдохнуть летом на море?",
+   "about_course": false,
+   "lessons": [],
+   "part": "dev"
+  },
+  {
+   "question": "Как выбрать зимнюю куртку?",
+   "about_course": false,
+   "lessons": [],
+   "part": "test"
+  },
+  {
+   "question": "Как приготовить плов?",
+   "about_course": false,
+   "lessons": [],
+   "part": "dev"
+  },
+  {
+   "question": "Сколько длится полёт до Луны?",
+   "about_course": false,
+   "lessons": [],
+   "part": "test"
+  },
+  {
+   "question": "Как настроить роутер Wi-Fi?",
+   "about_course": false,
+   "lessons": [],
+   "part": "dev"
+  },
+  {
+   "question": "Какую книгу почитать в отпуске?",
+   "about_course": false,
+   "lessons": [],
+   "part": "test"
+  },
+  {
+   "question": "Как правильно бегать по утрам?",
+   "about_course": false,
+   "lessons": [],
+   "part": "dev"
+  },
+  {
+   "question": "Как покрасить стены в квартире?",
+   "about_course": false,
+   "lessons": [],
+   "part": "test"
+  }
+ ]
+}

@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 312" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="График: как Ridge сжимает коэффициенты при росте альфа от 0,01 до 1000. Коэффициент года выпуска, за которым стоят все машины, к альфа 10 сохраняет 89 процентов величины, коэффициент марки BMW — 57 процентов, а коэффициент модели Kia Clarus, у которой в train одна машина, — 10 процентов">
+  <text x="12" y="24" fill="currentColor" font-weight="700">Ridge: какая доля коэффициента остаётся с ростом α (за 100 % взят коэффициент при α = 0,01)</text>
+  <line x1="78" y1="52.0" x2="548" y2="52.0" stroke="currentColor" stroke-opacity="0.12"/>
+  <text x="70" y="56.0" fill="currentColor" fill-opacity="0.75" text-anchor="end">100 %</text>
+  <line x1="78" y1="102.0" x2="548" y2="102.0" stroke="currentColor" stroke-opacity="0.12"/>
+  <text x="70" y="106.0" fill="currentColor" fill-opacity="0.75" text-anchor="end">75 %</text>
+  <line x1="78" y1="152.0" x2="548" y2="152.0" stroke="currentColor" stroke-opacity="0.12"/>
+  <text x="70" y="156.0" fill="currentColor" fill-opacity="0.75" text-anchor="end">50 %</text>
+  <line x1="78" y1="202.0" x2="548" y2="202.0" stroke="currentColor" stroke-opacity="0.12"/>
+  <text x="70" y="206.0" fill="currentColor" fill-opacity="0.75" text-anchor="end">25 %</text>
+  <line x1="78" y1="252.0" x2="548" y2="252.0" stroke="currentColor" stroke-opacity="0.35"/>
+  <text x="70" y="256.0" fill="currentColor" fill-opacity="0.75" text-anchor="end">0</text>
+  <line x1="78.0" y1="252" x2="78.0" y2="257" stroke="currentColor" stroke-opacity="0.5"/>
+  <text x="78.0" y="271" fill="currentColor" fill-opacity="0.75" text-anchor="middle">0,01</text>
+  <line x1="172.0" y1="252" x2="172.0" y2="257" stroke="currentColor" stroke-opacity="0.5"/>
+  <text x="172.0" y="271" fill="currentColor" fill-opacity="0.75" text-anchor="middle">0,1</text>
+  <line x1="266.0" y1="252" x2="266.0" y2="257" stroke="currentColor" stroke-opacity="0.5"/>
+  <text x="266.0" y="271" fill="currentColor" fill-opacity="0.75" text-anchor="middle">1</text>
+  <line x1="360.0" y1="252" x2="360.0" y2="257" stroke="currentColor" stroke-opacity="0.5"/>
+  <text x="360.0" y="271" fill="currentColor" fill-opacity="0.75" text-anchor="middle">10</text>
+  <line x1="454.0" y1="252" x2="454.0" y2="257" stroke="currentColor" stroke-opacity="0.5"/>
+  <text x="454.0" y="271" fill="currentColor" fill-opacity="0.75" text-anchor="middle">100</text>
+  <line x1="548.0" y1="252" x2="548.0" y2="257" stroke="currentColor" stroke-opacity="0.5"/>
+  <text x="548.0" y="271" fill="currentColor" fill-opacity="0.75" text-anchor="middle">1000</text>
+  <text x="313" y="292" fill="currentColor" fill-opacity="0.85" text-anchor="middle">α (шаг по оси — в 10 раз)</text>
+  <line x1="360.0" y1="44" x2="360.0" y2="252" stroke="currentColor" stroke-opacity="0.35" stroke-dasharray="4 4"/>
+  <text x="366.0" y="42" fill="currentColor" fill-opacity="0.8">α = 10</text>
+  <polyline points="78.0,52.0 172.0,52.4 266.0,57.4 360.0,74.6 454.0,92.2 548.0,112.4" fill="none" stroke="#3d5bd9" stroke-width="2.5"/>
+  <circle cx="78.0" cy="52.0" r="3.5" fill="#3d5bd9"/>
+  <circle cx="172.0" cy="52.4" r="3.5" fill="#3d5bd9"/>
+  <circle cx="266.0" cy="57.4" r="3.5" fill="#3d5bd9"/>
+  <circle cx="360.0" cy="74.6" r="3.5" fill="#3d5bd9"/>
+  <circle cx="454.0" cy="92.2" r="3.5" fill="#3d5bd9"/>
+  <circle cx="548.0" cy="112.4" r="3.5" fill="#3d5bd9"/>
+  <text x="368.0" y="67.6" fill="#3d5bd9" font-weight="700">89 %</text>
+  <polyline points="78.0,52.0 172.0,62.8 266.0,84.4 360.0,138.8 454.0,194.4 548.0,228.6" fill="none" stroke="#0f766e" stroke-width="2.5"/>
+  <circle cx="78.0" cy="52.0" r="3.5" fill="#0f766e"/>
+  <circle cx="172.0" cy="62.8" r="3.5" fill="#0f766e"/>
+  <circle cx="266.0" cy="84.4" r="3.5" fill="#0f766e"/>
+  <circle cx="360.0" cy="138.8" r="3.5" fill="#0f766e"/>
+  <circle cx="454.0" cy="194.4" r="3.5" fill="#0f766e"/>
+  <circle cx="548.0" cy="228.6" r="3.5" fill="#0f766e"/>
+  <text x="368.0" y="131.8" fill="#0f766e" font-weight="700">57 %</text>
+  <polyline points="78.0,52.0 172.0,64.8 266.0,141.8 360.0,231.8 454.0,249.8 548.0,251.8" fill="none" stroke="#c2410c" stroke-width="2.5"/>
+  <circle cx="78.0" cy="52.0" r="3.5" fill="#c2410c"/>
+  <circle cx="172.0" cy="64.8" r="3.5" fill="#c2410c"/>
+  <circle cx="266.0" cy="141.8" r="3.5" fill="#c2410c"/>
+  <circle cx="360.0" cy="231.8" r="3.5" fill="#c2410c"/>
+  <circle cx="454.0" cy="249.8" r="3.5" fill="#c2410c"/>
+  <circle cx="548.0" cy="251.8" r="3.5" fill="#c2410c"/>
+  <text x="368.0" y="224.8" fill="#c2410c" font-weight="700">10 %</text>
+  <text x="558" y="116.4" fill="currentColor">Год — все 19 239 машин</text>
+  <text x="558" y="223.6" fill="currentColor">BMW — 1 544 машины</text>
+  <text x="558" y="247.0" fill="currentColor">Kia Clarus — 1 машина</text>
+</svg>

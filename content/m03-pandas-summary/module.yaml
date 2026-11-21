@@ -1,0 +1,16 @@
+id: m3
+number: 3
+label: Модуль 3
+title: "Pandas: сводный анализ и оформление таблиц"
+short: Сводный анализ
+firstLessonIndex: 0
+description: >-
+  Отвечаем на вопросы аналитика по подготовленной таблице: описательные статистики, группировки, сводные таблицы
+  и таблицы сочетаний, число записей против доли, редкие комбинации, простая оценка цены по группе и первые метрики
+  ошибки, графики Pandas и оформление таблиц для отчёта. Мини-проект — на данных о пассажирах «Титаника».
+sources:
+  - Workshops/03_Pandas_сводный_анализ_Styler.ipynb
+  - Workshops/2025/03_Pandas_визуализация.ipynb
+  - from ODS Course/lesson1_practice_pandas_titanic.ipynb
+  - from ODS Course/assignment01_adult_pandas.ipynb
+warmupReviews: []

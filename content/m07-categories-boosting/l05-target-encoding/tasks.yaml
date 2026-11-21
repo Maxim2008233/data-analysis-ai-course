@@ -1,0 +1,571 @@
+- id: m7-l5-t1
+  title: Средняя цена модели
+  difficulty: warmup
+  introduces: [target-encoding]
+  uses: [pd-groupby, pd-map]
+  statement: |
+    Закодируйте модель машины средней ценой. По train посчитайте `model_mean` — Series «модель → средняя цена» и `global_mean` — среднюю цену всех машин train. Затем получите `valid_codes` — коды моделей для validation: средняя цена модели из `model_mean`, а для моделей, которых в train нет, — `global_mean`. `n_unknown` — сколько машин validation получили общее среднее.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    model_mean = ...
+    global_mean = ...
+    valid_codes = X_valid['Model'].map(...)
+    n_unknown = ...
+    valid_codes = valid_codes.fillna(...)
+    print(model_mean[['E Class', 'Passat', 'Logan']].round(0))
+    print(n_unknown, round(global_mean))
+  solution: |
+    model_mean = y_train.groupby(X_train['Model']).mean()
+    global_mean = y_train.mean()
+    valid_codes = X_valid['Model'].map(model_mean)
+    n_unknown = valid_codes.isna().sum()
+    valid_codes = valid_codes.fillna(global_mean)
+    print(model_mean[['E Class', 'Passat', 'Logan']].round(0))
+    print(n_unknown, round(global_mean))
+  explanation: |
+    - `y_train.groupby(X_train['Model']).mean()` группирует цены по модели той же строки: E Class — 11 337 евро, Passat — 6 417, Logan — 3 462.
+    - `map(model_mean)` ставит каждой машине validation среднюю цену её модели. Модели, которой в train нет, в словаре нет, и `map` даёт пропуск — так находим 46 незнакомых машин.
+    - Пропуски заполняем общим средним train (9 574): о незнакомой модели мы знаем только то, что это машина.
+  hints:
+    - "Средние по модели — `y_train.groupby(X_train['Model']).mean()`; общее среднее — `y_train.mean()`."
+    - "Коды validation — `X_valid['Model'].map(model_mean)`; незнакомые модели получат `NaN`."
+    - "`n_unknown = valid_codes.isna().sum()` — до `fillna(global_mean)`."
+  tests: |
+    import pandas as pd
+    mm = var('model_mean', pd.Series, 'Series')
+    ensure(len(mm) == len(ref('model_mean')), 'В `model_mean` {0} моделей, а в train их {1}: средние считают только по обучающей части.'.format(len(mm), len(ref('model_mean'))))
+    same_array(mm.sort_index().to_numpy(dtype=float), ref('model_mean').sort_index().to_numpy(dtype=float), 'Средние цены моделей не совпадают: `y_train.groupby(X_train[\'Model\']).mean()`.')
+    close(var('global_mean', 'number', 'числом'), ref('global_mean'), 'Общее среднее — {expected}, а у вас {actual}: средняя цена машин train.')
+    equal(int(var('n_unknown', 'number', 'числом')), int(ref('n_unknown')), 'Незнакомых моделей в validation — {expected}, а у вас {actual}.')
+    vc = var('valid_codes', pd.Series, 'Series')
+    ensure(not vc.isna().any(), 'В `valid_codes` остались пропуски: заполните их общим средним train.')
+    same_array(vc.to_numpy(dtype=float), ref('valid_codes').to_numpy(dtype=float), 'Коды validation не совпадают: средняя цена модели из train, а для незнакомых моделей — `global_mean`.')
+    close(alt('global_mean'), alt_ref('global_mean'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        model_mean = y.groupby(X['Model']).mean()
+        global_mean = y_train.mean()
+        valid_codes = X_valid['Model'].map(model_mean)
+        n_unknown = valid_codes.isna().sum()
+        valid_codes = valid_codes.fillna(global_mean)
+      expect: только по обучающей части
+    - code: |
+        model_mean = y_train.groupby(X_train['Model']).mean()
+        global_mean = y_train.mean()
+        valid_codes = X_valid['Model'].map(model_mean)
+        n_unknown = valid_codes.isna().sum()
+        valid_codes = valid_codes.fillna(0)
+      expect: Коды validation не совпадают
+
+- id: m7-l5-t2
+  title: Средние до разбиения — утечка
+  difficulty: main
+  introduces: [target-encoding]
+  uses: [data-leakage, random-forest, pd-groupby]
+  statement: |
+    Допишите функцию `mean_encode(table, X_from, y_from)`: она возвращает таблицу из колонок `num_cols` таблицы `table`, к которой справа добавлены четыре колонки `cat_cols` — средние цены категорий, посчитанные по `X_from` и `y_from`. Категориям, которых в `X_from` нет, — общее среднее `y_from`.
+
+    Затем сравните два леса (`forest()` — 20 деревьев глубины 16). `mae_honest` — MAE на validation, когда train и validation кодируют средними по train. `mae_leaky` — то же, но средние посчитаны по `X_temp`, `y_temp`, то есть по train вместе с validation, как если бы кодировали до второго разбиения. `gain` — на сколько евро вторая ошибка меньше первой.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    num_cols = ['Year', 'Distance', 'Engine', 'km_year', 'AutoTransmission']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    def forest():
+        return RandomForestRegressor(n_estimators=20, max_depth=16, random_state=42, n_jobs=1)
+  starter: |
+    def mean_encode(table, X_from, y_from):
+        out = table[num_cols].copy()
+        for c in cat_cols:
+            means = ...
+            out[c] = ...
+        return out
+
+    honest = forest().fit(mean_encode(X_train, X_train, y_train), y_train)
+    mae_honest = ...
+    leaky = forest().fit(..., y_train)
+    mae_leaky = ...
+    gain = ...
+    print(round(mae_honest), round(mae_leaky), round(gain))
+  solution: |
+    def mean_encode(table, X_from, y_from):
+        out = table[num_cols].copy()
+        for c in cat_cols:
+            means = y_from.groupby(X_from[c]).mean()
+            out[c] = table[c].map(means).fillna(y_from.mean())
+        return out
+
+    honest = forest().fit(mean_encode(X_train, X_train, y_train), y_train)
+    mae_honest = mean_absolute_error(y_valid, honest.predict(mean_encode(X_valid, X_train, y_train)))
+    leaky = forest().fit(mean_encode(X_train, X_temp, y_temp), y_train)
+    mae_leaky = mean_absolute_error(y_valid, leaky.predict(mean_encode(X_valid, X_temp, y_temp)))
+    gain = mae_honest - mae_leaky
+    print(round(mae_honest), round(mae_leaky), round(gain))
+  explanation: |
+    - Честный вариант: средние по train, MAE ≈ 1 970. Средние по train + validation дают ≈ 1 881 — на 90 евро «лучше».
+    - Выигрыш ненастоящий: в средние вошли цены тех самых машин, на которых мы проверяем модель. У новых объявлений цен нет, и подсказки не будет.
+    - Одна функция с параметрами «откуда брать средние» и «что кодировать» удобна: train, validation и test кодируются одними и теми же средними.
+  hints:
+    - "Средние категории — `y_from.groupby(X_from[c]).mean()`."
+    - "Коды — `table[c].map(means)`, пропуски — `.fillna(y_from.mean())`."
+    - "Для утечки и train, и validation кодируйте средними по `X_temp`, `y_temp`: `mean_encode(X_train, X_temp, y_temp)` и `mean_encode(X_valid, X_temp, y_temp)`."
+  tests: |
+    import pandas as pd
+    f = var('mean_encode')
+    ensure(callable(f), '`mean_encode` должна быть функцией.')
+    got = f(ref('X_valid'), ref('X_train'), ref('y_train'))
+    exp = ref('mean_encode')(ref('X_valid'), ref('X_train'), ref('y_train'))
+    ensure(isinstance(got, pd.DataFrame), '`mean_encode` должна возвращать таблицу DataFrame.')
+    ensure(list(got.columns) == list(exp.columns), 'Колонки результата — сначала `num_cols`, затем закодированные `cat_cols`: {0}.'.format(list(exp.columns)))
+    ensure(not got.isna().any().any(), 'В результате `mean_encode(X_valid, X_train, y_train)` остались пропуски: категориям, которых нет в `X_from`, ставьте `y_from.mean()`.')
+    same_array(got.to_numpy(dtype=float), exp.to_numpy(dtype=float), 'Закодированная таблица не совпадает: средние цены по `X_from` и `y_from`, приложенные к колонкам `table`.')
+    close(var('mae_honest', 'number', 'числом'), ref('mae_honest'), 'MAE со средними по train — {expected}, а у вас {actual}.', rtol=1e-4)
+    close(var('mae_leaky', 'number', 'числом'), ref('mae_leaky'), 'MAE со средними по train + validation — {expected}, а у вас {actual}: и train, и validation кодируйте средними по `X_temp`, `y_temp`.', rtol=1e-4)
+    close(var('gain', 'number', 'числом'), ref('gain'), '`gain` — {expected}, а у вас {actual}: на сколько MAE со средними по train + validation меньше честной.', rtol=1e-3)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def mean_encode(table, X_from, y_from):
+            out = table[num_cols].copy()
+            for c in cat_cols:
+                means = y_from.groupby(X_from[c]).mean()
+                out[c] = table[c].map(means)
+            return out
+        honest = forest().fit(mean_encode(X_train, X_train, y_train), y_train)
+        mae_honest = mean_absolute_error(y_valid, honest.predict(mean_encode(X_valid, X_train, y_train)))
+        leaky = forest().fit(mean_encode(X_train, X_temp, y_temp), y_train)
+        mae_leaky = mean_absolute_error(y_valid, leaky.predict(mean_encode(X_valid, X_temp, y_temp)))
+        gain = mae_honest - mae_leaky
+      expect: остались пропуски
+    - code: |
+        def mean_encode(table, X_from, y_from):
+            out = table[num_cols].copy()
+            for c in cat_cols:
+                means = y_from.groupby(X_from[c]).mean()
+                out[c] = table[c].map(means).fillna(y_from.mean())
+            return out
+        honest = forest().fit(mean_encode(X_train, X_train, y_train), y_train)
+        mae_honest = mean_absolute_error(y_valid, honest.predict(mean_encode(X_valid, X_train, y_train)))
+        mae_leaky = mean_absolute_error(y_valid, honest.predict(mean_encode(X_valid, X_temp, y_temp)))
+        gain = mae_honest - mae_leaky
+      expect: и train, и validation
+
+- id: m7-l5-t3
+  title: TargetEncoder в Pipeline для леса
+  difficulty: main
+  introduces: [target-encoding]
+  uses: [column-transformer, sk-pipeline, random-forest]
+  statement: |
+    Соберите `forest_te` — Pipeline из двух шагов. Шаг `'enc'` — ColumnTransformer, где `TargetEncoder` (он уже настроен в заготовке) кодирует `cat_cols`, а остальные колонки проходят без изменений. Шаг `'model'` — `forest()` (20 деревьев). Обучите его на train и получите `mae_te` — MAE на validation, и `n_features` — сколько столбцов получает лес (`n_features_in_` шага `'model'`). MAE того же леса на порядковых кодах уже посчитана — `ordinal_mae`. Получите `gain` — на сколько евро лес с Target Encoding точнее.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import TargetEncoder
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    def forest():
+        return RandomForestRegressor(n_estimators=20, max_depth=16, random_state=42, n_jobs=1)
+    ordinal_mae = 2097.5   # тот же лес на порядковых кодах (OrdinalEncoder), урок 7.2
+  starter: |
+    enc = ColumnTransformer([('te', TargetEncoder(target_type='continuous', cv=5, random_state=42), cat_cols)],
+                            remainder=...)
+    forest_te = Pipeline([...])
+    forest_te.fit(X_train, y_train)
+    mae_te = ...
+    n_features = ...
+    gain = ...
+    print(round(mae_te), n_features, round(gain))
+  solution: |
+    enc = ColumnTransformer([('te', TargetEncoder(target_type='continuous', cv=5, random_state=42), cat_cols)],
+                            remainder='passthrough')
+    forest_te = Pipeline([('enc', enc), ('model', forest())])
+    forest_te.fit(X_train, y_train)
+    mae_te = mean_absolute_error(y_valid, forest_te.predict(X_valid))
+    n_features = forest_te.named_steps['model'].n_features_in_
+    gain = ordinal_mae - mae_te
+    print(round(mae_te), n_features, round(gain))
+  explanation: |
+    - Лес получает те же 9 столбцов, что и с порядковыми кодами, но в четырёх из них теперь средние цены, а не номера по алфавиту. MAE ≈ 2 012 против 2 098 — на 86 евро точнее.
+    - Pipeline сам делает всё правильно: при `fit` кодировщик вызывает `fit_transform` и кодирует строки train по другим блокам, при `predict` — `transform` по средним всего train.
+    - `target_type='continuous'` обязателен: цены — целые числа, и без этого параметра TargetEncoder принял бы их за номера классов.
+  hints:
+    - "Чтобы числовые колонки дошли до леса, в ColumnTransformer нужен `remainder='passthrough'`."
+    - "`forest_te = Pipeline([('enc', enc), ('model', forest())])`."
+    - "`n_features = forest_te.named_steps['model'].n_features_in_`; `gain = ordinal_mae - mae_te`."
+  tests: |
+    from sklearn.pipeline import Pipeline
+    from sklearn.compose import ColumnTransformer
+    from sklearn.preprocessing import TargetEncoder
+    p = var('forest_te', Pipeline, 'объектом Pipeline')
+    ensure([n for n, _ in p.steps] == ['enc', 'model'], 'Шаги Pipeline — `\'enc\'` и `\'model\'`.')
+    e = p.named_steps['enc']
+    ensure(isinstance(e, ColumnTransformer), 'Шаг `\'enc\'` — ColumnTransformer.')
+    ensure(sum(isinstance(t, TargetEncoder) for name, t, cols in e.transformers) == 1, 'В ColumnTransformer нужен TargetEncoder для `cat_cols`.')
+    ensure(e.remainder == 'passthrough', 'Числовые колонки должны дойти до леса: `remainder=\'passthrough\'`.')
+    equal(int(var('n_features', 'number', 'числом')), int(ref('n_features')), 'Лес получает {expected} столбцов, а у вас {actual}.')
+    close(var('mae_te', 'number', 'числом'), ref('mae_te'), 'MAE леса с Target Encoding — {expected}, а у вас {actual}: обучение на train, ошибка на validation.', rtol=1e-4)
+    close(var('gain', 'number', 'числом'), ref('gain'), '`gain` — {expected}, а у вас {actual}: `ordinal_mae - mae_te`.', rtol=1e-3)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        enc = ColumnTransformer([('te', TargetEncoder(target_type='continuous', cv=5, random_state=42), cat_cols)])
+        forest_te = Pipeline([('enc', enc), ('model', forest())])
+        forest_te.fit(X_train, y_train)
+        mae_te = mean_absolute_error(y_valid, forest_te.predict(X_valid))
+        n_features = forest_te.named_steps['model'].n_features_in_
+        gain = ordinal_mae - mae_te
+      expect: "remainder='passthrough'"
+    - code: |
+        enc = ColumnTransformer([('te', TargetEncoder(target_type='continuous', cv=5, random_state=42), cat_cols)],
+                                remainder='passthrough')
+        forest_te = Pipeline([('enc', enc), ('model', forest())])
+        forest_te.fit(X_train, y_train)
+        mae_te = mean_absolute_error(y_valid, forest_te.predict(X_valid))
+        n_features = forest_te.named_steps['model'].n_features_in_
+        gain = mae_te - ordinal_mae
+      expect: "`ordinal_mae - mae_te`"
+
+- id: m7-l5-t4
+  title: Target Encoding или One-Hot для линейной модели
+  difficulty: main
+  introduces: [target-encoding]
+  uses: [one-hot-encoding, linear-regression, column-transformer]
+  statement: |
+    Сравните два кодирования для линейной модели. `linear_ohe` — Pipeline: ColumnTransformer с `OneHotEncoder(handle_unknown='ignore')` для `cat_cols` и `StandardScaler()` для `num_cols` (как в уроке 7.4), затем `LinearRegression()`. `linear_te` — Pipeline: ColumnTransformer с `TargetEncoder(target_type='continuous', cv=5, random_state=42)` для `cat_cols` (остальные колонки без изменений), затем `LinearRegression()`.
+
+    Обучите обе модели на train и соберите таблицу `comparison` с индексом `['One-Hot', 'Target Encoding']` и колонками `'столбцов'` — сколько признаков получает модель (`n_features_in_` шага `'model'`) и `'MAE'` — ошибка на validation.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler, TargetEncoder
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    num_cols = ['Year', 'Distance', 'Engine', 'km_year', 'AutoTransmission']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    linear_ohe = Pipeline([
+        ('enc', ColumnTransformer([...])),
+        ('model', LinearRegression()),
+    ])
+    linear_te = Pipeline([
+        ('enc', ColumnTransformer([...], remainder='passthrough')),
+        ('model', LinearRegression()),
+    ])
+    rows = {}
+    for name, pipe in [('One-Hot', linear_ohe), ('Target Encoding', linear_te)]:
+        pipe.fit(X_train, y_train)
+        rows[name] = {'столбцов': ..., 'MAE': ...}
+    comparison = pd.DataFrame(rows).T
+    print(comparison.round(0))
+  solution: |
+    linear_ohe = Pipeline([
+        ('enc', ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols),
+                                   ('num', StandardScaler(), num_cols)])),
+        ('model', LinearRegression()),
+    ])
+    linear_te = Pipeline([
+        ('enc', ColumnTransformer([('te', TargetEncoder(target_type='continuous', cv=5, random_state=42), cat_cols)],
+                                  remainder='passthrough')),
+        ('model', LinearRegression()),
+    ])
+    rows = {}
+    for name, pipe in [('One-Hot', linear_ohe), ('Target Encoding', linear_te)]:
+        pipe.fit(X_train, y_train)
+        rows[name] = {'столбцов': pipe.named_steps['model'].n_features_in_,
+                      'MAE': mean_absolute_error(y_valid, pipe.predict(X_valid))}
+    comparison = pd.DataFrame(rows).T
+    print(comparison.round(0))
+  explanation: |
+    - One-Hot: 770 столбцов и MAE ≈ 3 190. Target Encoding: 9 столбцов и MAE ≈ 3 621 — компактнее, но на 430 евро хуже.
+    - С One-Hot у каждой модели машины своя поправка к цене. С Target Encoding поправка одна на всех — коэффициент при средней цене модели, а этого линейной модели мало.
+    - Для леса вывод обратный (задание 3): там Target Encoding — лучший из способов. Кодирование выбирают под модель и проверяют на validation.
+  hints:
+    - "Шаги One-Hot: `('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols)` и `('num', StandardScaler(), num_cols)`."
+    - "Шаг Target Encoding: `('te', TargetEncoder(target_type='continuous', cv=5, random_state=42), cat_cols)`."
+    - "В цикле: `'столбцов': pipe.named_steps['model'].n_features_in_`, `'MAE': mean_absolute_error(y_valid, pipe.predict(X_valid))`."
+  tests: |
+    import pandas as pd
+    c = var('comparison', pd.DataFrame, 'таблицей DataFrame')
+    ensure(list(c.index) == ['One-Hot', 'Target Encoding'], 'Индекс `comparison` — `[\'One-Hot\', \'Target Encoding\']`.')
+    ensure(list(c.columns) == ['столбцов', 'MAE'], 'Колонки `comparison` — `[\'столбцов\', \'MAE\']`.')
+    rc = ref('comparison')
+    same_array(c['столбцов'].to_numpy(dtype=float), rc['столбцов'].to_numpy(dtype=float), 'Столбцов должно быть {0} — сколько признаков получает модель (`n_features_in_` шага `\'model\'`).'.format([int(v) for v in rc['столбцов']]))
+    close(c.loc['One-Hot', 'MAE'], rc.loc['One-Hot', 'MAE'], 'MAE линейной модели с One-Hot — {expected}, а у вас {actual}. Числовые признаки — через StandardScaler (урок 7.4).', rtol=1e-4)
+    close(c.loc['Target Encoding', 'MAE'], rc.loc['Target Encoding', 'MAE'], 'MAE линейной модели с Target Encoding — {expected}, а у вас {actual}.', rtol=1e-4)
+    close(alt('comparison').loc['Target Encoding', 'MAE'], alt_ref('comparison').loc['Target Encoding', 'MAE'], HARDCODE_MSG, rtol=1e-4)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        linear_ohe = Pipeline([
+            ('enc', ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols)], remainder='passthrough')),
+            ('model', LinearRegression()),
+        ])
+        linear_te = Pipeline([
+            ('enc', ColumnTransformer([('te', TargetEncoder(target_type='continuous', cv=5, random_state=42), cat_cols)],
+                                      remainder='passthrough')),
+            ('model', LinearRegression()),
+        ])
+        rows = {}
+        for name, pipe in [('One-Hot', linear_ohe), ('Target Encoding', linear_te)]:
+            pipe.fit(X_train, y_train)
+            rows[name] = {'столбцов': pipe.named_steps['model'].n_features_in_,
+                          'MAE': mean_absolute_error(y_valid, pipe.predict(X_valid))}
+        comparison = pd.DataFrame(rows).T
+      expect: через StandardScaler
+    - code: |
+        linear_ohe = Pipeline([
+            ('enc', ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols),
+                                       ('num', StandardScaler(), num_cols)])),
+            ('model', LinearRegression()),
+        ])
+        linear_te = Pipeline([
+            ('enc', ColumnTransformer([('te', TargetEncoder(target_type='continuous', cv=5, random_state=42), cat_cols)],
+                                      remainder='passthrough')),
+            ('model', LinearRegression()),
+        ])
+        rows = {}
+        for name, pipe in [('One-Hot', linear_ohe), ('Target Encoding', linear_te)]:
+            pipe.fit(X_train, y_train)
+            rows[name] = {'столбцов': X_train.shape[1],
+                          'MAE': mean_absolute_error(y_valid, pipe.predict(X_valid))}
+        comparison = pd.DataFrame(rows).T
+      expect: n_features_in_
+
+- id: m7-l5-t5
+  title: Подсказка в собственной строке
+  difficulty: main
+  introduces: [target-encoding]
+  uses: [data-leakage, pd-groupby, pd-map]
+  statement: |
+    Признак «модель + год» уже собран: `pair_train` и `pair_valid`. Проверьте, насколько его код подсказывает ответ, если считать сам код прогнозом цены.
+
+    1. Наивно: средние цены сочетаний по train. Коды train — эти средние для самих строк train, коды validation — средние из train, а незнакомым сочетаниям — общее среднее train. `naive_mae` — словарь `{'train': ..., 'validation': ...}` с MAE кодов как прогноза.
+    2. Перекрёстно: `TargetEncoder(target_type='continuous', cv=5, random_state=42)`. Коды train — через `fit_transform`, коды validation — через `transform`. То же: `cross_mae`.
+
+    `naive_gap` и `cross_gap` — на сколько MAE на validation больше, чем на train, для каждого способа.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import TargetEncoder
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    pair_train = X_train['Model'] + ' ' + X_train['Year'].astype(str)
+    pair_valid = X_valid['Model'] + ' ' + X_valid['Year'].astype(str)
+  starter: |
+    pair_mean = ...
+    naive_train = ...
+    naive_valid = ...
+    naive_mae = {'train': ..., 'validation': ...}
+
+    te = TargetEncoder(target_type='continuous', cv=5, random_state=42)
+    cross_train = ...
+    cross_valid = ...
+    cross_mae = {'train': ..., 'validation': ...}
+
+    naive_gap = ...
+    cross_gap = ...
+    print({k: round(v) for k, v in naive_mae.items()}, round(naive_gap))
+    print({k: round(v) for k, v in cross_mae.items()}, round(cross_gap))
+  solution: |
+    pair_mean = y_train.groupby(pair_train).mean()
+    naive_train = pair_train.map(pair_mean)
+    naive_valid = pair_valid.map(pair_mean).fillna(y_train.mean())
+    naive_mae = {'train': mean_absolute_error(y_train, naive_train),
+                 'validation': mean_absolute_error(y_valid, naive_valid)}
+
+    te = TargetEncoder(target_type='continuous', cv=5, random_state=42)
+    cross_train = te.fit_transform(pair_train.to_frame(), y_train).ravel()
+    cross_valid = te.transform(pair_valid.to_frame()).ravel()
+    cross_mae = {'train': mean_absolute_error(y_train, cross_train),
+                 'validation': mean_absolute_error(y_valid, cross_valid)}
+
+    naive_gap = naive_mae['validation'] - naive_mae['train']
+    cross_gap = cross_mae['validation'] - cross_mae['train']
+    print({k: round(v) for k, v in naive_mae.items()}, round(naive_gap))
+    print({k: round(v) for k, v in cross_mae.items()}, round(cross_gap))
+  explanation: |
+    - Наивные коды: на train MAE ≈ 1 399, на validation ≈ 2 518, разрыв около 1 120 евро. На train признак кажется вдвое полезнее, чем есть: у каждой десятой машины код в точности равен её цене.
+    - Перекрёстные коды: на train ≈ 2 626, на validation ≈ 2 519. Разрыва нет, на train коды даже чуть хуже: они посчитаны по четырём пятым train. Модель видит признак таким, каким он будет на новых данных.
+    - Validation-коды у обоих способов почти одинаковы: средние по train. Различается только то, что видит модель при обучении, а от этого зависит, насколько она доверится признаку.
+  hints:
+    - "Средние сочетаний — `y_train.groupby(pair_train).mean()`; коды — `pair_train.map(pair_mean)` и `pair_valid.map(pair_mean).fillna(y_train.mean())`."
+    - "TargetEncoder ждёт таблицу: `te.fit_transform(pair_train.to_frame(), y_train).ravel()`, затем `te.transform(pair_valid.to_frame()).ravel()`."
+    - "Разрыв — validation минус train: `naive_mae['validation'] - naive_mae['train']`."
+  tests: |
+    nm = var('naive_mae', dict, 'словарём')
+    cm = var('cross_mae', dict, 'словарём')
+    ensure(set(nm) == {'train', 'validation'}, 'Ключи `naive_mae` — `\'train\'` и `\'validation\'`.')
+    ensure(set(cm) == {'train', 'validation'}, 'Ключи `cross_mae` — `\'train\'` и `\'validation\'`.')
+    close(nm['train'], ref('naive_mae')['train'], 'MAE наивных кодов на train — {expected}, а у вас {actual}: средние сочетаний по train, приложенные к самим строкам train.')
+    close(nm['validation'], ref('naive_mae')['validation'], 'MAE наивных кодов на validation — {expected}, а у вас {actual}: незнакомым сочетаниям — общее среднее train.')
+    close(cm['train'], ref('cross_mae')['train'], 'MAE перекрёстных кодов на train — {expected}, а у вас {actual}. Коды train получают через `fit_transform`: `fit` и затем `transform` снова подставляют строкам их собственную цену.')
+    close(cm['validation'], ref('cross_mae')['validation'], 'MAE перекрёстных кодов на validation — {expected}, а у вас {actual}: `te.transform(pair_valid.to_frame())`.')
+    close(var('naive_gap', 'number', 'числом'), ref('naive_gap'), '`naive_gap` — {expected}, а у вас {actual}: validation минус train.')
+    close(var('cross_gap', 'number', 'числом'), ref('cross_gap'), '`cross_gap` — {expected}, а у вас {actual}: validation минус train.')
+    close(alt('naive_gap'), alt_ref('naive_gap'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        pair_mean = y_train.groupby(pair_train).mean()
+        naive_train = pair_train.map(pair_mean)
+        naive_valid = pair_valid.map(pair_mean).fillna(y_train.mean())
+        naive_mae = {'train': mean_absolute_error(y_train, naive_train),
+                     'validation': mean_absolute_error(y_valid, naive_valid)}
+        te = TargetEncoder(target_type='continuous', cv=5, random_state=42)
+        te.fit(pair_train.to_frame(), y_train)
+        cross_train = te.transform(pair_train.to_frame()).ravel()
+        cross_valid = te.transform(pair_valid.to_frame()).ravel()
+        cross_mae = {'train': mean_absolute_error(y_train, cross_train),
+                     'validation': mean_absolute_error(y_valid, cross_valid)}
+        naive_gap = naive_mae['validation'] - naive_mae['train']
+        cross_gap = cross_mae['validation'] - cross_mae['train']
+      expect: через `fit_transform`
+    - code: |
+        pair_mean = y_train.groupby(pair_train).mean()
+        naive_train = pair_train.map(pair_mean)
+        naive_valid = pair_valid.map(pair_mean).fillna(y_train.mean())
+        naive_mae = {'train': mean_absolute_error(y_train, naive_train),
+                     'validation': mean_absolute_error(y_valid, naive_valid)}
+        te = TargetEncoder(target_type='continuous', cv=5, random_state=42)
+        cross_train = te.fit_transform(pair_train.to_frame(), y_train).ravel()
+        cross_valid = te.transform(pair_valid.to_frame()).ravel()
+        cross_mae = {'train': mean_absolute_error(y_train, cross_train),
+                     'validation': mean_absolute_error(y_valid, cross_valid)}
+        naive_gap = naive_mae['train'] - naive_mae['validation']
+        cross_gap = cross_mae['train'] - cross_mae['validation']
+      expect: validation минус train
+
+- id: m7-l5-t6
+  title: Перекрёстное кодирование своими руками
+  difficulty: star
+  introduces: [target-encoding]
+  uses: [k-fold-cv, pd-groupby]
+  statement: |
+    Повторите `TargetEncoder.fit_transform` для колонки `Model` своими руками, со сглаживанием `m = 20`. Разбейте train через `KFold(n_splits=5, shuffle=True, random_state=42)`. Для каждого блока по **остальным** строкам посчитайте общее среднее `g`, сумму и число цен каждой модели и коды `(сумма + m·g) / (число + m)`. Строкам блока поставьте код их модели, а моделям, которых в остальных строках нет, — `g`.
+
+    Результат — `codes`, Series с индексом `X_train`. Сравните его с `TargetEncoder(target_type='continuous', cv=5, random_state=42, smooth=m)`: `max_diff` — наибольшее по модулю расхождение.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split, KFold
+    from sklearn.preprocessing import TargetEncoder
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    m = 20
+  starter: |
+    codes = pd.Series(np.nan, index=X_train.index)
+    folds = KFold(n_splits=5, shuffle=True, random_state=42)
+    for rest_idx, block_idx in folds.split(X_train):
+        rest_model = X_train['Model'].iloc[rest_idx]
+        rest_price = y_train.iloc[rest_idx]
+        g = ...
+        stats = rest_price.groupby(rest_model).agg(['sum', 'count'])
+        enc = ...
+        codes.iloc[block_idx] = ...
+
+    sk_codes = TargetEncoder(...).fit_transform(X_train[['Model']], y_train).ravel()
+    max_diff = ...
+    print(max_diff)
+    print(codes[X_train['Model'] == 'Clarus'].round(1))
+  solution: |
+    codes = pd.Series(np.nan, index=X_train.index)
+    folds = KFold(n_splits=5, shuffle=True, random_state=42)
+    for rest_idx, block_idx in folds.split(X_train):
+        rest_model = X_train['Model'].iloc[rest_idx]
+        rest_price = y_train.iloc[rest_idx]
+        g = rest_price.mean()
+        stats = rest_price.groupby(rest_model).agg(['sum', 'count'])
+        enc = (stats['sum'] + m * g) / (stats['count'] + m)
+        codes.iloc[block_idx] = X_train['Model'].iloc[block_idx].map(enc).fillna(g).to_numpy()
+
+    sk_codes = TargetEncoder(target_type='continuous', cv=5, random_state=42, smooth=m).fit_transform(X_train[['Model']], y_train).ravel()
+    max_diff = np.abs(codes.to_numpy() - sk_codes).max()
+    print(max_diff)
+    print(codes[X_train['Model'] == 'Clarus'].round(1))
+  explanation: |
+    - Расхождение порядка 1e-11 — это погрешность вычислений: TargetEncoder устроен именно так. Внутри он делит train тем же `KFold(5, shuffle=True)` с тем же `random_state`.
+    - У единственной Clarus код 9 533,7 — общее среднее остальных строк: в них Clarus нет. Её цена (100 000) в её код не попала.
+    - Если считать средние по всему train, код Clarus был бы ≈ 13 880: цена машины проникла бы в её собственный признак, пусть и ослабленная сглаживанием.
+    - `.to_numpy()` при записи в `codes.iloc[...]` нужен, чтобы pandas не пытался выравнивать индексы.
+  hints:
+    - "Общее среднее остальных строк — `g = rest_price.mean()`; коды — `(stats['sum'] + m * g) / (stats['count'] + m)`."
+    - "Коды блока — `X_train['Model'].iloc[block_idx].map(enc).fillna(g).to_numpy()`."
+    - "`TargetEncoder(target_type='continuous', cv=5, random_state=42, smooth=m)`; `max_diff = np.abs(codes.to_numpy() - sk_codes).max()`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    codes = var('codes', pd.Series, 'Series')
+    ensure(len(codes) == len(ref('codes')), '`codes` — по коду на каждую машину train.')
+    ensure(not codes.isna().any(), 'В `codes` остались пропуски: каждой строке блока — код её модели, а моделям, которых нет в остальных строках, — `g`.')
+    clarus = float(codes[ref('X_train')['Model'] == 'Clarus'].iloc[0])
+    if clarus > 12000:
+        fail('Код единственной Clarus — {0:.0f}: в него попала её собственная цена. Средние для строк блока считайте только по остальным строкам (`rest_idx`).'.format(clarus))
+    same_array(codes.to_numpy(dtype=float), ref('codes').to_numpy(dtype=float), '`codes` не совпадает с эталоном: средние по остальным строкам со сглаживанием `(сумма + m·g) / (число + m)`, незнакомым моделям — `g`.')
+    mx = var('max_diff', 'number', 'числом')
+    ensure(mx < 1e-6, 'Расхождение с TargetEncoder — {0:.3g}. Создайте его с `smooth=m`, `cv=5` и `random_state=42`.'.format(mx))
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        codes = pd.Series(np.nan, index=X_train.index)
+        folds = KFold(n_splits=5, shuffle=True, random_state=42)
+        for rest_idx, block_idx in folds.split(X_train):
+            rest_model = X_train['Model'].iloc[rest_idx]
+            rest_price = y_train.iloc[rest_idx]
+            g = rest_price.mean()
+            stats = rest_price.groupby(rest_model).agg(['sum', 'count'])
+            enc = stats['sum'] / stats['count']
+            codes.iloc[block_idx] = X_train['Model'].iloc[block_idx].map(enc).fillna(g).to_numpy()
+        sk_codes = TargetEncoder(target_type='continuous', cv=5, random_state=42, smooth=m).fit_transform(X_train[['Model']], y_train).ravel()
+        max_diff = np.abs(codes.to_numpy() - sk_codes).max()
+      expect: со сглаживанием
+    - code: |
+        codes = pd.Series(np.nan, index=X_train.index)
+        folds = KFold(n_splits=5, shuffle=True, random_state=42)
+        for rest_idx, block_idx in folds.split(X_train):
+            g = y_train.mean()
+            stats = y_train.groupby(X_train['Model']).agg(['sum', 'count'])
+            enc = (stats['sum'] + m * g) / (stats['count'] + m)
+            codes.iloc[block_idx] = X_train['Model'].iloc[block_idx].map(enc).fillna(g).to_numpy()
+        sk_codes = TargetEncoder(target_type='continuous', cv=5, random_state=42, smooth=m).fit_transform(X_train[['Model']], y_train).ravel()
+        max_diff = np.abs(codes.to_numpy() - sk_codes).max()
+      expect: собственная цена

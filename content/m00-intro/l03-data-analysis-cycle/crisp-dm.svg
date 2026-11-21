@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 300" font-family="Inter, Arial, sans-serif" font-size="13" role="img" aria-label="Цикл CRISP-DM: понимание бизнеса, понимание данных, подготовка данных, моделирование, оценка, внедрение; данные в центре; возможны возвраты на предыдущие шаги">
+  <defs>
+    <marker id="ca" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <circle cx="360" cy="150" r="46" fill="#3d5bd9" fill-opacity="0.14" stroke="#3d5bd9"/>
+  <text x="335" y="155" fill="currentColor" font-weight="700">Данные</text>
+  <g font-size="12.5" fill="currentColor">
+    <rect x="270" y="14" width="180" height="40" rx="8" fill="#c2611b" fill-opacity="0.12" stroke="#c2611b"/>
+    <text x="282" y="31" font-weight="700">1. Понимание бизнеса</text><text x="282" y="47" fill-opacity="0.7" font-size="11">цели, вопрос, критерии успеха</text>
+    <rect x="490" y="70" width="190" height="40" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.5"/>
+    <text x="502" y="87" font-weight="700">2. Понимание данных</text><text x="502" y="103" fill-opacity="0.7" font-size="11">что есть, качество, описание</text>
+    <rect x="490" y="190" width="190" height="40" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.5"/>
+    <text x="502" y="207" font-weight="700">3. Подготовка данных</text><text x="502" y="223" fill-opacity="0.7" font-size="11">очистка, признаки</text>
+    <rect x="270" y="246" width="180" height="40" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.5"/>
+    <text x="282" y="263" font-weight="700">4. Моделирование</text><text x="282" y="279" fill-opacity="0.7" font-size="11">выбор и обучение модели</text>
+    <rect x="40" y="190" width="190" height="40" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.5"/>
+    <text x="52" y="207" font-weight="700">5. Оценка</text><text x="52" y="223" fill-opacity="0.7" font-size="11">достигнута ли бизнес-цель</text>
+    <rect x="40" y="70" width="190" height="40" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.5"/>
+    <text x="52" y="87" font-weight="700">6. Внедрение</text><text x="52" y="103" fill-opacity="0.7" font-size="11">приложение, мониторинг</text>
+  </g>
+  <g stroke="currentColor" stroke-opacity="0.6" fill="none" stroke-width="1.4">
+    <path d="M452 40 Q 540 40 570 68" marker-end="url(#ca)"/>
+    <path d="M585 112 L585 188" marker-end="url(#ca)"/>
+    <path d="M560 232 Q 520 266 452 266" marker-end="url(#ca)"/>
+    <path d="M268 266 Q 170 266 145 232" marker-end="url(#ca)"/>
+    <path d="M135 188 L135 112" marker-end="url(#ca)"/>
+    <path d="M150 68 Q 190 40 268 34" marker-end="url(#ca)"/>
+    <path d="M575 188 L575 112" stroke-dasharray="4 3" marker-end="url(#ca)"/>
+  </g>
+  <text x="600" y="152" fill="currentColor" fill-opacity="0.7" font-size="11">возврат</text>
+</svg>

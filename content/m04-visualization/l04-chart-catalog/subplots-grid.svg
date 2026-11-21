@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 236" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="plt.subplots(2, 3) создаёт рисунок с сеткой из шести осей: axes[строка, колонка]; axes.flat перебирает их по строкам слева направо, номера от 0 до 5">
+  <text x="16" y="24" fill="currentColor" font-family="JetBrains Mono, monospace" font-size="12"><tspan fill="#3d5bd9">fig, axes</tspan> = plt.subplots(2, 3, figsize=(12, 6))</text>
+  <rect x="16" y="38" width="470" height="186" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.45" stroke-dasharray="5 4"/>
+  <text x="251" y="56" text-anchor="middle" fill="currentColor" fill-opacity="0.75" font-size="11.5">fig.suptitle('Общий заголовок')</text>
+  <g fill="#3d5bd9" fill-opacity="0.08" stroke="#3d5bd9" stroke-opacity="0.6">
+    <rect x="30" y="66" width="136" height="68" rx="4"/><rect x="183" y="66" width="136" height="68" rx="4"/><rect x="336" y="66" width="136" height="68" rx="4"/>
+    <rect x="30" y="146" width="136" height="68" rx="4"/><rect x="183" y="146" width="136" height="68" rx="4"/><rect x="336" y="146" width="136" height="68" rx="4"/>
+  </g>
+  <g fill="currentColor" font-family="JetBrains Mono, monospace" font-size="12" text-anchor="middle">
+    <text x="98" y="98">axes[0, 0]</text><text x="251" y="98">axes[0, 1]</text><text x="404" y="98">axes[0, 2]</text>
+    <text x="98" y="178">axes[1, 0]</text><text x="251" y="178">axes[1, 1]</text><text x="404" y="178">axes[1, 2]</text>
+  </g>
+  <g fill="#c2410c" font-size="11" text-anchor="middle" font-weight="700">
+    <text x="98" y="120">flat: 0</text><text x="251" y="120">flat: 1</text><text x="404" y="120">flat: 2</text>
+    <text x="98" y="200">flat: 3</text><text x="251" y="200">flat: 4</text><text x="404" y="200">flat: 5</text>
+  </g>
+  <g fill="currentColor" font-size="12">
+    <text x="508" y="80"><tspan font-family="JetBrains Mono, monospace" fill="#3d5bd9">axes[i, j]</tspan> — строка i, колонка j</text>
+    <text x="508" y="110"><tspan font-family="JetBrains Mono, monospace" fill="#c2410c">axes.flat</tspan> — все оси подряд,</text>
+    <text x="508" y="126" fill-opacity="0.75">по строкам слева направо</text>
+    <text x="508" y="156">При одной строке массив</text>
+    <text x="508" y="172" fill-opacity="0.75">одномерный: <tspan font-family="JetBrains Mono, monospace">axes[0]</tspan>, <tspan font-family="JetBrains Mono, monospace">axes[1]</tspan></text>
+    <text x="508" y="202"><tspan font-family="JetBrains Mono, monospace" fill="#3d5bd9">fig.tight_layout()</tspan> — без</text>
+    <text x="508" y="218" fill-opacity="0.75">наложения подписей</text>
+  </g>
+</svg>

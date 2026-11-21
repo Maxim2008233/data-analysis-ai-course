@@ -1,0 +1,307 @@
+- id: m4-l1-t1
+  title: "Вопрос «какие марки представлены»: число и доля"
+  difficulty: warmup
+  introduces: [viz-question]
+  uses: [pd-value-counts, pd-new-column]
+  statement: |
+    Вопрос: **какие марки представлены?** Показатель — число и доля записей. Получите `brand_table` — таблицу для десяти самых частых значений `Make`: колонка `n` — число объявлений, колонка `share` — доля всех объявлений в процентах. Строки — по убыванию `n`, индекс — марки.
+
+    Эту таблицу нарисуем столбцами в уроке 4.3.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    counts = ...
+    brand_table = counts.to_frame('n')
+    brand_table['share'] = ...
+    brand_table.round(1)
+  solution: |
+    counts = df['Make'].value_counts().head(10)
+    brand_table = counts.to_frame('n')
+    brand_table['share'] = 100 * brand_table['n'] / len(df)
+    brand_table.round(1)
+  explanation: |
+    - `value_counts().head(10)` — десять самых частых значений по убыванию (урок 2.3).
+    - `to_frame('n')` превращает Series в таблицу с одной колонкой `n`; индекс — марки.
+    - Новая колонка из существующей (урок 2.8): доля — число записей марки, делённое на число **всех** записей, умноженное на 100.
+  alternatives:
+    - |
+      brand_table = df['Make'].value_counts().head(10).to_frame('n')
+      brand_table['share'] = df['Make'].value_counts(normalize=True).head(10) * 100
+  hints:
+    - Десять самых частых значений даёт `value_counts` с `head`; долю считайте от числа всех строк таблицы.
+    - "`counts = df['Make'].value_counts().head(10)`; доля — `brand_table['n'] / len(df) * 100`."
+    - "`brand_table['share'] = 100 * brand_table['n'] / len(df)`."
+  tests: |
+    import pandas as pd
+    t = var('brand_table', pd.DataFrame, 'таблицей DataFrame')
+    ensure(list(t.columns) == ['n', 'share'], 'Колонки должны называться `n` и `share` (в этом порядке), а у вас {0}.'.format(list(t.columns)))
+    ensure(len(t) == 10, 'Нужны десять самых частых марок, а строк {0}.'.format(len(t)))
+    exp = ref('brand_table')
+    if abs(t['share'].sum() - 100) < 1e-6:
+        fail('Доли в сумме дают 100 % — вы делили на число объявлений десяти марок. Делите на число всех объявлений: `len(df)`.')
+    if t['share'].max() <= 1:
+        fail('Доли от 0 до 1, а нужны проценты: умножьте на 100.')
+    same_frame(t, exp, 'Таблица марок не совпадает.')
+    close(alt('brand_table')['share'].iloc[0], alt_ref('brand_table')['share'].iloc[0], HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        counts = df['Make'].value_counts().head(10)
+        brand_table = counts.to_frame('n')
+        brand_table['share'] = 100 * brand_table['n'] / brand_table['n'].sum()
+      expect: "len(df)"
+    - code: |
+        counts = df['Make'].value_counts().head(10)
+        brand_table = counts.to_frame('n')
+        brand_table['share'] = brand_table['n'] / len(df)
+      expect: нужны проценты
+
+- id: m4-l1-t2
+  title: "Вопрос «какие цены типичны»: квартили по кузовам"
+  difficulty: main
+  introduces: [viz-question]
+  uses: [pd-groupby, pd-info-dtypes, group-size-caution]
+  statement: |
+    Вопрос: **какие цены типичны для разных кузовов?** Показатель — медиана и Q1–Q3. Метод `describe` работает и после `groupby`: для каждой группы он считает `count`, `mean`, `25%`, `50%`, `75%` и другие статистики.
+
+    Получите `typical` — для кузовов **не менее чем с 500** объявлениями колонки `count`, `25%`, `50%`, `75%` (в этом порядке), строки по убыванию медианы (`50%`).
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    stats = df.groupby('Style')['Price'].describe()
+    typical = ...
+    typical
+  solution: |
+    stats = df.groupby('Style')['Price'].describe()
+    typical = stats[stats['count'] >= 500][['count', '25%', '50%', '75%']].sort_values('50%', ascending=False)
+    typical
+  explanation: |
+    - `groupby('Style')['Price'].describe()` — таблица статистик: строка на кузов, колонка на статистику (уроки 2.2 и 3.2).
+    - Фильтр `count >= 500` убирает малые группы, у которых статистики ненадёжны (урок 3.3).
+    - Двойные скобки выбирают нужные колонки, `sort_values('50%', ascending=False)` — порядок по медиане.
+    - Ящик боксплота в уроке 4.6 нарисует ровно эти числа: от `25%` до `75%` с линией на `50%`.
+  hints:
+    - Сначала таблица `describe` по кузовам, затем фильтр по `count`, выбор колонок и сортировка.
+    - "`stats[stats['count'] >= 500]`; колонки — `[['count', '25%', '50%', '75%']]`."
+    - "`.sort_values('50%', ascending=False)` — по убыванию медианы."
+  tests: |
+    import pandas as pd
+    t = var('typical', pd.DataFrame, 'таблицей DataFrame')
+    exp = ref('typical')
+    if len(t) == len(ref('stats')):
+        fail('В таблице все кузова, включая малые группы. Оставьте кузова с `count >= 500`.')
+    ensure(list(t.columns) == ['count', '25%', '50%', '75%'], 'Колонки должны быть `count`, `25%`, `50%`, `75%` в этом порядке, а у вас {0}.'.format(list(t.columns)))
+    ensure(list(t['50%']) == sorted(t['50%'], reverse=True), 'Строки должны идти по убыванию медианы: `sort_values(\'50%\', ascending=False)`.')
+    same_frame(t, exp, 'Таблица типичных цен не совпадает.')
+    close(alt('typical')['50%'].iloc[0], alt_ref('typical')['50%'].iloc[0], HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        stats = df.groupby('Style')['Price'].describe()
+        typical = stats[['count', '25%', '50%', '75%']].sort_values('50%', ascending=False)
+      expect: малые группы
+    - code: |
+        stats = df.groupby('Style')['Price'].describe()
+        typical = stats[stats['count'] >= 500][['count', '25%', '50%', '75%']].sort_values('50%')
+      expect: по убыванию медианы
+
+- id: m4-l1-t3
+  title: "Вопрос «как различается состав топлива»: доли внутри марки"
+  difficulty: main
+  introduces: [viz-question]
+  uses: [pd-crosstab, count-vs-share, pd-value-counts]
+  statement: |
+    Вопрос: **как различается состав топлива у самых частых марок?** Показатель — доли типов топлива **внутри** марки. Получите `fuel_share` — таблицу долей для шести самых частых значений `Make` (марки по строкам, типы топлива по колонкам, сумма каждой строки — 1) — и `diesel_leader` — марку с наибольшей долей дизеля.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    top6 = ...
+    df_top = df[df['Make'].isin(top6)]
+    fuel_share = ...
+    diesel_leader = ...
+    print(fuel_share.round(2))
+    print(diesel_leader)
+  solution: |
+    top6 = df['Make'].value_counts().head(6).index
+    df_top = df[df['Make'].isin(top6)]
+    fuel_share = pd.crosstab(df_top['Make'], df_top['Fuel_type'], normalize='index')
+    diesel_leader = fuel_share['Diesel'].idxmax()
+    print(fuel_share.round(2))
+    print(diesel_leader)
+  explanation: |
+    - `value_counts().head(6).index` — названия шести самых частых марок; `isin` оставляет их объявления (урок 2.5).
+    - `crosstab(..., normalize='index')` делит каждую строку на её сумму — доли топлива внутри марки (урок 3.5).
+    - `idxmax()` возвращает метку строки с наибольшей долей дизеля. Это ответ на вопрос о **доле**, а не о числе дизелей (урок 3.5).
+  alternatives:
+    - |
+      top6 = df['Make'].value_counts().head(6).index
+      df_top = df[df['Make'].isin(top6)]
+      fuel_share = pd.crosstab(df_top['Make'], df_top['Fuel_type'], normalize='index')
+      diesel_leader = fuel_share['Diesel'].sort_values().index[-1]
+  hints:
+    - Отберите объявления шести марок, затем таблица сочетаний с долями по строкам.
+    - "`pd.crosstab(df_top['Make'], df_top['Fuel_type'], normalize='index')`."
+    - "`diesel_leader = fuel_share['Diesel'].idxmax()` — метка с наибольшим значением."
+  tests: |
+    import pandas as pd
+    t = var('fuel_share', pd.DataFrame, 'таблицей DataFrame')
+    ensure(len(t) == 6, 'В таблице должны быть шесть марок, а строк {0}. Отберите `df_top` по шести самым частым маркам.'.format(len(t)))
+    sums = t.sum(axis=1)
+    if (sums > 1.5).any():
+        fail('В таблице количества, а нужны доли внутри марки: `normalize=\'index\'`.')
+    if not ((sums - 1).abs() < 1e-6).all():
+        fail('Сумма каждой строки должна быть 1: доли считаются внутри марки — `normalize=\'index\'`, а не по всей таблице или по колонкам.')
+    same_frame(t, ref('fuel_share'), 'Таблица долей не совпадает.', check_like=True)
+    leader = var('diesel_leader', str, 'строкой — названием марки')
+    if leader == t['Diesel'].idxmin():
+        fail('`{0}` — марка с наименьшей долей дизеля. Нужна наибольшая: `idxmax()`.'.format(leader))
+    equal(leader, ref('diesel_leader'), 'Наибольшая доля дизеля у {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        top6 = df['Make'].value_counts().head(6).index
+        df_top = df[df['Make'].isin(top6)]
+        fuel_share = pd.crosstab(df_top['Make'], df_top['Fuel_type'], normalize='columns')
+        diesel_leader = fuel_share['Diesel'].idxmax()
+      expect: внутри марки
+    - code: |
+        top6 = df['Make'].value_counts().head(6).index
+        df_top = df[df['Make'].isin(top6)]
+        fuel_share = pd.crosstab(df_top['Make'], df_top['Fuel_type'], normalize='index')
+        diesel_leader = fuel_share['Diesel'].idxmin()
+      expect: наименьшей
+
+- id: m4-l1-t4
+  kind: quiz
+  title: Какой график ответит на вопрос
+  difficulty: main
+  introduces: [chart-choice]
+  uses: []
+  statement: |
+    Для каждого вопроса выберите график, который отвечает на него лучше всего.
+  quiz:
+    - q: Сколько объявлений у каждого из восьми типов топлива и кузова — какие категории редкие?
+      options:
+        - Отсортированные столбцы
+        - Линия
+        - Диаграмма рассеяния
+      answer: 0
+      explain: Категории сравнивают длинами столбцов; сортировка сразу показывает самые частые и редкие.
+    - q: Как распределены цены — где большинство значений, есть ли длинный хвост?
+      options:
+        - Круговая диаграмма
+        - Гистограмма или боксплот
+        - Линия по номерам строк
+      answer: 1
+      explain: Распределение одного числового признака показывают гистограммой (форма) или боксплотом (квартили и крайние значения).
+    - q: Как цена связана с пробегом?
+      options:
+        - Столбцы по маркам
+        - Диаграмма рассеяния (scatter) или hexbin
+        - Тепловая карта долей топлива
+      answer: 1
+      explain: Два числовых признака — точки с координатами (пробег, цена); при наложении точек — hexbin.
+    - q: Как различаются цены у разных типов кузова?
+      options:
+        - Боксплоты цены по типам кузова
+        - Одна гистограмма всех цен
+        - Treemap «марка → модель»
+      answer: 0
+      explain: Числовой признак по категориям — боксплоты рядом, по одному на группу (условное распределение, урок 4.7).
+  hints:
+    - "Определите тип признаков в вопросе: категория, одно число, два числа или число по категориям."
+    - "Категории → столбцы; одно число → гистограмма/боксплот; два числа → scatter; число по категориям → боксплоты по группам."
+    - "Ответы: столбцы; гистограмма или боксплот; scatter или hexbin; боксплоты по кузовам."
+
+- id: m4-l1-t5
+  kind: quiz
+  title: Границы выводов
+  difficulty: main
+  introduces: [viz-question]
+  uses: [eda-questions]
+  statement: |
+    Данные — объявления о продаже. Какие выводы корректны?
+  quiz:
+    - q: "Медианная цена Mercedes в объявлениях выше, чем у Renault. Какая формулировка корректна?"
+      options:
+        - Mercedes продают дороже, чем Renault
+        - В объявлениях за Mercedes обычно просят больше, чем за Renault
+        - Покупатели готовы платить за Mercedes больше
+      answer: 1
+      explain: В данных цены предложения, а не сделок; о готовности покупателей платить они не говорят.
+    - q: "Каких данных не хватает, чтобы оценить спрос на марки?"
+      options:
+        - Сведений о сделках — что и за сколько продано
+        - Ещё одного столбца с ценой в долларах
+        - Более подробной гистограммы цен
+      answer: 0
+      explain: Спрос и продажи оценивают по сделкам; объявления описывают только предложение.
+    - q: "Машины с автоматом в объявлениях в среднем на 6 лет новее машин с механикой. Что это значит для сравнения их цен?"
+      options:
+        - "Ничего: коробка передач — единственное различие групп"
+        - Разница цен частично объясняется возрастом; это не «стоимость коробки»
+        - Цены автоматов нужно уменьшить на 6 %
+      answer: 1
+      explain: Группы различаются не только коробкой; на графике это сравнение подписывают осторожно.
+  hints:
+    - Что именно записано в таблице — цены сделок или цены, которые просят продавцы?
+    - "Объявления → только предложение; для спроса и продаж нужны сделки; у групп может быть несколько различий."
+    - "Ответы: «в объявлениях просят больше»; «нужны сведения о сделках»; «разница частично объясняется возрастом»."
+
+- id: m4-l1-t6
+  title: "Вопрос «где возможны ошибки»: невероятный пробег в год"
+  difficulty: star
+  introduces: [viz-question]
+  uses: [pd-bool-filter, pd-sort-values, pd-select-columns]
+  statement: |
+    Вопрос: **где возможны ошибки?** Пробег больше 50 000 км в год — это почти 140 км каждый день без выходных; такие записи стоит проверить. Получите `suspects` — объявления с `km_year` больше 50 000 с колонками `source_row_id`, `Make`, `Model`, `Year`, `Distance`, `km_year`, `Price` (в этом порядке), по убыванию `km_year`, и `n_suspects` — их число.
+
+    `source_row_id` — номер строки в исходном `cars.csv`: по нему запись можно найти и проверить.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    columns = ['source_row_id', 'Make', 'Model', 'Year', 'Distance', 'km_year', 'Price']
+    suspects = ...
+    n_suspects = ...
+    print(n_suspects)
+    suspects.head()
+  solution: |
+    columns = ['source_row_id', 'Make', 'Model', 'Year', 'Distance', 'km_year', 'Price']
+    suspects = df[df['km_year'] > 50_000][columns].sort_values('km_year', ascending=False)
+    n_suspects = len(suspects)
+    print(n_suspects)
+    suspects.head()
+  explanation: |
+    - Маска `df['km_year'] > 50_000` отбирает подозрительные строки (урок 2.5), список `columns` — нужные колонки (урок 2.4).
+    - `sort_values('km_year', ascending=False)` ставит самые невероятные записи первыми (урок 2.2).
+    - Верх списка — машины 2021 года с пробегом 200–280 тыс. км и машины с миллионом километров: кандидаты в журнал проверки. На графике «пробег — цена» в уроке 4.8 они окажутся далеко от основного облака.
+  hints:
+    - Фильтр по условию, выбор колонок списком и сортировка по убыванию.
+    - "`df[df['km_year'] > 50_000][columns]`; сортировка — `sort_values('km_year', ascending=False)`."
+    - "`n_suspects = len(suspects)`."
+  tests: |
+    import pandas as pd
+    t = var('suspects', pd.DataFrame, 'таблицей DataFrame')
+    cols = ['source_row_id', 'Make', 'Model', 'Year', 'Distance', 'km_year', 'Price']
+    ensure(list(t.columns) == cols, 'Колонки должны быть {0}, а у вас {1}.'.format(cols, list(t.columns)))
+    ensure(len(t) > 0 and t['km_year'].min() > 50_000, 'В таблице должны быть только объявления с `km_year` больше 50 000.')
+    ensure(list(t['km_year']) == sorted(t['km_year'], reverse=True), 'Строки должны идти по убыванию `km_year`.')
+    same_frame(t, ref('suspects'), 'Таблица подозрительных записей не совпадает.')
+    close(var('n_suspects', 'number', 'числом'), ref('n_suspects'), 'Подозрительных записей {expected}, а у вас {actual}.')
+    close(alt('n_suspects'), alt_ref('n_suspects'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        columns = ['source_row_id', 'Make', 'Model', 'Year', 'Distance', 'km_year', 'Price']
+        suspects = df[df['km_year'] > 50_000][columns].sort_values('km_year')
+        n_suspects = len(suspects)
+      expect: по убыванию
+    - code: |
+        columns = ['source_row_id', 'Make', 'Model', 'Year', 'Distance', 'km_year', 'Price']
+        suspects = df[df['Distance'] > 50_000][columns].sort_values('km_year', ascending=False)
+        n_suspects = len(suspects)
+      expect: только объявления

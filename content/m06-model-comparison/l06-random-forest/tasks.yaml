@@ -1,0 +1,400 @@
+- id: m6-l6-t1
+  title: Бутстрэп-выборка
+  difficulty: warmup
+  introduces: [bagging]
+  uses: []
+  statement: |
+    Получите `rows` — бутстрэп-выборку номеров строк обучающей части: `n` случайных целых чисел от 0 до `n − 1` с повторениями (генератор `rng` уже создан). Посчитайте `unique_share` — долю разных строк, попавших в выборку, `missed` — сколько строк не попало ни разу, и `theory` — теоретическую долю попавших строк 1 − (1 − 1/n)ⁿ.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    n = len(X_train)
+    rng = np.random.default_rng(1)
+  starter: |
+    rows = ...
+    unique_share = ...
+    missed = ...
+    theory = ...
+    print(n, round(unique_share, 4), missed, round(theory, 4))
+  solution: |
+    rows = rng.integers(0, n, size=n)
+    unique_share = len(np.unique(rows)) / n
+    missed = n - len(np.unique(rows))
+    theory = 1 - (1 - 1 / n) ** n
+    print(n, round(unique_share, 4), missed, round(theory, 4))
+  explanation: |
+    - `rng.integers(0, n, size=n)` — n номеров от 0 до n − 1; верхняя граница не включается (урок 1.9). Повторы разрешены — это и есть выбор «с возвращением».
+    - Разных строк ≈ 63 %, около 7 тысяч строк не попали ни разу. Теория: каждая строка не попадает при одном выборе с вероятностью 1 − 1/n, при n выборах — (1 − 1/n)ⁿ ≈ 1/e ≈ 0,368.
+    - Не попавшие строки называют out-of-bag: для своего дерева они — как маленькая validation.
+  hints:
+    - "Номера с повторениями — `rng.integers(0, n, size=n)`."
+    - "Разные значения — `np.unique(rows)`; их доля — длина, делённая на n."
+    - "`theory = 1 - (1 - 1 / n) ** n`."
+  tests: |
+    import numpy as np
+    r = np.asarray(var('rows'))
+    n = ref('n')
+    ensure(r.shape == (n,), 'В `rows` должно быть n = {0} номеров — столько же, сколько строк.'.format(n))
+    ensure(r.min() >= 0 and r.max() < n, 'Номера строк — от 0 до n − 1: `rng.integers(0, n, size=n)`.')
+    ensure(len(np.unique(r)) < n, 'В бутстрэп-выборке должны быть повторы — выбирайте с возвращением, а не перестановкой.')
+    u = var('unique_share', 'number', 'числом')
+    close(u, len(np.unique(r)) / n, 'Доля разных строк в вашей выборке — {expected}, а у вас {actual}.')
+    equal(var('missed', 'number', 'числом'), n - len(np.unique(r)), 'Не попало ни разу — {expected} строк, а у вас {actual}.')
+    close(var('theory', 'number', 'числом'), 1 - (1 - 1 / n) ** n, 'Теоретическая доля — {expected}, а у вас {actual}.')
+    ensure(abs(u - 0.632) < 0.01, 'Доля разных строк должна быть около 0,632 — проверьте, что выборка того же размера, что и таблица.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        rows = rng.permutation(n)
+        unique_share = len(np.unique(rows)) / n
+        missed = n - len(np.unique(rows))
+        theory = 1 - (1 - 1 / n) ** n
+      expect: должны быть повторы
+    - code: |
+        rows = rng.integers(0, n, size=n)
+        unique_share = len(np.unique(rows)) / n
+        missed = len(np.unique(rows))
+        theory = 1 - (1 - 1 / n) ** n
+      expect: Не попало ни разу
+
+- id: m6-l6-t2
+  title: Бэггинг из пяти деревьев
+  difficulty: main
+  introduces: [bagging]
+  uses: [decision-tree, regression-metrics]
+  statement: |
+    Обучите пять неограниченных деревьев на бутстрэп-выборках: для i от 0 до 4 — номера строк `idx = rng.integers(0, n, size=n)`, дерево `DecisionTreeRegressor(random_state=i)` на `Xt[idx]`, `yt[idx]`, прогноз для `Xv`. Получите `single_maes` — список MAE отдельных деревьев на validation и `bag_mae` — MAE среднего их прогнозов.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.tree import DecisionTreeRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    Xt, yt, Xv = X_train.to_numpy(), y_train.to_numpy(), X_valid.to_numpy()
+    n = len(Xt)
+    rng = np.random.default_rng(42)
+  starter: |
+    preds = []
+    for i in range(5):
+        idx = ...
+        tree = ...
+        preds.append(tree.predict(Xv))
+    preds = np.array(preds)
+    single_maes = ...
+    bag_mae = ...
+    print([round(m) for m in single_maes], round(bag_mae))
+  solution: |
+    preds = []
+    for i in range(5):
+        idx = rng.integers(0, n, size=n)
+        tree = DecisionTreeRegressor(random_state=i).fit(Xt[idx], yt[idx])
+        preds.append(tree.predict(Xv))
+    preds = np.array(preds)
+    single_maes = [mean_absolute_error(y_valid, p) for p in preds]
+    bag_mae = mean_absolute_error(y_valid, preds.mean(axis=0))
+    print([round(m) for m in single_maes], round(bag_mae))
+  explanation: |
+    - Каждое дерево видит свою выборку, поэтому деревья — и их ошибки — разные: от ≈ 3 306 до ≈ 3 465 евро.
+    - Среднее пяти прогнозов (`preds.mean(axis=0)` — по деревьям, для каждой машины) ошибается на ≈ 2 939: лучше лучшего дерева на 370 евро.
+    - Порядок важен: выборки берутся из одного генератора по очереди. Если поменять порядок вызовов, получатся другие выборки — и немного другие числа.
+  hints:
+    - "Номера строк — `rng.integers(0, n, size=n)`; дерево учится на `Xt[idx]` и `yt[idx]`."
+    - "MAE каждого дерева — список по строкам `preds`."
+    - "Среднее прогнозов по деревьям — `preds.mean(axis=0)`, затем MAE."
+  tests: |
+    import numpy as np
+    sm = [float(v) for v in var('single_maes', list, 'списком')]
+    ensure(len(sm) == 5, 'MAE должно быть пять — по одной на дерево.')
+    same_array(np.array(sm), np.array(ref('single_maes'), dtype=float), 'MAE отдельных деревьев не совпадают: бутстрэп-выборка `rng.integers(0, n, size=n)`, дерево `DecisionTreeRegressor(random_state=i)` на `Xt[idx]`, `yt[idx]`.')
+    b = var('bag_mae', 'number', 'числом')
+    if abs(b - np.mean(ref('single_maes'))) < 1e-6:
+        fail('Это среднее пяти MAE. Нужна MAE **среднего прогноза**: сначала `preds.mean(axis=0)`, потом ошибка.')
+    close(b, ref('bag_mae'), 'MAE бэггинга — {expected}, а у вас {actual}.')
+    close(alt('bag_mae'), alt_ref('bag_mae'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        preds = []
+        for i in range(5):
+            idx = rng.integers(0, n, size=n)
+            tree = DecisionTreeRegressor(random_state=i).fit(Xt[idx], yt[idx])
+            preds.append(tree.predict(Xv))
+        preds = np.array(preds)
+        single_maes = [mean_absolute_error(y_valid, p) for p in preds]
+        bag_mae = np.mean(single_maes)
+      expect: среднего прогноза
+    - code: |
+        preds = []
+        for i in range(5):
+            tree = DecisionTreeRegressor(random_state=i).fit(Xt, yt)
+            preds.append(tree.predict(Xv))
+        preds = np.array(preds)
+        single_maes = [mean_absolute_error(y_valid, p) for p in preds]
+        bag_mae = mean_absolute_error(y_valid, preds.mean(axis=0))
+      expect: бутстрэп-выборка
+
+- id: m6-l6-t3
+  title: Случайный лес
+  difficulty: main
+  introduces: [random-forest]
+  uses: [decision-tree, regression-metrics]
+  statement: |
+    Обучите `forest` — `RandomForestRegressor` из 60 деревьев глубины 10 (`random_state=42`, `n_jobs=1`). Получите `forest_mae` на validation, `forest_train_mae` на train и `avg_equals` — `True`, если среднее прогнозов всех деревьев леса (`forest.estimators_`) совпадает с прогнозом леса (проверьте `np.allclose`).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    from sklearn.ensemble import RandomForestRegressor
+
+    forest = ...
+    forest_mae = ...
+    forest_train_mae = ...
+    trees_mean = np.mean([t.predict(X_valid.to_numpy()) for t in forest.estimators_], axis=0)
+    avg_equals = ...
+    print(round(forest_mae), round(forest_train_mae), avg_equals)
+  solution: |
+    from sklearn.ensemble import RandomForestRegressor
+
+    forest = RandomForestRegressor(n_estimators=60, max_depth=10, random_state=42, n_jobs=1).fit(X_train, y_train)
+    forest_mae = mean_absolute_error(y_valid, forest.predict(X_valid))
+    forest_train_mae = mean_absolute_error(y_train, forest.predict(X_train))
+    trees_mean = np.mean([t.predict(X_valid.to_numpy()) for t in forest.estimators_], axis=0)
+    avg_equals = bool(np.allclose(trees_mean, forest.predict(X_valid)))
+    print(round(forest_mae), round(forest_train_mae), avg_equals)
+  explanation: |
+    - MAE ≈ 2 658 на validation — лучше всех моделей модуля. На train ≈ 2 209: разрыв ≈ 450 евро, заметно меньше, чем у дерева глубины 10 (≈ 2 176 и 2 850).
+    - Деревья внутри леса — обычные `DecisionTreeRegressor`, каждое обучено на своей бутстрэп-выборке; прогноз леса — их среднее.
+    - Деревья леса учились на массивах без имён колонок, поэтому для них передаём `X_valid.to_numpy()` — иначе scikit-learn предупредит о несовпадении имён.
+  hints:
+    - "`RandomForestRegressor(n_estimators=60, max_depth=10, random_state=42, n_jobs=1).fit(X_train, y_train)`."
+    - "Ошибки — `mean_absolute_error` для validation и для train."
+    - "`avg_equals = bool(np.allclose(trees_mean, forest.predict(X_valid)))`."
+  tests: |
+    from sklearn.ensemble import RandomForestRegressor
+    f = var('forest', RandomForestRegressor, 'моделью RandomForestRegressor')
+    ensure(f.n_estimators == 60 and f.max_depth == 10, 'Лес — 60 деревьев глубины 10: `n_estimators=60, max_depth=10`.')
+    ensure(f.random_state == 42, 'Зафиксируйте случайность: `random_state=42`.')
+    close(var('forest_mae', 'number', 'числом'), ref('forest_mae'), 'MAE леса на validation — {expected}, а у вас {actual}.')
+    close(var('forest_train_mae', 'number', 'числом'), ref('forest_train_mae'), 'MAE леса на train — {expected}, а у вас {actual}.')
+    equal(bool(var('avg_equals')), True, 'Прогноз леса — среднее его деревьев: `np.allclose(trees_mean, forest.predict(X_valid))` должно дать True.')
+    close(alt('forest_mae'), alt_ref('forest_mae'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        from sklearn.ensemble import RandomForestRegressor
+        forest = RandomForestRegressor(n_estimators=60, random_state=42, n_jobs=1).fit(X_train, y_train)
+        forest_mae = mean_absolute_error(y_valid, forest.predict(X_valid))
+        forest_train_mae = mean_absolute_error(y_train, forest.predict(X_train))
+        trees_mean = np.mean([t.predict(X_valid.to_numpy()) for t in forest.estimators_], axis=0)
+        avg_equals = bool(np.allclose(trees_mean, forest.predict(X_valid)))
+      expect: глубины 10
+    - code: |
+        from sklearn.ensemble import RandomForestRegressor
+        forest = RandomForestRegressor(n_estimators=60, max_depth=10, random_state=42, n_jobs=1).fit(X_train, y_train)
+        forest_mae = mean_absolute_error(y_train, forest.predict(X_train))
+        forest_train_mae = mean_absolute_error(y_train, forest.predict(X_train))
+        trees_mean = np.mean([t.predict(X_valid.to_numpy()) for t in forest.estimators_], axis=0)
+        avg_equals = bool(np.allclose(trees_mean, forest.predict(X_valid)))
+      expect: MAE леса на validation
+
+- id: m6-l6-t4
+  title: Сколько деревьев нужно
+  difficulty: main
+  introduces: [random-forest]
+  uses: [hyperparameter, regression-metrics]
+  statement: |
+    Для каждого числа деревьев из `sizes` обучите лес глубины 10 (`random_state=42`, `n_jobs=1`) и соберите `trees_mae` — Series «число деревьев → MAE на validation». Затем `first_gain` — выигрыш от перехода с 1 дерева на 10 и `last_gain` — выигрыш от перехода с 30 на 60.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    sizes = [1, 10, 30, 60]
+  starter: |
+    result = {}
+    for k in sizes:
+        rf = ...
+        result[k] = ...
+    trees_mae = pd.Series(result)
+    first_gain = ...
+    last_gain = ...
+    print(trees_mae.round(0))
+    print(round(first_gain), round(last_gain))
+  solution: |
+    result = {}
+    for k in sizes:
+        rf = RandomForestRegressor(n_estimators=k, max_depth=10, random_state=42, n_jobs=1).fit(X_train, y_train)
+        result[k] = mean_absolute_error(y_valid, rf.predict(X_valid))
+    trees_mae = pd.Series(result)
+    first_gain = trees_mae[1] - trees_mae[10]
+    last_gain = trees_mae[30] - trees_mae[60]
+    print(trees_mae.round(0))
+    print(round(first_gain), round(last_gain))
+  explanation: |
+    - Переход с 1 дерева на 10 даёт ≈ 112 евро, с 30 на 60 — всего ≈ 12: ошибка выходит на плато.
+    - Почему: первые деревья приносят много «разнообразия», а каждое следующее мало что добавляет к уже устойчивому среднему.
+    - Значит, число деревьев выбирают как компромисс: после плато они только замедляют обучение и прогноз.
+  hints:
+    - "Лес с k деревьями — `RandomForestRegressor(n_estimators=k, max_depth=10, random_state=42, n_jobs=1)`."
+    - "Значение Series по метке — `trees_mae[10]`."
+    - "`first_gain = trees_mae[1] - trees_mae[10]`; `last_gain = trees_mae[30] - trees_mae[60]`."
+  tests: |
+    import pandas as pd
+    s = var('trees_mae', pd.Series, 'Series')
+    ensure(list(s.index) == ref('sizes'), 'Индекс `trees_mae` — числа деревьев из `sizes`.')
+    same_array(s.to_numpy(dtype=float), ref('trees_mae').to_numpy(dtype=float), 'MAE не совпадают: у леса `n_estimators=k`, `max_depth=10`, `random_state=42`.')
+    f = var('first_gain', 'number', 'числом')
+    if abs(f + ref('first_gain')) < 1e-6:
+        fail('Знак наоборот: выигрыш — ошибка меньшего леса минус ошибка большего.')
+    close(f, ref('first_gain'), 'Выигрыш от 1 к 10 деревьям — {expected}, а у вас {actual}.')
+    close(var('last_gain', 'number', 'числом'), ref('last_gain'), 'Выигрыш от 30 к 60 деревьям — {expected}, а у вас {actual}.')
+    close(alt('first_gain'), alt_ref('first_gain'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        result = {}
+        for k in sizes:
+            rf = RandomForestRegressor(n_estimators=k, max_depth=10, random_state=42, n_jobs=1).fit(X_train, y_train)
+            result[k] = mean_absolute_error(y_valid, rf.predict(X_valid))
+        trees_mae = pd.Series(result)
+        first_gain = trees_mae[10] - trees_mae[1]
+        last_gain = trees_mae[60] - trees_mae[30]
+      expect: Знак наоборот
+    - code: |
+        result = {}
+        for k in sizes:
+            rf = RandomForestRegressor(n_estimators=k, random_state=42, n_jobs=1).fit(X_train, y_train)
+            result[k] = mean_absolute_error(y_valid, rf.predict(X_valid))
+        trees_mae = pd.Series(result)
+        first_gain = trees_mae[1] - trees_mae[10]
+        last_gain = trees_mae[30] - trees_mae[60]
+      expect: "max_depth=10"
+
+- id: m6-l6-t5
+  kind: quiz
+  title: Как работают ансамбли
+  difficulty: main
+  introduces: [bagging, random-forest]
+  uses: []
+  statement: |
+    Ответьте на вопросы об ансамблях.
+  quiz:
+    - q: Какое условие лекция называет главным для ансамбля?
+      options:
+        - Модели должны ошибаться независимо друг от друга
+        - Модели должны быть одинаковыми
+        - Каждая модель должна быть лучше среднего
+      answer: 0
+      explain: Тогда ошибки частично компенсируются; одинаковые модели ошибаются одинаково.
+    - q: В лесу из 60 деревьев прогноз для машины — это
+      options:
+        - Среднее прогнозов 60 деревьев
+        - Прогноз лучшего из 60 деревьев
+        - Медиана цен обучающих машин
+      answer: 0
+      explain: "Для регрессии лес усредняет деревья; для классификации — голосует."
+    - q: Лес из 1 000 деревьев вместо 60 почти наверняка
+      options:
+        - Будет не хуже, но заметно медленнее
+        - Сильно переобучится
+        - Станет хуже из-за шума
+      answer: 0
+      explain: Добавление деревьев почти не ухудшает лес, но после плато только тратит время и память.
+  hints:
+    - Вспомните, зачем ансамблю разнообразие и что происходит при усреднении.
+    - "Независимые ошибки; среднее деревьев; больше деревьев — не хуже, но медленнее."
+    - "Ответы: независимость; среднее; не хуже, но медленнее."
+
+- id: m6-l6-t6
+  title: "Случайные признаки: max_features"
+  difficulty: star
+  introduces: [random-forest]
+  uses: [hyperparameter, regression-metrics]
+  statement: |
+    Гиперпараметр `max_features` — какую долю признаков рассматривает дерево при каждом разбиении. Для каждого значения из `fractions` обучите лес (60 деревьев глубины 10, `random_state=42`, `n_jobs=1`, `max_features=f`) и соберите `mf_table` — DataFrame с индексом-долей и колонками `forest` — MAE леса и `single` — средняя MAE его отдельных деревьев (по `estimators_`, прогноз для `X_valid.to_numpy()`). Затем `best_fraction` — доля с наименьшей MAE леса.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    fractions = [1.0, 0.5, 0.25]
+  starter: |
+    rows = []
+    for f in fractions:
+        rf = ...
+        single = ...
+        rows.append({'forest': ..., 'single': single})
+    mf_table = pd.DataFrame(rows, index=fractions)
+    best_fraction = ...
+    print(mf_table.round(0))
+    print(best_fraction)
+  solution: |
+    rows = []
+    for f in fractions:
+        rf = RandomForestRegressor(n_estimators=60, max_depth=10, max_features=f, random_state=42, n_jobs=1).fit(X_train, y_train)
+        single = np.mean([mean_absolute_error(y_valid, t.predict(X_valid.to_numpy())) for t in rf.estimators_])
+        rows.append({'forest': mean_absolute_error(y_valid, rf.predict(X_valid)), 'single': single})
+    mf_table = pd.DataFrame(rows, index=fractions)
+    best_fraction = mf_table['forest'].idxmin()
+    print(mf_table.round(0))
+    print(best_fraction)
+  explanation: |
+    - С половиной признаков в каждом разбиении отдельные деревья хуже (≈ 2 950 против ≈ 2 895), но разнообразнее — и лес лучше: ≈ 2 643 против ≈ 2 658.
+    - С четвертью признаков (одним из четырёх) деревья становятся слишком слабыми (≈ 3 262), и даже среднее не спасает: ≈ 2 734.
+    - Это главный компромисс ансамблей: точность каждой модели против разнообразия моделей. `max_features` — способ его настроить.
+  hints:
+    - "Лес — `RandomForestRegressor(n_estimators=60, max_depth=10, max_features=f, random_state=42, n_jobs=1)`."
+    - "Средняя ошибка деревьев — `np.mean([mean_absolute_error(y_valid, t.predict(X_valid.to_numpy())) for t in rf.estimators_])`."
+    - "`best_fraction = mf_table['forest'].idxmin()`."
+  tests: |
+    import pandas as pd
+    t = var('mf_table', pd.DataFrame, 'таблицей DataFrame')
+    ensure(list(t.columns) == ['forest', 'single'] and list(t.index) == ref('fractions'), 'Индекс `mf_table` — доли из `fractions`, колонки — `forest` и `single`.')
+    same_array(t['forest'].to_numpy(dtype=float), ref('mf_table')['forest'].to_numpy(dtype=float), 'MAE лесов не совпадают: проверьте `max_features=f` и остальные параметры.')
+    same_array(t['single'].to_numpy(dtype=float), ref('mf_table')['single'].to_numpy(dtype=float), 'Средние MAE отдельных деревьев не совпадают: прогноз каждого дерева из `rf.estimators_` для `X_valid.to_numpy()`.')
+    equal(var('best_fraction'), ref('best_fraction'), 'Лучшая доля признаков — {expected}, а у вас {actual}.')
+    close(float(alt('mf_table')['forest'].iloc[1]), float(alt_ref('mf_table')['forest'].iloc[1]), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        rows = []
+        for f in fractions:
+            rf = RandomForestRegressor(n_estimators=60, max_depth=10, random_state=42, n_jobs=1).fit(X_train, y_train)
+            single = np.mean([mean_absolute_error(y_valid, t.predict(X_valid.to_numpy())) for t in rf.estimators_])
+            rows.append({'forest': mean_absolute_error(y_valid, rf.predict(X_valid)), 'single': single})
+        mf_table = pd.DataFrame(rows, index=fractions)
+        best_fraction = mf_table['forest'].idxmin()
+      expect: "max_features=f"
+    - code: |
+        rows = []
+        for f in fractions:
+            rf = RandomForestRegressor(n_estimators=60, max_depth=10, max_features=f, random_state=42, n_jobs=1).fit(X_train, y_train)
+            single = mean_absolute_error(y_valid, rf.estimators_[0].predict(X_valid.to_numpy()))
+            rows.append({'forest': mean_absolute_error(y_valid, rf.predict(X_valid)), 'single': single})
+        mf_table = pd.DataFrame(rows, index=fractions)
+        best_fraction = mf_table['forest'].idxmin()
+      expect: Средние MAE отдельных деревьев

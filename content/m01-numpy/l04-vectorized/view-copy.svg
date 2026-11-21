@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 250" font-family="Inter, Arial, sans-serif" font-size="13" role="img" aria-label="Срез price = X[:, 3] — окно в те же ячейки памяти; копия .copy() — отдельные ячейки">
+  <text x="20" y="24" font-weight="700" fill="currentColor">Срез — окно в те же ячейки (view)</text>
+  <g font-family="JetBrains Mono, monospace" font-size="12" fill="currentColor">
+    <rect x="20" y="40" width="300" height="110" rx="6" fill="none" stroke="currentColor" stroke-opacity="0.35"/>
+    <text x="34" y="62">2011. 195000. 1800. <tspan font-weight="700" fill="#c0362c">7750.</tspan></text>
+    <text x="34" y="86">2014. 135000. 1500. <tspan font-weight="700" fill="#c0362c">8550.</tspan></text>
+    <text x="34" y="110">1998.      1. 1400. <tspan font-weight="700" fill="#c0362c">2200.</tspan></text>
+    <text x="34" y="134" fill-opacity="0.6">  …       …     …      …</text>
+    <rect x="236" y="46" width="62" height="98" rx="5" fill="#c0362c" fill-opacity="0.08" stroke="#c0362c" stroke-width="1.6"/>
+  </g>
+  <text x="20" y="176" fill="currentColor">price = X[:, 3]</text>
+  <text x="20" y="196" fill="currentColor" fill-opacity="0.75">price[0] = -1 → изменится и X[0, 3]!</text>
+  <text x="20" y="216" fill="currentColor" fill-opacity="0.75">np.shares_memory(price, X) → True</text>
+
+  <text x="390" y="24" font-weight="700" fill="currentColor">Копия — отдельные ячейки</text>
+  <g font-family="JetBrains Mono, monospace" font-size="12" fill="currentColor">
+    <rect x="390" y="40" width="210" height="110" rx="6" fill="none" stroke="currentColor" stroke-opacity="0.35"/>
+    <text x="404" y="62">… 1800. 7750.</text>
+    <text x="404" y="86">… 1500. 8550.</text>
+    <text x="404" y="110">… 1400. 2200.</text>
+    <rect x="630" y="40" width="70" height="110" rx="6" fill="#1f8a4c" fill-opacity="0.08" stroke="#1f8a4c" stroke-width="1.6"/>
+    <text x="645" y="62" fill="#1f8a4c" font-weight="700">7750.</text>
+    <text x="645" y="86" fill="#1f8a4c" font-weight="700">8550.</text>
+    <text x="645" y="110" fill="#1f8a4c" font-weight="700">2200.</text>
+  </g>
+  <text x="390" y="176" fill="currentColor">safe = X[:, 3].copy()</text>
+  <text x="390" y="196" fill="currentColor" fill-opacity="0.75">safe[0] = -1 → X не меняется</text>
+  <text x="390" y="216" fill="currentColor" fill-opacity="0.75">np.shares_memory(safe, X) → False</text>
+  <text x="20" y="242" fill="currentColor" fill-opacity="0.6">Арифметика (engine / 1000), выбор по маске и по списку номеров всегда создают новый массив.</text>
+</svg>

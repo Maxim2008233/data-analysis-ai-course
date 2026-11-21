@@ -1,0 +1,459 @@
+- id: m8-l1-t1
+  title: Нейрон для одной машины
+  difficulty: warmup
+  introduces: [artificial-neuron]
+  uses: [linear-regression, standard-scaler]
+  statement: |
+    Веса `w` и смещение `b` нейрона взяты у линейной регрессии. Для машины на позиции `i` в validation (её признаки после масштабирования — `X_valid_s[i]`) посчитайте:
+
+    - `contributions` — вклады признаков: каждый признак, умноженный на свой вес;
+    - `z` — взвешенную сумму плюс смещение (через `@`);
+    - `a` — выход нейрона с активацией ReLU.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s, X_valid_s = scaler.transform(X_train), scaler.transform(X_valid)
+    linear = LinearRegression().fit(X_train_s, y_train)
+    w, b = linear.coef_, linear.intercept_
+    i = 21
+  starter: |
+    x = X_valid_s[i]
+    contributions = ...
+    z = ...
+    a = ...
+    print(X_valid.iloc[i].to_dict(), '| цена:', y_valid.iloc[i])
+    print(contributions.round(0), round(z), a)
+  solution: |
+    x = X_valid_s[i]
+    contributions = w * x
+    z = x @ w + b
+    a = max(z, 0)
+    print(X_valid.iloc[i].to_dict(), '| цена:', y_valid.iloc[i])
+    print(contributions.round(0), round(z), a)
+  explanation: |
+    - `w * x` умножает векторы поэлементно: вклады года, пробега, объёма и пробега в год — −8 252, −4 043, +847 и −157 евро.
+    - `x @ w` — сумма тех же вкладов. Со смещением 9 574 получается z = −2 030: машине 1994 года с пробегом 360 тысяч километров линейная регрессия предсказывает отрицательную цену.
+    - ReLU заменяет отрицательную сумму нулём. Настоящая цена — 4 100 евро: ошибка нейрона 4 100 вместо 6 130 у линейной регрессии.
+  hints:
+    - "Вклады — поэлементное произведение `w * x`."
+    - "Взвешенная сумма со смещением — `x @ w + b`."
+    - "ReLU для одного числа — `max(z, 0)`."
+  tests: |
+    import numpy as np
+    c = np.asarray(var('contributions'), dtype=float)
+    ensure(c.shape == (4,), '`contributions` — четыре вклада, по одному на признак.')
+    same_array(c, ref('contributions'), 'Вклады не совпадают: каждый признак машины умножьте на свой вес — `w * x`.')
+    z = var('z', 'number', 'числом')
+    if abs(z - (ref('z') - ref('b'))) < 1e-6:
+        fail('Не забудьте смещение: `z = x @ w + b`.')
+    close(z, ref('z'), '`z` — {expected}, а у вас {actual}.')
+    a = var('a', 'number', 'числом')
+    if a < 0:
+        fail('ReLU заменяет отрицательную сумму нулём: `a = max(z, 0)`.')
+    close(a, ref('a'), 'Выход нейрона — {expected}, а у вас {actual}.')
+    close(alt('z'), alt_ref('z'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        x = X_valid_s[i]
+        contributions = w * x
+        z = x @ w
+        a = max(z, 0)
+      expect: смещение
+    - code: |
+        x = X_valid_s[i]
+        contributions = w * x
+        z = x @ w + b
+        a = z
+      expect: ReLU
+
+- id: m8-l1-t2
+  title: Функции активации своими руками
+  difficulty: warmup
+  introduces: [activation-function]
+  uses: []
+  statement: |
+    Напишите три функции активации. Каждая получает массив NumPy и возвращает массив той же формы:
+
+    - `step(z)` — ступенька: 1 при z > 0, иначе 0;
+    - `sigmoid(z)` — сигмоида 1 / (1 + e^(−z));
+    - `relu(z)` — max(0, z) для каждого элемента.
+
+    Посчитайте `values` — словарь `{'step': ..., 'sigmoid': ..., 'relu': ...}` со значениями функций для массива `points`.
+  prelude: |
+    import numpy as np
+    points = np.array([-2, -0.5, 0, 0.5, 2.0])
+  starter: |
+    def step(z):
+        return ...
+
+    def sigmoid(z):
+        return ...
+
+    def relu(z):
+        return ...
+
+    values = {'step': step(points), 'sigmoid': sigmoid(points), 'relu': relu(points)}
+    for name, v in values.items():
+        print(name, np.round(v, 3))
+  solution: |
+    def step(z):
+        return (z > 0).astype(int)
+
+    def sigmoid(z):
+        return 1 / (1 + np.exp(-z))
+
+    def relu(z):
+        return np.maximum(z, 0)
+
+    values = {'step': step(points), 'sigmoid': sigmoid(points), 'relu': relu(points)}
+    for name, v in values.items():
+        print(name, np.round(v, 3))
+  explanation: |
+    - `z > 0` даёт массив True/False, `.astype(int)` превращает его в единицы и нули. При z = 0 ступенька равна 0: условие строгое.
+    - `np.exp` работает с массивом целиком: сигмоида от [−2, −0,5, 0, 0,5, 2] — [0,119, 0,378, 0,5, 0,622, 0,881].
+    - Для ReLU нужен `np.maximum(z, 0)` — поэлементный максимум. Встроенный `max(0, z)` сравнивает 0 со всем массивом сразу и падает с ошибкой.
+  hints:
+    - "Ступенька — маска `z > 0`, переведённая в числа: `.astype(int)`."
+    - "Сигмоида — `1 / (1 + np.exp(-z))`."
+    - "ReLU — `np.maximum(z, 0)`, а не `max(0, z)`."
+  tests: |
+    import numpy as np
+    rng = np.random.default_rng(7)
+    zr = rng.normal(0, 3, size=(5, 3))
+    for name in ['step', 'sigmoid', 'relu']:
+        ensure(callable(var(name)), '`%s` должна быть функцией.' % name)
+    try:
+        r = var('relu')(zr)
+    except ValueError:
+        fail('`relu` должна работать с массивом целиком: `np.maximum(z, 0)`, а не `max(0, z)`.')
+    r = np.asarray(r, dtype=float)
+    ensure(r.shape == zr.shape, '`relu` возвращает массив той же формы, что и вход.')
+    same_array(r, np.maximum(zr, 0), '`relu` неверна: ноль для отрицательных z и сама z — для положительных.')
+    s = np.asarray(var('sigmoid')(zr), dtype=float)
+    ensure(s.shape == zr.shape, '`sigmoid` возвращает массив той же формы, что и вход.')
+    if np.allclose(s, 1 / (1 + np.exp(zr))):
+        fail('Сигмоида перевёрнута: при больших z она должна быть близка к 1. Формула — `1 / (1 + np.exp(-z))`.')
+    same_array(s, 1 / (1 + np.exp(-zr)), 'Сигмоида неверна: `1 / (1 + np.exp(-z))`.')
+    st = np.asarray(var('step')(zr), dtype=float)
+    ensure(st.shape == zr.shape, '`step` возвращает массив той же формы, что и вход.')
+    same_array(st, (zr > 0).astype(float), 'Ступенька — 1 при z > 0 и 0 иначе: `(z > 0).astype(int)`.')
+    ensure(float(np.asarray(var('step')(np.array([0.0])))[0]) == 0, 'При z = 0 ступенька равна 0: условие строгое, `z > 0`.')
+    v = var('values', dict, 'словарём')
+    ensure(set(v) == {'step', 'sigmoid', 'relu'}, 'Ключи `values` — step, sigmoid и relu.')
+    for k in ['step', 'sigmoid', 'relu']:
+        same_array(np.asarray(v[k], dtype=float), np.asarray(ref('values')[k], dtype=float), '`values` по ключу %s не совпадает: посчитайте функцию для `points`.' % k)
+  wrong:
+    - code: |
+        def step(z):
+            return (z > 0).astype(int)
+        def sigmoid(z):
+            return 1 / (1 + np.exp(-z))
+        def relu(z):
+            return max(0, z)
+        values = {'step': step(points), 'sigmoid': sigmoid(points), 'relu': np.maximum(points, 0)}
+      expect: np.maximum
+    - code: |
+        def step(z):
+            return (z > 0).astype(int)
+        def sigmoid(z):
+            return 1 / (1 + np.exp(z))
+        def relu(z):
+            return np.maximum(z, 0)
+        values = {'step': step(points), 'sigmoid': sigmoid(points), 'relu': relu(points)}
+      expect: перевёрнута
+
+- id: m8-l1-t3
+  title: Где нейрон молчит
+  difficulty: main
+  introduces: []
+  uses: [artificial-neuron, activation-function, regression-metrics]
+  statement: |
+    Посчитайте выход нейрона `a` для всех машин validation: взвешенная сумма `z` (через `@`) и ReLU. Машины, для которых нейрон выдал 0, назовём «молчащими». Получите:
+
+    - `share_off` — долю молчащих машин;
+    - `mean_price_off` — среднюю настоящую цену молчащих машин;
+    - `mae_off_linear` — MAE на молчащих машинах для прогноза без активации (сумма `z`);
+    - `mae_off_relu` — MAE на них же для выхода с ReLU (`a`).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s, X_valid_s = scaler.transform(X_train), scaler.transform(X_valid)
+    linear = LinearRegression().fit(X_train_s, y_train)
+    w, b = linear.coef_, linear.intercept_
+  starter: |
+    z = ...
+    a = ...
+    off = ...                 # маска молчащих машин
+    share_off = ...
+    mean_price_off = ...
+    mae_off_linear = ...
+    mae_off_relu = ...
+    print(round(share_off, 4), round(mean_price_off), round(mae_off_linear), round(mae_off_relu))
+  solution: |
+    z = X_valid_s @ w + b
+    a = np.maximum(z, 0)
+    off = a == 0
+    share_off = off.mean()
+    mean_price_off = y_valid[off].mean()
+    mae_off_linear = mean_absolute_error(y_valid[off], z[off])
+    mae_off_relu = mean_absolute_error(y_valid[off], a[off])
+    print(round(share_off, 4), round(mean_price_off), round(mae_off_linear), round(mae_off_relu))
+  explanation: |
+    - Нейрон молчит у 7,9 % машин — там, где взвешенная сумма отрицательная. Их средняя цена — 2 755 евро: это старые недорогие машины, а не машины с «отрицательной ценой».
+    - Без активации прогнозы для них уходят в минус, MAE — 6 488 евро. С ReLU прогноз равен 0, и MAE на этих машинах в точности равна их средней цене — 2 755.
+    - Ошибка уменьшилась более чем вдвое, но 0 евро — тоже плохой прогноз. Один нейрон умеет только «срезать» прямую. Сеть из нескольких нейронов сможет предсказать для старых машин разумную цену (урок 8.2).
+  hints:
+    - "`z = X_valid_s @ w + b`, `a = np.maximum(z, 0)`."
+    - "Маска молчащих машин — `off = a == 0`; доля — `off.mean()`, средняя цена — `y_valid[off].mean()`."
+    - "MAE на молчащих машинах — `mean_absolute_error(y_valid[off], z[off])` и то же для `a[off]`."
+  tests: |
+    import numpy as np
+    s = var('share_off', 'number', 'числом')
+    if abs(s - (1 - ref('share_off'))) < 1e-9:
+        fail('`share_off` — доля машин, где нейрон выдал 0 (`a == 0`), а не где он выдал положительное число.')
+    close(s, ref('share_off'), 'Доля молчащих машин — {expected}, а у вас {actual}.')
+    m = var('mean_price_off', 'number', 'числом')
+    if abs(m - ref('y_valid').mean()) < 1e-6:
+        fail('`mean_price_off` — средняя цена только молчащих машин: `y_valid[off].mean()`.')
+    close(m, ref('mean_price_off'), 'Средняя цена молчащих машин — {expected}, а у вас {actual}.')
+    close(var('mae_off_linear', 'number', 'числом'), ref('mae_off_linear'), 'MAE без активации на молчащих машинах — {expected}, а у вас {actual}.')
+    mr = var('mae_off_relu', 'number', 'числом')
+    if abs(mr - ref('mae_off_linear')) < 1e-6:
+        fail('`mae_off_relu` считают для выхода с ReLU: `a[off]`, а не `z[off]`.')
+    close(mr, ref('mae_off_relu'), 'MAE с ReLU на молчащих машинах — {expected}, а у вас {actual}.')
+    close(alt('mae_off_linear'), alt_ref('mae_off_linear'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        z = X_valid_s @ w + b
+        a = np.maximum(z, 0)
+        off = a > 0
+        share_off = off.mean()
+        mean_price_off = y_valid[off].mean()
+        mae_off_linear = mean_absolute_error(y_valid[off], z[off])
+        mae_off_relu = mean_absolute_error(y_valid[off], a[off])
+      expect: выдал 0
+    - code: |
+        z = X_valid_s @ w + b
+        a = np.maximum(z, 0)
+        off = a == 0
+        share_off = off.mean()
+        mean_price_off = y_valid[off].mean()
+        mae_off_linear = mean_absolute_error(y_valid[off], z[off])
+        mae_off_relu = mean_absolute_error(y_valid[off], z[off])
+      expect: "`a[off]`"
+
+- id: m8-l1-t4
+  title: Логические нейроны и XOR
+  difficulty: main
+  introduces: []
+  uses: [artificial-neuron, activation-function]
+  statement: |
+    Функция `step_neuron(X, weights, bias)` — нейрон со ступенькой: 1, если `X @ weights + bias > 0`, иначе 0. Подберите два веса и смещение для трёх нейронов:
+
+    - `w_and`, `b_and` — «И» (AND): 1 только для входа (1, 1);
+    - `w_or`, `b_or` — «ИЛИ» (OR): 1, если хотя бы один вход равен 1;
+    - `w_nand`, `b_nand` — «НЕ-И» (NAND): 0 только для входа (1, 1).
+
+    Затем соберите из них XOR. Первый слой — `hidden`: таблица 4 × 2, столбцы — выходы нейронов «ИЛИ» и «НЕ-И» для `inputs`. Второй слой — нейрон «И» от `hidden`: `xor_out`.
+  prelude: |
+    import numpy as np
+    inputs = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
+
+    def step_neuron(X, weights, bias):
+        return (np.asarray(X) @ np.asarray(weights, dtype=float) + bias > 0).astype(int)
+  starter: |
+    w_and = np.array([..., ...])
+    b_and = ...
+    w_or = ...
+    b_or = ...
+    w_nand = ...
+    b_nand = ...
+    print('AND: ', step_neuron(inputs, w_and, b_and))
+    print('OR:  ', step_neuron(inputs, w_or, b_or))
+    print('NAND:', step_neuron(inputs, w_nand, b_nand))
+    hidden = ...
+    xor_out = ...
+    print('XOR: ', xor_out)
+  solution: |
+    w_and = np.array([1, 1])
+    b_and = -1.5
+    w_or = np.array([1, 1])
+    b_or = -0.5
+    w_nand = np.array([-1, -1])
+    b_nand = 1.5
+    print('AND: ', step_neuron(inputs, w_and, b_and))
+    print('OR:  ', step_neuron(inputs, w_or, b_or))
+    print('NAND:', step_neuron(inputs, w_nand, b_nand))
+    hidden = np.column_stack([step_neuron(inputs, w_or, b_or), step_neuron(inputs, w_nand, b_nand)])
+    xor_out = step_neuron(hidden, w_and, b_and)
+    print('XOR: ', xor_out)
+  explanation: |
+    - Для AND сумма входов равна 2 только у (1, 1): порог между 1 и 2, смещение −1,5. Для OR порог между 0 и 1: смещение −0,5. NAND — AND с обратными знаками: веса −1, смещение +1,5.
+    - Подходят и другие числа: нейрону важно лишь, по какую сторону прямой w₁x₁ + w₂x₂ + b = 0 лежит точка.
+    - XOR = «хотя бы один» И «не оба». Первый слой из двух нейронов переводит четыре точки в новые координаты: (0, 1), (1, 1), (1, 1), (1, 0). В них нужные точки уже отделяются одной прямой, и с этим справляется нейрон «И». Так скрытый слой делает возможным то, что не умеет один нейрон.
+  hints:
+    - "Сумма двух входов равна 0, 1 или 2. Для AND порог — между 1 и 2: веса `[1, 1]`, смещение `-1.5`."
+    - "Для OR порог между 0 и 1: смещение `-0.5`. NAND — AND с обратными знаками: веса `[-1, -1]`, смещение `1.5`."
+    - "`hidden = np.column_stack([step_neuron(inputs, w_or, b_or), step_neuron(inputs, w_nand, b_nand)])`, затем `xor_out = step_neuron(hidden, w_and, b_and)`."
+  tests: |
+    import numpy as np
+    X4 = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
+
+    def neuron(Xm, wv, bv):
+        return (np.asarray(Xm, dtype=float) @ np.asarray(wv, dtype=float) + float(bv) > 0).astype(int)
+
+    labels = {'and': '«И» (AND)', 'or': '«ИЛИ» (OR)', 'nand': '«НЕ-И» (NAND)'}
+    for name, target in [('and', [0, 0, 0, 1]), ('or', [0, 1, 1, 1]), ('nand', [1, 1, 1, 0])]:
+        wv = np.asarray(var('w_' + name), dtype=float)
+        ensure(wv.shape == (2,), '`w_%s` — два веса, по одному на вход.' % name)
+        got = neuron(X4, wv, var('b_' + name, 'number', 'числом')).tolist()
+        ensure(got == target, 'Нейрон %s с вашими весами выдаёт %s, а нужно %s.' % (labels[name], got, target))
+    h = np.asarray(var('hidden'))
+    ensure(h.shape == (4, 2), '`hidden` — таблица 4 × 2: выходы нейронов «ИЛИ» и «НЕ-И» для каждого из четырёх входов.')
+    ensure(h.tolist() in ([[0, 1], [1, 1], [1, 1], [1, 0]], [[1, 0], [1, 1], [1, 1], [0, 1]]),
+           '`hidden` — выходы нейронов «ИЛИ» и «НЕ-И» (NAND) по столбцам: `np.column_stack([...])`.')
+    xo = np.asarray(var('xor_out')).ravel().tolist()
+    ensure(xo == [0, 1, 1, 0], 'XOR должен дать [0, 1, 1, 0], а у вас %s. Второй слой — нейрон «И» от `hidden`.' % xo)
+  wrong:
+    - code: |
+        w_and = np.array([1, 1])
+        b_and = -0.5
+        w_or = np.array([1, 1])
+        b_or = -0.5
+        w_nand = np.array([-1, -1])
+        b_nand = 1.5
+        hidden = np.column_stack([step_neuron(inputs, w_or, b_or), step_neuron(inputs, w_nand, b_nand)])
+        xor_out = step_neuron(hidden, w_and, b_and)
+      expect: AND
+    - code: |
+        w_and = np.array([1, 1])
+        b_and = -1.5
+        w_or = np.array([1, 1])
+        b_or = -0.5
+        w_nand = np.array([-1, -1])
+        b_nand = 1.5
+        hidden = np.column_stack([step_neuron(inputs, w_or, b_or), step_neuron(inputs, w_and, b_and)])
+        xor_out = step_neuron(hidden, w_and, b_and)
+      expect: NAND
+
+- id: m8-l1-t5
+  title: Почему признаки масштабируют
+  difficulty: star
+  introduces: []
+  uses: [activation-function, standard-scaler]
+  statement: |
+    У нейрона с сигмоидой веса `w0` и смещение `b0`. Сравните его на исходных признаках `X_valid` и на масштабированных `X_valid_s`:
+
+    - `z_raw` и `z_scaled` — взвешенные суммы для каждой машины validation;
+    - `slope_raw` и `slope_scaled` — наклоны сигмоиды σ(z)·(1 − σ(z)) в этих точках;
+    - `share_saturated` — словарь `{'raw': ..., 'scaled': ...}`: доля машин, у которых наклон меньше 0,001 (нейрон насыщен);
+    - `mean_slope` — словарь `{'raw': ..., 'scaled': ...}`: средний наклон.
+
+    Сигмоида `sigmoid` уже записана — через tanh, чтобы не было переполнения при огромных |z|.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_valid_s = scaler.transform(X_valid)
+
+    def sigmoid(t):
+        return 0.5 * (1 + np.tanh(t / 2))    # то же, что 1 / (1 + e^(-t))
+
+    w0 = np.array([0.5, -0.3, 0.4, 0.2])
+    b0 = 0.0
+  starter: |
+    z_raw = ...
+    z_scaled = ...
+    slope_raw = ...
+    slope_scaled = ...
+    share_saturated = {'raw': ..., 'scaled': ...}
+    mean_slope = {'raw': ..., 'scaled': ...}
+    print(share_saturated)
+    print(mean_slope)
+  solution: |
+    z_raw = X_valid.to_numpy() @ w0 + b0
+    z_scaled = X_valid_s @ w0 + b0
+    slope_raw = sigmoid(z_raw) * (1 - sigmoid(z_raw))
+    slope_scaled = sigmoid(z_scaled) * (1 - sigmoid(z_scaled))
+    share_saturated = {'raw': (slope_raw < 0.001).mean(), 'scaled': (slope_scaled < 0.001).mean()}
+    mean_slope = {'raw': slope_raw.mean(), 'scaled': slope_scaled.mean()}
+    print(share_saturated)
+    print(mean_slope)
+  explanation: |
+    - На исходных признаках суммы огромные: пробег в сотни тысяч километров с весом −0,3 даёт z до −290 000. Сигмоида там ровно 0 или 1, наклон практически нулевой. Насыщены 6 413 машин из 6 414.
+    - После StandardScaler признаки порядка единицы, z — от −3,7 до 2,8, и ни один нейрон не насыщен. Средний наклон 0,22 — близко к максимуму 0,25.
+    - Градиент, по которому учится сеть, пропорционален наклону. На сырых признаках нейрон с такими весами почти не учится, поэтому перед нейросетью признаки обязательно масштабируют.
+  hints:
+    - "Суммы: `X_valid.to_numpy() @ w0 + b0` и `X_valid_s @ w0 + b0`."
+    - "Наклон: `sigmoid(z_raw) * (1 - sigmoid(z_raw))`, то же для `z_scaled`."
+    - "Доля насыщенных — `(slope_raw < 0.001).mean()`, средний наклон — `slope_raw.mean()`."
+  tests: |
+    import numpy as np
+    n = len(ref('y_valid'))
+    zr = np.asarray(var('z_raw'), dtype=float)
+    ensure(zr.shape == (n,), '`z_raw` — по взвешенной сумме на каждую машину validation ({0} значений).'.format(n))
+    same_array(zr, ref('z_raw'), '`z_raw` — сумма по исходным признакам: `X_valid.to_numpy() @ w0 + b0`.')
+    zs = np.asarray(var('z_scaled'), dtype=float)
+    if zs.shape == zr.shape and np.allclose(zs, ref('z_raw')):
+        fail('`z_scaled` считают по масштабированным признакам `X_valid_s`.')
+    same_array(zs, ref('z_scaled'), '`z_scaled` — `X_valid_s @ w0 + b0`.')
+    ss = np.asarray(var('slope_scaled'), dtype=float)
+    if ss.shape == zs.shape and np.allclose(ss, ref('sigmoid')(ref('z_scaled'))):
+        fail('Наклон — не сама сигмоида, а σ(z)·(1 − σ(z)): `sigmoid(z) * (1 - sigmoid(z))`.')
+    same_array(ss, ref('slope_scaled'), '`slope_scaled` — `sigmoid(z_scaled) * (1 - sigmoid(z_scaled))`.')
+    same_array(np.asarray(var('slope_raw'), dtype=float), ref('slope_raw'), '`slope_raw` — наклон сигмоиды в точках `z_raw`.')
+    d = var('share_saturated', dict, 'словарём')
+    ensure(set(d) == {'raw', 'scaled'}, 'Ключи `share_saturated` — raw и scaled.')
+    close(d['raw'], ref('share_saturated')['raw'], 'Доля насыщенных на исходных признаках — {expected}, а у вас {actual}.')
+    close(d['scaled'], ref('share_saturated')['scaled'], 'Доля насыщенных на масштабированных признаках — {expected}, а у вас {actual}.')
+    m = var('mean_slope', dict, 'словарём')
+    ensure(set(m) == {'raw', 'scaled'}, 'Ключи `mean_slope` — raw и scaled.')
+    close(m['raw'], ref('mean_slope')['raw'], 'Средний наклон на исходных признаках — {expected}, а у вас {actual}.')
+    close(m['scaled'], ref('mean_slope')['scaled'], 'Средний наклон на масштабированных признаках — {expected}, а у вас {actual}.')
+    close(alt('mean_slope')['scaled'], alt_ref('mean_slope')['scaled'], HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        z_raw = X_valid.to_numpy() @ w0 + b0
+        z_scaled = X_valid_s @ w0 + b0
+        slope_raw = sigmoid(z_raw)
+        slope_scaled = sigmoid(z_scaled)
+        share_saturated = {'raw': (slope_raw < 0.001).mean(), 'scaled': (slope_scaled < 0.001).mean()}
+        mean_slope = {'raw': slope_raw.mean(), 'scaled': slope_scaled.mean()}
+      expect: не сама сигмоида
+    - code: |
+        z_raw = X_valid.to_numpy() @ w0 + b0
+        z_scaled = X_valid.to_numpy() @ w0 + b0
+        slope_raw = sigmoid(z_raw) * (1 - sigmoid(z_raw))
+        slope_scaled = sigmoid(z_scaled) * (1 - sigmoid(z_scaled))
+        share_saturated = {'raw': (slope_raw < 0.001).mean(), 'scaled': (slope_scaled < 0.001).mean()}
+        mean_slope = {'raw': slope_raw.mean(), 'scaled': slope_scaled.mean()}
+      expect: масштабированным признакам

@@ -1,0 +1,303 @@
+- id: m2-l1-t1
+  title: Загрузите таблицу и узнайте её размер
+  difficulty: warmup
+  introduces: [pd-read-csv, pd-dataframe]
+  uses: []
+  statement: |
+    Прочитайте файл `cars.csv` в переменную `raw`, сделайте рабочую копию `df` и получите `n_rows` и `n_cols` — число строк и колонок таблицы. Распакуйте атрибут `df.shape` в две переменные.
+  prelude: |
+    import pandas as pd
+  starter: |
+    raw = ...
+    df = raw.copy()
+    n_rows, n_cols = ...
+    print(n_rows, n_cols)
+  solution: |
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+    n_rows, n_cols = df.shape
+    print(n_rows, n_cols)
+  explanation: |
+    - `pd.read_csv('cars.csv')` читает файл в таблицу `DataFrame`.
+    - `raw.copy()` — независимая копия: дальше меняем только `df`, а исходник `raw` остаётся нетронутым.
+    - `df.shape` — пара «строки, колонки»; запись `n_rows, n_cols = df.shape` раскладывает её в две переменные. Это атрибут, поэтому без скобок.
+  alternatives:
+    - |
+      raw = pd.read_csv('cars.csv')
+      df = raw.copy()
+      n_rows = len(df)
+      n_cols = len(df.columns)
+  hints:
+    - Какая функция pandas читает CSV-файл? Где хранится размер таблицы?
+    - "Чтение — `pd.read_csv('имя файла')`; размер — атрибут `df.shape` (без скобок), это пара (строки, колонки)."
+    - "`raw = pd.read_csv('cars.csv')`, затем `n_rows, n_cols = df.shape`."
+  tests: |
+    import pandas as pd
+    r = var('raw', pd.DataFrame, 'таблицей DataFrame (результат `pd.read_csv`)')
+    d = var('df', pd.DataFrame, 'таблицей DataFrame')
+    ensure(d is not r, '`df` и `raw` — один и тот же объект. Сделайте копию: `df = raw.copy()`, иначе изменения df испортят исходник.')
+    equal(var('n_rows', 'int', 'целым числом'), ref('n_rows'), 'Строк должно быть {expected}, а у вас {actual}. Число строк — первый элемент `df.shape`.')
+    equal(var('n_cols', 'int', 'целым числом'), ref('n_cols'), 'Колонок должно быть {expected}, а у вас {actual}. Число колонок — второй элемент `df.shape`.')
+    equal(alt('n_rows'), alt_ref('n_rows'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        raw = pd.read_csv('cars.csv')
+        df = raw
+        n_rows, n_cols = df.shape
+      expect: один и тот же объект
+    - code: |
+        raw = pd.read_csv('cars.csv')
+        df = raw.copy()
+        n_rows, n_cols = 41007, 9
+      expect: вписан вручную
+    - code: |
+        raw = pd.read_csv('cars.csv')
+        df = raw.copy()
+        n_cols, n_rows = df.shape
+      expect: Строк должно быть
+
+- id: m2-l1-t2
+  title: Названия колонок и целевая переменная
+  difficulty: warmup
+  introduces: [pd-dataframe]
+  uses: []
+  statement: |
+    Получите:
+
+    - `columns` — список названий колонок (обычный список Python);
+    - `target_name` — название **последней** колонки, это целевая переменная задачи оценки цены (возьмите его из списка отрицательным индексом).
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')   # загрузка — задание 2.1.1
+    df = raw.copy()
+  starter: |
+    columns = ...
+    target_name = ...
+    print(len(columns), target_name)
+  solution: |
+    columns = df.columns.tolist()
+    target_name = columns[-1]
+    print(len(columns), target_name)
+  explanation: |
+    - `df.columns` — названия колонок; `.tolist()` превращает их в обычный список Python.
+    - `columns[-1]` — последний элемент списка (отрицательные индексы считают с конца).
+  alternatives:
+    - |
+      columns = list(df.columns)
+      target_name = columns[-1]
+  hints:
+    - Какой атрибут таблицы хранит названия колонок? Как превратить его в список?
+    - "`df.columns.tolist()` — список имён; последний элемент — индекс `[-1]`."
+    - "`columns = df.columns.tolist()`, `target_name = columns[-1]`."
+  tests: |
+    c = var('columns', list, 'списком (используйте `.tolist()` или `list(...)`)')
+    expected = ref('columns')
+    if len(c) != len(expected):
+        fail('В списке {0} названий, а колонок в таблице {1}.'.format(len(c), len(expected)))
+    equal(c, expected, 'Список колонок должен быть {expected}, а у вас {actual}. Порядок — как в таблице.')
+    equal(var('target_name', str, 'строкой'), 'Price(euro)', 'Последняя колонка — {expected}, а у вас {actual}.')
+    ensure('[-1]' in source(), 'Возьмите последнее название отрицательным индексом `[-1]` — так код не зависит от числа колонок.')
+  wrong:
+    - code: |
+        columns = df.columns
+        target_name = columns[-1]
+      expect: списком
+    - code: |
+        columns = df.columns.tolist()
+        target_name = 'Price(euro)'
+      expect: "[-1]"
+
+- id: m2-l1-t3
+  title: Колонка — это Series
+  difficulty: main
+  introduces: [pd-dataframe]
+  uses: [bool-mask]
+  statement: |
+    Возьмите колонку года выпуска в переменную `year` (это должна быть Series) и получите:
+
+    - `newest_year` — самый поздний год выпуска;
+    - `share_after_2015` — долю объявлений с годом выпуска **позже** 2015.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+  starter: |
+    year = ...
+    newest_year = ...
+    share_after_2015 = ...
+    print(newest_year, round(share_after_2015, 4))
+  solution: |
+    year = df['Year']
+    newest_year = year.max()
+    share_after_2015 = (year > 2015).mean()
+    print(newest_year, round(share_after_2015, 4))
+  explanation: |
+    - `df['Year']` — колонка по имени, это Series.
+    - `year.max()` — наибольшее значение, как у массива NumPy.
+    - `year > 2015` — маска-Series из True/False; её среднее — доля объявлений новее 2015 года (урок 1.5).
+  hints:
+    - Колонку выбирают по имени в квадратных скобках. Какие методы Series дают максимум и среднее?
+    - "`df['Year']` — Series; `.max()` — максимум; доля — среднее маски `(year > 2015).mean()`."
+    - "`year = df['Year']`, `newest_year = year.max()`, `share_after_2015 = (year > 2015).mean()`."
+  tests: |
+    import pandas as pd
+    y = var('year', pd.Series, 'колонкой Series: `df[\'Year\']`')
+    same_frame(y, ref('year'), 'В `year` должна быть колонка `Year`.')
+    equal(int(var('newest_year', 'number', 'числом')), int(ref('newest_year')), 'Самый поздний год — {expected}, а у вас {actual}.')
+    s = var('share_after_2015', 'number', 'числом')
+    if abs(float(s) - float((ref('year') >= 2015).mean())) < 1e-12:
+        fail('В долю попали и машины 2015 года. Нужно строго позже: `year > 2015`.')
+    close(s, ref('share_after_2015'), 'Доля должна быть {expected}, а у вас {actual}. Доля — среднее маски `(year > 2015).mean()`.')
+    close(alt('share_after_2015'), alt_ref('share_after_2015'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        year = df[['Year']]
+        newest_year = year.max()
+        share_after_2015 = (year > 2015).mean()
+      expect: колонкой Series
+    - code: |
+        year = df['Year']
+        newest_year = year.max()
+        share_after_2015 = (year >= 2015).mean()
+      expect: строго позже
+
+- id: m2-l1-t4
+  title: Воспроизводимые случайные строки
+  difficulty: main
+  introduces: [pd-dataframe]
+  uses: [rng-sample]
+  statement: |
+    Получите `sample5` — пять случайных строк таблицы `df` с `random_state=7`, и `sample5_again` — тот же вызов ещё раз. Затем `same` — результат сравнения двух выборок методом `.equals(...)`: если выбор воспроизводим, должно получиться `True`.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+  starter: |
+    sample5 = ...
+    sample5_again = ...
+    same = ...
+    print(same)
+    sample5
+  solution: |
+    sample5 = df.sample(5, random_state=7)
+    sample5_again = df.sample(5, random_state=7)
+    same = sample5.equals(sample5_again)
+    print(same)
+    sample5
+  explanation: |
+    - `df.sample(5, random_state=7)` — пять случайных строк; `random_state` фиксирует выбор, как seed генератора (урок 1.9).
+    - Повторный вызов с тем же `random_state` выбирает те же строки.
+    - `a.equals(b)` — True, если таблицы совпадают полностью: значения, колонки и метки строк.
+  hints:
+    - Какой метод выбирает случайные строки таблицы и какой параметр делает выбор повторяемым?
+    - "`df.sample(n, random_state=...)`; сравнение таблиц целиком — `a.equals(b)`."
+    - "`sample5 = df.sample(5, random_state=7)` — и так же `sample5_again`; `same = sample5.equals(sample5_again)`."
+  tests: |
+    import pandas as pd
+    s = var('sample5', pd.DataFrame, 'таблицей DataFrame')
+    if len(s) != 5:
+        fail('В `sample5` {0} строк, а нужно 5.'.format(len(s)))
+    same_frame(s, ref('sample5'), 'Выборка не совпадает с `df.sample(5, random_state=7)`. Проверьте значение random_state.')
+    same_frame(var('sample5_again', pd.DataFrame, 'таблицей DataFrame'), ref('sample5'), '`sample5_again` должна совпасть с `sample5`: используйте тот же random_state=7.')
+    equal(bool(var('same')), True, '`same` должно быть True — выборки с одинаковым random_state совпадают.')
+    same_frame(alt('sample5'), alt_ref('sample5'), 'На другой части данных выборка должна получиться другой. Не вписывайте строки вручную — вызовите df.sample.')
+  wrong:
+    - code: |
+        sample5 = df.sample(5)
+        sample5_again = df.sample(5)
+        same = sample5.equals(sample5_again)
+      expect: random_state
+    - code: |
+        sample5 = df.head(5)
+        sample5_again = df.head(5)
+        same = True
+      expect: Выборка не совпадает
+
+- id: m2-l1-t5
+  kind: quiz
+  title: Что в таблице и что мы предсказываем
+  difficulty: main
+  introduces: [pd-dataframe]
+  uses: [observation-feature]
+  statement: |
+    Проверьте, как вы поняли смысл таблицы объявлений и постановку задачи.
+  quiz:
+    - q: Что представляет одна строка файла `cars.csv`?
+      options:
+        - Одно объявление о продаже автомобиля
+        - Одну совершённую сделку
+        - Одну модель автомобиля со средней ценой
+        - Один автосалон
+      answer: 0
+      explain: Каждая строка — объявление на вторичном рынке. Одна и та же модель встречается во многих строках.
+    - q: Какая колонка — целевая переменная в задаче оценки цены?
+      options:
+        - "`Year`"
+        - "`Price(euro)`"
+        - "`Make`"
+      answer: 1
+      explain: Предсказываем цену, значит цель — `Price(euro)`. Остальные колонки — входные признаки.
+    - q: Мы хотим по характеристикам предсказать, автоматическая ли коробка (`AutoTransmission`). Как называется такая задача?
+      options:
+        - Регрессия
+        - Классификация
+        - Сортировка
+      answer: 1
+      explain: Ответ — одна из двух категорий (True/False), это классификация. Регрессия — когда ответ число.
+    - q: Почему вывод «машина стоит N евро» по этим данным нужно формулировать осторожно?
+      options:
+        - В файле цены предложения, а не цены сделок, и нет дат объявлений
+        - Pandas округляет цены
+        - Цены записаны в долларах
+      answer: 0
+      explain: Продавец может уступить в цене, а рынок меняется со временем — дат в файле нет.
+  hints:
+    - Перечитайте разделы «Зачем это нужно» и «Что означают колонки».
+    - "Строка — объявление; цель — то, что предсказываем; число → регрессия, категория → классификация."
+    - "Ответы: объявление; `Price(euro)`; классификация; цены предложения без дат."
+
+- id: m2-l1-t6
+  title: Прочитайте только нужные колонки
+  difficulty: star
+  introduces: [pd-read-csv]
+  uses: [np-genfromtxt]
+  statement: |
+    Как `usecols` в `np.genfromtxt`, параметр `usecols` у `pd.read_csv` читает только выбранные колонки — но их можно назвать по именам. Прочитайте из `cars.csv` в таблицу `small` только колонки `Make`, `Year` и `Price(euro)` и получите `small_shape` — её размер.
+  prelude: |
+    import pandas as pd
+  starter: |
+    small = ...
+    small_shape = ...
+    print(small_shape)
+    small.head(3)
+  solution: |
+    small = pd.read_csv('cars.csv', usecols=['Make', 'Year', 'Price(euro)'])
+    small_shape = small.shape
+    print(small_shape)
+    small.head(3)
+  explanation: |
+    - `usecols=[...]` — список имён колонок, которые нужно прочитать; остальные pandas пропустит.
+    - Колонки идут в порядке файла, а не в порядке списка: `Make`, `Year`, `Price(euro)`.
+    - `small.shape` — по-прежнему все строки, но только три колонки.
+  hints:
+    - Какой параметр `read_csv` ограничивает набор колонок? Он похож на параметр `np.genfromtxt` из урока 1.1.
+    - "`pd.read_csv('cars.csv', usecols=[список имён])`; размер — `.shape`."
+    - "`small = pd.read_csv('cars.csv', usecols=['Make', 'Year', 'Price(euro)'])`."
+  tests: |
+    import pandas as pd
+    s = var('small', pd.DataFrame, 'таблицей DataFrame')
+    cols = [str(c) for c in s.columns]
+    if sorted(cols) != sorted(['Make', 'Year', 'Price(euro)']):
+        fail('В `small` колонки {0}, а нужны только Make, Year и Price(euro).'.format(cols))
+    ensure(calls('read_csv') and 'usecols' in source(), 'Прочитайте файл с параметром `usecols=[...]`, а не выбирайте колонки после чтения.')
+    equal(tuple(var('small_shape', tuple, 'парой (строки, колонки) — атрибутом .shape')), tuple(ref('small_shape')), 'Размер должен быть {expected}, а у вас {actual}.')
+    equal(tuple(alt('small_shape')), tuple(alt_ref('small_shape')), HARDCODE_MSG)
+  wrong:
+    - code: |
+        small = pd.read_csv('cars.csv')[['Make', 'Year', 'Price(euro)']]
+        small_shape = small.shape
+      expect: usecols
+    - code: |
+        small = pd.read_csv('cars.csv', usecols=['Make', 'Year'])
+        small_shape = small.shape
+      expect: нужны только

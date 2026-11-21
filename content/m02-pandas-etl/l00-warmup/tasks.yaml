@@ -1,0 +1,284 @@
+- id: m2-l0-t1
+  title: Доля дешёвых объявлений
+  difficulty: warmup
+  introduces: []
+  uses: [bool-mask]
+  statement: |
+    Получите `n_cheap` — число объявлений с ценой **строго меньше** 3000 евро — и `share_cheap` — долю таких объявлений среди всех записей.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]   # векторы признаков — урок 1.3
+  starter: |
+    cheap = ...
+    n_cheap = ...
+    share_cheap = ...
+    print(n_cheap, round(share_cheap, 4))
+  solution: |
+    cheap = price < 3000
+    n_cheap = cheap.sum()
+    share_cheap = cheap.mean()
+    print(n_cheap, round(share_cheap, 4))
+  explanation: |
+    - `price < 3000` — поэлементное сравнение, получается маска из `True`/`False`.
+    - `.sum()` считает `True` (каждое — единица), то есть количество подходящих цен.
+    - `.mean()` — среднее из единиц и нулей, то есть доля подходящих цен.
+  alternatives:
+    - |
+      n_cheap = np.count_nonzero(price < 3000)
+      share_cheap = n_cheap / len(price)
+  hints:
+    - Сначала постройте маску сравнением, потом посчитайте по ней количество и долю.
+    - "Маска: `price < 3000`. У маски есть `.sum()` (количество) и `.mean()` (доля) — урок 1.5."
+    - "`cheap = price < 3000`, затем `n_cheap = cheap.sum()` и `share_cheap = cheap.mean()`."
+  tests: |
+    price = ref('price')
+    n = var('n_cheap', 'number', 'числом')
+    if n == ref('n_cheap') + int((price == 3000).sum()) and n != ref('n_cheap'):
+        fail('Получилось {0}: похоже, в подсчёт попали и цены, равные 3000. Нужно строго меньше: `price < 3000`.'.format(int(n)))
+    close(n, ref('n_cheap'), 'Объявлений дешевле 3000 евро должно быть {expected}, а у вас {actual}.')
+    close(var('share_cheap', 'number', 'числом'), ref('share_cheap'), 'Доля должна быть {expected}, а у вас {actual}. Доля маски — её среднее: `(price < 3000).mean()`.')
+    close(alt('n_cheap'), alt_ref('n_cheap'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        cheap = price <= 3000
+        n_cheap = cheap.sum()
+        share_cheap = cheap.mean()
+      expect: строго меньше
+    - code: |
+        cheap = price < 3000
+        n_cheap = cheap.sum()
+        share_cheap = n_cheap / 100
+      expect: Доля должна быть
+
+- id: m2-l0-t2
+  title: Старые машины с большим пробегом
+  difficulty: warmup
+  introduces: []
+  uses: [mask-combine]
+  statement: |
+    Получите `n_old_long` — число объявлений, у которых год выпуска **меньше 2000** и при этом пробег **больше 300 000 км**.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]
+  starter: |
+    old_long = ...
+    n_old_long = ...
+    print(n_old_long)
+  solution: |
+    old_long = (year < 2000) & (distance > 300_000)
+    n_old_long = old_long.sum()
+    print(n_old_long)
+  explanation: |
+    - `(year < 2000)` и `(distance > 300_000)` — две маски одной длины.
+    - `&` — поэлементное «и»: `True` только там, где верны оба условия. Каждое сравнение — в скобках.
+    - `.sum()` считает подходящие записи.
+  hints:
+    - Нужны оба условия одновременно. Каким оператором объединяют маски NumPy?
+    - "Поэлементное «и» — `&`, каждое сравнение в скобках: `(year < 2000) & (...)` — урок 1.5."
+    - "`old_long = (year < 2000) & (distance > 300_000)`, затем `.sum()`."
+  tests: |
+    year, distance = ref('year'), ref('distance')
+    v = var('n_old_long', 'number', 'числом')
+    if v == int(((year < 2000) | (distance > 300_000)).sum()):
+        fail('Получилось слишком много записей: похоже, вы объединили условия через `|` («или»). Нужно «и» — оператор `&`.')
+    close(v, ref('n_old_long'), 'Подходящих объявлений должно быть {expected}, а у вас {actual}. Проверьте знаки: год строго меньше 2000, пробег строго больше 300 000.')
+    close(alt('n_old_long'), alt_ref('n_old_long'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        old_long = (year < 2000) | (distance > 300_000)
+        n_old_long = old_long.sum()
+      expect: "`|`"
+    - code: |
+        old_long = (year < 2000) and (distance > 300_000)
+        n_old_long = old_long.sum()
+      expect: if / and / or
+
+- id: m2-l0-t3
+  title: Пропуски и медиана объёма
+  difficulty: warmup
+  introduces: []
+  uses: [nan-inf, mean-median]
+  statement: |
+    Получите `n_missing_engine` — число пропусков в векторе `engine` — и `median_engine` — медиану **известных** значений объёма двигателя.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]
+  starter: |
+    missing = ...
+    n_missing_engine = ...
+    median_engine = ...
+    print(n_missing_engine, median_engine)
+  solution: |
+    missing = np.isnan(engine)
+    n_missing_engine = missing.sum()
+    median_engine = np.median(engine[~missing])
+    print(n_missing_engine, median_engine)
+  explanation: |
+    - `np.isnan(engine)` — маска пропусков; `.sum()` — их число.
+    - `~missing` — обратная маска: известные значения; `engine[~missing]` оставляет только их.
+    - `np.median` по известным значениям даёт число, а не `nan`.
+  alternatives:
+    - |
+      n_missing_engine = np.isnan(engine).sum()
+      median_engine = np.nanmedian(engine)
+  hints:
+    - Пропуск нельзя найти сравнением `== np.nan`. Какая функция NumPy находит пропуски?
+    - "`np.isnan(engine)` — маска пропусков, `~маска` — известные значения (урок 1.5); медиана — `np.median` (урок 1.6)."
+    - "`median_engine = np.median(engine[~np.isnan(engine)])`."
+  tests: |
+    import math
+    n = var('n_missing_engine', 'number', 'числом')
+    if n == 0:
+        fail('Получилось 0 пропусков. Сравнение с `np.nan` всегда даёт False — используйте `np.isnan(engine)`.')
+    close(n, ref('n_missing_engine'), 'Пропусков должно быть {expected}, а у вас {actual}.')
+    m = var('median_engine', 'number', 'числом')
+    if math.isnan(float(m)):
+        fail('Медиана получилась nan: `np.median` учитывает пропуски. Возьмите только известные значения `engine[~np.isnan(engine)]` или используйте `np.nanmedian`.')
+    close(m, ref('median_engine'), 'Медиана известных значений должна быть {expected}, а у вас {actual}.')
+    close(alt('n_missing_engine'), alt_ref('n_missing_engine'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        missing = np.isnan(engine)
+        n_missing_engine = missing.sum()
+        median_engine = np.median(engine)
+      expect: получилась nan
+    - code: |
+        missing = engine == np.nan
+        n_missing_engine = missing.sum()
+        median_engine = np.nanmedian(engine)
+      expect: np.isnan
+
+- id: m2-l0-t4
+  title: Словарь-переводчик с запасным значением
+  difficulty: warmup
+  introduces: []
+  uses: [py-dicts, py-loops]
+  statement: |
+    Переведите список `fuels` на русский с помощью словаря `fuel_ru`. Получите список `fuels_ru` той же длины: если типа топлива нет в словаре, поставьте `'другое'`. Затем посчитайте `n_other` — сколько раз встретилось `'другое'`.
+  prelude: |
+    fuels = ['Diesel', 'Petrol', 'Electric', 'Diesel', 'Hybrid', 'Metan/Propan', 'Petrol']
+    fuel_ru = {'Petrol': 'бензин', 'Diesel': 'дизель', 'Hybrid': 'гибрид'}
+  starter: |
+    fuels_ru = ...
+    n_other = ...
+    print(fuels_ru, n_other)
+  solution: |
+    fuels_ru = [fuel_ru.get(f, 'другое') for f in fuels]
+    n_other = fuels_ru.count('другое')
+    print(fuels_ru, n_other)
+  explanation: |
+    - `fuel_ru.get(f, 'другое')` возвращает перевод, а для отсутствующего ключа — запасное значение `'другое'` вместо ошибки `KeyError`.
+    - Генератор списка применяет перевод к каждому элементу `fuels` по порядку.
+    - `list.count('другое')` считает вхождения значения в список.
+  alternatives:
+    - |
+      fuels_ru = []
+      for f in fuels:
+          if f in fuel_ru:
+              fuels_ru.append(fuel_ru[f])
+          else:
+              fuels_ru.append('другое')
+      n_other = sum(1 for x in fuels_ru if x == 'другое')
+  hints:
+    - Обращение `fuel_ru['Electric']` упадёт с ошибкой. Какой метод словаря возвращает запасное значение?
+    - "`словарь.get(ключ, запасное)`; пройти по списку удобно генератором списка `[... for f in fuels]`; количество — `список.count(...)`."
+    - "`fuels_ru = [fuel_ru.get(f, 'другое') for f in fuels]`, `n_other = fuels_ru.count('другое')`."
+  tests: |
+    fuels = ref('fuels')
+    v = var('fuels_ru', list, 'списком')
+    if len(v) != len(fuels):
+        fail('В `fuels_ru` {0} элементов, а должно быть {1} — по одному на каждый элемент `fuels`.'.format(len(v), len(fuels)))
+    expected = ref('fuels_ru')
+    for i, (a, e) in enumerate(zip(v, expected)):
+        if a != e:
+            fail('Элемент {0} (для {1!r}) должен быть {2!r}, а у вас {3!r}.'.format(i, fuels[i], e, a))
+    equal(var('n_other', 'int', 'целым числом'), ref('n_other'), '`n_other` должно быть {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        fuels_ru = [fuel_ru[f] for f in fuels]
+        n_other = 0
+      expect: "'Electric'"
+    - code: |
+        fuels_ru = [fuel_ru.get(f) for f in fuels]
+        n_other = fuels_ru.count(None)
+      expect: "'другое'"
+
+- id: m2-l0-t5
+  title: Функция категории с веткой для пропуска
+  difficulty: main
+  introduces: []
+  uses: [py-functions, nan-inf]
+  statement: |
+    Напишите функцию `km_level(km)`, которая по годовому пробегу возвращает категорию:
+
+    - `'неизвестно'`, если значение — пропуск (`nan`);
+    - `'малый'` — до 10 000 км **включительно**;
+    - `'средний'` — свыше 10 000 до 30 000 км включительно;
+    - `'большой'` — свыше 30 000 км.
+
+    Проверка вызовет функцию на граничных значениях 10 000, 10 001, 30 000, 30 001 и на пропуске.
+  prelude: |
+    import numpy as np
+  starter: |
+    def km_level(km):
+        ...
+
+    for km in [0, 10_000, 10_001, 30_000, 30_001, np.nan]:
+        print(km, km_level(km))
+  solution: |
+    def km_level(km):
+        if np.isnan(km):
+            return 'неизвестно'
+        if km <= 10_000:
+            return 'малый'
+        if km <= 30_000:
+            return 'средний'
+        return 'большой'
+
+    for km in [0, 10_000, 10_001, 30_000, 30_001, np.nan]:
+        print(km, km_level(km))
+  explanation: |
+    - Ветка для пропуска обязательна: сравнения с `nan` всегда дают `False`, и без неё пропуск провалился бы в последнюю ветку `'большой'`. Её удобно ставить первой — так правило читается сразу.
+    - `km <= 10_000` — нестрогое условие, поэтому 10 000 попадает в «малый».
+    - Второе условие проверяется, только если первое не выполнилось, — значит, это уже «свыше 10 000».
+  hints:
+    - Что вернёт функция для `nan`, если отдельной проверки пропуска нет? Любое сравнение с `nan` даёт `False`.
+    - "Пропуск — `np.isnan(km)`; дальше цепочка `if km <= 10_000: ... if km <= 30_000: ...` и `return` в конце."
+    - "Первая строка тела: `if np.isnan(km): return 'неизвестно'`; затем `if km <= 10_000: return 'малый'` и так далее."
+  tests: |
+    import numpy as np
+    f = var('km_level')
+    ensure(callable(f), '`km_level` должна быть функцией: `def km_level(km): ...`.')
+    cases = [(0, 'малый'), (10_000, 'малый'), (10_001, 'средний'), (30_000, 'средний'), (30_001, 'большой'), (250_000, 'большой')]
+    r = f(np.nan)
+    if r != 'неизвестно':
+        fail('Для пропуска функция вернула {0!r}, а нужно \'неизвестно\'. Проверьте `np.isnan(km)` первой веткой: сравнения с nan всегда дают False.'.format(r))
+    for km, expected in cases:
+        got = f(km)
+        if got != expected:
+            fail('km_level({0}) вернула {1!r}, а нужно {2!r}. Проверьте строгость сравнения на границе.'.format(km, got, expected))
+  wrong:
+    - code: |
+        def km_level(km):
+            if km <= 10_000:
+                return 'малый'
+            if km <= 30_000:
+                return 'средний'
+            return 'большой'
+      expect: Для пропуска
+    - code: |
+        def km_level(km):
+            if np.isnan(km):
+                return 'неизвестно'
+            if km < 10_000:
+                return 'малый'
+            if km < 30_000:
+                return 'средний'
+            return 'большой'
+      expect: km_level(10000)

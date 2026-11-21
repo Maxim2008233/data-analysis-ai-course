@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 304" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="Схема искусственного нейрона на примере ВАЗ-2105 1992 года с пробегом 96 000 км и объёмом 1 300 кубических сантиметров. Четыре признака после StandardScaler: год −2,20, пробег −0,86, объём −0,93, пробег в год −1,44. Каждый умножается на свой вес — веса линейной регрессии 4 285, −2 241, 4 053 и 612 — получаются вклады −9 409, +1 921, −3 755 и −883. Сумматор складывает вклады и смещение 9 574: z = −2 552. Функция активации ReLU заменяет отрицательную сумму нулём, выход нейрона 0 евро; настоящая цена 1 000 евро. Линейная регрессия без активации предсказала бы −2 552 евро.">
+  <defs><marker id="nrn-a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor" fill-opacity="0.65"/></marker></defs>
+  <text x="12" y="24" fill="currentColor" fill-opacity="0.8" font-size="11">вход x после StandardScaler</text>
+  <text x="196" y="24" fill="currentColor" fill-opacity="0.8" font-size="11">× вес w = вклад</text>
+  <rect x="12" y="38" width="172" height="40" rx="6" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="22" y="54" fill="currentColor">год выпуска 1992</text>
+  <text x="22" y="70" fill="currentColor" font-weight="700">x<tspan dy="3" font-size="9">1</tspan><tspan dy="-3"> = −2,20</tspan></text>
+  <text x="196" y="62" fill="currentColor">× 4 285 = <tspan font-weight="700">−9 409</tspan></text>
+  <line x1="330" y1="58" x2="419.3" y2="120.0" stroke="currentColor" stroke-opacity="0.6" stroke-width="1.5" marker-end="url(#nrn-a)"/>
+  <rect x="12" y="90" width="172" height="40" rx="6" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="22" y="106" fill="currentColor">пробег 96 000 км</text>
+  <text x="22" y="122" fill="currentColor" font-weight="700">x<tspan dy="3" font-size="9">2</tspan><tspan dy="-3"> = −0,86</tspan></text>
+  <text x="196" y="114" fill="currentColor">× −2 241 = <tspan font-weight="700">+1 921</tspan></text>
+  <line x1="330" y1="110" x2="414.1" y2="131.4" stroke="currentColor" stroke-opacity="0.6" stroke-width="1.5" marker-end="url(#nrn-a)"/>
+  <rect x="12" y="142" width="172" height="40" rx="6" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="22" y="158" fill="currentColor">объём 1 300 см³</text>
+  <text x="22" y="174" fill="currentColor" font-weight="700">x<tspan dy="3" font-size="9">3</tspan><tspan dy="-3"> = −0,93</tspan></text>
+  <text x="196" y="166" fill="currentColor">× 4 053 = <tspan font-weight="700">−3 755</tspan></text>
+  <line x1="330" y1="162" x2="413.6" y2="146.4" stroke="currentColor" stroke-opacity="0.6" stroke-width="1.5" marker-end="url(#nrn-a)"/>
+  <rect x="12" y="194" width="172" height="40" rx="6" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="22" y="210" fill="currentColor">3 200 км в год</text>
+  <text x="22" y="226" fill="currentColor" font-weight="700">x<tspan dy="3" font-size="9">4</tspan><tspan dy="-3"> = −1,44</tspan></text>
+  <text x="196" y="218" fill="currentColor">× 612 = <tspan font-weight="700">−883</tspan></text>
+  <line x1="330" y1="214" x2="418.3" y2="158.6" stroke="currentColor" stroke-opacity="0.6" stroke-width="1.5" marker-end="url(#nrn-a)"/>
+  <text x="448" y="62" fill="currentColor" text-anchor="middle">смещение b = <tspan font-weight="700">9 574</tspan></text>
+  <line x1="448" y1="70" x2="448" y2="105" stroke="currentColor" stroke-opacity="0.6" stroke-width="1.5" marker-end="url(#nrn-a)"/>
+  <circle cx="448" cy="140" r="32" fill="#c2410c" fill-opacity="0.14" stroke="#c2410c" stroke-opacity="0.7"/>
+  <text x="448" y="148" fill="currentColor" text-anchor="middle" font-size="24">Σ</text>
+  <text x="448" y="192" fill="currentColor" text-anchor="middle" font-weight="700">z = −2 552</text>
+  <text x="448" y="208" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11">сумма вкладов + b</text>
+  <line x1="482" y1="140" x2="509" y2="140" stroke="currentColor" stroke-opacity="0.6" stroke-width="1.5" marker-end="url(#nrn-a)"/>
+  <rect x="512" y="106" width="108" height="68" rx="6" fill="#64748b" fill-opacity="0.14" stroke="#64748b" stroke-opacity="0.6"/>
+  <text x="566.0" y="122" fill="currentColor" text-anchor="middle" font-weight="700">f = ReLU</text>
+  <line x1="524" y1="162" x2="608" y2="162" stroke="currentColor" stroke-opacity="0.3"/>
+  <line x1="566.0" y1="130" x2="566.0" y2="166" stroke="currentColor" stroke-opacity="0.3"/>
+  <polyline points="524,162 566.0,162 608,132" fill="none" stroke="#c2410c" stroke-width="2"/>
+  <circle cx="536" cy="162" r="3.5" fill="#c2410c"/>
+  <text x="566.0" y="192" fill="currentColor" text-anchor="middle">max(0, z)</text>
+  <line x1="622" y1="140" x2="651" y2="140" stroke="currentColor" stroke-opacity="0.6" stroke-width="1.5" marker-end="url(#nrn-a)"/>
+  <rect x="654" y="114" width="94" height="52" rx="6" fill="#15803d" fill-opacity="0.12" stroke="#15803d" stroke-opacity="0.6"/>
+  <text x="701" y="136" fill="currentColor" text-anchor="middle" font-weight="700">a = 0 €</text>
+  <text x="701" y="154" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11">выход нейрона</text>
+  <text x="701" y="192" fill="currentColor" text-anchor="middle">цена 1 000 €</text>
+  <line x1="12" y1="252" x2="748" y2="252" stroke="currentColor" stroke-opacity="0.2"/>
+  <text x="12" y="274" fill="currentColor">a = f(w<tspan dy="3" font-size="9">1</tspan><tspan dy="-3">x</tspan><tspan dy="3" font-size="9">1</tspan><tspan dy="-3"> + w</tspan><tspan dy="3" font-size="9">2</tspan><tspan dy="-3">x</tspan><tspan dy="3" font-size="9">2</tspan><tspan dy="-3"> + w</tspan><tspan dy="3" font-size="9">3</tspan><tspan dy="-3">x</tspan><tspan dy="3" font-size="9">3</tspan><tspan dy="-3"> + w</tspan><tspan dy="3" font-size="9">4</tspan><tspan dy="-3">x</tspan><tspan dy="3" font-size="9">4</tspan><tspan dy="-3"> + b) = ReLU(−9 409 + 1 921 − 3 755 − 883 + 9 574) = ReLU(−2 552) = 0</tspan></text>
+  <text x="12" y="294" fill="currentColor" fill-opacity="0.85">Веса — от линейной регрессии. Без активации прогноз был бы −2 552 €, с ReLU ошибка 1 000 € вместо 3 552 €.</text>
+</svg>

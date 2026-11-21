@@ -1,0 +1,481 @@
+- id: c1-l2-t1
+  title: Числа из строк
+  difficulty: warmup
+  introduces: []
+  uses: [pd-new-column]
+  statement: |
+    Напишите функцию `parse(df)`. Она возвращает **копию** таблицы, в которой:
+
+    - `Turbo` — 1, если в колонке `Engine` есть слово `Turbo`, иначе 0;
+    - `Engine` — объём двигателя числом: `'2.0 Turbo'` → 2.0, `'3'` → 3.0;
+    - `Distance` — пробег числом: `'192000 km'` → 192000.0.
+
+    Пропуски должны остаться пропусками. Получите `train_p = parse(train)`, `n_turbo` — сколько машин в обучающей части с турбиной, и `km_median` — медианный пробег.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    train = pd.read_csv('competition_cars_train.csv')
+    test = pd.read_csv('competition_cars_test.csv')
+  starter: |
+    def parse(df):
+        out = df.copy()
+        engine = out['Engine'].astype(str)
+        out['Turbo'] = ...
+        out['Engine'] = ...
+        out['Distance'] = ...
+        return out
+
+    train_p = parse(train)
+    n_turbo = ...
+    km_median = ...
+    print(n_turbo, km_median)
+    print(train_p[['Engine', 'Turbo', 'Distance']].head())
+  solution: |
+    def parse(df):
+        out = df.copy()
+        engine = out['Engine'].astype(str)
+        out['Turbo'] = engine.str.contains('Turbo').astype(int)
+        out['Engine'] = engine.str.extract(r'(\d+\.?\d*)')[0].astype(float)
+        out['Distance'] = out['Distance'].str.extract(r'(\d+)')[0].astype(float)
+        return out
+
+    train_p = parse(train)
+    n_turbo = train_p['Turbo'].sum()
+    km_median = train_p['Distance'].median()
+    print(n_turbo, km_median)
+    print(train_p[['Engine', 'Turbo', 'Distance']].head())
+  explanation: |
+    - `str.contains('Turbo')` даёт True/False для каждой строки, `.astype(int)` превращает их в 1/0. Турбина у 695 машин.
+    - `str.extract(r'(\d+\.?\d*)')` достаёт первое число вместе с дробной частью; без `\.?\d*` объём 1.6 превратился бы в 1. Строка `'nan'` (пропуск после `astype(str)`) числа не содержит — получается снова пропуск.
+    - Медианный пробег — 124 912 км. Максимум — 2 147 483 647 км: это не опечатка разбора, а мусор в самих данных.
+    - Функция пригодится дважды: проверочную таблицу нужно разобрать точно так же, как обучающую.
+  hints:
+    - "Турбина — `engine.str.contains('Turbo').astype(int)`."
+    - "Объём — `engine.str.extract(r'(\\d+\\.?\\d*)')[0].astype(float)`; пробег — тот же приём для `out['Distance']` с шаблоном `r'(\\d+)'`."
+    - "`n_turbo = train_p['Turbo'].sum()`, `km_median = train_p['Distance'].median()`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    f = var('parse')
+    ensure(callable(f), '`parse` должна быть функцией.')
+    raw = ref('train')
+    before = raw.copy()
+    got = f(raw)
+    ensure(isinstance(got, pd.DataFrame), '`parse` должна возвращать таблицу DataFrame.')
+    ensure(raw.equals(before), '`parse` не должна менять исходную таблицу — работайте с копией `df.copy()`.')
+    exp = ref('parse')(ref('train'))
+    for c in ['Engine', 'Turbo', 'Distance']:
+        ensure(c in got.columns, 'В результате `parse` нет колонки `{0}`.'.format(c))
+        if got[c].map(lambda v: v is Ellipsis).any():
+            fail('В функции `parse` остался заполнитель `...` в колонке `{0}` — замените его вычислением.'.format(c))
+    if (got['Turbo'].to_numpy(dtype=float) == 0).all():
+        fail('Все `Turbo` равны 0: слово стоит после объёма («2.0 Turbo»), поэтому сравнение строки целиком не подходит — используйте `str.contains`.')
+    ensure((got['Turbo'].to_numpy(dtype=float) == exp['Turbo'].to_numpy(dtype=float)).all(), '`Turbo` не совпадает: 1, если в `Engine` есть слово Turbo.')
+    ge, ee = got['Engine'].to_numpy(dtype=float), exp['Engine'].to_numpy(dtype=float)
+    if np.allclose(ge, np.floor(ee), equal_nan=True) and not np.allclose(ge, ee, equal_nan=True):
+        fail('Объём потерял дробную часть: 1.6 стал 1. В шаблоне нужна необязательная дробная часть: `r\'(\\d+\\.?\\d*)\'`.')
+    same_array(ge, ee, '`Engine` не совпадает: число из строки, например `\'2.0 Turbo\'` → 2.0; пропуски остаются пропусками.')
+    same_array(got['Distance'].to_numpy(dtype=float), exp['Distance'].to_numpy(dtype=float), '`Distance` не совпадает: `\'192000 km\'` → 192000.0.')
+    same_array(f(ref('test'))['Engine'].to_numpy(dtype=float), ref('parse')(ref('test'))['Engine'].to_numpy(dtype=float), 'На проверочной таблице `parse` даёт другой `Engine` — функция должна работать для любой таблицы.')
+    equal(int(var('n_turbo', 'number', 'числом')), int(ref('n_turbo')), 'Машин с турбиной — {expected}, а у вас {actual}.')
+    close(var('km_median', 'number', 'числом'), ref('km_median'), 'Медианный пробег — {expected}, а у вас {actual}.')
+    close(alt('km_median'), alt_ref('km_median'), HARDCODE_MSG)
+  files: [competition_cars_train.csv, competition_cars_test.csv]
+  wrong:
+    - code: |
+        def parse(df):
+            out = df.copy()
+            engine = out['Engine'].astype(str)
+            out['Turbo'] = engine.str.contains('Turbo').astype(int)
+            out['Engine'] = engine.str.extract(r'(\d+)')[0].astype(float)
+            out['Distance'] = out['Distance'].str.extract(r'(\d+)')[0].astype(float)
+            return out
+        train_p = parse(train)
+        n_turbo = train_p['Turbo'].sum()
+        km_median = train_p['Distance'].median()
+      expect: дробную часть
+    - code: |
+        def parse(df):
+            out = df.copy()
+            engine = out['Engine'].astype(str)
+            out['Turbo'] = (engine == 'Turbo').astype(int)
+            out['Engine'] = engine.str.extract(r'(\d+\.?\d*)')[0].astype(float)
+            out['Distance'] = out['Distance'].str.extract(r'(\d+)')[0].astype(float)
+            return out
+        train_p = parse(train)
+        n_turbo = train_p['Turbo'].sum()
+        km_median = train_p['Distance'].median()
+      expect: str.contains
+
+- id: c1-l2-t2
+  title: Повторы и ошибочные цены
+  difficulty: main
+  introduces: []
+  uses: [pd-drop-duplicates, analysis-scope]
+  statement: |
+    Функция `parse` и разобранная таблица `train_p` уже есть. Посчитайте `n_cheap` — сколько объявлений дешевле 1 000, `n_expensive` — дороже 500 000, и `n_dups` — сколько строк повторяют более раннюю **без учёта ID** (номер строки у копий разный).
+
+    Соберите `clean`: сначала уберите повторы (без учёта ID), затем оставьте цены от 1 000 до 500 000 включительно — те же границы, что у проверочной части.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    train = pd.read_csv('competition_cars_train.csv')
+    test = pd.read_csv('competition_cars_test.csv')
+    def parse(df):
+        out = df.copy()
+        engine = out['Engine'].astype(str)
+        out['Turbo'] = engine.str.contains('Turbo').astype(int)
+        out['Engine'] = engine.str.extract(r'(\d+\.?\d*)')[0].astype(float)
+        out['Distance'] = out['Distance'].str.extract(r'(\d+)')[0].astype(float)
+        return out
+    train_p = parse(train)
+  starter: |
+    features = [c for c in train_p.columns if c != 'ID']
+    n_cheap = ...
+    n_expensive = ...
+    n_dups = ...
+    clean = train_p.drop_duplicates(subset=...)
+    clean = clean[...]
+    print(n_cheap, n_expensive, n_dups, len(clean))
+  solution: |
+    features = [c for c in train_p.columns if c != 'ID']
+    n_cheap = (train_p['Price'] < 1000).sum()
+    n_expensive = (train_p['Price'] > 500000).sum()
+    n_dups = train_p.duplicated(subset=features).sum()
+    clean = train_p.drop_duplicates(subset=features)
+    clean = clean[clean['Price'].between(1000, 500000)]
+    print(n_cheap, n_expensive, n_dups, len(clean))
+  explanation: |
+    - Дешевле 1 000 — 959 объявлений, дороже 500 000 — одно (26 307 500). Повторов — 932: каждый из них целиком совпадает с более ранней строкой.
+    - Если искать повторы со столбцом `ID`, их не найдётся ни одного — номера у копий разные. Поэтому `subset` — все колонки, кроме `ID`.
+    - После чистки остаётся 5 624 объявления. Правило то же, что у проверочной части: модель учится на тех же «правдоподобных» машинах, на которых её оценят.
+  hints:
+    - "Число объявлений по условию — сумма булевой маски: `(train_p['Price'] < 1000).sum()`."
+    - "Повторы без учёта ID — `train_p.duplicated(subset=features).sum()`; удалить их — `drop_duplicates(subset=features)`."
+    - "Цены от 1 000 до 500 000 включительно — `clean['Price'].between(1000, 500000)`."
+  tests: |
+    import pandas as pd
+    equal(int(var('n_cheap', 'number', 'числом')), int(ref('n_cheap')), 'Дешевле 1 000 — {expected} объявлений, а у вас {actual}.')
+    equal(int(var('n_expensive', 'number', 'числом')), int(ref('n_expensive')), 'Дороже 500 000 — {expected}, а у вас {actual}.')
+    nd = int(var('n_dups', 'number', 'числом'))
+    if nd == 0:
+        fail('Повторов 0: у копий разные `ID`, поэтому повторы ищут без этой колонки — `duplicated(subset=features)`.')
+    equal(nd, int(ref('n_dups')), 'Повторов — {expected}, а у вас {actual}.')
+    c = var('clean', pd.DataFrame, 'таблицей DataFrame')
+    if c['Price'].max() > 500000:
+        fail('В `clean` осталась цена {0:.0f}: нужна и верхняя граница — цены до 500 000.'.format(c['Price'].max()))
+    if c['Price'].min() < 1000:
+        fail('В `clean` остались цены ниже 1 000.')
+    equal(len(c), len(ref('clean')), 'В `clean` должно быть {expected} строк, а у вас {actual}: сначала уберите повторы, затем отфильтруйте цены.')
+    equal(len(alt('clean')), len(alt_ref('clean')), HARDCODE_MSG)
+  files: [competition_cars_train.csv, competition_cars_test.csv]
+  wrong:
+    - code: |
+        features = [c for c in train_p.columns if c != 'ID']
+        n_cheap = (train_p['Price'] < 1000).sum()
+        n_expensive = (train_p['Price'] > 500000).sum()
+        n_dups = train_p.duplicated().sum()
+        clean = train_p.drop_duplicates()
+        clean = clean[clean['Price'].between(1000, 500000)]
+      expect: без этой колонки
+    - code: |
+        features = [c for c in train_p.columns if c != 'ID']
+        n_cheap = (train_p['Price'] < 1000).sum()
+        n_expensive = (train_p['Price'] > 500000).sum()
+        n_dups = train_p.duplicated(subset=features).sum()
+        clean = train_p.drop_duplicates(subset=features)
+        clean = clean[clean['Price'] >= 1000]
+      expect: верхняя граница
+
+- id: c1-l2-t3
+  title: "Своя validation: лес на числовых признаках"
+  difficulty: main
+  introduces: []
+  uses: [sk-split, random-forest]
+  statement: |
+    Таблица `clean` уже собрана. Разбейте её на обучающую и проверочную части 80 / 20: `train_test_split(clean, test_size=0.2, random_state=42)` → `tr`, `va`. Это ваша собственная validation: на ней можно проверять сколько угодно идей.
+
+    Числовые признаки — `nums`. Пропуски в них заполните медианами **обучающей** части `tr`. Обучите `RandomForestRegressor(n_estimators=50, random_state=42, n_jobs=1)` и получите `mae_rf` — MAE на `va`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.metrics import mean_absolute_error
+    train = pd.read_csv('competition_cars_train.csv')
+    def parse(df):
+        out = df.copy()
+        engine = out['Engine'].astype(str)
+        out['Turbo'] = engine.str.contains('Turbo').astype(int)
+        out['Engine'] = engine.str.extract(r'(\d+\.?\d*)')[0].astype(float)
+        out['Distance'] = out['Distance'].str.extract(r'(\d+)')[0].astype(float)
+        return out
+    train_p = parse(train)
+    features = [c for c in train_p.columns if c != 'ID']
+    clean = train_p.drop_duplicates(subset=features)
+    clean = clean[clean['Price'].between(1000, 500000)]
+    nums = ['Year', 'Engine', 'Turbo', 'Distance', 'Cylinders']
+  starter: |
+    tr, va = train_test_split(clean, test_size=0.2, random_state=42)
+    med = ...
+    forest = RandomForestRegressor(n_estimators=50, random_state=42, n_jobs=1)
+    forest.fit(..., tr['Price'])
+    mae_rf = ...
+    print(len(tr), len(va), round(mae_rf))
+  solution: |
+    tr, va = train_test_split(clean, test_size=0.2, random_state=42)
+    med = tr[nums].median()
+    forest = RandomForestRegressor(n_estimators=50, random_state=42, n_jobs=1)
+    forest.fit(tr[nums].fillna(med), tr['Price'])
+    mae_rf = mean_absolute_error(va['Price'], forest.predict(va[nums].fillna(med)))
+    print(len(tr), len(va), round(mae_rf))
+  explanation: |
+    - 4 499 объявлений для обучения и 1 125 для проверки. Лес на пяти числовых признаках ошибается в среднем на 8 274.
+    - Медианы для заполнения — только из `tr`: так же, как StandardScaler учится только на train (урок 5.7). Здесь медианы train и всей таблицы совпали, но правило от этого не меняется.
+    - Это не результат на сервере — это ваш инструмент. Каждую следующую идею (признаки, модель, логарифм цены) сначала сравнивайте с этим числом.
+  hints:
+    - "Медианы — `tr[nums].median()`."
+    - "Признаки для обучения — `tr[nums].fillna(med)`, для проверки — `va[nums].fillna(med)` с теми же медианами."
+    - "`mae_rf = mean_absolute_error(va['Price'], forest.predict(va[nums].fillna(med)))`."
+  tests: |
+    import pandas as pd
+    t = var('tr', pd.DataFrame, 'таблицей DataFrame')
+    ensure(len(t) == len(ref('tr')) and (t.index == ref('tr').index).all(), 'Разбиение не совпадает: `train_test_split(clean, test_size=0.2, random_state=42)`.')
+    m = var('mae_rf', 'number', 'числом')
+    if m < 0.6 * ref('mae_rf'):
+        fail('MAE {0:.0f} подозрительно мала — похоже, она посчитана на обучающей части. Нужна ошибка на `va`.'.format(m))
+    close(m, ref('mae_rf'), 'MAE леса на validation — {expected}, а у вас {actual}.', rtol=1e-6)
+    close(alt('mae_rf'), alt_ref('mae_rf'), HARDCODE_MSG, rtol=1e-6)
+  files: [competition_cars_train.csv]
+  wrong:
+    - code: |
+        tr, va = train_test_split(clean, test_size=0.2, random_state=42)
+        med = tr[nums].median()
+        forest = RandomForestRegressor(n_estimators=50, random_state=42, n_jobs=1)
+        forest.fit(tr[nums].fillna(med), tr['Price'])
+        mae_rf = mean_absolute_error(tr['Price'], forest.predict(tr[nums].fillna(med)))
+      expect: на обучающей части
+    - code: |
+        tr, va = train_test_split(clean, test_size=0.2, random_state=0)
+        med = tr[nums].median()
+        forest = RandomForestRegressor(n_estimators=50, random_state=42, n_jobs=1)
+        forest.fit(tr[nums].fillna(med), tr['Price'])
+        mae_rf = mean_absolute_error(va['Price'], forest.predict(va[nums].fillna(med)))
+      expect: Разбиение не совпадает
+
+- id: c1-l2-t4
+  title: LightGBM с категориями на логарифме цены
+  difficulty: main
+  introduces: []
+  uses: [gradient-boosting, log-target]
+  statement: |
+    Части `tr` и `va` те же. Функция `as_category(table, train_table)` переводит колонки `cats` в тип `category` по словарю `train_table` — как в уроке 7.8. Переведите `tr` и `va` по словарю `tr`.
+
+    Обучите `LGBMRegressor(n_estimators=300, learning_rate=0.05, random_state=42, verbosity=-1, n_jobs=1)` на признаках `cats + nums` и **логарифме** цены. Получите `mae_lgbm` — MAE на `va` в исходных единицах, и `gain` — на сколько она меньше MAE леса из задания 3 (`mae_rf` уже посчитана).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import mean_absolute_error
+    from lightgbm import LGBMRegressor
+    train = pd.read_csv('competition_cars_train.csv')
+    def parse(df):
+        out = df.copy()
+        engine = out['Engine'].astype(str)
+        out['Turbo'] = engine.str.contains('Turbo').astype(int)
+        out['Engine'] = engine.str.extract(r'(\d+\.?\d*)')[0].astype(float)
+        out['Distance'] = out['Distance'].str.extract(r'(\d+)')[0].astype(float)
+        return out
+    train_p = parse(train)
+    features = [c for c in train_p.columns if c != 'ID']
+    clean = train_p.drop_duplicates(subset=features)
+    clean = clean[clean['Price'].between(1000, 500000)]
+    nums = ['Year', 'Engine', 'Turbo', 'Distance', 'Cylinders']
+    cats = ['Make', 'Model', 'Style', 'Fuel', 'Transmission', 'Drive', 'Wheel', 'Color']
+    tr, va = train_test_split(clean, test_size=0.2, random_state=42)
+    def as_category(table, train_table):
+        out = table.copy()
+        for c in cats:
+            levels = sorted(train_table[c].dropna().unique())
+            out[c] = pd.Categorical(out[c].where(out[c].isin(levels)), categories=levels)
+        return out
+    mae_rf = 8274.3   # лес из задания 3
+  starter: |
+    C_tr = as_category(tr, tr)
+    C_va = ...
+    booster = LGBMRegressor(n_estimators=300, learning_rate=0.05, random_state=42, verbosity=-1, n_jobs=1)
+    booster.fit(C_tr[cats + nums], ...)
+    mae_lgbm = ...
+    gain = ...
+    print(round(mae_lgbm), round(gain))
+  solution: |
+    C_tr = as_category(tr, tr)
+    C_va = as_category(va, tr)
+    booster = LGBMRegressor(n_estimators=300, learning_rate=0.05, random_state=42, verbosity=-1, n_jobs=1)
+    booster.fit(C_tr[cats + nums], np.log(C_tr['Price']))
+    mae_lgbm = mean_absolute_error(va['Price'], np.exp(booster.predict(C_va[cats + nums])))
+    gain = mae_rf - mae_lgbm
+    print(round(mae_lgbm), round(gain))
+  explanation: |
+    - LightGBM с марками, моделями и прочими категориями ошибается на 6 036 — на 2 239 меньше леса на числовых признаках. Модель машины говорит о цене больше, чем год и объём.
+    - Словарь категорий — только из `tr`: модели, которых в `tr` нет, в `va` становятся пропусками, как будет и с проверочной таблицей.
+    - Модель предсказывает логарифм, поэтому перед MAE прогноз возвращают в исходные единицы — `np.exp`. Кстати, без логарифма здесь получается даже чуть лучше (около 5 970). Проверять такие идеи и нужно на своей validation, а не на сервере.
+  hints:
+    - "Проверочную часть — по словарю обучающей: `as_category(va, tr)`."
+    - "Ответ для обучения — `np.log(C_tr['Price'])`."
+    - "MAE — по `np.exp(booster.predict(C_va[cats + nums]))`; `gain = mae_rf - mae_lgbm`."
+  tests: |
+    m = var('mae_lgbm', 'number', 'числом')
+    if m < 10:
+        fail('MAE получилась меньше 10 — это ошибка в логарифмах. Верните прогноз в исходные единицы: `np.exp(booster.predict(...))`.')
+    close(m, ref('mae_lgbm'), 'MAE LightGBM на validation — {expected}, а у вас {actual}. Модель учится на `np.log(C_tr[\'Price\'])`, категории `va` — по словарю `tr`.', rtol=1e-5)
+    close(var('gain', 'number', 'числом'), ref('gain'), '`gain` — {expected}, а у вас {actual}: `mae_rf - mae_lgbm`.', rtol=1e-5)
+    close(alt('mae_lgbm'), alt_ref('mae_lgbm'), HARDCODE_MSG, rtol=1e-5)
+  files: [competition_cars_train.csv]
+  wrong:
+    - code: |
+        C_tr = as_category(tr, tr)
+        C_va = as_category(va, tr)
+        booster = LGBMRegressor(n_estimators=300, learning_rate=0.05, random_state=42, verbosity=-1, n_jobs=1)
+        booster.fit(C_tr[cats + nums], np.log(C_tr['Price']))
+        mae_lgbm = mean_absolute_error(np.log(va['Price']), booster.predict(C_va[cats + nums]))
+        gain = mae_rf - mae_lgbm
+      expect: в логарифмах
+    - code: |
+        C_tr = as_category(tr, tr)
+        C_va = as_category(va, tr)
+        booster = LGBMRegressor(n_estimators=300, learning_rate=0.05, random_state=42, verbosity=-1, n_jobs=1)
+        booster.fit(C_tr[cats + nums], C_tr['Price'])
+        mae_lgbm = mean_absolute_error(va['Price'], booster.predict(C_va[cats + nums]))
+        gain = mae_rf - mae_lgbm
+      expect: "np.log(C_tr"
+
+- id: c1-l2-t5
+  title: Прогнозы для всех машин
+  difficulty: main
+  introduces: []
+  uses: [log-target]
+  statement: |
+    Финальная модель `final` уже обучена на всей таблице `clean` (LightGBM на логарифме цены, категории — по словарю `clean`). Подготовьте проверочную таблицу: `test_p = parse(test)`, затем `C_test` — категории по словарю `clean`. Получите прогнозы в исходных единицах и соберите `submission` — DataFrame с колонками `ID` (из проверочной таблицы) и `Predict`.
+
+    Прогноз нужен для **каждой** из 1 856 машин — даже если в её признаках есть пропуски.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from lightgbm import LGBMRegressor
+    train = pd.read_csv('competition_cars_train.csv')
+    test = pd.read_csv('competition_cars_test.csv')
+    def parse(df):
+        out = df.copy()
+        engine = out['Engine'].astype(str)
+        out['Turbo'] = engine.str.contains('Turbo').astype(int)
+        out['Engine'] = engine.str.extract(r'(\d+\.?\d*)')[0].astype(float)
+        out['Distance'] = out['Distance'].str.extract(r'(\d+)')[0].astype(float)
+        return out
+    train_p = parse(train)
+    features = [c for c in train_p.columns if c != 'ID']
+    clean = train_p.drop_duplicates(subset=features)
+    clean = clean[clean['Price'].between(1000, 500000)]
+    nums = ['Year', 'Engine', 'Turbo', 'Distance', 'Cylinders']
+    cats = ['Make', 'Model', 'Style', 'Fuel', 'Transmission', 'Drive', 'Wheel', 'Color']
+    def as_category(table, train_table):
+        out = table.copy()
+        for c in cats:
+            levels = sorted(train_table[c].dropna().unique())
+            out[c] = pd.Categorical(out[c].where(out[c].isin(levels)), categories=levels)
+        return out
+    C_clean = as_category(clean, clean)
+    final = LGBMRegressor(n_estimators=300, learning_rate=0.05, random_state=42, verbosity=-1, n_jobs=1)
+    final.fit(C_clean[cats + nums], np.log(C_clean['Price']))
+  starter: |
+    test_p = parse(test)
+    C_test = ...
+    pred = ...
+    submission = pd.DataFrame({'ID': ..., 'Predict': ...})
+    print(submission.shape)
+    print(submission.head())
+  solution: |
+    test_p = parse(test)
+    C_test = as_category(test_p, clean)
+    pred = np.exp(final.predict(C_test[cats + nums]))
+    submission = pd.DataFrame({'ID': test_p['ID'], 'Predict': pred})
+    print(submission.shape)
+    print(submission.head())
+  explanation: |
+    - В проверочной таблице у 52 машин есть пропуски в числовых признаках. Если сделать `dropna()`, как в исходном ноутбуке курса, эти машины останутся без прогноза, и сервер не примет отправку. LightGBM умеет работать с пропусками сам, а для других моделей их заполняют медианами обучающей части.
+    - Категории проверочной таблицы — по словарю `clean`: 171 машина с моделью, которой нет в обучающей части, получает пропуск в `Model`.
+    - Прогноз модели — логарифм цены, поэтому в `Predict` идёт `np.exp(...)`. Этот код целиком — готовое решение для формы отправки в уроке С1.3.
+  hints:
+    - "Категории — `as_category(test_p, clean)`."
+    - "Прогноз в исходных единицах — `np.exp(final.predict(C_test[cats + nums]))`."
+    - "Не удаляйте строки: `submission = pd.DataFrame({'ID': test_p['ID'], 'Predict': pred})`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    s = var('submission', pd.DataFrame, 'таблицей DataFrame')
+    ensure(list(s.columns) == ['ID', 'Predict'], 'Колонки `submission` — `[\'ID\', \'Predict\']`.')
+    n = len(ref('test'))
+    if len(s) < n:
+        fail('Нет прогнозов для {0} машин: строк {1} из {2}. Не удаляйте строки проверочной таблицы — LightGBM работает с пропусками в признаках.'.format(n - len(s), len(s), n))
+    ensure(len(s) == n and sorted(s['ID'].tolist()) == sorted(ref('test')['ID'].tolist()), 'В `submission` должны быть все ID проверочной таблицы ровно по одному разу.')
+    p = s['Predict'].to_numpy(dtype=float)
+    ensure(np.isfinite(p).all(), 'В `Predict` есть пропуски или бесконечности.')
+    if p.max() < 20:
+        fail('Прогнозы похожи на логарифмы (максимум {0:.1f}). Верните их в исходные единицы: `np.exp(...)`.'.format(p.max()))
+    same_array(s.sort_values('ID')['Predict'].to_numpy(dtype=float), ref('submission').sort_values('ID')['Predict'].to_numpy(dtype=float), 'Прогнозы не совпадают с эталоном: категории проверочной таблицы — по словарю `clean`.', rtol=1e-6)
+  files: [competition_cars_train.csv, competition_cars_test.csv]
+  wrong:
+    - code: |
+        test_p = parse(test).dropna()
+        C_test = as_category(test_p, clean)
+        pred = np.exp(final.predict(C_test[cats + nums]))
+        submission = pd.DataFrame({'ID': test_p['ID'], 'Predict': pred})
+      expect: Нет прогнозов для
+    - code: |
+        test_p = parse(test)
+        C_test = as_category(test_p, clean)
+        pred = final.predict(C_test[cats + nums])
+        submission = pd.DataFrame({'ID': test_p['ID'], 'Predict': pred})
+      expect: похожи на логарифмы
+
+- id: c1-l2-t6
+  kind: quiz
+  title: Правила честного соревнования
+  difficulty: main
+  introduces: []
+  uses: [model-comparison, metric-variability]
+  statement: |
+    Проверьте, как вы поступите в типичных ситуациях соревнования.
+  quiz:
+    - q: Идея — добавить признак «возраст машины». Где её проверить?
+      options:
+        - На своей validation из обучающей части — и отправить, только если стало лучше
+        - "Сразу отправить на сервер: там честная оценка"
+        - Нигде — признаки не нужно менять
+      answer: 0
+      explain: Отправок мало, и каждая — проверка на test. Идеи сравнивают на своей validation.
+    - q: Решение A на сервере дало 5 812, решение B — 5 790. B лучше?
+      options:
+        - Не обязательно — разница в 22 единицы на 1 856 машинах может быть шумом
+        - Да, B точно лучше
+        - Нет, A точно лучше
+      answer: 0
+      explain: "Устойчивость разницы проверяют на нескольких разбиениях своей validation (урок 7.8)."
+    - q: В проверочной таблице у 52 машин пропуски в признаках. Что делать?
+      options:
+        - Заполнить пропуски (или взять модель, которая с ними работает) и дать прогноз для каждой машины
+        - Удалить эти строки через dropna
+        - Поставить им прогноз 0
+      answer: 0
+      explain: Сервер ждёт прогноз для каждой машины; прогноз 0 дал бы огромную ошибку.
+    - q: Зачем убирать из обучающей части цены ниже 1 000?
+      options:
+        - В проверочной части таких цен нет, а модель на мусоре ошибается на нормальных машинах
+        - Чтобы данных было меньше и обучение шло быстрее
+        - Это требование scikit-learn
+      answer: 0
+      explain: Обучающие данные должны быть похожи на те, на которых модель оценят.
+  hints:
+    - Вспомните, почему test открывают один раз (урок 6.7) и как разница метрик зависит от разбиения (урок 7.8).
+    - "Отправка — проверка на test; маленькая разница — шум; строки проверочной таблицы не удаляют; train похож на test."
+    - "Ответы: первый вариант во всех четырёх вопросах."

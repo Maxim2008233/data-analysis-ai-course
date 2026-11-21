@@ -1,0 +1,1378 @@
+# Реестр понятий курса. Урок, который вводит понятие, указан в его lesson.md (introduces) и в заданиях.
+# recall — 1–3 строки для карточки «Вспомним», example — мини-пример. foundation: базовый Python (не учитывается
+# в правилах нагрузки на память).
+
+# ---------- Модуль 0: базовый Python (фундамент) ----------
+- id: py-variables
+  title: Переменные и типы
+  foundation: true
+  recall: Переменная — имя для значения. Основные типы — `int`, `float`, `str`, `bool`; тип проверяется через `type(x)`.
+  example: |
+    price = 7750.0      # float
+    year = 2011         # int
+    type(price)         # <class 'float'>
+  glossary: [py-variable]
+- id: py-fstrings
+  title: f-строки и print
+  foundation: true
+  recall: "`print(...)` выводит значения; f-строка подставляет переменные в текст: `f'Цена: {price:.2f} €'`."
+  example: |
+    price = 7750.456
+    print(f'Цена: {price:.2f} евро')   # Цена: 7750.46 евро
+  glossary: [py-fstring]
+- id: py-lists
+  title: Списки
+  foundation: true
+  recall: Список хранит значения по порядку; нумерация с 0, `lst[-1]` — последний элемент, `len(lst)` — длина, `lst.index(x)` — позиция значения.
+  example: |
+    names = ['Year', 'Distance', 'Price(euro)']
+    names[0], names[-1], len(names)   # ('Year', 'Price(euro)', 3)
+    names.index('Distance')           # 1
+  glossary: [py-list]
+- id: py-dicts
+  title: Словари
+  foundation: true
+  recall: "Словарь сопоставляет ключам значения: `d['ключ']`; новые пары добавляются присваиванием."
+  example: |
+    car = {'Make': 'Toyota', 'Year': 2011}
+    car['Year']            # 2011
+    car['Price'] = 7750.0
+  glossary: [py-dict]
+- id: py-loops
+  title: Циклы и условия
+  foundation: true
+  recall: "`for x in коллекция:` повторяет блок для каждого элемента; `if условие:` выполняет блок, только если условие истинно. Тело блока — с отступом 4 пробела."
+  example: |
+    for name, value in zip(['a', 'b'], [1, 2]):
+        if value > 1:
+            print(name, value)
+  glossary: [py-for, py-if]
+- id: py-functions
+  title: Функции
+  foundation: true
+  recall: "`def имя(аргументы):` объявляет функцию, `return` возвращает результат. Функцию можно вызвать много раз с разными аргументами."
+  example: |
+    def to_litres(cm3):
+        return cm3 / 1000
+    to_litres(1800)   # 1.8
+  glossary: [py-def]
+
+# ---------- Модуль 0: ИИ и анализ данных ----------
+- id: ai-definition
+  title: Что такое искусственный интеллект
+  recall: "ИИ — комплекс технологий, имитирующих когнитивные функции человека и дающих результаты, сопоставимые с результатами человека в конкретных задачах."
+  glossary: [ai, turing-test]
+- id: ai-history
+  title: Этапы развития ИИ
+  recall: "1950-е — зарождение (Тьюринг, Дартмут); 1970-е и конец 1980-х — «зимы» ИИ; 1980-е — экспертные системы; с 2000-х — глубокие нейросети; с 2017 — трансформеры и большие языковые модели."
+  glossary: [ai-winter, expert-system, neural-network]
+- id: weak-strong-ai
+  title: Слабый и сильный ИИ
+  recall: "Слабый (узкий) ИИ хорошо решает одну задачу и не «понимает», что делает; сильный (общий) ИИ решал бы любые задачи и обладал бы мышлением. Сегодня существует только слабый ИИ."
+  glossary: [weak-ai, chinese-room]
+- id: ai-approaches
+  title: Подходы и методы создания ИИ
+  recall: "Нисходящий подход имитирует функции (правила, логика, знания), восходящий моделирует «нейроны». Самый популярный метод сейчас — машинное обучение: функцию y = f(x) подбирают по данным."
+  glossary: [machine-learning, symbolic-ai]
+- id: crisp-dm
+  title: Жизненный цикл задачи анализа данных (CRISP-DM)
+  recall: "Понимание бизнеса → понимание данных → подготовка данных → моделирование → оценка → внедрение; этапы повторяются по кругу."
+  glossary: [crisp-dm]
+- id: data-shift
+  title: Сдвиг данных
+  recall: "Модель обучена на одних данных, а применяется к другим (data shift) или поведение людей изменилось (concept shift) — качество падает, модель нужно проверять и переобучать."
+  glossary: [data-shift]
+
+# ---------- Модуль 1: NumPy ----------
+- id: observation-feature
+  title: Наблюдение, признак, вектор признака
+  recall: Строка таблицы — одно наблюдение (объявление об автомобиле), столбец — признак. Значения одного признака для всех строк образуют вектор признака.
+  glossary: [observation, feature]
+- id: np-genfromtxt
+  title: Чтение числовых столбцов CSV
+  recall: "`np.genfromtxt` читает числа из CSV: `delimiter=','`, `skip_header=1` пропускает заголовок, `usecols` — номера столбцов (с нуля)."
+  example: |
+    X = np.genfromtxt('cars.csv', delimiter=',', skip_header=1,
+                      usecols=[2, 4, 5, 8], dtype=float, ndmin=2)
+  glossary: [np-genfromtxt]
+- id: ndarray
+  title: Массив NumPy (ndarray)
+  recall: Массив хранит элементы одного типа и умеет считать сразу по всем элементам. Матрица `X` — двумерный массив «записи × признаки».
+  example: |
+    a = np.array([5000, 8000, 10000])
+    a.dtype   # общий тип элементов
+  glossary: [np-array, np-ndarray]
+- id: shape-dtype
+  title: shape, size, ndim, dtype
+  recall: "`X.shape` — размеры по осям (строки, столбцы), `X.size` — всего элементов, `X.ndim` — число осей, `X.dtype` — тип элементов. Это атрибуты, без скобок."
+  example: |
+    X.shape   # (41007, 4)
+    X.size    # 164028 = 41007 * 4
+  glossary: [np-shape, np-dtype]
+- id: np-indexing
+  title: Индексация массива
+  recall: "`X[i, j]` — элемент строки `i` и столбца `j` (нумерация с 0); `price[-1]` — последний элемент."
+  example: |
+    X[0, 3]      # цена первой записи
+    price[-1]    # последняя цена
+  glossary: [np-indexing]
+- id: np-slicing
+  title: Срезы
+  recall: "`a[start:stop]` берёт позиции от `start` до `stop - 1`; `:` — все элементы по оси; `X[:, 3]` — весь столбец 3."
+  example: |
+    price = X[:, 3]   # столбец цен
+    price[:5]         # первые пять цен
+    X[10:15, :]       # строки 10–14
+  glossary: [np-slicing]
+- id: vectorization
+  title: Векторные (поэлементные) операции
+  recall: Операция с массивом применяется к каждому элементу сразу, без цикла. Список при `* 2` повторяется, массив — умножается поэлементно.
+  example: |
+    engine_litres = engine / 1000   # весь столбец сразу
+  glossary: [vectorization]
+- id: view-copy
+  title: Представление (view) и копия
+  recall: "Срез массива обычно ссылается на те же данные (view): изменение среза меняет исходный массив. Для независимой копии — `.copy()`."
+  example: |
+    part = price[:5].copy()   # теперь можно менять part, X не изменится
+  glossary: [np-view-copy]
+- id: nan-inf
+  title: Пропуски NaN и бесконечности
+  recall: "`np.nan` — «не число» (пропуск). `np.isnan(a)` находит пропуски, `np.isfinite(a)` — обычные конечные числа. `np.mean` с NaN даёт NaN, `np.nanmean` пропуски игнорирует."
+  example: |
+    np.isnan(engine).sum()    # число пропусков
+    np.nanmean(engine)        # среднее без пропусков
+  glossary: [np-nan, np-isnan, np-isfinite, np-nanmean]
+- id: bool-mask
+  title: Логическая маска
+  recall: Сравнение массива с числом даёт массив True/False той же формы — маску. `a[mask]` оставляет элементы с True, `mask.sum()` считает их, `mask.mean()` — их долю.
+  example: |
+    expensive = price > 10_000
+    price[expensive][:3], expensive.sum(), expensive.mean()
+  glossary: [boolean-mask, np-count-nonzero]
+- id: mask-combine
+  title: Объединение условий & | ~
+  recall: "Поэлементное «и» — `&`, «или» — `|`, «не» — `~`; каждое условие в скобках: `(year < 2015) & (price > 5000)`. Слова `and`/`or` с массивами не работают."
+  example: |
+    old_cheap = (year < 2005) & (price < 2000)
+    old_cheap.sum()
+  glossary: [mask-operators]
+- id: mean-median
+  title: Среднее и медиана
+  recall: "Среднее (`np.mean`) — сумма, делённая на количество; чувствительно к крайним значениям. Медиана (`np.median`) делит упорядоченные значения пополам и устойчива к выбросам."
+  example: |
+    np.mean(price_values), np.median(price_values)   # 9727.11 и 6600.0
+  glossary: [np-mean, np-median]
+- id: extremes-argsort
+  title: Крайние значения и их позиции
+  recall: "`np.min`/`np.max` — крайние значения, `np.argmax` — позиция максимума, `np.argsort` — позиции в порядке возрастания (`[-5:][::-1]` — пять наибольших)."
+  example: |
+    pos = np.argmax(price_values)
+    top5 = np.argsort(price_values)[-5:][::-1]
+  glossary: [np-min-max, np-argmax, np-argsort]
+- id: row-ids
+  title: Номера исходных строк после фильтрации
+  recall: "После фильтрации позиции сдвигаются. Сохраняйте номера строк тем же фильтром: `row_id = np.arange(n_rows)`, `rows = row_id[mask]` — тогда `rows[pos]` вернёт исходную запись."
+  example: |
+    row_id = np.arange(len(X))
+    price_rows = row_id[known_price]
+    X[price_rows[pos]]   # исходная запись
+  glossary: [np-arange]
+- id: quantiles-iqr
+  title: Квантили и IQR
+  recall: "Квантиль уровня q — граница, ниже которой лежит доля q упорядоченных значений: `np.quantile(a, 0.9)`. IQR = Q3 − Q1 — ширина центральной половины."
+  example: |
+    q1, q3 = np.quantile(price_values, [0.25, 0.75])
+    iqr = q3 - q1   # 8650.0
+  glossary: [np-quantile, iqr]
+- id: std-var
+  title: Стандартное отклонение и дисперсия
+  recall: "`np.std` — типичный масштаб отклонения от среднего (в единицах признака), `np.var` — его квадрат. Оба чувствительны к выбросам."
+  example: |
+    np.std(price_values, ddof=0)   # евро
+    np.var(price_values, ddof=0)   # евро²
+  glossary: [np-std-var]
+- id: histogram-counts
+  title: Частоты по интервалам (np.histogram)
+  recall: "`np.histogram(a, bins=границы)` возвращает (число значений в каждом интервале, границы). Интервалы вида [левая, правая), последний включает правую границу."
+  example: |
+    counts, edges = np.histogram(values, bins=[0, 5000, 10000, np.inf])
+  glossary: [np-histogram]
+- id: joint-mask
+  title: Общая маска для нескольких признаков
+  recall: Если сравниваете два признака одних автомобилей, отбирайте строки одной общей маской (например, конечные год И цена), иначе потеряете соответствие строк.
+  example: |
+    known = np.isfinite(year) & np.isfinite(price)
+    newer_prices = price[known & (year >= 2015)]
+  glossary: [boolean-mask]
+- id: group-compare
+  title: Сравнение групп
+  recall: Для каждой группы сначала размер, затем статистики (медиана, Q1/Q3). Различие групп описывает связь в данных, но не доказывает причину.
+  example: |
+    for label, m in [('до 2015', older), ('с 2015', newer)]:
+        print(label, m.sum(), np.median(price[m]))
+  glossary: [group-comparison]
+- id: rng-sample
+  title: Случайный выбор строк (default_rng, choice)
+  recall: "`rng = np.random.default_rng(42)` создаёт генератор (seed делает опыт повторяемым), `rng.choice(n, size=100, replace=False)` выбирает 100 разных позиций."
+  example: |
+    rng = np.random.default_rng(42)
+    pos = rng.choice(price_values.size, size=100, replace=False)
+    sample = price_values[pos]
+  glossary: [np-default-rng, rng-choice]
+- id: sampling-variability
+  title: Выборочная изменчивость
+  recall: Статистика, посчитанная по случайной части данных, меняется от выборки к выборке. В выводе указывайте, по каким и скольким записям она посчитана.
+  glossary: [sampling-variability]
+- id: axis
+  title: Оси (axis)
+  recall: "`axis=0` — вычисление вдоль строк (результат для каждого столбца), `axis=1` — вдоль столбцов (результат для каждой строки)."
+  example: |
+    np.isnan(X).sum(axis=0)   # пропуски по каждому столбцу
+  glossary: [np-axis]
+- id: broadcasting
+  title: Broadcasting (совместимые формы)
+  recall: NumPy растягивает массивы совместимых форм, например столбец (3, 1) и строку (3,) → матрица (3, 3). Формы сравниваются справа налево; размер 1 растягивается.
+  example: |
+    col = np.array([1, 2, 3]).reshape(-1, 1)
+    (col + np.array([10, 20, 30])).shape   # (3, 3)
+  glossary: [np-broadcasting, np-reshape]
+
+# ---------- Модуль 2: Pandas ETL ----------
+- id: pd-read-csv
+  title: Чтение CSV в DataFrame (read_csv, raw и копия)
+  recall: "`pd.read_csv('cars.csv')` читает всю таблицу с названиями колонок и типами. Исходник держим в `raw`, работаем с копией `df = raw.copy()`."
+  example: |
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+  glossary: [pd-read-csv, pd-copy]
+- id: pd-dataframe
+  title: DataFrame и Series
+  recall: "`DataFrame` — таблица с индексом строк и именами колонок; `df.shape`, `df.columns`, `df.index`. Колонка по имени `df['Price(euro)']` — это `Series`. Первые/последние/случайные строки — `head`, `tail`, `sample(n, random_state=...)`."
+  example: |
+    df.shape                  # (41007, 9)
+    df['Price(euro)'].mean()  # колонка — Series
+    df.sample(3, random_state=42)
+  glossary: [pd-dataframe, pd-series, pd-head-tail-sample]
+- id: pd-info-dtypes
+  title: Типы колонок и сводка (info, dtypes, describe)
+  recall: "`df.info()` — типы и число **непустых** значений по колонкам; `df.dtypes` — только типы (текст в pandas 3 — `str`, в pandas 2 — `object`); `df.describe()` — count, mean, std, квартили по числовым колонкам."
+  example: |
+    df.info()
+    df.describe().round(1)
+  glossary: [pd-info, pd-dtypes, pd-describe]
+- id: pd-sort-values
+  title: Сортировка (sort_values)
+  recall: "`df.sort_values('Price(euro)', ascending=False)` возвращает **новую** отсортированную таблицу; `df` не меняется, пока не присвоить результат. Несколько ключей — списки `by` и `ascending`."
+  example: |
+    df.sort_values('Price(euro)', ascending=False).head(5)
+    df.sort_values(['Year', 'Price(euro)'], ascending=[False, True])
+  glossary: [pd-sort-values]
+- id: pd-isna-duplicated
+  title: Пропуски и повторы (isna, duplicated)
+  recall: "`df.isna().sum()` — число пропусков по колонкам, `.mean()` — их доля; `df.duplicated().sum()` — сколько строк полностью повторяют более раннюю строку."
+  example: |
+    df.isna().sum()
+    df.duplicated().sum()     # 3623
+  glossary: [pd-isna, pd-duplicated]
+- id: pd-value-counts
+  title: Частоты категорий (value_counts, nunique)
+  recall: "`s.value_counts()` — сколько раз встречается каждое значение (по убыванию); `dropna=False` учитывает пропуски, `normalize=True` даёт доли. `s.nunique()` — число разных значений."
+  example: |
+    df['Fuel_type'].value_counts(dropna=False)
+    df['Make'].nunique()      # 87
+  glossary: [pd-value-counts, pd-nunique]
+- id: pd-select-columns
+  title: Выбор колонок списком
+  recall: "`df['Make']` — `Series`, а `df[['Make']]` и `df[['Make', 'Year']]` — `DataFrame`: двойные скобки — это список имён."
+  example: |
+    df[['Make', 'Model', 'Price(euro)']].head(3)
+  glossary: [pd-double-brackets]
+- id: pd-loc-iloc
+  title: Выбор строк и колонок (loc и iloc)
+  recall: "`df.loc[метки, имена]` выбирает по меткам индекса и именам колонок (правая граница среза **включается**), `df.iloc[позиции, позиции]` — по номерам с нуля (правая граница не включается)."
+  example: |
+    df.loc[0:5, ['Make', 'Year']]   # 6 строк: метки 0..5
+    df.iloc[0:5, 0:3]               # 5 строк: позиции 0..4
+  glossary: [pd-loc, pd-iloc]
+- id: label-vs-position
+  title: Метка строки ≠ позиция
+  recall: "После фильтрации индекс хранит старые метки. При метках 10, 20, 30 строка `loc[20]` — это `iloc[1]`, а `loc[1]` даст `KeyError`."
+  example: |
+    t = df.head(3).copy()
+    t.index = [10, 20, 30]
+    t.loc[20].equals(t.iloc[1])   # True
+  glossary: [pd-label-position]
+- id: pd-bool-filter
+  title: Фильтр строк по условию
+  recall: "Сравнение колонки даёт маску-`Series`; `df[маска]` или `df.loc[маска, колонки]` оставляет строки с `True`. Условия объединяют `&`, `|`, `~`, каждое — в скобках."
+  example: |
+    manual = df[df['AutoTransmission'] == False]
+    df.loc[(df['Make'] == 'Toyota') & (df['Year'] == 2012), ['Model', 'Price(euro)']]
+  glossary: [pd-boolean-filter, pd-query]
+- id: pd-isin-between
+  title: isin, between и отрицание диапазона
+  recall: "`s.isin([...])` — значение из списка; `s.between(a, b)` — диапазон с включёнными концами. «Вне диапазона» — `~s.between(a, b)`, но туда попадут и пропуски: отделяйте их через `s.notna()`."
+  example: |
+    df[df['Make'].isin(['Toyota', 'BMW'])]
+    outside = ~df['Engine_capacity(cm3)'].between(200, 5000) & df['Engine_capacity(cm3)'].notna()
+  glossary: [pd-isin, pd-between]
+- id: pd-drop-duplicates
+  title: Удаление точных повторов
+  recall: "`df.drop_duplicates()` оставляет первое вхождение каждой полностью совпадающей строки. Без ID объявлений это допущение: одинаковые описания могут принадлежать разным машинам."
+  example: |
+    df = df.drop_duplicates().copy()
+  glossary: [pd-drop-duplicates]
+- id: pd-dropna
+  title: Неполные записи (dropna, fillna)
+  recall: "`df.isna().any(axis=1)` отмечает строки хотя бы с одним пропуском; `df.dropna()` их удаляет (`subset=[...]` — только по выбранным колонкам). `fillna` заполняет пропуски — но только во входных признаках, не в цене."
+  example: |
+    incomplete = df[df.isna().any(axis=1)]
+    df = df.dropna().copy()
+  glossary: [pd-dropna, pd-fillna]
+- id: processing-log
+  title: Журнал обработки
+  recall: "После каждого этапа очистки записываем, сколько строк было и стало: список словарей → `pd.DataFrame(processing_log)`. Так видно, какой этап убрал больше всего."
+  example: |
+    processing_log.append({'Этап': 'Повторы', 'До': n_before, 'После': len(df), 'Убрано': n_before - len(df)})
+  glossary: [processing-log]
+- id: analysis-scope
+  title: Учебная область анализа
+  recall: "Границы отбора (годы, пробег, объём, цена) задаём константами в одном месте и собираем в одну маску `in_scope`. Это рамка анализа, а не доказательство ошибок; исключённое сохраняем для проверки."
+  example: |
+    in_scope = df['Year'].between(MIN_YEAR, MAX_YEAR) & df['Price(euro)'].between(MIN_PRICE, MAX_PRICE)
+    out_of_scope = df.loc[~in_scope]
+  glossary: [analysis-scope]
+- id: pd-reset-index
+  title: Исходная метка строки и reset_index
+  recall: "Перед перенумерацией сохраняем старые метки: `df['source_row_id'] = df.index`; затем `df.reset_index(drop=True)` даёт метки 0, 1, 2, …; исходную строку находит `raw.loc[source_row_id]`."
+  example: |
+    df['source_row_id'] = df.index
+    df = df.reset_index(drop=True)
+    raw.loc[df.loc[0, 'source_row_id']]
+  glossary: [pd-reset-index]
+- id: pd-rename-drop
+  title: Переименование и удаление колонок
+  recall: "`df.rename(columns={'старое': 'новое'})` меняет имена, `df.drop(columns=[...])` удаляет колонки. Оба возвращают новую таблицу — результат нужно присвоить."
+  example: |
+    df = df.rename(columns={'Engine_capacity(cm3)': 'Engine', 'Price(euro)': 'Price'})
+    no_id = df.drop(columns=['source_row_id'])
+  glossary: [pd-rename, pd-drop]
+- id: pd-new-column
+  title: Новый признак из колонок
+  recall: "Новая колонка — присваивание выражения над колонками: `df['Age'] = 2022 - df['Year']`, `df['km_year'] = df['Distance'] / df['Age']`. Считается сразу для всех строк, без цикла."
+  example: |
+    REFERENCE_YEAR = 2022
+    df['Age'] = REFERENCE_YEAR - df['Year']
+    df['km_year'] = df['Distance'] / df['Age']
+  glossary: [pd-new-column]
+- id: pd-map
+  title: Замена по словарю (map)
+  recall: "`s.map(словарь)` заменяет каждое значение по словарю; значения без ключа в словаре становятся пропуском."
+  example: |
+    df['Transmission'] = df['AutoTransmission'].map({True: 'Automatic', False: 'Manual'})
+  glossary: [pd-map]
+- id: pd-apply
+  title: Своя функция для каждого значения (apply)
+  recall: "`s.apply(функция)` вызывает функцию для каждого значения колонки. У функции должна быть ветка для пропуска (`pd.isna(value)`), а границы категорий проверяют отдельно."
+  example: |
+    def km_year_category(value):
+        if pd.isna(value):
+            return np.nan
+        return 'Small' if value <= 10_000 else 'Large'
+    df['km_year_cat'] = df['km_year'].apply(km_year_category)
+  glossary: [pd-apply]
+- id: pd-loc-assign
+  title: Изменение значений через loc
+  recall: "Записывать по условию — одной операцией `df.loc[маска, 'колонка'] = значение`. Цепочка `df[маска]['колонка'] = …` исходную таблицу не меняет."
+  example: |
+    df['check'] = 'ok'
+    df.loc[df['km_year'] > 30_000, 'check'] = 'high'
+  glossary: [pd-loc-assign, chained-assignment]
+- id: rare-categories
+  title: Редкие категории
+  recall: "Категории с малой долей (например, ≤ 1 %) можно объединить в `Rare`, предварительно сохранив исходное значение в отдельной колонке. Для модели список редких определяют только по обучающей части."
+  example: |
+    share = df['Make'].value_counts(normalize=True)
+    rare = share[share <= 0.01].index
+    df['Make_original'] = df['Make']
+    df.loc[df['Make'].isin(rare), 'Make'] = 'Rare'
+  glossary: [rare-category]
+- id: pd-to-csv
+  title: Сохранение таблицы и контроль (to_csv)
+  recall: "`df.to_csv('файл.csv', index=False)` сохраняет таблицу без лишней колонки индекса. После сохранения читаем файл обратно и проверяем размер, пропуски и колонки `Unnamed:`."
+  example: |
+    processed.to_csv('cars_processed.csv', index=False)
+    loaded = pd.read_csv('cars_processed.csv')
+    loaded.shape == processed.shape
+  glossary: [pd-to-csv, pd-select-dtypes]
+- id: target-features
+  title: Входные признаки X и целевая переменная y
+  recall: "Целевая переменная `y` — то, что предсказываем (цена). Входные признаки `X` — характеристики объекта; цель в `X` не попадает, технические номера строк и дубли признаков — тоже."
+  example: |
+    X = loaded[feature_columns]
+    y = loaded['Price']
+  glossary: [target-variable, input-features]
+
+# ---------- Модуль 3: сводный анализ ----------
+- id: eda-questions
+  title: Разведочный анализ и вопросы аналитика
+  recall: "Разведочный анализ (EDA) — понять данные до модели: какие объекты представлены, что типично, где данных мало. Число записей показывает представленность в выборке, а не спрос."
+  glossary: [eda]
+- id: feature-types
+  title: Числовые и категориальные признаки
+  recall: "Числовые признаки (год, пробег, цена) описывают `describe()`; категориальные (марка, кузов) — частотами, `describe()` для текста: count, unique, top, freq."
+  example: |
+    num_columns = ['Year', 'Distance', 'Engine', 'Price', 'km_year']
+    cat_columns = ['Make', 'Model', 'Style', 'Fuel_type', 'Transmission']
+    df[cat_columns].describe()
+  glossary: [feature-types]
+- id: pd-groupby
+  title: Группировка (groupby)
+  recall: "`df.groupby('Make')['Price'].mean()` — статистика цены для каждой марки: разбить на группы → выбрать колонку → применить функцию. Результат — Series с группами в индексе."
+  example: |
+    df.groupby('Make')['Price'].median().sort_values(ascending=False).head()
+  glossary: [pd-groupby]
+- id: pd-agg
+  title: Несколько статистик сразу (agg, size, count)
+  recall: "`.agg(['mean', 'median', 'size'])` — несколько статистик за один вызов; именованная агрегация `agg(n=('Price', 'size'), median_price=('Price', 'median'))`. `size` — число строк группы, `count` — число известных значений."
+  example: |
+    df.groupby('Make').agg(n=('Price', 'size'), median_price=('Price', 'median'))
+  glossary: [pd-agg]
+- id: group-size-caution
+  title: Размер группы и надёжность статистики
+  recall: Статистика маленькой группы неустойчива — одна дорогая машина меняет рейтинг. Рядом со средним или медианой группы всегда показывают её размер.
+  glossary: [group-comparison]
+- id: pd-pivot-table
+  title: Сводная таблица (pivot_table)
+  recall: "`pd.pivot_table(df, index='Make', columns='Style', values='Price', aggfunc='median')` — группы по строкам и колонкам, в ячейках — статистика. `aggfunc='size'` считает записи, `fill_value=0` заменяет пустые сочетания нулём (только для количеств)."
+  example: |
+    pd.pivot_table(df, index='Make', columns='Style', aggfunc='size', fill_value=0)
+  glossary: [pd-pivot-table]
+- id: pd-multiindex
+  title: Составной индекс после группировки
+  recall: "Группировка по двум колонкам даёт составной индекс (MultiIndex): `s.loc['Toyota']` — все строки марки, `s.loc[('Toyota', 2012)]` — одна группа; `unstack()` переносит второй уровень в колонки."
+  example: |
+    by_make_year = df.groupby(['Make', 'Year'])['Price'].mean()
+    by_make_year.loc['Toyota'].tail(3)
+  glossary: [pd-multiindex]
+- id: pd-crosstab
+  title: Таблица сочетаний (crosstab)
+  recall: "`pd.crosstab(df['Make'], df['Style'])` — сколько записей у каждого сочетания категорий; `normalize='index'` делит каждую строку на её сумму (доли внутри строки)."
+  example: |
+    pd.crosstab(df['Make'], df['Style'], normalize='index')
+  glossary: [pd-crosstab]
+- id: count-vs-share
+  title: Число записей и доля — разные вопросы
+  recall: "«У кого больше всего SUV» (число) и «у кого SUV составляют наибольшую долю» (доля внутри марки) — разные вопросы с разными ответами. У доли всегда называют знаменатель."
+  glossary: [share-denominator]
+- id: rare-combinations
+  title: Редкие сочетания признаков
+  recall: Редкое сочетание (марка + кузов, встречающееся 1–2 раза) — повод проверить запись, а не удалить её. Объединение редких категорий в аналитическую группу меняет детализацию отчёта; исходную колонку сохраняют.
+  glossary: [rare-category]
+- id: group-estimate
+  title: Значение «как у похожих» (transform)
+  recall: "`df.groupby(колонки)[колонка].transform('median')` возвращает для каждой строки статистику её группы — той же длины, что таблица. Так заполняют пропуск входного признака по похожим машинам и строят простую оценку цены."
+  example: |
+    group_median = df.groupby(['Make', 'Model'])['Engine'].transform('median')
+    df['Engine'] = df['Engine'].fillna(group_median)
+  glossary: [pd-transform]
+- id: metric-mae-mape
+  title: Метрики ошибки MAE и MAPE
+  recall: "MAE — средняя абсолютная ошибка в единицах цены: `(y - y_hat).abs().mean()`; MAPE — средняя ошибка в процентах от фактической цены: `((y - y_hat).abs() / y).mean() * 100`. На тех же данных, по которым считали оценку, это не качество прогноза."
+  example: |
+    mae = (df['Price'] - estimate).abs().mean()
+    mape = ((df['Price'] - estimate).abs() / df['Price']).mean() * 100
+  glossary: [mae, mape]
+- id: pd-plot
+  title: Графики Pandas (plot)
+  recall: "`series.plot()` — линия, `kind='bar'` — столбцы; подписи — `title=`, `xlabel=`, `ylabel=`, сетка — `grid=True`, логарифмическая ось — `logy=True`. По оси X — индекс Series."
+  example: |
+    df.groupby('Year')['Price'].median().plot(marker='o', title='Медианная цена по году выпуска',
+                                              xlabel='Год выпуска', ylabel='Цена, евро', grid=True)
+  glossary: [pd-plot]
+- id: pd-styler
+  title: Оформление таблиц (Styler)
+  recall: "`df.style` меняет только отображение: `.format(precision=0, thousands=' ', na_rep='—')`, `.background_gradient(subset=[...])`, `.bar(subset=[...])`, `.highlight_max()`, `.highlight_null()`, `.set_caption('…')`. Числа в таблице не меняются."
+  example: |
+    table.style.format(precision=0, thousands=' ').bar(subset=['Записей'], color='lightblue')
+  glossary: [pd-styler]
+# ---------- Модуль 4. Визуализация, BI и Data Story ----------
+- id: viz-question
+  title: Сначала вопрос — потом график
+  recall: "Перед графиком записывают вопрос, показатель (число, доля, медиана, Q1–Q3) и зачем ответ нужен сервису. График выбирают под вопрос, а выводы ограничивают тем, что описывают данные: объявления — не продажи."
+  glossary: [viz-goals]
+- id: chart-choice
+  title: Какой график для какого вопроса
+  recall: "Категории — отсортированные столбцы; один числовой признак — гистограмма или боксплот; числовой по категориям — боксплоты по группам; два числовых — scatter или hexbin; упорядоченный признак (год) — линия; иерархия «марка → модель» — treemap."
+  glossary: [chart-choice]
+- id: mpl-fig-ax
+  title: Figure и Axes (Matplotlib)
+  recall: "`fig, ax = plt.subplots(figsize=(10, 4))` — рисунок и одна область графика. Рисуют методами осей: `ax.plot(x, y, 'o-')`, `ax.scatter(...)`; подписывают `ax.set_title`, `ax.set_xlabel`, `ax.set_ylabel` (или сразу `ax.set(title=..., xlabel=..., ylabel=...)`), сетка — `ax.grid(alpha=0.3)`."
+  example: |
+    fig, ax = plt.subplots(figsize=(10, 3))
+    ax.plot(prices.index, prices.values, 'o-')
+    ax.set(title='Средняя цена по году выпуска', xlabel='Год выпуска', ylabel='Цена, евро')
+  glossary: [mpl-figure-axes, ax-plot-scatter, mpl-ticks]
+- id: mpl-layers
+  title: Слои графика и легенда
+  recall: "Несколько вызовов на одних осях рисуют слои: облако отдельных машин (`ax.scatter(..., alpha=0.15, color='gray')`) и поверх — линию средних. У каждого слоя `label='…'`, затем `ax.legend()`. Размер маркера `s=` может показывать число записей."
+  example: |
+    ax.scatter(cars['Year'], cars['Price'], s=8, alpha=0.15, color='gray', label='Отдельные автомобили')
+    ax.plot(stats.index, stats['mean'], 'o-', label='Средняя цена')
+    ax.legend()
+  glossary: [mpl-legend]
+- id: mpl-bar-labels
+  title: Отсортированные столбцы с подписями
+  recall: "Для категорий — горизонтальные столбцы `ax.barh(top.index, top.values)`, отсортированные так, чтобы самый большой был сверху (`sort_values()` перед `barh`). Подписи — `ax.bar_label(bars, labels=[...], padding=4)`; запас справа — `ax.set_xlim(0, top.max() * 1.3)`."
+  example: |
+    top = df['Make'].value_counts().head(10).sort_values()
+    bars = ax.barh(top.index, top.values)
+    ax.bar_label(bars, labels=[f'{n} ({100 * n / len(df):.1f}%)' for n in top], padding=4)
+  glossary: [mpl-barh, bar-label]
+- id: color-emphasis
+  title: Цвет со смыслом
+  recall: "Цвет — сигнал, а не украшение: один ряд рисуют одним цветом, нужную категорию выделяют акцентом, остальные — серым, «Остальные» — светло-серым. Разные цвета для каждого столбца одного ряда только мешают."
+  example: |
+    colors = ['tab:orange' if name == 'Toyota' else 'lightgray' for name in top.index]
+    ax.barh(top.index, top.values, color=colors)
+  glossary: [mpl-colors]
+- id: mpl-subplots
+  title: Несколько графиков на рисунке (subplots)
+  recall: "`fig, axes = plt.subplots(2, 2, figsize=(12, 8))` — сетка областей; `axes[0, 1]` — строка 0, колонка 1; `axes.flat` — по всем подряд. Общий заголовок — `fig.suptitle(...)`, без наложений — `fig.tight_layout()`. Вторая ось Y на тех же осях — `ax.twinx()`."
+  example: |
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+    axes[0].barh(top.index, top.values)
+    axes[1].barh(top.index, share.values)
+    fig.tight_layout()
+  glossary: [plt-subplots-grid, twinx]
+- id: part-of-whole
+  title: "Доли целого: кольцо, мозаика, Парето"
+  recall: "Доли одного целого можно показать столбцами, кольцом (`ax.pie(..., wedgeprops={'width': 0.4})`, только для 3–6 частей), мозаикой «квадрат ≈ 1 %» или диаграммой Парето (столбцы + накопленная доля на второй оси). Самая точная для сравнения — столбцы."
+  example: |
+    ax.bar(ranked.index, ranked.values)
+    ax.twinx().plot(ranked.index, 100 * ranked.cumsum() / len(df), 'o-', color='tab:red')
+  glossary: [pie-donut, pareto]
+- id: hist-bins
+  title: "Гистограмма: интервалы и диапазон"
+  recall: "`ax.hist(x, bins=40, range=(0, 50_000))` делит диапазон на равные интервалы и считает записи в каждом. Ширина интервала = (max − min) / bins. Мало интервалов прячут форму, много — дают шум; полезно посмотреть несколько вариантов и обрезанный диапазон."
+  example: |
+    ax.hist(df['Price'], bins=40, range=(0, 50_000))
+    ax.set(xlabel='Цена, евро', ylabel='Число записей')
+  glossary: [plt-hist]
+- id: log-axis
+  title: Логарифмическая шкала
+  recall: "Если значения различаются в сотни раз, включают логарифмическую ось: `ax.set_xscale('log')`, для гистограммы — интервалы `np.geomspace(min, max, 40)`. Равные шаги на ней — равные отношения (100 → 1 000 → 10 000). Шкала меняет вид, а не данные: выброс остаётся выбросом."
+  example: |
+    ax.hist(price, bins=np.geomspace(price.min(), price.max(), 40))
+    ax.set_xscale('log')
+  glossary: [log-scale]
+- id: sns-basics
+  title: "Seaborn: график из таблицы одной строкой"
+  recall: "`sns.histplot(data=df, x='Year', bins=20, ax=ax)` — таблица, имена колонок и оси, куда рисовать. Seaborn рисует на осях Matplotlib, поэтому подписи и сетку настраивают как обычно: `ax.set(...)`. Параметр `hue='Колонка'` раскрашивает по категории."
+  example: |
+    fig, ax = plt.subplots()
+    sns.histplot(data=df, x='Year', bins=20, ax=ax)
+    ax.set(title='Распределение по году выпуска', xlabel='Год выпуска', ylabel='Число записей')
+  glossary: [seaborn]
+- id: boxplot-rule
+  title: "Боксплот: ящик, усы и точки за усами"
+  recall: "Ящик — от Q1 до Q3 (центральные 50 % записей), линия — медиана, усы — до самых дальних значений в пределах [Q1 − 1,5·IQR; Q3 + 1,5·IQR], точки снаружи — редкие значения, которые стоит проверить. `sns.boxplot(data=df, x='Группа', y='Price')`."
+  example: |
+    q1, q3 = df['Price'].quantile([0.25, 0.75])
+    high = q3 + 1.5 * (q3 - q1)
+    sns.boxplot(data=df, y='Price', ax=ax)
+  glossary: [boxplot]
+- id: dist-views
+  title: "Violin, KDE, ECDF, strip"
+  recall: "Violin — боксплот + форма плотности (видны два пика); KDE — сглаженная гистограмма; ECDF — доля записей со значением **не больше** x (`sns.ecdfplot`); strip — отдельные точки со смещением. Логарифм цены почти нормален: около 68 % значений в пределах ±1σ."
+  example: |
+    sns.ecdfplot(data=df, x='Year', ax=ax)
+    share_2010 = (df['Year'] <= 2010).mean()
+  glossary: [violin-kde, ecdf, normal-distribution]
+- id: conditional-dist
+  title: "Условное распределение: значение внутри групп"
+  recall: "Распределение признака внутри каждой группы: `sns.boxplot(data=df, x='km_year_cat', y='Price', order=[...])`, гистограммы с `hue=` и `multiple='stack'`. «Норма» в группах разная: дорогая машина с малым пробегом — обычно новая, а не ошибка."
+  example: |
+    sns.boxplot(data=df, x='km_year_cat', y='Price', order=['Small', 'Medium', 'Large'], ax=ax)
+  glossary: [conditional-distribution]
+- id: facet-grid
+  title: "Панели по группам (catplot, col=)"
+  recall: "`sns.catplot(data=..., x=..., y=..., col='Make', kind='box', col_wrap=3)` строит по панели на каждую группу с общей шкалой Y — так группы честно сравнимы. Порядок панелей — `col_order=[...]`."
+  example: |
+    sns.catplot(data=df_top, x='km_year_cat', y='Price', col='Make', kind='box', col_wrap=3, height=3)
+  glossary: [sns-catplot]
+- id: heatmap-shares
+  title: Тепловая карта долей
+  recall: "Таблица долей `pd.crosstab(..., normalize='index')` читается глазами как тепловая карта: `sns.heatmap(shares, annot=True, fmt='.0%', cmap='Blues')`. Цвет показывает величину, подписи — точные значения; знаменатель доли указывают в заголовке."
+  example: |
+    shares = pd.crosstab(df_top['Make'], df_top['Fuel_type'], normalize='index')
+    sns.heatmap(shares, annot=True, fmt='.0%', cmap='Blues', ax=ax)
+  glossary: [sns-heatmap]
+- id: overplotting
+  title: "Наложение точек: прозрачность и hexbin"
+  recall: "Десятки тысяч точек сливаются в пятно. Помогают маленькие полупрозрачные маркеры `ax.scatter(x, y, s=5, alpha=0.2)` или `ax.hexbin(x, y, gridsize=45, bins='log', mincnt=1)` — число записей в шестиугольных ячейках с цветовой шкалой `fig.colorbar(hb, ax=ax)`."
+  example: |
+    hb = ax.hexbin(df['Distance'], df['Price'], gridsize=45, bins='log', mincnt=1)
+    fig.colorbar(hb, ax=ax, label='Число записей в ячейке')
+  glossary: [scatter-plot, hexbin]
+- id: filter-boundary
+  title: Граница фильтрации по двум признакам
+  recall: "На графике двух признаков проводят границу, за которой записи подозрительны, например прямую от (0 км; 130 000 €) до (600 000 км; 0 €): `limit = 130_000 * (1 - df['Distance'] / 600_000)`, маска `df['Price'] > limit`. Найденные записи сначала просматривают и заносят в журнал."
+  example: |
+    limit = 130_000 * (1 - df['Distance'] / 600_000)
+    review = df[df['Price'] > limit]
+  glossary: [filter-boundary]
+- id: hue-channel
+  title: Цвет как третий признак (hue)
+  recall: "`sns.scatterplot(data=df, x='Distance', y='Price', hue='Transmission', alpha=0.4)` — цвет кодирует категорию, легенда появляется сама. Цветом показывают 2–6 категорий; ещё один канал (размер `size=`) легко перегружает график."
+  example: |
+    sns.scatterplot(data=df, x='Distance', y='Price', hue='Transmission', s=8, alpha=0.4, ax=ax)
+  glossary: [hue]
+- id: shared-scales
+  title: Общие шкалы для сравнения панелей
+  recall: "Панели сравнимы, только если у них одинаковые шкалы: `plt.subplots(1, 2, sharex=True, sharey=True)`, для hexbin — одна цветовая нормировка (`LogNorm(vmin, vmax)` для всех). В заголовке панели указывают размер группы: `f'{name}: n={len(group)}'`."
+  example: |
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4), sharex=True, sharey=True)
+    for ax, (name, group) in zip(axes, df.groupby('Transmission')):
+        ax.scatter(group['Distance'], group['Price'], s=4, alpha=0.2)
+        ax.set_title(f'{name}: n={len(group)}')
+  glossary: [shared-axes]
+- id: plotly-express
+  title: "Plotly Express: интерактивный график"
+  recall: "`fig = px.scatter(df, x='Year', y='Price', color='Make', hover_data=['source_row_id', 'Model'], title=..., labels={'Price': 'Цена, евро'})`, затем `fig.show()`. Наведение показывает запись, колёсико и рамка — приближение; `hover_data` с номером строки помогает найти подозрительную запись в таблице."
+  example: |
+    fig = px.scatter(df, x='Year', y='Price', hover_data=['source_row_id', 'Model'], opacity=0.4)
+    fig.show()
+  glossary: [plotly, hover-data]
+- id: plotly-treemap
+  title: "Treemap: состав по иерархии"
+  recall: "`px.treemap(table, path=['Make', 'Model'], values='count', color='avg_price')` — прямоугольники вложены по иерархии, площадь — число записей, цвет — средняя цена. Таблицу для treemap готовят группировкой с `reset_index()`."
+  example: |
+    stats = df.groupby(['Make', 'Model']).agg(count=('Price', 'size'), avg_price=('Price', 'mean')).reset_index()
+    px.treemap(stats, path=['Make', 'Model'], values='count', color='avg_price').show()
+  glossary: [treemap]
+- id: segment-filter
+  title: Фильтр сегмента
+  recall: "Фильтры исследования собирают в словарь: `filters = {'Make': 'Toyota', 'Fuel_type': None}` (None — «все»), и одна функция отбирает строки по всем заданным условиям. В Jupyter к такой функции подключают выпадающие списки ipywidgets; здесь меняют словарь и запускают заново."
+  example: |
+    def apply_filters(data, filters):
+        for column, value in filters.items():
+            if value is not None:
+                data = data[data[column] == value]
+        return data
+  glossary: [segment-filter]
+- id: bi-panel
+  title: "BI-панель: показатели и графики на одном экране"
+  recall: "Панель отвечает на несколько связанных вопросов сразу: сверху — ключевые числа (сколько записей, медиана цены, медиана пробега), ниже — графики (топ марок, распределение цены, цена по группам). Все элементы считаются по одному сегменту, его название — в заголовке."
+  glossary: [bi-dashboard]
+- id: plotly-subplots
+  title: "Панель из графиков plotly (make_subplots)"
+  recall: "`fig = make_subplots(rows=2, cols=3, specs=[[{'type': 'indicator'}] * 3, [{'type': 'xy'}] * 3])`, затем `fig.add_trace(go.Indicator(mode='number', value=...), row=1, col=1)` и `fig.add_trace(go.Bar(...), row=2, col=1)`. Оформление — `fig.update_layout(title=..., showlegend=False)`."
+  example: |
+    fig = make_subplots(rows=1, cols=2, specs=[[{'type': 'indicator'}, {'type': 'xy'}]])
+    fig.add_trace(go.Indicator(mode='number', value=len(df), title={'text': 'Записей'}), row=1, col=1)
+    fig.add_trace(go.Histogram(x=df['Price'], nbinsx=50), row=1, col=2)
+  glossary: [make-subplots]
+- id: data-story
+  title: "Дата-история: вопрос → наблюдение → вывод → действие"
+  recall: "Дата-история — несколько «слайдов», каждый отвечает на вопрос аудитории: график-наблюдение, интерпретация и следующий шаг. В конце — предложение для сервиса и границы выводов (что данные не доказывают)."
+  glossary: [data-story]
+- id: takeaway-title
+  title: Заголовок-вывод
+  recall: "Заголовок слайда формулирует вывод, а не тип графика: «Топ-5 марок охватывают 44,7 % записей» вместо «Число записей по маркам». Число в заголовке вычисляют из данных f-строкой, чтобы оно не устарело."
+  example: |
+    share = 100 * top5.sum() / len(df)
+    ax.set_title(f'Топ-5 марок охватывают {share:.1f}% записей')
+  glossary: [takeaway-title]
+# ---------- Модуль 5. Машинное обучение и первая модель в Scikit-learn ----------
+- id: ml-task
+  title: "Задача машинного обучения: y = f(x) по примерам"
+  recall: "Объект (автомобиль) описан признаками x = (x₁, …, xₙ); ответ y (цена) известен для обучающих примеров. Модель ищет функцию f, чтобы f(x) было близко к y и на **новых** объектах. Признак, который содержит сам ответ, брать нельзя."
+  glossary: [supervised-learning]
+- id: ml-task-types
+  title: "Виды задач: регрессия, классификация, кластеризация"
+  recall: "С учителем (есть ответы): регрессия — число (цена), классификация — класс (автомат или механика). Без учителя (ответов нет): кластеризация — группы похожих объектов. С подкреплением — агент учится по сигналам среды."
+  glossary: [regression-classification, supervised-learning]
+- id: param-model
+  title: Модель — параметрическое семейство функций
+  recall: "Модель задаёт вид зависимости с неизвестными параметрами: линейная ŷ = w₀ + w₁x₁ + … + wₙxₙ. Обучение — подбор параметров w по данным; одна и та же формула с разными w даёт разные прогнозы."
+  example: |
+    w0, w1 = -1_430_000, 717
+    y_hat = w0 + w1 * df['Year']
+  glossary: [parametric-model]
+- id: loss-mse
+  title: "Функция потерь и метод наименьших квадратов"
+  recall: "Функция потерь измеряет, насколько прогнозы отличаются от ответов; MSE = среднее (ŷ − y)². Метод наименьших квадратов выбирает параметры с наименьшим MSE; для прямой есть точная формула (`np.polyfit(x, y, 1)`)."
+  example: |
+    mse = ((y_hat - y) ** 2).mean()
+    a, b = np.polyfit(x, y, 1)
+  glossary: [loss-function, mse, least-squares]
+- id: gradient-descent
+  title: Градиентный спуск
+  recall: "Параметры подбирают по шагам: считают градиент функции потерь (куда она растёт быстрее всего) и сдвигают параметры в обратную сторону на маленький шаг `lr`. Повторяют, пока ошибка уменьшается."
+  example: |
+    grad_w = 2 * ((w * x + b - y) * x).mean()
+    w = w - lr * grad_w
+  glossary: [gradient-descent]
+- id: overfitting
+  title: Обобщающая способность и переобучение
+  recall: "Хорошая модель работает и на новых данных (обобщающая способность). Переобученная подстроилась под шум обучающей выборки: ошибка на train маленькая, на новых данных — большая. Недообученная ошибается везде: она слишком простая."
+  glossary: [generalization, overfitting]
+- id: train-valid-test
+  title: "Обучающая, валидационная и тестовая выборки"
+  recall: "Train — для обучения, validation — для сравнения моделей и настроек, test — один раз в конце, для итоговой оценки. Части не пересекаются; по test ничего не подбирают, иначе его оценка станет оптимистичной."
+  glossary: [train-valid-test]
+- id: sk-split
+  title: "train_test_split: разбиение 60/20/20"
+  recall: "`train_test_split(X, y, test_size=0.2, random_state=42)` делит X и y согласованно. Два шага: сначала отделяем test (20 %), затем из остатка — validation (25 % остатка = 20 % всего). `random_state` фиксирует случайность."
+  example: |
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  glossary: [train-test-split]
+- id: data-leakage
+  title: Утечка данных
+  recall: "Утечка — когда при обучении модель «подсматривает» в то, чего не будет при прогнозе: ответ среди признаков (AutoTransmission при прогнозе коробки), пересечение train и test, статистики для подготовки, посчитанные по всем данным. Оценка качества становится обманчиво хорошей."
+  example: |
+    len(X_train.index.intersection(X_test.index))   # должно быть 0
+  glossary: [data-leakage]
+- id: sk-fit-predict
+  title: "Модель в scikit-learn: создать, fit, predict"
+  recall: "Объект модели создают с параметрами (`model = LinearRegression()`), обучают `model.fit(X_train, y_train)`, прогнозируют `model.predict(X_valid)` — только по признакам. Найденное при обучении хранится в атрибутах с `_` на конце: `coef_`, `constant_`."
+  example: |
+    model = DummyRegressor(strategy='median')
+    model.fit(X_train, y_train)
+    pred = model.predict(X_valid)
+  glossary: [sk-estimator]
+- id: baseline-model
+  title: "Модель-ориентир (baseline)"
+  recall: "Прежде чем строить сложную модель, считают ошибку простейшего прогноза: одно число для всех, например медиана цен обучающей выборки (`DummyRegressor(strategy='median')`). Модель полезна, только если её ошибка заметно меньше."
+  glossary: [dummy-regressor]
+- id: linear-regression
+  title: "Линейная регрессия: коэффициенты и свободный член"
+  recall: "`LinearRegression().fit(X, y)` подбирает ŷ = intercept_ + coef_ · x методом наименьших квадратов. `coef_[i]` — на сколько меняется **прогноз** при росте признака i на единицу при прочих равных; это не доказательство причины."
+  example: |
+    model = LinearRegression().fit(X_train[['Year']], y_train)
+    model.coef_[0], model.intercept_
+  glossary: [linear-regression, coef-intercept]
+- id: error-analysis
+  title: "Разбор ошибок модели"
+  recall: "Ошибка прогноза — ŷ − y (знак: завышение или занижение). Смотрят одну строку целиком, распределение ошибок, где модель ошибается сильнее всего и нет ли бессмысленных прогнозов — например, отрицательных цен у линейной модели."
+  example: |
+    errors = pred - y_valid
+    (pred < 0).sum()
+  glossary: [residuals]
+- id: standard-scaler
+  title: "StandardScaler без утечки"
+  recall: "`StandardScaler` приводит признаки к z = (x − μ) / σ. μ и σ узнают **только по train**: `scaler.fit(X_train)`, затем `transform` для train, validation и test. `fit` на всех данных — утечка."
+  example: |
+    scaler = StandardScaler().fit(X_train)
+    X_train_s, X_valid_s = scaler.transform(X_train), scaler.transform(X_valid)
+  glossary: [standard-scaler]
+- id: regression-metrics
+  title: "Метрики регрессии: MAE, RMSE, R², MAPE"
+  recall: "MAE — средняя абсолютная ошибка в единицах y; RMSE — корень из MSE, сильнее штрафует большие ошибки; R² — доля разброса y, объяснённая моделью (1 — идеально, 0 — как среднее); MAPE — средняя ошибка в процентах, раздувается на маленьких y."
+  example: |
+    mean_absolute_error(y_valid, pred), root_mean_squared_error(y_valid, pred)
+    r2_score(y_valid, pred), mean_absolute_percentage_error(y_valid, pred)
+  glossary: [sk-metrics, rmse, r2-score, mae, mape]
+- id: business-metric
+  title: Метрика качества и бизнес-метрика
+  recall: "Офлайн-метрики (MAE, RMSE) считают по историческим данным до запуска модели; бизнес-метрика — то, ради чего сервис работает (доля сделок, выручка), её измеряют онлайн у работающей системы. Хорошая офлайн-метрика ещё не гарантирует пользы."
+  glossary: [business-metric]
+- id: pred-true-plot
+  title: "График «известное значение — прогноз»"
+  recall: "Каждая точка — объект проверки: по X — настоящий y, по Y — прогноз; на диагонали прогноз точен, выше — завышение, ниже — занижение. По точкам далеко от диагонали ищут, где и почему модель ошибается."
+  example: |
+    ax.scatter(y_valid, pred, s=8, alpha=0.3)
+    ax.plot([lo, hi], [lo, hi], 'r--')
+  glossary: [pred-true-plot]
+- id: log-target
+  title: Модель для логарифма цены
+  recall: "Если y положителен и с длинным хвостом, модель учат на log(y), а прогноз возвращают обратно `np.exp`. Ошибки становятся относительными, отрицательных цен не бывает; метрики считают в исходных единицах."
+  example: |
+    model.fit(X_train_s, np.log(y_train))
+    pred = np.exp(model.predict(X_valid_s))
+  glossary: [log-target]
+# ---------- Модуль 6. Сравнение моделей и итоговая проверка ----------
+- id: sk-pipeline
+  title: "Pipeline: подготовка и модель одним объектом"
+  recall: "`Pipeline([('scale', StandardScaler()), ('model', LinearRegression())])` — шаги по порядку. `fit(X_train, y_train)` обучает scaler на train, преобразует признаки и обучает модель; `predict(X_new)` сам преобразует новые строки тем же scaler. Шаг по имени — `pipe.named_steps['scale']`."
+  example: |
+    pipe = Pipeline([('scale', StandardScaler()), ('model', LinearRegression())])
+    pipe.fit(X_train, y_train)
+    pred = pipe.predict(X_valid)
+  glossary: [pipeline]
+- id: knn
+  title: "Метод k ближайших соседей"
+  recall: "`KNeighborsRegressor(n_neighbors=k)` запоминает обучающие строки; для новой машины находит k ближайших по признакам и выдаёт среднюю цену этих соседей. Расстояния зависят от масштаба, поэтому перед kNN ставят StandardScaler — в одном Pipeline."
+  example: |
+    knn = Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=10))])
+  glossary: [knn]
+- id: feature-distance
+  title: Расстояние между объектами
+  recall: "Евклидово расстояние между машинами a и b — √Σ(aⱼ − bⱼ)² по признакам. Без стандартизации его почти целиком определяет признак с самыми большими числами (пробег в км); после StandardScaler признаки весят одинаково."
+  example: |
+    d = np.sqrt(((a - b) ** 2).sum())
+  glossary: [euclidean-distance]
+- id: hyperparameter
+  title: Параметры и гиперпараметры
+  recall: "Параметры модель находит сама при `fit` (`coef_`, пороги дерева). Гиперпараметры задаёт человек до `fit` (`n_neighbors`, `max_depth`, `n_estimators`) и выбирает по validation — не по test."
+  example: |
+    KNeighborsRegressor(n_neighbors=20)      # 20 — гиперпараметр
+  glossary: [hyperparameter]
+- id: validation-curve
+  title: Кривая ошибки от гиперпараметра
+  recall: "Перебираем значения гиперпараметра и для каждого считаем ошибку на train и на validation. Слишком простая модель ошибается везде (недообучение), слишком сложная — мало на train и много на validation (переобучение). Выбирают минимум ошибки на validation."
+  glossary: [validation-curve, overfitting]
+- id: decision-tree
+  title: Дерево решений для регрессии
+  recall: "Дерево задаёт вопросы вида «Year ≤ 2012.5?» и по ответам спускается к листу; лист выдаёт среднюю цену обучающих машин, попавших в него. Прогноз — ступенчатая функция признаков; масштабировать признаки не нужно."
+  example: |
+    tree = DecisionTreeRegressor(max_depth=3, random_state=42).fit(X_train, y_train)
+  glossary: [decision-tree]
+- id: tree-split
+  title: Как дерево выбирает вопрос
+  recall: "Для каждого признака и порога строки делятся на две части; для регрессии считают сумму квадратов отклонений цен от средних своих частей и выбирают вопрос, после которого она меньше всего. Для классов вместо неё — энтропия или индекс Джини. Выбор жадный: шаг за шагом, без возврата."
+  glossary: [tree-split, entropy]
+- id: tree-depth
+  title: "Сложность дерева: глубина и размер листа"
+  recall: "`max_depth` ограничивает число вопросов подряд, `min_samples_leaf` — минимальное число машин в листе. Неограниченное дерево запоминает обучающие данные (MAE на train почти 0) и хуже работает на новых; подходящие значения ищут по validation."
+  example: |
+    DecisionTreeRegressor(max_depth=8, min_samples_leaf=20, random_state=42)
+  glossary: [max-depth]
+- id: feature-importance
+  title: Важность признаков дерева
+  recall: "`feature_importances_` — доля уменьшения ошибки, которую дали разбиения по каждому признаку (в сумме 1). Показывает, на что опирается модель, но не доказывает причину; у похожих признаков важность делится между ними."
+  example: |
+    pd.Series(tree.feature_importances_, index=X.columns).sort_values()
+  glossary: [feature-importance]
+- id: bagging
+  title: "Бэггинг: много моделей и среднее"
+  recall: "Бутстрэп-выборка — случайный выбор строк с повторениями того же размера (в неё попадает ≈ 63 % разных строк). На каждой выборке учат свою модель, прогнозы усредняют: ошибки разных моделей частично гасят друг друга, и прогноз становится устойчивее."
+  example: |
+    rows = rng.integers(0, n, size=n)        # бутстрэп: номера строк с повторениями
+  glossary: [bootstrap, bagging, ensemble]
+- id: random-forest
+  title: Случайный лес
+  recall: "`RandomForestRegressor(n_estimators=60, max_depth=10, random_state=42)` — бэггинг деревьев: каждое дерево учится на своей бутстрэп-выборке, прогноз — среднее деревьев. Обычно точнее одного дерева и меньше переобучается, но медленнее и хуже объясняется."
+  example: |
+    forest = RandomForestRegressor(n_estimators=60, max_depth=10, random_state=42, n_jobs=1)
+  glossary: [random-forest]
+- id: model-comparison
+  title: Честное сравнение кандидатов
+  recall: "Все кандидаты — на одних признаках, одном разбиении и одной метрике; выбирают по validation, test открывают один раз — для выбранной модели. В таблице — ошибки на train и validation; различия в несколько десятков евро — в пределах случайности."
+  glossary: [model-selection]
+- id: k-fold-cv
+  title: Блочная кросс-валидация
+  recall: "`KFold(n_splits=k, shuffle=True, random_state=42)` делит обучающую часть на k блоков; каждый блок по очереди проверочный, остальные — обучение. Итог — среднее k ошибок и их разброс: это надёжнее одного разбиения."
+  example: |
+    cv = KFold(n_splits=3, shuffle=True, random_state=42)
+  glossary: [cross-validation]
+- id: cross-validate
+  title: "cross_validate и знак метрики"
+  recall: "`cross_validate(pipe, X_train, y_train, cv=cv, scoring='neg_mean_absolute_error')` обучает новую копию модели на каждом блоке. Метрика возвращается со знаком минус (в scikit-learn «больше — лучше»), MAE = `-res['test_score']`. Подготовка внутри Pipeline заново учится на каждом блоке — без утечки."
+  example: |
+    res = cross_validate(pipe, X_train, y_train, cv=cv, scoring='neg_mean_absolute_error')
+    fold_mae = -res['test_score']
+  glossary: [cross-validate]
+# ---------- Модуль 7. Категориальные признаки, Ridge и градиентный бустинг ----------
+- id: categorical-encoding
+  title: Кодирование категориальных признаков
+  recall: "Модели scikit-learn работают с числами, поэтому текстовые признаки (марка, кузов) кодируют. Способ зависит от модели: деревьям хватает порядковых кодов, линейной модели нужен One-Hot или Target Encoding. Кодировщик учится только на train и одинаково применяется ко всем частям."
+  glossary: [categorical-encoding]
+- id: binary-encoding
+  title: Бинарный признак 0/1
+  recall: "Категорию с двумя значениями кодируют одним столбцом 0/1: `map({True: 1, False: 0})`. Коэффициент линейной модели при таком признаке — разница прогноза между группами при прочих равных; дереву хватает одного вопроса «≤ 0.5?»."
+  example: |
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+  glossary: [binary-encoding]
+- id: ordinal-encoding
+  title: Порядковые коды категорий (OrdinalEncoder)
+  recall: "`OrdinalEncoder` заменяет каждую категорию номером (по алфавиту), словарь строит по train. Категория, которой не было в train, получает `unknown_value=-1` (`handle_unknown='use_encoded_value'`). Порядок номеров произвольный: деревьям это почти не мешает, линейной модели — мешает."
+  example: |
+    OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)
+  glossary: [ordinal-encoding]
+- id: column-transformer
+  title: "ColumnTransformer: разная подготовка для разных колонок"
+  recall: "`ColumnTransformer([('cat', кодировщик, cat_cols), ('num', StandardScaler(), num_cols)])` применяет каждый шаг к своим колонкам и склеивает результат; `remainder='passthrough'` оставляет остальные колонки как есть. Ставится первым шагом Pipeline — тогда всё учится только на train."
+  example: |
+    enc = ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols)], remainder='passthrough')
+    pipe = Pipeline([('enc', enc), ('model', LinearRegression())])
+  glossary: [column-transformer]
+- id: infrequent-categories
+  title: Редкие категории в кодировщике
+  recall: "Модели, которые встречаются в train реже порога, объединяют в одну группу: `OrdinalEncoder(min_frequency=0.001)` или `OneHotEncoder(min_frequency=...)`. Доли считаются только по train. Признак становится проще и устойчивее; слишком высокий порог стирает полезные различия."
+  example: |
+    OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1, min_frequency=0.001)
+  glossary: [infrequent-categories]
+- id: feature-selection
+  title: Сокращение набора признаков
+  recall: "Признаки с наименьшей важностью убирают по одному и смотрят, как меняется ошибка на validation. Оставляют самый короткий набор, у которого ошибка почти не выросла (заранее заданный допуск). Test при выборе не участвует."
+  glossary: [feature-selection]
+- id: one-hot-encoding
+  title: One-Hot Encoding
+  recall: "Каждой категории — свой столбец-индикатор 0/1: из 725 моделей получается 725 столбцов. Линейная модель даёт каждой категории свой коэффициент. `OneHotEncoder(handle_unknown='ignore')` — неизвестная категория получает все нули; результат — разреженная матрица."
+  example: |
+    OneHotEncoder(handle_unknown='ignore')
+  glossary: [one-hot-encoding]
+- id: target-encoding
+  title: Target Encoding и утечка через ответ
+  recall: "Категорию заменяют средним ответом этой категории — один столбец вместо сотен. Средние считают только по train; для строк train — по другим блокам (`TargetEncoder(cv=5)` делает это сам) и со сглаживанием к общему среднему. Средние, посчитанные с участием validation или test, — утечка."
+  example: |
+    TargetEncoder(target_type='continuous', cv=5, random_state=42)
+  glossary: [target-encoding]
+- id: regularization
+  title: Регуляризация
+  recall: "К функции потерь добавляют штраф за большие коэффициенты: модель ищет компромисс между точностью на train и «скромностью» весов. Сила штрафа α — гиперпараметр, его выбирают по validation или кросс-валидации; перед регуляризацией признаки масштабируют."
+  glossary: [regularization]
+- id: ridge-lasso
+  title: Ridge и Lasso
+  recall: "Ridge (L2): штраф α·Σw² — сжимает все коэффициенты, особенно ненадёжные (редкие категории), но не обнуляет. Lasso (L1): штраф α·Σ|w| — часть коэффициентов становится ровно нулём, это отбор признаков. `Ridge(alpha=1)`, `Lasso(alpha=0.001)`."
+  example: |
+    Pipeline([('enc', enc), ('model', Ridge(alpha=0.3))])
+  glossary: [ridge, lasso]
+- id: gradient-boosting
+  title: Градиентный бустинг
+  recall: "Деревья строятся по очереди: каждое следующее учится предсказывать ошибки (остатки) суммы предыдущих, и его прогноз добавляется с маленьким множителем. Реализации: `GradientBoostingRegressor`, `HistGradientBoostingRegressor`, LightGBM, XGBoost, CatBoost. На таблицах обычно точнее леса."
+  example: |
+    LGBMRegressor(n_estimators=100, learning_rate=0.1, random_state=42, verbosity=-1, n_jobs=1)
+  glossary: [gradient-boosting, lightgbm]
+- id: learning-rate
+  title: Число деревьев и скорость обучения бустинга
+  recall: "`learning_rate` — доля прогноза каждого нового дерева, которая добавляется к сумме; `n_estimators` — число деревьев. Маленький шаг требует больше деревьев, но обычно точнее. Слишком много деревьев переобучают модель; число выбирают по validation."
+  glossary: [learning-rate]
+- id: metric-variability
+  title: Разброс метрики по разбиениям
+  recall: "MAE зависит от того, какие машины попали в проверку. Чтобы понять, устойчиво ли преимущество модели, её сравнивают с соперником на многих разбиениях (на одних и тех же частях) и смотрят, в скольких из них она лучше и на сколько."
+  glossary: [metric-variability]
+- id: error-distribution
+  title: Распределение ошибок по записям
+  recall: "MAE — одно число; полезно видеть все ошибки: боксплот модулей ошибок по моделям (медиана, межквартильный размах) и Q–Q-график остатков (насколько они похожи на нормальное распределение, где тяжёлые хвосты)."
+  glossary: [error-distribution]
+# ---------- Модуль 8. Нейронные сети уровня fit/predict ----------
+- id: artificial-neuron
+  title: Искусственный нейрон
+  recall: "Нейрон считает взвешенную сумму входов плюс смещение и применяет к ней функцию активации: a = f(x·w + b). Для всех строк сразу — `X @ w + b` (матричное умножение). С тождественной активацией нейрон — это линейная регрессия."
+  example: |
+    z = X @ w + b          # взвешенная сумма для каждой строки
+    a = np.maximum(z, 0)   # активация ReLU
+  glossary: [artificial-neuron]
+- id: activation-function
+  title: Функция активации
+  recall: "Нелинейная функция после взвешенной суммы: ReLU — max(0, z), сигмоида — 1 / (1 + e^−z) (значения от 0 до 1), tanh — от −1 до 1, ступенька — 0 или 1. Без неё любая сеть остаётся линейной моделью."
+  example: |
+    relu = np.maximum(z, 0)
+    sigmoid = 1 / (1 + np.exp(-z))
+  glossary: [activation-function]
+- id: mlp
+  title: Многослойный персептрон (MLP)
+  recall: "Слои нейронов: выходы одного слоя — входы следующего, H = f(X @ W + b). В scikit-learn — `MLPRegressor(hidden_layer_sizes=(16, 8), activation='relu')`. Признаки масштабируют, ответ держат в удобном масштабе (цена / 10 000)."
+  example: |
+    net = MLPRegressor(hidden_layer_sizes=(16, 8), activation='relu', random_state=42)
+    net.fit(X_train_s, y_train / 10000)
+  glossary: [mlp]
+- id: hidden-layer
+  title: Скрытый слой и число параметров
+  recall: "Слой между входом и выходом. Число нейронов — ширина слоя, число слоёв — глубина сети. У слоя входы × нейроны весов и по смещению на нейрон; веса лежат в `net.coefs_`, смещения — в `net.intercepts_`."
+  glossary: [hidden-layer]
+- id: backpropagation
+  title: Обратное распространение ошибки
+  recall: "Градиенты потерь по всем весам считают от выхода к входу по правилу цепочки: ошибка прогноза → градиент последнего слоя → «ошибка» предыдущего слоя → его градиент… Затем градиентный спуск сдвигает все веса против градиента."
+  glossary: [backpropagation]
+- id: epoch-batch
+  title: Эпоха и мини-батч
+  recall: "Мини-батч — порция строк для одного шага градиентного спуска (`batch_size`), эпоха — один проход по всему train. `max_iter` — наибольшее число эпох, `partial_fit` — ровно одна эпоха. ConvergenceWarning значит: эпохи кончились, а потери ещё падали."
+  glossary: [epoch-batch]
+- id: loss-choice
+  title: Выбор функции потерь
+  recall: "Градиент MSE пропорционален ошибке — сеть сильнее всего исправляет крупные промахи (дорогие машины). Градиент MAE — только знак ошибки — сеть тянется к медиане и меньше отвлекается на выбросы. Лосс выбирают под метрику задачи."
+  glossary: [loss-choice]
+- id: early-stopping
+  title: Ранняя остановка
+  recall: "Обучение прекращают, когда ошибка на validation не улучшается `patience` эпох подряд, и возвращают веса лучшей эпохи. В scikit-learn — `early_stopping=True`: сеть сама отделяет часть train (`validation_fraction`) и следит за ней."
+  glossary: [early-stopping]
+- id: error-contribution
+  title: Вклад группы в изменение ошибки
+  recall: "Изменение общей MAE складывается из вкладов групп: доля группы в выборке × изменение MAE внутри группы. Большой вклад дают либо многочисленные группы, либо группы с сильным изменением."
+  example: |
+    contribution = share * (mae_old - mae_new)   # по каждой группе; сумма = общее снижение MAE
+  glossary: [error-contribution]
+- id: binary-classification
+  title: Бинарная классификация и accuracy
+  recall: "Ответ — один из двух классов, 0 или 1. Модель даёт вероятность класса 1 (сигмоида на выходе, `predict_proba`), класс — по порогу 0,5 (`predict`). Простейшая метрика — accuracy, доля верных ответов."
+  example: |
+    clf = MLPClassifier(hidden_layer_sizes=(16, 8), random_state=42).fit(X_train, y_train)
+    accuracy = (clf.predict(X_valid) == y_valid).mean()
+  glossary: [binary-classification, accuracy]
+- id: decision-boundary
+  title: Граница решений
+  recall: "Линия на плоскости признаков, где модель меняет ответ с одного класса на другой. У линейной модели (и сети без нелинейности) — прямая; у сети с ReLU, дерева и kNN — изогнутая. Слишком извилистая граница подстраивается под шум."
+  glossary: [decision-boundary]
+# ---------- Модуль 9. Большие языковые модели и Hugging Face ----------
+- id: language-model
+  title: Языковая модель
+  recall: "Модель, которая оценивает вероятность последовательности слов и предсказывает следующее слово (или пропущенное — [MASK]). Учится на большом корпусе текстов без ручной разметки: сам текст подсказывает правильный ответ."
+  glossary: [language-model]
+- id: n-gram
+  title: n-граммы и биграммная модель
+  recall: "Биграмма — пара соседних слов. P(следующее | текущее) = число пар / число вхождений текущего слова. Вероятность фразы — произведение вероятностей её биграмм. Слабое место: невиданная пара даёт ноль, а длинный контекст не учитывается."
+  example: |
+    p = bigrams[('средняя', 'цена')] / unigrams['средняя']
+  glossary: [n-gram]
+- id: word-embedding
+  title: Эмбеддинг — текст как вектор
+  recall: "Слово, фразу или картинку переводят в вектор из сотен чисел так, что близкие по смыслу объекты оказываются рядом. Векторы получают из соседства слов в текстах или из нейросети."
+  glossary: [word-embedding]
+- id: cosine-similarity
+  title: Косинусное сходство
+  recall: "cos(a, b) = a·b / (|a|·|b|): 1 — векторы смотрят в одну сторону, 0 — перпендикулярны. Для векторов длины 1 это просто скалярное произведение, поэтому эмбеддинги обычно нормируют."
+  example: |
+    cos = a @ b / (np.linalg.norm(a) * np.linalg.norm(b))
+  glossary: [cosine-similarity]
+- id: attention
+  title: Механизм внимания
+  recall: "Для каждого слова считают оценки сходства с остальными (скалярное произведение запроса и ключей, делённое на √d), softmax превращает их в веса, а результат — взвешенная сумма векторов-значений. Самовнимание: каждое слово фразы смотрит на все слова этой же фразы."
+  example: |
+    weights = softmax(Q @ K.T / np.sqrt(d))
+    out = weights @ V
+  glossary: [attention, softmax]
+- id: transformer
+  title: Трансформер и его семейства
+  recall: "Сеть из блоков внимания и полносвязных слоёв (2017). Только кодировщик (BERT) видит всю фразу и понимает текст; только декодировщик (GPT) видит лишь предыдущие слова и генерирует продолжение; кодировщик + декодировщик (T5, BART) превращают одну последовательность в другую."
+  glossary: [transformer]
+- id: hf-pipeline
+  title: Hugging Face и pipeline
+  recall: "Hugging Face Hub — хранилище готовых обученных моделей. pipeline(задача, model=...) собирает токенизатор, модель и постобработку: pipeline('sentiment-analysis')(тексты) → метки и вероятности."
+  example: |
+    classifier = pipeline('sentiment-analysis', model='distilbert-base-uncased-finetuned-sst-2-english')
+    classifier(['I love it!'])
+  glossary: [hf-pipeline]
+- id: tokenizer
+  title: Токенизатор и подслова
+  recall: "Токенизатор режет текст на токены — слова и куски слов из словаря модели (WordPiece: «hugging» + «##face») — и заменяет их номерами (input_ids). Модель добавляет служебные токены [CLS] и [SEP], неизвестное — [UNK]."
+  example: |
+    tokenizer.tokenize('I hate this huggingface')
+    tokenizer('I hate this')['input_ids']
+  glossary: [tokenizer]
+- id: attention-mask
+  title: Padding, truncation и attention mask
+  recall: "Тексты в батче выравнивают по длине: короткие дополняют токеном [PAD] (padding), длинные обрезают до max_length (truncation). attention_mask — 1 у настоящих токенов и 0 у заполнения, чтобы модель его не учитывала."
+  example: |
+    tokenizer(texts, padding=True, truncation=True, max_length=32, return_tensors='np')
+  glossary: [attention-mask]
+- id: logits
+  title: Логиты и вероятности классов
+  recall: "Логиты — сырые оценки модели по классам, последний слой без активации. softmax превращает их в вероятности, сумма которых 1; класс — с наибольшей вероятностью, его имя — model.config.id2label."
+  example: |
+    probs = np.exp(logits) / np.exp(logits).sum(axis=1, keepdims=True)
+  glossary: [logits, softmax]
+- id: zero-shot
+  title: Zero-shot классификация (CLIP)
+  recall: "CLIP переводит картинки и подписи в одно пространство векторов. Класс картинки — подпись с наибольшим косинусным сходством; сходства × 100 → softmax дают вероятности. Модель не училась на этих классах — нужны только их названия."
+  example: |
+    scores = 100 * image_emb @ text_emb.T
+    pred = scores.argmax(axis=1)
+  glossary: [zero-shot, clip]
+- id: prompt-template
+  title: Промпты для zero-shot
+  recall: "Точность zero-shot сильно зависит от подписи: понятное модели английское название, шаблон «a photo of a {}», усреднение эмбеддингов нескольких шаблонов и сужение списка кандидатов по известным метаданным."
+  glossary: [prompt-template]
+- id: transfer-learning
+  title: Перенос обучения
+  recall: "Не учить модель с нуля, а использовать готовую: дообучить её на своих данных (fine-tuning) или взять её эмбеддинги как признаки и обучить поверх маленькую модель — например, логистическую регрессию."
+  example: |
+    clf = LogisticRegression(max_iter=1000).fit(image_emb_train, y_train)
+  glossary: [transfer-learning]
+
+# ---------- Модуль 10. Работа с LLM: промпт-инжиниринг ----------
+- id: llm-chat-api
+  title: Запрос к чат-модели
+  recall: "Запрос — список сообщений с ролями и параметры генерации (model, temperature, max_tokens). Ответ — choices[0].message.content, причина остановки finish_reason (stop, length, function_call) и расход токенов usage. Модель не помнит прошлых запросов: историю отправляют каждый раз."
+  example: |
+    payload = Chat(messages=[Messages(role=MessagesRole.USER, content='Вопрос')], temperature=0.7, max_tokens=100)
+    text = giga.chat(payload).choices[0].message.content
+  glossary: [llm-chat-api]
+- id: sampling-temperature
+  title: Температура и выбор следующего токена
+  recall: "Модель выдаёт вероятности следующего токена; температура T меняет их: p ∝ p^(1/T). T → 0 — всегда самый вероятный (жадный выбор), T = 1 — вероятности модели, T > 1 — разнообразнее и случайнее. top_p оставляет самые вероятные токены с суммарной вероятностью p."
+  example: |
+    q = p ** (1 / T); q = q / q.sum()
+    next_word = rng.choice(words, p=q)
+  glossary: [sampling-temperature]
+- id: system-prompt
+  title: Системный промпт и роли
+  recall: "Сообщение с ролью system задаёт поведение модели: роль, задачу, аудиторию, формат и ограничения. user — вопросы человека, assistant — ответы модели. Ответ модели добавляют в историю с ролью assistant, а не user."
+  glossary: [system-prompt]
+- id: context-window
+  title: История диалога и контекстное окно
+  recall: "Модель видит только то, что передано в запросе. История растёт с каждым сообщением, а контекстное окно ограничено в токенах — старые сообщения приходится убирать или пересказывать, сохраняя системный промпт."
+  glossary: [context-window]
+- id: few-shot
+  title: Few-shot — примеры в промпте
+  recall: "В промпт добавляют несколько решённых примеров «вопрос — ответ» того же вида: модель повторяет их формат и логику. Zero-shot — без примеров. Примеры удлиняют промпт: каждый стоит токенов."
+  glossary: [few-shot]
+- id: structured-output
+  title: Ответ в заданном формате
+  recall: "Модель пишет свободный текст, поэтому формат ответа задают явно (одна цифра, JSON) и ответ проверяют программой: разбирают, проверяют допустимость, при ошибке — переспрашивают. «Первое число в тексте» ломается на годах и числах из вопроса."
+  example: |
+    data = json.loads(text)
+    ok = data.get('answer') in {0, 1, 2, 3}
+  glossary: [structured-output]
+- id: function-calling
+  title: Вызов функций
+  recall: "В запрос передают описание функций (имя, описание, JSON Schema аргументов). Модель может вместо ответа вернуть function_call — имя и аргументы; программа выполняет функцию, добавляет результат сообщением с ролью function и снова спрашивает модель."
+  glossary: [function-calling]
+- id: llm-chain
+  title: Цепочки и тестовая модель
+  recall: "Цепочка — шаги «шаблон → модель → разбор ответа», соединённые через |: chain = prompt | model | parser; chain.invoke({...}). Логику цепочки проверяют на тестовой модели FakeListChatModel с заранее заданными ответами, потом подставляют настоящую."
+  example: |
+    chain = PromptTemplate.from_template('Вопрос: {q}') | FakeListChatModel(responses=['2']) | StrOutputParser()
+    chain.invoke({'q': '...'})
+  glossary: [llm-chain]
+- id: llm-evaluation
+  title: Оценка LLM-решения
+  recall: "Качество LLM-решения меряют на размеченных примерах, как любую модель: доля верных, сравнение с простыми ориентирами (случайный ответ, самый частый вариант), разброс оценки из-за малого числа вопросов, проверка самой разметки."
+  glossary: [llm-evaluation]
+
+# ---------- Модуль 11. Контекст-инженерия и ИИ-агенты ----------
+- id: tf-idf
+  title: TF-IDF — вес слова в документе
+  recall: "Документ — вектор весов слов: tf (сколько раз слово в документе) × idf (насколько слово редкое во всей коллекции). Частые везде слова («это», «и») получают малый вес, редкие и характерные — большой. Векторы нормируют на длину 1."
+  example: |
+    vectorizer = TfidfVectorizer()
+    X = vectorizer.fit_transform(texts)          # документы × слова, строки длины 1
+  glossary: [tf-idf]
+- id: document-search
+  title: Поиск документов по запросу
+  recall: "Запрос переводят в вектор тем же векторизатором (transform, не fit), считают косинусное сходство со всеми документами и берут k самых похожих. Для векторов длины 1 сходство — скалярное произведение: X @ q."
+  example: |
+    q = vectorizer.transform([query])
+    scores = (X @ q.T).toarray().ravel()
+    top = np.argsort(-scores)[:k]
+  glossary: [document-search]
+- id: recall-at-k
+  title: Качество поиска — recall@k
+  recall: "Поиск проверяют на запросах с известным правильным документом. recall@k — доля запросов, для которых правильный документ попал в первые k результатов. Параметры поиска подбирают на одних запросах, а итог проверяют на других."
+  example: |
+    hit = [right[i] in found[i][:5] for i in range(len(queries))]
+    recall_5 = np.mean(hit)
+  glossary: [recall-at-k]
+- id: char-ngrams
+  title: Символьные n-граммы
+  recall: "Текст режут не на слова, а на кусочки из n букв: «модели» → « мо», «мод», «оде»… Разные формы слова («модель», «модели», «моделью») делят большинство кусочков, поэтому поиск находит их, хотя слова не совпадают."
+  example: |
+    TfidfVectorizer(analyzer='char_wb', ngram_range=(3, 5))
+  glossary: [char-ngrams]
+- id: rag
+  title: RAG — ответ по найденным документам
+  recall: "Retrieval-Augmented Generation: по вопросу находят документы, вставляют их в промпт и просят модель отвечать только по ним, со ссылками на источник. Если подходящих документов нет (сходство ниже порога), честно отвечают «не знаю», а не зовут модель."
+  example: |
+    hits = search(question, k=3)
+    prompt = f'Отвечай только по контексту.\n{context(hits)}\nВопрос: {question}'
+  glossary: [rag, hallucination]
+- id: ai-agent
+  title: ИИ-агент
+  recall: "Программа, в которой языковая модель сама решает, какие действия выполнить для цели пользователя. Три компонента: модель (рассуждает), инструменты (функции и API — действуют во внешнем мире) и инструкции (что делать и чего нельзя)."
+  glossary: [ai-agent]
+- id: react-loop
+  title: Цикл ReAct
+  recall: "Модель по шагам пишет Thought (рассуждение) и Action с Action Input (какой инструмент вызвать и с чем). Программа выполняет инструмент и добавляет Observation — результат. Цикл повторяется до Final Answer или до предела шагов."
+  example: |
+    for step in range(max_steps):
+        reply = model.invoke(prompt + trace)
+        # Final Answer → стоп; Action → выполнить инструмент, дописать Observation
+  glossary: [react-loop]
+- id: mcp
+  title: MCP — протокол инструментов
+  recall: "Model Context Protocol — открытый стандарт подключения ИИ-приложений к внешним системам. MCP-сервер предоставляет инструменты (tools), данные (resources) и шаблоны (prompts); клиент узнаёт их запросом tools/list и вызывает tools/call в формате JSON-RPC."
+  example: |
+    {"jsonrpc": "2.0", "id": 2, "method": "tools/call",
+     "params": {"name": "search_course", "arguments": {"query": "переобучение"}}}
+  glossary: [mcp]
+- id: langchain-tools
+  title: Инструменты в LangChain
+  recall: "@tool превращает функцию в инструмент: имя, описание из docstring и схема аргументов из подсказок типов. Модель возвращает AIMessage с tool_calls; программа выполняет каждый вызов (tool.invoke(call)) и отвечает ToolMessage с тем же tool_call_id."
+  example: |
+    @tool
+    def get_schedule(day: str) -> str:
+        """Расписание занятий на день."""
+  glossary: [langchain-tools]
+- id: prompt-injection
+  title: Prompt injection и отравление инструментов
+  recall: "Атака текстом: инструкции злоумышленника попадают в контекст модели — прямо в сообщении («игнорируй инструкции…») или косвенно, через найденную страницу, документ или описание инструмента (tool poisoning). Модель не отличает данные от команд."
+  glossary: [prompt-injection]
+- id: guardrails
+  title: Ограничители агента (guardrails)
+  recall: "Проверки вокруг модели: на входе (длина, запрещённые шаблоны, классификатор), на выходе (формат, утечки) и у инструментов (только нужные права, подтверждение человека для опасных действий). Ни одна проверка не надёжна сама по себе — их ставят слоями."
+  glossary: [guardrails]
+- id: context-engineering
+  title: Контекст-инженерия
+  recall: "Модель видит только контекст запроса: инструкции, описания инструментов, найденные документы, историю и результаты инструментов. Контекст-инженерия решает, что туда положить, в каком порядке и как уложиться в бюджет токенов: отбирать, сокращать, пересказывать."
+  glossary: [context-engineering]
+- id: digital-audio
+  title: Цифровой звук
+  recall: "Звук в файле — последовательность чисел-отсчётов: частота дискретизации — сколько отсчётов в секунду (48 000 Гц), длительность = число отсчётов / частота. Громкость участка — среднеквадратичное значение (RMS) отсчётов."
+  example: |
+    rate, n = w.getframerate(), w.getnframes()
+    samples = np.frombuffer(w.readframes(n), dtype=np.int16)
+  glossary: [digital-audio]
+- id: speech-pipeline
+  title: Голосовой бот — STT → LLM → TTS
+  recall: "Голосовой бот — цепочка: распознавание речи (speech-to-text) → языковая модель с историей диалога → синтез речи (text-to-speech). Ошибка любого звена доходит до ответа: модель получает текст с ошибками распознавания."
+  glossary: [speech-pipeline]
+
+# ---------- Модуль 12. Технологии ИИ (обзор) ----------
+- id: digital-image
+  title: Цифровое изображение
+  recall: "Картинка — массив пикселей: чёрно-белая — H × W, цветная — H × W × 3 (красный, зелёный, синий), значения 0–255 (uint8). Яркость — взвешенная сумма каналов: 0,299·R + 0,587·G + 0,114·B."
+  example: |
+    img = images[30]                       # (64, 64, 3), uint8
+    gray = img @ np.array([0.299, 0.587, 0.114])
+  glossary: [digital-image]
+- id: image-convolution
+  title: Свёртка и фильтры
+  recall: "Ядро — маленькая матрица весов (3 × 3), которая скользит по картинке: новое значение пикселя — сумма произведений ядра на окно вокруг него. Среднее ядро размывает, ядро Собеля выделяет границы. Свёрточная сеть подбирает ядра сама, по данным."
+  example: |
+    out[i, j] = (gray[i:i + 3, j:j + 3] * kernel).sum()
+  glossary: [image-convolution]
+- id: object-detection
+  title: Обнаружение объектов и IoU
+  recall: "Детектор возвращает рамки (x1, y1, x2, y2) с уверенностью. Совпадение рамок меряют IoU = площадь пересечения / площадь объединения; при IoU ≥ 0,5 рамка считается найденной. Точность (precision) — доля верных среди найденных, полнота (recall) — доля найденных среди настоящих."
+  example: |
+    iou = inter / (area_a + area_b - inter)
+  glossary: [object-detection, iou]
+- id: image-segmentation
+  title: Сегментация изображений
+  recall: "Каждому пикселю — класс: маска того же размера, что картинка. Качество — IoU масок (пересечение / объединение), а не доля верных пикселей: фон занимает большую часть картинки и завышает долю."
+  example: |
+    iou = (pred & true).sum() / (pred | true).sum()
+  glossary: [image-segmentation]
+- id: image-generation
+  title: Генерация изображений (диффузия)
+  recall: "Диффузионную модель учат убирать шум: к картинке добавляют немного шума, и сеть предсказывает, какой шум добавлен. Генерация начинается с чистого шума и шаг за шагом убирает его, следуя подсказке-тексту."
+  glossary: [image-generation]
+- id: nlp-tasks
+  title: Задачи обработки естественного языка
+  recall: "Анализ текста — классификация (тема, тональность, токсичность), выделение сущностей, исправление ошибок; синтез — перевод, генерация, перенос стиля. Сложности: неоднозначность слов, много форм слова (флективность), свободный порядок слов."
+  glossary: [nlp-tasks]
+- id: text-classification
+  title: Классификация текстов
+  recall: "Текст → вектор (TF-IDF слов или символьных n-грамм) → классификатор (логистическая регрессия). Разбиение на обучающую и проверочную части — по документам целиком, иначе похожие куски одного документа попадут в обе части и оценка будет завышена."
+  example: |
+    clf = LogisticRegression(max_iter=1000).fit(X_train, y_train)
+  glossary: [text-classification]
+- id: named-entities
+  title: Именованные сущности (NER)
+  recall: "Выделение в тексте имён людей, организаций, мест, дат, чисел. Простые сущности (даты, числа с единицами) находят регулярными выражениями, названия — по словарю с границами слов; сложные случаи решают модели, обученные на размеченных текстах."
+  example: |
+    re.findall(r'\b\d{1,2} (?:января|февраля|…|декабря) \d{4}\b', text)
+  glossary: [named-entities]
+- id: edit-distance
+  title: Расстояние Левенштейна и исправление опечаток
+  recall: "Минимальное число вставок, удалений и замен букв, чтобы превратить одно слово в другое; считают динамическим программированием. Опечатку исправляют на слово словаря с наименьшим расстоянием, а среди равных — на самое частое."
+  example: |
+    d[i][j] = min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] != b[j-1]))
+  glossary: [edit-distance]
+- id: spectrogram
+  title: Спектр и спектрограмма
+  recall: "Преобразование Фурье раскладывает кусок звука на частоты: пики спектра — частоты, из которых он состоит. Спектрограмма — спектры коротких кадров подряд: время по горизонтали, частота по вертикали, яркость — громкость."
+  example: |
+    spectrum = np.abs(np.fft.rfft(frame))
+    freqs = np.fft.rfftfreq(len(frame), d=1 / rate)
+  glossary: [spectrogram]
+- id: speech-recognition-models
+  title: Распознавание речи
+  recall: "Речь режут на короткие кадры, по признакам кадра акустическая модель оценивает звуки, словарь собирает из звуков слова, языковая модель выбирает правдоподобную фразу. «Я икры съем ещё» и «Я и крыс ем ещё» звучат одинаково — выбирает языковая модель."
+  glossary: [speech-recognition-models]
+- id: speech-synthesis
+  title: Синтез речи
+  recall: "Текст → подготовка (числа, сокращения и знаки словами, ударения) → выбор голоса и интонации → генерация звука. В тексте нет интонации и эмоций, а букв меньше, чем звуков, — синтезатор достраивает это сам."
+  glossary: [speech-synthesis]
+- id: ai-applications
+  title: Технологии ИИ в отраслях
+  recall: "Национальная стратегия выделяет компьютерное зрение, обработку языка, распознавание и синтез речи, поддержку принятия решений и перспективные методы. Технологию выбирают по данным задачи: картинки и видео, тексты, звук или таблицы."
+  glossary: [ai-applications]
+- id: ai-risks
+  title: Цена ошибок и риски ИИ
+  recall: "Ошибки модели стоят по-разному: пропущенная опасность дороже ложной тревоги, поэтому порог выбирают по стоимости ошибок, а не по точности. Проверяют ошибки по группам (предвзятость), берегут персональные данные (лица, голос) и помечают сгенерированное."
+  glossary: [ai-risks]
+
+# ---------- Бонус. Классификация, обучение без учителя, «реализуй сам» ----------
+- id: logistic-regression
+  title: Логистическая регрессия
+  recall: "Линейная комбинация признаков z = w·x + b превращается сигмоидой в вероятность класса 1: p = 1 / (1 + e^−z). Коэффициент — на сколько меняется логарифм шансов p / (1 − p), когда признак растёт на единицу; exp(коэффициента) — во сколько раз меняются сами шансы. Класс выбирают по порогу вероятности."
+  example: |
+    model = make_pipeline(StandardScaler(), LogisticRegression()).fit(X_train, y_train)
+    p = model.predict_proba(X_test)[:, 1]
+  glossary: [logistic-regression]
+- id: log-loss
+  title: Логистическая функция потерь
+  recall: "Штраф за вероятность, данную правильному классу: −log p, если ответ 1, и −log(1 − p), если ответ 0; итог — среднее по объектам. Уверенная ошибка стоит очень дорого, неуверенный ответ 0,5 — log 2 ≈ 0,69. Логистическую регрессию обучают, уменьшая log loss."
+  example: |
+    loss = -np.mean(y * np.log(p) + (1 - y) * np.log(1 - p))
+  glossary: [log-loss]
+- id: confusion-matrix
+  title: Матрица ошибок
+  recall: "Таблица 2 × 2: верно найденные (TP), ложные срабатывания (FP), пропуски (FN) и верные отказы (TN). В scikit-learn строки — настоящий класс, столбцы — предсказанный: confusion_matrix(y, pred) = [[TN, FP], [FN, TP]]."
+  example: |
+    tn, fp, fn, tp = confusion_matrix(y_test, pred).ravel()
+  glossary: [confusion-matrix]
+- id: precision-recall
+  title: Точность, полнота и F1
+  recall: "Точность (precision) = TP / (TP + FP) — доля верных среди найденных; полнота (recall) = TP / (TP + FN) — доля найденных среди настоящих; F1 = 2·P·R / (P + R) — их среднее гармоническое. Порог меняет одну за счёт другой."
+  example: |
+    precision = tp / (tp + fp); recall = tp / (tp + fn)
+  glossary: [precision-recall]
+- id: roc-auc
+  title: ROC-кривая и AUC
+  recall: "Для каждого порога — доля найденных положительных (TPR) против доли ложных срабатываний среди отрицательных (FPR). AUC — площадь под кривой: вероятность того, что случайный положительный объект получит оценку выше случайного отрицательного. 0,5 — угадывание, 1 — идеальное разделение; от выбора порога AUC не зависит."
+  example: |
+    fpr, tpr, thresholds = roc_curve(y_test, p)
+    auc = roc_auc_score(y_test, p)
+  glossary: [roc-auc]
+- id: class-imbalance
+  title: Несбалансированные классы
+  recall: "Один класс встречается гораздо реже другого. Доля верных обманывает: ответ «всегда частый класс» даёт высокую долю верных и нулевую полноту. Разбивают данные со stratify, а качество смотрят по полноте, точности, F1 и площади под кривой «точность — полнота»."
+  glossary: [class-imbalance]
+- id: rebalancing
+  title: Как помочь редкому классу
+  recall: "class_weight='balanced' делает ошибку на редком классе дороже; дублирование редких (oversampling) или прореживание частых (undersampling) делают только на обучающей части; порог подбирают на валидации под нужную полноту или F1. Каждый способ покупает полноту ценой точности."
+  example: |
+    LogisticRegression(class_weight='balanced')
+  glossary: [rebalancing]
+- id: pca
+  title: Метод главных компонент (PCA)
+  recall: "Новые оси — направления наибольшего разброса данных: собственные векторы ковариационной матрицы центрированных (обычно и стандартизованных) признаков. Проекция на первые компоненты сжимает данные с наименьшей потерей разброса, обратное преобразование восстанавливает приближение."
+  example: |
+    pca = PCA(n_components=2).fit(X_std)
+    Z = pca.transform(X_std)
+  glossary: [pca]
+- id: explained-variance
+  title: Объяснённая доля дисперсии
+  recall: "Собственное число компоненты — разброс данных вдоль неё; делённое на сумму всех собственных чисел — доля объяснённой дисперсии (explained_variance_ratio_). Число компонент выбирают по накопленной доле, например 90 %."
+  example: |
+    np.cumsum(pca.explained_variance_ratio_)
+  glossary: [explained-variance]
+- id: k-means
+  title: Кластеризация k-средних
+  recall: "Обучение без учителя: k центров; каждый объект относят к ближайшему центру, центр переносят в среднее своих объектов, повторяют, пока назначения меняются. Результат зависит от начальных центров (n_init, k-means++) и от масштаба признаков."
+  example: |
+    km = KMeans(n_clusters=4, n_init=10, random_state=0).fit(X_std)
+    km.labels_, km.cluster_centers_
+  glossary: [k-means]
+- id: cluster-count
+  title: Сколько кластеров
+  recall: "Инерция — сумма квадратов расстояний объектов до своих центров; с ростом k она всегда падает. Число кластеров выбирают там, где падение резко замедляется («локоть»), и по тому, осмысленны ли кластеры."
+  example: |
+    [KMeans(n_clusters=k, n_init=10, random_state=0).fit(X).inertia_ for k in range(1, 9)]
+  glossary: [cluster-count]
+- id: estimator-api
+  title: Устройство модели — fit и predict
+  recall: "Модель — класс: настройки задаются в __init__, fit(X, y) учится и сохраняет найденное в атрибутах с подчёркиванием (coef_, cluster_centers_) и возвращает self, predict(X) использует только сохранённое. Так устроены все модели scikit-learn, и свою реализацию можно сверить с ними."
+  example: |
+    class MyModel:
+        def fit(self, X, y):
+            self.coef_ = ...
+            return self
+  glossary: [estimator-api]

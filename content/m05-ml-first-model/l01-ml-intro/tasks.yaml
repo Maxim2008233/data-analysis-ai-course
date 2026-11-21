@@ -1,0 +1,263 @@
+- id: m5-l1-t1
+  kind: quiz
+  title: Правила или обучение
+  difficulty: warmup
+  introduces: [ml-task]
+  uses: []
+  statement: |
+    Для каждой задачи выберите подход, который подходит лучше.
+  quiz:
+    - q: Посчитать комиссию сервиса — 3 % от цены сделки.
+      options:
+        - Программирование правила
+        - Машинное обучение
+      answer: 0
+      explain: Правило известно точно и простое — учить модель незачем.
+    - q: Оценить цену автомобиля по году, пробегу и объёму двигателя.
+      options:
+        - Программирование правила
+        - Машинное обучение
+      answer: 1
+      explain: Правила слишком сложны и меняются, зато есть тысячи примеров с известными ценами.
+    - q: Отличить фото автомобиля от фото кошки.
+      options:
+        - Программирование правила
+        - Машинное обучение
+      answer: 1
+      explain: Описать правилами все варианты изображений невозможно; модель учат на размеченных фотографиях.
+  hints:
+    - Есть ли точное простое правило? Если да — его программируют; если правил слишком много, а примеров достаточно — обучают модель.
+    - "Комиссия — формула; цена и распознавание фото — закономерности из примеров."
+    - "Ответы: правило; обучение; обучение."
+
+- id: m5-l1-t2
+  kind: quiz
+  title: Какой это тип задачи
+  difficulty: main
+  introduces: [ml-task-types]
+  uses: []
+  statement: |
+    Определите тип задачи машинного обучения.
+  quiz:
+    - q: По характеристикам автомобиля оценить цену.
+      options:
+        - Регрессия
+        - Классификация
+        - Кластеризация
+      answer: 0
+      explain: Ответ — число, правильные ответы известны.
+    - q: По объявлению определить, сдаётся машина «на запчасти» или «на ходу», — есть 2 000 размеченных примеров.
+      options:
+        - Регрессия
+        - Классификация
+        - Кластеризация
+      answer: 1
+      explain: Ответ — один из двух классов, есть разметка — обучение с учителем.
+    - q: Разбить покупателей на группы с похожими запросами; заранее групп нет.
+      options:
+        - Классификация
+        - Кластеризация
+        - Обучение с подкреплением
+      answer: 1
+      explain: Правильных ответов нет — это обучение без учителя.
+    - q: Программа учится ставить цену в автоматических торгах, получая прибыль или убыток после каждой сделки.
+      options:
+        - Регрессия
+        - Кластеризация
+        - Обучение с подкреплением
+      answer: 2
+      explain: Агент действует в среде и учится по сигналам «награда» — это обучение с подкреплением.
+  hints:
+    - "Сначала: есть ли правильные ответы? Затем: ответ — число, класс или группа?"
+    - "Число — регрессия, класс — классификация, групп заранее нет — кластеризация, сигналы среды — подкрепление."
+    - "Ответы: регрессия; классификация; кластеризация; обучение с подкреплением."
+
+- id: m5-l1-t3
+  title: X и y для определения коробки передач
+  difficulty: main
+  introduces: [ml-task, ml-task-types]
+  uses: [target-features, pd-value-counts]
+  statement: |
+    Сформулируйте задачу классификации «по году, пробегу, объёму двигателя и цене определить коробку передач»: `X_cls` — колонки `Year`, `Distance`, `Engine`, `Price` (в этом порядке), `y_cls` — колонка `Transmission`, `class_share` — доли классов (Series).
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    X_cls = ...
+    y_cls = ...
+    class_share = ...
+    print(X_cls.shape, y_cls.shape)
+    print(class_share.round(3))
+  solution: |
+    X_cls = df[['Year', 'Distance', 'Engine', 'Price']]
+    y_cls = df['Transmission']
+    class_share = y_cls.value_counts(normalize=True)
+    print(X_cls.shape, y_cls.shape)
+    print(class_share.round(3))
+  explanation: |
+    - Цена здесь — **признак**: в момент, когда продавец не указал коробку, цена уже известна.
+    - Ответ — `Transmission`; колонку `AutoTransmission` брать нельзя — это копия ответа.
+    - Доли классов (урок 2.3): механики немного больше половины. Эти доли понадобятся, чтобы понять, хорош ли классификатор.
+  hints:
+    - Признаки — четыре колонки списком, ответ — одна колонка; доли — `value_counts` с параметром.
+    - "`X_cls = df[['Year', 'Distance', 'Engine', 'Price']]`; `y_cls = df['Transmission']`."
+    - "`class_share = y_cls.value_counts(normalize=True)`."
+  tests: |
+    import pandas as pd
+    X = var('X_cls', pd.DataFrame, 'таблицей DataFrame')
+    if 'AutoTransmission' in X.columns or 'Transmission' in X.columns:
+        fail('Среди признаков ответ или его копия (`Transmission`, `AutoTransmission`) — это утечка.')
+    ensure(list(X.columns) == ['Year', 'Distance', 'Engine', 'Price'], 'Признаки должны быть Year, Distance, Engine, Price — в этом порядке.')
+    y = var('y_cls', pd.Series, 'Series')
+    ensure(y.name == 'Transmission', 'Ответ — колонка `Transmission`.')
+    s = var('class_share', pd.Series, 'Series')
+    ensure(s.max() <= 1, 'Нужны доли, а не количества: `value_counts(normalize=True)`.')
+    same_frame(s, ref('class_share'), 'Доли классов не совпадают.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        X_cls = df[['Year', 'Distance', 'Engine', 'Price', 'AutoTransmission']]
+        y_cls = df['Transmission']
+        class_share = y_cls.value_counts(normalize=True)
+      expect: утечка
+    - code: |
+        X_cls = df[['Year', 'Distance', 'Engine', 'Price']]
+        y_cls = df['Transmission']
+        class_share = y_cls.value_counts()
+      expect: доли
+
+- id: m5-l1-t4
+  kind: quiz
+  title: Можно ли взять этот признак
+  difficulty: main
+  introduces: [ml-task]
+  uses: [target-features]
+  statement: |
+    Модель будет оценивать цену **нового** объявления до того, как его кто-то купит. Можно ли использовать признак?
+  quiz:
+    - q: Год выпуска и пробег.
+      options:
+        - Можно
+        - Нельзя
+      answer: 0
+      explain: Они известны в момент прогноза и не содержат цену.
+    - q: Цена, за которую машину в итоге продали.
+      options:
+        - Можно
+        - Нельзя
+      answer: 1
+      explain: Её ещё нет в момент прогноза, и это почти сам ответ.
+    - q: Цена в тысячах евро (`Price / 1000`).
+      options:
+        - Можно
+        - Нельзя
+      answer: 1
+      explain: Это копия ответа в других единицах.
+    - q: Число просмотров объявления за неделю после публикации.
+      options:
+        - Можно
+        - Нельзя
+      answer: 1
+      explain: В момент оценки цены объявление ещё не опубликовано — признак появится только в будущем.
+  hints:
+    - Задайте два вопроса — известен ли признак в момент прогноза и не содержит ли он ответ.
+    - "Год и пробег — известны заранее; цена продажи, цена в тысячах и будущие просмотры — нет или это ответ."
+    - "Ответы: можно; нельзя; нельзя; нельзя."
+
+- id: m5-l1-t5
+  title: Простейший классификатор — самый частый класс
+  difficulty: main
+  introduces: [ml-task-types]
+  uses: [pd-value-counts, pd-bool-filter]
+  statement: |
+    Самый простой «классификатор» отвечает всем объектам одним и тем же — самым частым классом. Получите `majority_class` — самый частый класс `Transmission` — и `baseline_accuracy` — долю верных ответов такого классификатора. Любая настоящая модель должна быть заметно точнее.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    y_cls = df['Transmission']
+  starter: |
+    majority_class = ...
+    baseline_accuracy = ...
+    print(majority_class, round(baseline_accuracy, 3))
+  solution: |
+    majority_class = y_cls.value_counts().idxmax()
+    baseline_accuracy = (y_cls == majority_class).mean()
+    print(majority_class, round(baseline_accuracy, 3))
+  explanation: |
+    - `value_counts().idxmax()` — метка с наибольшим числом объектов.
+    - Доля верных ответов — среднее маски «ответ совпал»: 54,5 %. Это ориентир, как MAE медианы для цены (урок 5.0): модель, которая не лучше ориентира, бесполезна.
+  hints:
+    - Самый частый класс — метка с максимальной частотой; доля верных — среднее маски совпадений.
+    - "`majority_class = y_cls.value_counts().idxmax()`."
+    - "`baseline_accuracy = (y_cls == majority_class).mean()`."
+  tests: |
+    equal(var('majority_class', str, 'строкой — названием класса'), ref('majority_class'), 'Самый частый класс — {expected}, а у вас {actual}.')
+    a = var('baseline_accuracy', 'number', 'числом')
+    ensure(0 <= a <= 1, 'Доля верных ответов — число от 0 до 1.')
+    close(a, ref('baseline_accuracy'), 'Доля верных ответов — {expected}, а у вас {actual}.')
+    close(alt('baseline_accuracy'), alt_ref('baseline_accuracy'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        majority_class = y_cls.value_counts().idxmin()
+        baseline_accuracy = (y_cls == majority_class).mean()
+      expect: Самый частый класс
+    - code: |
+        majority_class = y_cls.value_counts().idxmax()
+        baseline_accuracy = (y_cls == majority_class).sum()
+      expect: от 0 до 1
+
+- id: m5-l1-t6
+  title: "Обучение одного параметра: порог цены"
+  difficulty: star
+  introduces: [ml-task]
+  uses: [vectorization, pd-bool-filter]
+  statement: |
+    Самая простая модель классификации — правило «если цена больше порога t, то автомат». Порог можно не придумывать, а **подобрать по данным** — это и есть обучение одного параметра. Для порогов `thresholds = np.arange(2000, 30001, 1000)` получите массив `accuracy` — долю верных ответов правила при каждом пороге, — а затем `best_threshold` и `best_accuracy`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    is_auto = df['Transmission'] == 'Automatic'
+  starter: |
+    thresholds = np.arange(2000, 30001, 1000)
+    accuracy = np.array([... for t in thresholds])
+    best_threshold = ...
+    best_accuracy = ...
+    print(best_threshold, round(best_accuracy, 3))
+  solution: |
+    thresholds = np.arange(2000, 30001, 1000)
+    accuracy = np.array([((df['Price'] > t) == is_auto).mean() for t in thresholds])
+    best_threshold = thresholds[accuracy.argmax()]
+    best_accuracy = accuracy.max()
+    print(best_threshold, round(best_accuracy, 3))
+  explanation: |
+    - Для каждого порога правило даёт маску «предсказан автомат»; сравнение с `is_auto` — маска верных ответов, её среднее — доля верных.
+    - `argmax` — номер лучшего порога (урок 1.6): около 8 000 евро, доля верных — 77 % против 54,5 % у «самого частого класса».
+    - Это и есть обучение в миниатюре: вид модели задали мы (порог по цене), а значение параметра нашлось по данным. Настоящие модели подбирают так тысячи параметров сразу.
+  hints:
+    - "Для одного порога: `(df['Price'] > t) == is_auto` — где правило угадало; среднее — доля верных."
+    - "`accuracy = np.array([((df['Price'] > t) == is_auto).mean() for t in thresholds])`."
+    - "`best_threshold = thresholds[accuracy.argmax()]`; `best_accuracy = accuracy.max()`."
+  tests: |
+    import numpy as np
+    acc = var('accuracy', np.ndarray, 'массивом NumPy')
+    ensure(len(acc) == len(ref('thresholds')), 'Нужна доля верных ответов для каждого из {0} порогов.'.format(len(ref('thresholds'))))
+    same_array(acc, ref('accuracy'), 'Доли верных ответов по порогам не совпадают: для порога t — среднее маски `(df[\'Price\'] > t) == is_auto`.')
+    close(var('best_threshold', 'number', 'числом'), ref('best_threshold'), 'Лучший порог — {expected}, а у вас {actual}.')
+    close(var('best_accuracy', 'number', 'числом'), ref('best_accuracy'), 'Лучшая доля верных ответов — {expected}, а у вас {actual}.')
+    close(alt('best_accuracy'), alt_ref('best_accuracy'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        thresholds = np.arange(2000, 30001, 1000)
+        accuracy = np.array([((df['Price'] > t) == is_auto).mean() for t in thresholds])
+        best_threshold = accuracy.argmax()
+        best_accuracy = accuracy.max()
+      expect: Лучший порог
+    - code: |
+        thresholds = np.arange(2000, 30001, 1000)
+        accuracy = np.array([(df['Price'] > t).mean() for t in thresholds])
+        best_threshold = thresholds[accuracy.argmax()]
+        best_accuracy = accuracy.max()
+      expect: не совпадают

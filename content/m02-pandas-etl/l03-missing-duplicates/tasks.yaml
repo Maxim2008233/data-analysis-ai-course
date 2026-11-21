@@ -1,0 +1,314 @@
+- id: m2-l3-t1
+  title: Пропуски по колонкам
+  difficulty: warmup
+  introduces: [pd-isna-duplicated]
+  uses: [pd-info-dtypes]
+  statement: |
+    Получите `missing` — Series с числом пропусков в каждой колонке, и `n_missing_fuel` — число пропусков в колонке `Fuel_type` (возьмите его из `missing` по метке).
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')   # загрузка — урок 2.1
+    df = raw.copy()
+  starter: |
+    missing = ...
+    n_missing_fuel = ...
+    print(missing)
+    print('Fuel_type:', n_missing_fuel)
+  solution: |
+    missing = df.isna().sum()
+    n_missing_fuel = missing['Fuel_type']
+    print(missing)
+    print('Fuel_type:', n_missing_fuel)
+  explanation: |
+    - `df.isna()` — таблица True/False, где True — пропуск.
+    - `.sum()` складывает True по каждой колонке: получается Series «колонка → число пропусков».
+    - `missing['Fuel_type']` — значение этой Series по метке, как в словаре.
+  hints:
+    - Какой метод отмечает пропуски? Что даст сумма такой таблицы?
+    - "`df.isna()` — маска пропусков; `.sum()` — суммы по колонкам; значение Series по метке — `missing['Fuel_type']`."
+    - "`missing = df.isna().sum()`, `n_missing_fuel = missing['Fuel_type']`."
+  tests: |
+    import pandas as pd
+    m = var('missing', pd.Series, 'Series — результатом `df.isna().sum()`')
+    if len(m) != len(ref('missing')):
+        fail('В `missing` {0} значений, а колонок в таблице {1}. Суммируйте маску `df.isna()` по колонкам: `.sum()` без параметров.'.format(len(m), len(ref('missing'))))
+    same_frame(m, ref('missing'), 'Число пропусков по колонкам не совпадает.')
+    close(var('n_missing_fuel', 'number', 'числом'), ref('n_missing_fuel'), 'Пропусков в Fuel_type — {expected}, а у вас {actual}.')
+    close(alt('n_missing_fuel'), alt_ref('n_missing_fuel'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        missing = df.isna().sum(axis=1)
+        n_missing_fuel = 205
+      expect: колонок в таблице
+    - code: |
+        missing = df.isna().sum()
+        n_missing_fuel = 205
+      expect: вписан вручную
+
+- id: m2-l3-t2
+  title: Колонки с пропусками и их доли
+  difficulty: main
+  introduces: [pd-isna-duplicated]
+  uses: [bool-mask]
+  statement: |
+    Получите:
+
+    - `missing_share` — Series с долей пропусков в каждой колонке;
+    - `cols_with_missing` — **список** названий колонок, где доля пропусков больше нуля.
+
+    Отберите элементы Series маской, как массив NumPy: `s[s > 0]`; названия — в индексе результата.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+  starter: |
+    missing_share = ...
+    cols_with_missing = ...
+    print(cols_with_missing)
+    missing_share.round(4)
+  solution: |
+    missing_share = df.isna().mean()
+    cols_with_missing = missing_share[missing_share > 0].index.tolist()
+    print(cols_with_missing)
+    missing_share.round(4)
+  explanation: |
+    - `df.isna().mean()` — среднее маски по каждой колонке, то есть доля пропусков.
+    - `missing_share > 0` — маска-Series; `missing_share[маска]` оставляет только колонки с пропусками.
+    - Названия колонок — это индекс результата: `.index.tolist()` превращает его в список.
+  alternatives:
+    - |
+      missing_share = df.isna().sum() / len(df)
+      cols_with_missing = [c for c in df.columns if missing_share[c] > 0]
+  hints:
+    - Доля — это среднее маски. А как оставить только колонки с ненулевой долей?
+    - "`df.isna().mean()` — доли; отбор `s[s > 0]`; названия — `.index.tolist()`."
+    - "`cols_with_missing = missing_share[missing_share > 0].index.tolist()`."
+  tests: |
+    import pandas as pd
+    s = var('missing_share', pd.Series, 'Series')
+    if (s > 1).any():
+        fail('В `missing_share` есть значения больше 1 — это количества, а нужны доли. Используйте `.mean()` вместо `.sum()`.')
+    same_frame(s, ref('missing_share'), 'Доли пропусков по колонкам не совпадают.')
+    c = var('cols_with_missing', list, 'списком (используйте `.index.tolist()`)')
+    equal(sorted(c), sorted(ref('cols_with_missing')), 'Колонки с пропусками — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        missing_share = df.isna().sum()
+        cols_with_missing = missing_share[missing_share > 0].index.tolist()
+      expect: нужны доли
+    - code: |
+        missing_share = df.isna().mean()
+        cols_with_missing = missing_share[missing_share > 0]
+      expect: списком
+
+- id: m2-l3-t3
+  title: Пустые ячейки и неполные строки
+  difficulty: main
+  introduces: [pd-isna-duplicated]
+  uses: [axis]
+  statement: |
+    Получите `n_missing_cells` — общее число пустых ячеек таблицы, и `n_incomplete_rows` — число строк, в которых пропущено **хотя бы одно** значение. Почему эти числа различаются?
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+  starter: |
+    n_missing_cells = ...
+    n_incomplete_rows = ...
+    print(n_missing_cells, n_incomplete_rows)
+  solution: |
+    n_missing_cells = df.isna().sum().sum()
+    n_incomplete_rows = df.isna().any(axis=1).sum()
+    print(n_missing_cells, n_incomplete_rows)
+  explanation: |
+    - `df.isna().sum()` — пропуски по колонкам; ещё одна `.sum()` складывает их в общее число пустых ячеек.
+    - `df.isna().any(axis=1)` — для каждой строки: есть ли в ней хоть один пропуск (проверка вдоль строки, по колонкам).
+    - Строка с двумя пропусками даёт две пустые ячейки, но одну неполную строку — поэтому строк меньше.
+  alternatives:
+    - |
+      n_missing_cells = int(df.isna().to_numpy().sum())
+      n_incomplete_rows = int((df.isna().sum(axis=1) > 0).sum())
+  hints:
+    - Сначала посчитайте пропуски по колонкам и сложите их. Для строк нужен вопрос «есть ли хоть один пропуск в строке».
+    - "`df.isna().sum().sum()` — все пустые ячейки; `df.isna().any(axis=1)` — маска неполных строк (`axis=1` — вдоль строки)."
+    - "`n_incomplete_rows = df.isna().any(axis=1).sum()`."
+  tests: |
+    close(var('n_missing_cells', 'number', 'числом'), ref('n_missing_cells'), 'Пустых ячеек — {expected}, а у вас {actual}.')
+    r = var('n_incomplete_rows', 'number', 'числом')
+    if r == ref('df').isna().any(axis=0).sum():
+        fail('Получилось число колонок с пропусками. Для строк нужен `any(axis=1)` — проверка вдоль каждой строки.')
+    if r == ref('n_missing_cells'):
+        fail('Неполных строк столько же, сколько пустых ячеек? В некоторых строках два пропуска. Используйте `df.isna().any(axis=1).sum()`.')
+    close(r, ref('n_incomplete_rows'), 'Неполных строк — {expected}, а у вас {actual}.')
+    close(alt('n_incomplete_rows'), alt_ref('n_incomplete_rows'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        n_missing_cells = df.isna().sum().sum()
+        n_incomplete_rows = df.isna().any(axis=0).sum()
+      expect: axis=1
+    - code: |
+        n_missing_cells = df.isna().sum().sum()
+        n_incomplete_rows = n_missing_cells
+      expect: два пропуска
+
+- id: m2-l3-t4
+  title: Сколько повторов
+  difficulty: main
+  introduces: [pd-isna-duplicated]
+  uses: []
+  statement: |
+    Получите:
+
+    - `n_duplicates` — число строк, которые полностью повторяют более раннюю строку;
+    - `n_in_groups` — число строк, у которых есть хотя бы один полный «двойник» (вместе с первыми вхождениями);
+    - `n_unique_rows` — сколько строк останется, если из каждой группы повторов оставить одну.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+  starter: |
+    n_duplicates = ...
+    n_in_groups = ...
+    n_unique_rows = ...
+    print(n_duplicates, n_in_groups, n_unique_rows)
+  solution: |
+    n_duplicates = df.duplicated().sum()
+    n_in_groups = df.duplicated(keep=False).sum()
+    n_unique_rows = len(df) - n_duplicates
+    print(n_duplicates, n_in_groups, n_unique_rows)
+  explanation: |
+    - `df.duplicated()` не отмечает первое вхождение — сумма маски равна числу лишних копий.
+    - `keep=False` отмечает все строки групп повторов, включая первые.
+    - Если удалить лишние копии, останется `len(df) - n_duplicates` строк.
+  alternatives:
+    - |
+      n_duplicates = int(df.duplicated().sum())
+      n_in_groups = int(df.duplicated(keep=False).sum())
+      n_unique_rows = len(df.drop_duplicates())
+  hints:
+    - Какой метод отмечает повторы? Какой его параметр отмечает и первые вхождения тоже?
+    - "`df.duplicated()` — лишние копии; `df.duplicated(keep=False)` — все строки групп; сумма маски — количество."
+    - "`n_unique_rows = len(df) - n_duplicates`."
+  tests: |
+    d = var('n_duplicates', 'number', 'числом')
+    if d == ref('n_in_groups'):
+        fail('В `n_duplicates` попали и первые вхождения. Нужна маска `df.duplicated()` без параметров — она отмечает только повторные копии.')
+    close(d, ref('n_duplicates'), 'Повторных строк — {expected}, а у вас {actual}.')
+    close(var('n_in_groups', 'number', 'числом'), ref('n_in_groups'), 'Строк в группах повторов — {expected}, а у вас {actual}. Используйте `keep=False`.')
+    close(var('n_unique_rows', 'number', 'числом'), ref('n_unique_rows'), 'Должно остаться {expected} строк, а у вас {actual}.')
+    close(alt('n_duplicates'), alt_ref('n_duplicates'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        n_duplicates = df.duplicated(keep=False).sum()
+        n_in_groups = df.duplicated(keep=False).sum()
+        n_unique_rows = len(df) - n_duplicates
+      expect: первые вхождения
+    - code: |
+        n_duplicates = df.duplicated().sum()
+        n_in_groups = df.duplicated().sum()
+        n_unique_rows = len(df) - n_duplicates
+      expect: keep=False
+
+- id: m2-l3-t5
+  title: Самые частые марки
+  difficulty: main
+  introduces: [pd-value-counts]
+  uses: []
+  statement: |
+    Получите `n_makes` — число разных марок, и `top5_makes` — Series с пятью самыми частыми марками и числом их объявлений.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+  starter: |
+    n_makes = ...
+    top5_makes = ...
+    print(n_makes)
+    top5_makes
+  solution: |
+    n_makes = df['Make'].nunique()
+    top5_makes = df['Make'].value_counts().head(5)
+    print(n_makes)
+    top5_makes
+  explanation: |
+    - `nunique()` — число разных значений колонки (пропуски не считаются).
+    - `value_counts()` — частоты, уже отсортированные по убыванию; `.head(5)` — пять первых.
+  hints:
+    - Один метод считает число разных значений, другой — сколько раз встречается каждое.
+    - "`df['Make'].nunique()`; `df['Make'].value_counts()` сортирует по убыванию — осталось взять `head(5)`."
+    - "`top5_makes = df['Make'].value_counts().head(5)`."
+  tests: |
+    import pandas as pd
+    n = var('n_makes', 'number', 'числом')
+    if n == ref('df')['Make'].count():
+        fail('Получилось число непустых значений, а нужно число разных марок — метод `nunique()`.')
+    equal(int(n), int(ref('n_makes')), 'Разных марок — {expected}, а у вас {actual}.')
+    t = var('top5_makes', pd.Series, 'Series — результатом `value_counts()`')
+    if len(t) != 5:
+        fail('В `top5_makes` {0} значений, а нужно 5.'.format(len(t)))
+    same_frame(t, ref('top5_makes'), 'Пять самых частых марок не совпадают.')
+    same_frame(alt('top5_makes'), alt_ref('top5_makes'), 'На другой части данных частоты должны получиться другими — посчитайте их через value_counts.')
+  wrong:
+    - code: |
+        n_makes = df['Make'].count()
+        top5_makes = df['Make'].value_counts().head(5)
+      expect: разных
+    - code: |
+        n_makes = df['Make'].nunique()
+        top5_makes = df['Make'].value_counts().tail(5)
+      expect: не совпадают
+
+- id: m2-l3-t6
+  title: Знаменатель доли
+  difficulty: star
+  introduces: [pd-value-counts]
+  uses: []
+  statement: |
+    Получите две доли электромобилей (`'Electric'` в колонке `Fuel_type`):
+
+    - `electric_share_all` — среди **всех** строк, включая строки с пропущенным топливом;
+    - `electric_share_known` — только среди строк с **известным** топливом.
+
+    Используйте `value_counts(normalize=True)` с нужным значением `dropna` и возьмите долю по метке `'Electric'`.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+  starter: |
+    electric_share_all = ...
+    electric_share_known = ...
+    print(round(electric_share_all, 5), round(electric_share_known, 5))
+  solution: |
+    electric_share_all = df['Fuel_type'].value_counts(normalize=True, dropna=False)['Electric']
+    electric_share_known = df['Fuel_type'].value_counts(normalize=True)['Electric']
+    print(round(electric_share_all, 5), round(electric_share_known, 5))
+  explanation: |
+    - `normalize=True` превращает частоты в доли.
+    - С `dropna=False` пропуски входят в знаменатель — доля среди всех строк.
+    - По умолчанию (`dropna=True`) пропуски отбрасываются — доля среди строк с известным топливом, она чуть больше.
+  alternatives:
+    - |
+      n_electric = (df['Fuel_type'] == 'Electric').sum()
+      electric_share_all = n_electric / len(df)
+      electric_share_known = n_electric / df['Fuel_type'].count()
+  hints:
+    - Доля зависит от того, что в знаменателе. Какой параметр `value_counts` решает, учитывать ли пропуски?
+    - "`value_counts(normalize=True, dropna=False)` — среди всех; `value_counts(normalize=True)` — среди известных; доля по метке — `[...]['Electric']`."
+    - "`electric_share_all = df['Fuel_type'].value_counts(normalize=True, dropna=False)['Electric']`."
+  tests: |
+    a = var('electric_share_all', 'number', 'числом')
+    k = var('electric_share_known', 'number', 'числом')
+    if abs(float(a) - float(ref('electric_share_known'))) < 1e-12 and abs(float(k) - float(ref('electric_share_all'))) < 1e-12:
+        fail('Доли перепутаны местами: среди всех строк (с пропусками в знаменателе) доля меньше.')
+    close(a, ref('electric_share_all'), 'Доля среди всех строк — {expected}, а у вас {actual}. Нужен `dropna=False`.')
+    close(k, ref('electric_share_known'), 'Доля среди строк с известным топливом — {expected}, а у вас {actual}.')
+    close(alt('electric_share_all'), alt_ref('electric_share_all'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        electric_share_all = df['Fuel_type'].value_counts(normalize=True)['Electric']
+        electric_share_known = df['Fuel_type'].value_counts(normalize=True)['Electric']
+      expect: dropna=False
+    - code: |
+        electric_share_all = df['Fuel_type'].value_counts(normalize=True)['Electric']
+        electric_share_known = df['Fuel_type'].value_counts(normalize=True, dropna=False)['Electric']
+      expect: перепутаны

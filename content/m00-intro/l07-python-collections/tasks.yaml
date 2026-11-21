@@ -1,0 +1,160 @@
+- id: m0-l7-t1
+  title: Срез и длина
+  difficulty: warmup
+  introduces: [py-lists]
+  uses: []
+  statement: |
+    Дан список `years`. Получите `last_two` — два последних года (в исходном порядке) и `n` — сколько всего лет в списке. Решение должно работать для списка любой длины.
+  prelude: |
+    years = [2011, 2014, 1998, 2012, 2006, 2017, 2019]
+  starter: |
+    last_two = ...
+    n = ...
+    print(last_two, n)
+  solution: |
+    last_two = years[-2:]
+    n = len(years)
+    print(last_two, n)
+  explanation: |
+    - Срез `[-2:]` начинается со второго элемента с конца и идёт до конца.
+  hints:
+    - Нужен срез от конца списка и функция длины.
+    - "Отрицательный старт среза: `years[-2:]`; длина — `len(years)`."
+    - "`last_two = years[-2:]`, `n = len(years)`."
+  tests: |
+    equal(var('last_two', 'list', 'списком'), [2017, 2019], 'last_two должен быть {expected}, а у вас {actual}.')
+    equal(var('n', 'int', 'целым числом'), 7, 'n должно быть {expected}, а у вас {actual}.')
+    ensure('-2' in source() and 'len' in source(), 'Используйте срез с отрицательным номером и len — так решение работает для любой длины.')
+  wrong:
+    - code: |
+        last_two = years[5:7]
+        n = 7
+      expect: любой длины
+    - code: |
+        last_two = years[-2]
+        n = len(years)
+      expect: должна быть списком
+
+- id: m0-l7-t2
+  title: Карточка объявления
+  difficulty: main
+  introduces: [py-dicts]
+  uses: [py-variables]
+  statement: |
+    Словарь `car` описывает объявление. Сделайте три действия:
+
+    1. добавьте ключ `'age'` — возраст на 2021 год (вычислите из `car['year']`);
+    2. снизьте цену `car['price']` на 10 %;
+    3. получите `color` — значение по ключу `'color'` или строку `'не указан'`, если ключа нет (без ошибки).
+  prelude: |
+    car = {'make': 'Renault', 'model': 'Laguna', 'year': 2012, 'price': 6550}
+  starter: |
+    # 1
+    # 2
+    color = ...
+    print(car, color)
+  solution: |
+    car['age'] = 2021 - car['year']
+    car['price'] = car['price'] * 0.9
+    color = car.get('color', 'не указан')
+    print(car, color)
+  explanation: |
+    - Присваивание по новому ключу добавляет пару, по существующему — заменяет значение.
+    - `.get(ключ, запасное)` не вызывает ошибку, если ключа нет.
+  hints:
+    - Новые и изменённые значения записываются присваиванием по ключу.
+    - "`car['age'] = 2021 - car['year']`; скидка 10 % — умножение на 0.9; безопасное чтение — `.get`."
+    - "`color = car.get('color', 'не указан')`"
+  tests: |
+    c = var('car', 'dict', 'словарём')
+    ensure('age' in c, "В словаре нет ключа 'age'.")
+    equal(c['age'], 9, "car['age'] должен быть {expected}, а у вас {actual}.")
+    close(c['price'], 5895.0, "Цена после скидки 10 % должна быть {expected}, а у вас {actual}.")
+    equal(var('color', 'str', 'строкой'), 'не указан', 'color должен быть «{expected}», а у вас {actual}.')
+  wrong:
+    - code: |
+        car['age'] = 2021 - car['year']
+        car['price'] = car['price'] - 10
+        color = car.get('color', 'не указан')
+      expect: скидки 10 %
+    - code: |
+        car['age'] = 9
+        car['price'] = car['price'] * 0.9
+        color = car['color']
+      expect: Ключа или колонки
+      note: car['color'] без .get вызывает ошибку KeyError — сайт объясняет её по-русски
+
+- id: m0-l7-t3
+  title: Подсчёт по маркам
+  difficulty: main
+  introduces: [py-dicts]
+  uses: [py-lists, py-loops]
+  statement: |
+    Дан список марок `makes`. Получите словарь `counts`: марка → сколько раз она встречается в списке.
+  prelude: |
+    makes = ['Toyota', 'Renault', 'Toyota', 'BMW', 'Renault', 'Toyota', 'Volkswagen']
+  starter: |
+    counts = {}
+    for make in makes:
+        ...
+    print(counts)
+  solution: |
+    counts = {}
+    for make in makes:
+        counts[make] = counts.get(make, 0) + 1
+    print(counts)
+  explanation: |
+    - `counts.get(make, 0)` — текущее количество или 0, если марка встречается впервые; прибавляем 1.
+  hints:
+    - Для каждой марки увеличьте её счётчик в словаре на 1.
+    - "Текущее значение — `counts.get(make, 0)`."
+    - "`counts[make] = counts.get(make, 0) + 1`"
+  tests: |
+    c = var('counts', 'dict', 'словарём')
+    equal(c, {'Toyota': 3, 'Renault': 2, 'BMW': 1, 'Volkswagen': 1}, 'Словарь должен быть {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        counts = {}
+        for make in makes:
+            counts[make] = 1
+      expect: Словарь должен быть
+    - code: |
+        counts = {}
+        for make in makes:
+            counts[make] = counts[make] + 1
+      expect: Ключа или колонки
+
+- id: m0-l7-t4
+  kind: predict
+  title: Списки и словари без запуска
+  difficulty: main
+  introduces: []
+  uses: [py-lists, py-dicts]
+  statement: |
+    Предскажите вывод.
+  quiz:
+    - q: Что выведет код?
+      code: |
+        header = ['Make', 'Model', 'Year', 'Price']
+        print(header.index('Year'), header[1:3])
+      options:
+        - "2 ['Model', 'Year']"
+        - "3 ['Model', 'Year', 'Price']"
+        - "2 ['Make', 'Model']"
+      answer: 0
+      explain: Year стоит на позиции 2; срез 1:3 — позиции 1 и 2.
+    - q: Что выведет код?
+      code: |
+        prices = {'Toyota': 7750, 'BMW': 9900}
+        prices['Lada'] = 3200
+        print(len(prices), max(prices.values()))
+      options:
+        - "2 9900"
+        - "3 9900"
+        - "3 Toyota"
+      answer: 1
+      explain: Добавлена третья пара; максимум значений — 9900.
+  hints:
+    - Нумерация позиций с нуля; срез без правой границы.
+    - "`.index` — позиция; `len` словаря — число пар; `.values()` — значения."
+    - "2 ['Model', 'Year']; 3 9900."

@@ -1,0 +1,651 @@
+- id: m5-l10-t1
+  title: "Шаг 1. X и y"
+  difficulty: main
+  introduces: []
+  uses: [target-features, pd-select-columns]
+  statement: |
+    Разделите таблицу `db` на признаки и ответ: `X` — все колонки, кроме `target`; `y` — колонка `target`. Посчитайте `y_median` — медиану ответа и `share_high` — долю пациентов, у которых `target` больше 200.
+  prelude: |
+    import pandas as pd
+    db = pd.read_csv('diabetes.csv')
+  starter: |
+    X = ...
+    y = ...
+    y_median = ...
+    share_high = ...
+    print(X.shape, y.shape)
+    print(y_median, round(share_high, 3))
+  solution: |
+    X = db.drop(columns='target')
+    y = db['target']
+    y_median = y.median()
+    share_high = (y > 200).mean()
+    print(X.shape, y.shape)
+    print(y_median, round(share_high, 3))
+  explanation: |
+    - `drop(columns='target')` возвращает таблицу без колонки ответа — так ответ точно не попадёт в признаки (урок 5.4: ответ среди признаков — утечка).
+    - `y` — одна колонка (Series), `X` — таблица 442 × 10.
+    - Медиана 140,5, а у 27 % пациентов ответ больше 200: прогрессирование сильно различается между пациентами — этот разброс модель и будет объяснять.
+  hints:
+    - "Таблица без одной колонки — `db.drop(columns='target')`; ответ — `db['target']`."
+    - "Доля — среднее логической маски: `(y > 200).mean()`."
+    - "`X = db.drop(columns='target')`, `y = db['target']`, `y_median = y.median()`."
+  tests: |
+    import pandas as pd
+    Xs = var('X', pd.DataFrame, 'таблицей DataFrame')
+    ensure('target' not in Xs.columns, 'Ответ `target` не должен попасть в признаки `X` — это утечка.')
+    ensure(list(Xs.columns) == list(ref('X').columns), 'В `X` должны быть все 10 колонок, кроме `target`: {0}.'.format(', '.join(ref('X').columns)))
+    ensure(len(Xs) == len(ref('X')), 'В `X` должны быть все {0} пациентов.'.format(len(ref('X'))))
+    ys = var('y', pd.Series, 'одной колонкой Series — `db[\'target\']`')
+    same_array(ys.to_numpy(), ref('y').to_numpy(), '`y` — колонка `target`.')
+    close(var('y_median', 'number', 'числом'), ref('y_median'), 'Медиана ответа — {expected}, а у вас {actual}.')
+    close(var('share_high', 'number', 'числом'), ref('share_high'), 'Доля пациентов с target > 200 — {expected}, а у вас {actual}.')
+    close(alt('share_high'), alt_ref('share_high'), HARDCODE_MSG)
+  files: [diabetes.csv]
+  wrong:
+    - code: |
+        X = db
+        y = db['target']
+        y_median = y.median()
+        share_high = (y > 200).mean()
+      expect: утечка
+    - code: |
+        X = db.drop(columns='target')
+        y = db[['target']]
+        y_median = db['target'].median()
+        share_high = (db['target'] > 200).mean()
+      expect: Series
+
+- id: m5-l10-t2
+  title: "Шаг 2. Разбиение 60/20/20"
+  difficulty: main
+  introduces: []
+  uses: [sk-split, train-valid-test]
+  statement: |
+    Разбейте данные на обучающую, валидационную и тестовую части 60/20/20 в два шага, как в уроке 5.4: сначала отделите `X_test`, `y_test` (20 %), затем разделите остаток на `X_train`, `y_train` и `X_valid`, `y_valid`. В обоих вызовах — `random_state=42`.
+  prelude: |
+    import pandas as pd
+    db = pd.read_csv('diabetes.csv')
+    X = db.drop(columns='target')
+    y = db['target']
+  starter: |
+    from sklearn.model_selection import train_test_split
+
+    X_temp, X_test, y_temp, y_test = ...
+    X_train, X_valid, y_train, y_valid = ...
+    print(len(X_train), len(X_valid), len(X_test))
+  solution: |
+    from sklearn.model_selection import train_test_split
+
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    print(len(X_train), len(X_valid), len(X_test))
+  explanation: |
+    - Во втором шаге `test_size=0.25`: четверть остатка (80 %) — это 20 % всех данных.
+    - Получилось 264 / 89 / 89 пациентов. Validation и test маленькие — по ним метрики будут неточными, но других данных нет.
+    - `random_state=42` делает разбиение воспроизводимым: у всех, кто проходит курс, одни и те же части.
+  hints:
+    - "Первый вызов — `train_test_split(X, y, test_size=0.2, random_state=42)`."
+    - "Второй — от остатка `X_temp`, `y_temp`; доля validation от остатка — 0,25."
+    - "`X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)`."
+  tests: |
+    import pandas as pd
+    for name in ['X_train', 'X_valid', 'X_test']:
+        var(name, pd.DataFrame, 'таблицей DataFrame')
+    n = (len(var('X_train')), len(var('X_valid')), len(var('X_test')))
+    if n == (282, 71, 89):
+        fail('Во втором разбиении нужен `test_size=0.25`: 25 % от остатка — это 20 % всех данных.')
+    equal(n, (264, 89, 89), 'Размеры частей (train, validation, test) — {expected}, а у вас {actual}.')
+    ensure(list(var('X_test').index) == list(ref('X_test').index), 'Состав test не совпадает: первое разбиение — `train_test_split(X, y, test_size=0.2, random_state=42)`.')
+    ensure(list(var('X_train').index) == list(ref('X_train').index), 'Состав train не совпадает: второе разбиение — `train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)`.')
+    ensure(list(var('y_train').index) == list(var('X_train').index) and list(var('y_valid').index) == list(var('X_valid').index), '`y_train` и `y_valid` должны соответствовать `X_train` и `X_valid` — разбивайте X и y одним вызовом.')
+    ensure(len(set(var('X_train').index) & set(var('X_test').index)) == 0, 'train и test пересекаются.')
+  files: [diabetes.csv]
+  wrong:
+    - code: |
+        from sklearn.model_selection import train_test_split
+        X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.2, random_state=42)
+      expect: "test_size=0.25"
+    - code: |
+        from sklearn.model_selection import train_test_split
+        X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
+        X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=1)
+      expect: Состав test
+
+- id: m5-l10-t3
+  title: "Шаг 3. Ориентир"
+  difficulty: main
+  introduces: []
+  uses: [baseline-model, sk-fit-predict, regression-metrics]
+  statement: |
+    Обучите ориентир `baseline` — `DummyRegressor`, который всем пациентам ставит медиану ответа обучающей части. Получите `baseline_pred` — прогнозы для validation и `baseline_mae` — MAE ориентира на validation.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    db = pd.read_csv('diabetes.csv')
+    X = db.drop(columns='target')
+    y = db['target']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    from sklearn.dummy import DummyRegressor
+    from sklearn.metrics import mean_absolute_error
+
+    baseline = ...
+    baseline.fit(..., ...)
+    baseline_pred = ...
+    baseline_mae = ...
+    print(baseline.constant_.item(), round(baseline_mae, 1))
+  solution: |
+    from sklearn.dummy import DummyRegressor
+    from sklearn.metrics import mean_absolute_error
+
+    baseline = DummyRegressor(strategy='median')
+    baseline.fit(X_train, y_train)
+    baseline_pred = baseline.predict(X_valid)
+    baseline_mae = mean_absolute_error(y_valid, baseline_pred)
+    print(baseline.constant_.item(), round(baseline_mae, 1))
+  explanation: |
+    - Ориентир всем ставит 136 — медиану `y_train` — и ошибается в среднем на ≈ 66,6. Любая модель должна быть заметно лучше этого числа.
+    - Ориентир учится, как настоящая модель, только на train: медиана всех данных (140,5) содержала бы сведения о validation и test.
+  hints:
+    - "`DummyRegressor(strategy='median')` — создать, `fit` на обучающей части, `predict` для validation."
+    - "`baseline.fit(X_train, y_train)`; `baseline_pred = baseline.predict(X_valid)`."
+    - "`baseline_mae = mean_absolute_error(y_valid, baseline_pred)`."
+  tests: |
+    from sklearn.dummy import DummyRegressor
+    b = var('baseline', DummyRegressor, 'моделью DummyRegressor')
+    ensure(hasattr(b, 'constant_'), 'Модель не обучена: вызовите `baseline.fit(X_train, y_train)`.')
+    if b.strategy != 'median':
+        fail('Ориентир — медиана: `DummyRegressor(strategy=\'median\')`.')
+    close(float(b.constant_.item()), float(ref('baseline').constant_.item()), 'Медиана ответа на train — {expected}, а у вас {actual}: учите ориентир только на `X_train`, `y_train`.')
+    close(var('baseline_mae', 'number', 'числом'), ref('baseline_mae'), 'MAE ориентира на validation — {expected}, а у вас {actual}.')
+    close(alt('baseline_mae'), alt_ref('baseline_mae'), HARDCODE_MSG)
+  files: [diabetes.csv]
+  wrong:
+    - code: |
+        from sklearn.dummy import DummyRegressor
+        from sklearn.metrics import mean_absolute_error
+        baseline = DummyRegressor(strategy='mean')
+        baseline.fit(X_train, y_train)
+        baseline_pred = baseline.predict(X_valid)
+        baseline_mae = mean_absolute_error(y_valid, baseline_pred)
+      expect: медиана
+    - code: |
+        from sklearn.dummy import DummyRegressor
+        from sklearn.metrics import mean_absolute_error
+        baseline = DummyRegressor(strategy='median')
+        baseline.fit(X, y)
+        baseline_pred = baseline.predict(X_valid)
+        baseline_mae = mean_absolute_error(y_valid, baseline_pred)
+      expect: только на `X_train`
+    - code: |
+        from sklearn.dummy import DummyRegressor
+        from sklearn.metrics import mean_absolute_error
+        baseline = DummyRegressor(strategy='median')
+        baseline.fit(X_train, y_train)
+        baseline_pred = baseline.predict(X_valid)
+        baseline_mae = mean_absolute_error(y_train, baseline.predict(X_train))
+      expect: на validation
+
+- id: m5-l10-t4
+  title: "Шаг 4. Модель по индексу массы тела"
+  difficulty: main
+  introduces: []
+  uses: [linear-regression, regression-metrics]
+  statement: |
+    Обучите `bmi_model` — линейную регрессию по одному признаку `bmi`. Получите `bmi_pred` — прогнозы для validation, `bmi_coef` — коэффициент при `bmi` и `bmi_mae` — MAE на validation.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.dummy import DummyRegressor
+    from sklearn.metrics import mean_absolute_error
+    db = pd.read_csv('diabetes.csv')
+    X = db.drop(columns='target')
+    y = db['target']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    baseline_mae = mean_absolute_error(y_valid, DummyRegressor(strategy='median').fit(X_train, y_train).predict(X_valid))
+  starter: |
+    from sklearn.linear_model import LinearRegression
+
+    bmi_model = LinearRegression()
+    bmi_model.fit(..., ...)
+    bmi_pred = ...
+    bmi_coef = ...
+    bmi_mae = ...
+    print(round(bmi_coef, 2), round(bmi_mae, 1), 'выигрыш у ориентира:', round(baseline_mae - bmi_mae, 1))
+  solution: |
+    from sklearn.linear_model import LinearRegression
+
+    bmi_model = LinearRegression()
+    bmi_model.fit(X_train[['bmi']], y_train)
+    bmi_pred = bmi_model.predict(X_valid[['bmi']])
+    bmi_coef = bmi_model.coef_[0]
+    bmi_mae = mean_absolute_error(y_valid, bmi_pred)
+    print(round(bmi_coef, 2), round(bmi_mae, 1), 'выигрыш у ориентира:', round(baseline_mae - bmi_mae, 1))
+  explanation: |
+    - Признак берём двойными скобками — `X_train[['bmi']]`: модели нужна таблица (n, 1).
+    - Коэффициент ≈ 10,7: при росте ИМТ на 1 кг/м² прогноз прогрессирования растёт на 10,7. Это связь в данных, а не доказательство причины.
+    - MAE ≈ 50,4 против 66,6 у ориентира: один признак уже снизил ошибку на четверть.
+  hints:
+    - "Один признак — таблица из одной колонки: `X_train[['bmi']]`, для прогноза — `X_valid[['bmi']]`."
+    - "Коэффициенты — в атрибуте `coef_`, при единственном признаке — `coef_[0]`."
+    - "`bmi_model.fit(X_train[['bmi']], y_train)`; `bmi_mae = mean_absolute_error(y_valid, bmi_pred)`."
+  tests: |
+    from sklearn.linear_model import LinearRegression
+    m = var('bmi_model', LinearRegression, 'моделью LinearRegression')
+    ensure(hasattr(m, 'coef_'), 'Модель не обучена: `bmi_model.fit(X_train[[\'bmi\']], y_train)`.')
+    ensure(len(m.coef_) == 1, 'Модель должна учиться на одном признаке — `X_train[[\'bmi\']]`, а у неё {0} коэффициентов.'.format(len(m.coef_)))
+    close(var('bmi_coef', 'number', 'числом'), ref('bmi_coef'), 'Коэффициент при ИМТ — {expected}, а у вас {actual}.')
+    close(var('bmi_mae', 'number', 'числом'), ref('bmi_mae'), 'MAE модели по ИМТ на validation — {expected}, а у вас {actual}.')
+    close(alt('bmi_mae'), alt_ref('bmi_mae'), HARDCODE_MSG)
+  files: [diabetes.csv]
+  wrong:
+    - code: |
+        from sklearn.linear_model import LinearRegression
+        bmi_model = LinearRegression()
+        bmi_model.fit(X_train, y_train)
+        bmi_pred = bmi_model.predict(X_valid)
+        bmi_coef = bmi_model.coef_[2]
+        bmi_mae = mean_absolute_error(y_valid, bmi_pred)
+      expect: одном признаке
+    - code: |
+        from sklearn.linear_model import LinearRegression
+        bmi_model = LinearRegression()
+        bmi_model.fit(X_train[['bmi']], y_train)
+        bmi_pred = bmi_model.predict(X_valid[['bmi']])
+        bmi_coef = bmi_model.intercept_
+        bmi_mae = mean_absolute_error(y_valid, bmi_pred)
+      expect: Коэффициент при ИМТ
+
+- id: m5-l10-t5
+  title: "Шаг 5. Все признаки со StandardScaler"
+  difficulty: main
+  introduces: []
+  uses: [standard-scaler, data-leakage, overfitting]
+  statement: |
+    Стандартизируйте признаки без утечки: обучите `scaler` на обучающей части и получите `X_train_s`, `X_valid_s`. Модель по всем признакам `all_model` уже в заготовке. Посчитайте `all_mae` — MAE на validation и `train_mae` — MAE той же модели на обучающей части.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import mean_absolute_error
+    db = pd.read_csv('diabetes.csv')
+    X = db.drop(columns='target')
+    y = db['target']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    from sklearn.preprocessing import StandardScaler
+
+    scaler = StandardScaler()
+    scaler.fit(...)
+    X_train_s = ...
+    X_valid_s = ...
+    all_model = LinearRegression().fit(X_train_s, y_train)
+    all_pred = all_model.predict(X_valid_s)
+    all_mae = ...
+    train_mae = ...
+    coefs = pd.Series(all_model.coef_, index=X.columns)
+    print(round(all_mae, 1), round(train_mae, 1))
+    print(coefs.round(1).sort_values(key=abs, ascending=False))   # по модулю
+  solution: |
+    from sklearn.preprocessing import StandardScaler
+
+    scaler = StandardScaler()
+    scaler.fit(X_train)
+    X_train_s = scaler.transform(X_train)
+    X_valid_s = scaler.transform(X_valid)
+    all_model = LinearRegression().fit(X_train_s, y_train)
+    all_pred = all_model.predict(X_valid_s)
+    all_mae = mean_absolute_error(y_valid, all_pred)
+    train_mae = mean_absolute_error(y_train, all_model.predict(X_train_s))
+    coefs = pd.Series(all_model.coef_, index=X.columns)
+    print(round(all_mae, 1), round(train_mae, 1))
+    print(coefs.round(1).sort_values(key=abs, ascending=False))   # по модулю
+  explanation: |
+    - `fit` — только на `X_train`, `transform` — для обеих частей одним и тем же scaler (урок 5.7).
+    - MAE ≈ 42,9 на validation и ≈ 43,8 на train — почти одинаково: переобучения нет, у модели 11 параметров на 264 пациента. Чтобы стать точнее, нужны новые признаки или более гибкая модель (модуль 6).
+    - Самые большие по модулю коэффициенты — у `s1` (≈ −51) и `s2` (≈ +28), с разными знаками. Эти показатели почти повторяют друг друга (ЛПНП — часть общего холестерина), и модель «размазала» влияние между ними. По отдельности такие коэффициенты толковать нельзя — с этим помогает регуляризация (модуль 7).
+  hints:
+    - "`scaler.fit(X_train)`, затем `scaler.transform(...)` для train и validation — без второго `fit`."
+    - "`X_valid_s = scaler.transform(X_valid)`."
+    - "`all_mae = mean_absolute_error(y_valid, all_pred)`; `train_mae = mean_absolute_error(y_train, all_model.predict(X_train_s))`."
+  tests: |
+    import numpy as np
+    from sklearn.preprocessing import StandardScaler
+    sc = var('scaler', StandardScaler, 'объектом StandardScaler')
+    ensure(hasattr(sc, 'mean_'), 'Scaler не обучен: `scaler.fit(X_train)`.')
+    if np.allclose(sc.mean_, ref('X').mean().to_numpy()):
+        fail('Scaler обучен на всех данных — это утечка. `fit` — только на `X_train`.')
+    if np.allclose(sc.mean_, ref('X_valid').mean().to_numpy()):
+        fail('Scaler обучен на validation. `fit` — только на `X_train`, для validation — `transform`.')
+    same_array(sc.mean_, ref('scaler').mean_, 'Средние scaler не совпадают со средними `X_train`: `scaler.fit(X_train)`.')
+    same_array(np.asarray(var('X_valid_s'), dtype=float), ref('X_valid_s'), '`X_valid_s` — `scaler.transform(X_valid)` тем же scaler, без нового `fit`.')
+    close(var('all_mae', 'number', 'числом'), ref('all_mae'), 'MAE модели по всем признакам на validation — {expected}, а у вас {actual}.')
+    close(var('train_mae', 'number', 'числом'), ref('train_mae'), 'MAE на обучающей части — {expected}, а у вас {actual}: прогноз для `X_train_s` сравните с `y_train`.')
+    close(alt('all_mae'), alt_ref('all_mae'), HARDCODE_MSG)
+  files: [diabetes.csv]
+  wrong:
+    - code: |
+        from sklearn.preprocessing import StandardScaler
+        scaler = StandardScaler()
+        scaler.fit(X)
+        X_train_s = scaler.transform(X_train)
+        X_valid_s = scaler.transform(X_valid)
+        all_model = LinearRegression().fit(X_train_s, y_train)
+        all_pred = all_model.predict(X_valid_s)
+        all_mae = mean_absolute_error(y_valid, all_pred)
+        train_mae = mean_absolute_error(y_train, all_model.predict(X_train_s))
+      expect: утечка
+    - code: |
+        from sklearn.preprocessing import StandardScaler
+        scaler = StandardScaler()
+        scaler.fit(X_train)
+        X_train_s = scaler.transform(X_train)
+        X_valid_s = StandardScaler().fit_transform(X_valid)
+        all_model = LinearRegression().fit(X_train_s, y_train)
+        all_pred = all_model.predict(X_valid_s)
+        all_mae = mean_absolute_error(y_valid, all_pred)
+        train_mae = mean_absolute_error(y_train, all_model.predict(X_train_s))
+      expect: без нового `fit`
+
+- id: m5-l10-t6
+  kind: plot
+  title: "Шаг 6. Таблица метрик и график «прогноз — факт»"
+  difficulty: main
+  introduces: []
+  uses: [regression-metrics, pred-true-plot]
+  statement: |
+    Сравните три модели на validation: постройте `table` — строки `ориентир`, `ИМТ`, `все признаки` (как в словаре `preds`), колонки `MAE`, `RMSE`, `R2`. Затем нарисуйте график «известное значение — прогноз» для модели по всем признакам: точки (`y_valid`, `all_pred`) и диагональ «прогноз = факт» от `lo` до `hi`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    from sklearn.model_selection import train_test_split
+    from sklearn.dummy import DummyRegressor
+    from sklearn.linear_model import LinearRegression
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.metrics import mean_absolute_error
+    db = pd.read_csv('diabetes.csv')
+    X = db.drop(columns='target')
+    y = db['target']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    baseline_pred = DummyRegressor(strategy='median').fit(X_train, y_train).predict(X_valid)
+    bmi_pred = LinearRegression().fit(X_train[['bmi']], y_train).predict(X_valid[['bmi']])
+    scaler = StandardScaler().fit(X_train)
+    all_pred = LinearRegression().fit(scaler.transform(X_train), y_train).predict(scaler.transform(X_valid))
+  starter: |
+    from sklearn.metrics import root_mean_squared_error, r2_score
+
+    preds = {'ориентир': baseline_pred, 'ИМТ': bmi_pred, 'все признаки': all_pred}
+    table = pd.DataFrame({name: {'MAE': ..., 'RMSE': ..., 'R2': ...}
+                          for name, p in preds.items()}).T
+    print(table.round(3))
+
+    fig, ax = plt.subplots(figsize=(6, 5))
+    # точки: известное значение — прогноз модели по всем признакам
+    lo = min(y_valid.min(), all_pred.min())
+    hi = max(y_valid.max(), all_pred.max())
+    # диагональ «прогноз = факт»
+    ax.set(xlabel='Известное значение', ylabel='Прогноз', title='Все признаки: validation')
+    plt.show()
+  solution: |
+    from sklearn.metrics import root_mean_squared_error, r2_score
+
+    preds = {'ориентир': baseline_pred, 'ИМТ': bmi_pred, 'все признаки': all_pred}
+    table = pd.DataFrame({name: {'MAE': mean_absolute_error(y_valid, p),
+                                 'RMSE': root_mean_squared_error(y_valid, p),
+                                 'R2': r2_score(y_valid, p)}
+                          for name, p in preds.items()}).T
+    print(table.round(3))
+
+    fig, ax = plt.subplots(figsize=(6, 5))
+    ax.scatter(y_valid, all_pred, alpha=0.6)
+    lo = min(y_valid.min(), all_pred.min())
+    hi = max(y_valid.max(), all_pred.max())
+    ax.plot([lo, hi], [lo, hi], 'r--')
+    ax.set(xlabel='Известное значение', ylabel='Прогноз', title='Все признаки: validation')
+    plt.show()
+  explanation: |
+    - Все метрики согласны: все признаки (MAE ≈ 42,9, R² ≈ 0,52) лучше одного ИМТ (≈ 50,4 и 0,37), а он — лучше ориентира. У ориентира R² < 0: он ставит медиану, а R² сравнивает со средним (урок 5.8).
+    - На графике облако положе диагонали, как у машин: пациентам с лёгким течением модель завышает прогноз, с тяжёлым (больше 200) — занижает в среднем примерно на 50.
+    - R² ≈ 0,5 — модель объясняет около половины разброса; для отдельного пациента ошибка в ±40–50 баллов велика.
+  hints:
+    - "Для каждой модели — словарь из трёх метрик `(y_valid, p)`; таблица — `pd.DataFrame(...).T`."
+    - "Точки — `ax.scatter(y_valid, all_pred, alpha=0.6)`; диагональ — `ax.plot([lo, hi], [lo, hi], 'r--')`."
+    - "`'MAE': mean_absolute_error(y_valid, p), 'RMSE': root_mean_squared_error(y_valid, p), 'R2': r2_score(y_valid, p)`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    t = var('table', pd.DataFrame, 'таблицей DataFrame')
+    ensure(list(t.columns) == ['MAE', 'RMSE', 'R2'] and list(t.index) == ['ориентир', 'ИМТ', 'все признаки'], 'Строки таблицы — модели (ориентир, ИМТ, все признаки), колонки — MAE, RMSE, R2 (не забудьте `.T`).')
+    same_frame(t.astype(float), ref('table').astype(float), 'Значения метрик не совпадают: в каждую функцию — сначала `y_valid`, потом прогнозы `p`.')
+    ax = axes()
+    pts = [c for c in ax.collections if type(c).__name__ == 'PathCollection']
+    ensure(len(pts) >= 1, 'Нарисуйте точки: `ax.scatter(y_valid, all_pred, alpha=0.6)`.')
+    offs = np.asarray(max(pts, key=lambda c: len(c.get_offsets())).get_offsets(), dtype=float)
+    yv = np.asarray(ref('y_valid'), dtype=float)
+    pr = np.asarray(ref('all_pred'), dtype=float)
+    ensure(len(offs) == len(yv), 'Точек должно быть {0} — по одной на пациента validation, а у вас {1}.'.format(len(yv), len(offs)))
+    if np.allclose(offs[:, 0], pr) and np.allclose(offs[:, 1], yv):
+        fail('Оси перепутаны: по X — известное значение `y_valid`, по Y — прогноз `all_pred`.')
+    ensure(np.allclose(offs[:, 0], yv) and np.allclose(offs[:, 1], pr), 'По X — известное значение `y_valid`, по Y — прогноз модели по всем признакам `all_pred`.')
+    diag = [l for l in ax.get_lines() if len(l.get_xdata()) >= 2 and np.allclose(np.asarray(l.get_xdata(), dtype=float), np.asarray(l.get_ydata(), dtype=float))]
+    ensure(len(diag) >= 1, 'Добавьте диагональ «прогноз = факт»: `ax.plot([lo, hi], [lo, hi], \'r--\')`.')
+    close(float(alt('table').loc['все признаки', 'MAE']), float(alt_ref('table').loc['все признаки', 'MAE']), HARDCODE_MSG)
+  files: [diabetes.csv]
+  wrong:
+    - code: |
+        from sklearn.metrics import root_mean_squared_error, r2_score
+        preds = {'ориентир': baseline_pred, 'ИМТ': bmi_pred, 'все признаки': all_pred}
+        table = pd.DataFrame({name: {'MAE': mean_absolute_error(y_valid, p), 'RMSE': root_mean_squared_error(y_valid, p), 'R2': r2_score(p, y_valid)} for name, p in preds.items()}).T
+        fig, ax = plt.subplots()
+        ax.scatter(y_valid, all_pred)
+        ax.plot([0, 350], [0, 350], 'r--')
+        plt.show()
+      expect: Значения метрик не совпадают
+    - code: |
+        from sklearn.metrics import root_mean_squared_error, r2_score
+        preds = {'ориентир': baseline_pred, 'ИМТ': bmi_pred, 'все признаки': all_pred}
+        table = pd.DataFrame({name: {'MAE': mean_absolute_error(y_valid, p), 'RMSE': root_mean_squared_error(y_valid, p), 'R2': r2_score(y_valid, p)} for name, p in preds.items()}).T
+        fig, ax = plt.subplots()
+        ax.scatter(all_pred, y_valid)
+        ax.plot([0, 350], [0, 350], 'r--')
+        plt.show()
+      expect: Оси перепутаны
+    - code: |
+        from sklearn.metrics import root_mean_squared_error, r2_score
+        preds = {'ориентир': baseline_pred, 'ИМТ': bmi_pred, 'все признаки': all_pred}
+        table = pd.DataFrame({name: {'MAE': mean_absolute_error(y_valid, p), 'RMSE': root_mean_squared_error(y_valid, p), 'R2': r2_score(y_valid, p)} for name, p in preds.items()}).T
+        fig, ax = plt.subplots()
+        ax.scatter(y_valid, all_pred)
+        plt.show()
+      expect: диагональ
+
+- id: m5-l10-t7
+  title: "Шаг 7. Итоговая проверка на test"
+  difficulty: main
+  introduces: []
+  uses: [train-valid-test, standard-scaler, regression-metrics]
+  statement: |
+    Модель по всем признакам выбрана по validation. Теперь — **один раз** — проверьте её на тестовой части: `X_test_s` — стандартизированный тот же `scaler`, `test_pred` — прогнозы `all_model`, `test_mae` и `test_r2`. MAE ориентира на test для сравнения уже в заготовке.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.dummy import DummyRegressor
+    from sklearn.linear_model import LinearRegression
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.metrics import mean_absolute_error, r2_score
+    db = pd.read_csv('diabetes.csv')
+    X = db.drop(columns='target')
+    y = db['target']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    baseline = DummyRegressor(strategy='median').fit(X_train, y_train)
+    scaler = StandardScaler().fit(X_train)
+    all_model = LinearRegression().fit(scaler.transform(X_train), y_train)
+  starter: |
+    X_test_s = ...
+    test_pred = ...
+    test_mae = ...
+    test_r2 = ...
+    test_baseline_mae = mean_absolute_error(y_test, baseline.predict(X_test))
+    print(round(test_mae, 1), round(test_r2, 3), round(test_baseline_mae, 1))
+  solution: |
+    X_test_s = scaler.transform(X_test)
+    test_pred = all_model.predict(X_test_s)
+    test_mae = mean_absolute_error(y_test, test_pred)
+    test_r2 = r2_score(y_test, test_pred)
+    test_baseline_mae = mean_absolute_error(y_test, baseline.predict(X_test))
+    print(round(test_mae, 1), round(test_r2, 3), round(test_baseline_mae, 1))
+  explanation: |
+    - Test преобразуем тем же scaler, обученным на train: новый `fit` на test — утечка, как и на validation.
+    - MAE на test ≈ 42,9 — как на validation; R² ≈ 0,45 против 0,52: на 89 пациентах такие колебания обычны. Ориентир на test ошибается на ≈ 62,3 — модель лучше примерно на треть.
+    - Это итоговые числа проекта. Если теперь поменять модель и снова смотреть на test, его оценка станет оптимистичной (урок 5.3).
+  hints:
+    - "Test — как validation: `scaler.transform`, затем `all_model.predict`."
+    - "`X_test_s = scaler.transform(X_test)`; `test_pred = all_model.predict(X_test_s)`."
+    - "`test_mae = mean_absolute_error(y_test, test_pred)`; `test_r2 = r2_score(y_test, test_pred)`."
+  tests: |
+    import numpy as np
+    xt = np.asarray(var('X_test_s'), dtype=float)
+    if xt.shape == ref('X_test_s').shape and np.allclose(xt, np.asarray(ref('X_test'), dtype=float)):
+        fail('`X_test_s` не стандартизирован: `scaler.transform(X_test)`.')
+    same_array(xt, ref('X_test_s'), '`X_test_s` — `scaler.transform(X_test)` тем же scaler, обученным на train (без нового `fit`).')
+    close(var('test_mae', 'number', 'числом'), ref('test_mae'), 'MAE на test — {expected}, а у вас {actual}.')
+    close(var('test_r2', 'number', 'числом'), ref('test_r2'), 'R² на test — {expected}, а у вас {actual}.')
+    close(alt('test_mae'), alt_ref('test_mae'), HARDCODE_MSG)
+  files: [diabetes.csv]
+  wrong:
+    - code: |
+        X_test_s = StandardScaler().fit_transform(X_test)
+        test_pred = all_model.predict(X_test_s)
+        test_mae = mean_absolute_error(y_test, test_pred)
+        test_r2 = r2_score(y_test, test_pred)
+      expect: без нового `fit`
+    - code: |
+        X_test_s = scaler.transform(X_test)
+        test_pred = all_model.predict(X_test_s)
+        test_mae = mean_absolute_error(y_test, test_pred)
+        test_r2 = r2_score(test_pred, y_test)
+      expect: R² на test
+
+- id: m5-l10-t8
+  kind: quiz
+  title: "Шаг 8. Выводы"
+  difficulty: main
+  introduces: []
+  uses: []
+  statement: |
+    Сформулируйте выводы проекта: ответьте на вопросы.
+  quiz:
+    - q: "R² модели на test ≈ 0,45, MAE ≈ 43 при среднем ответе ≈ 152. Какой вывод честный?"
+      options:
+        - Модель объясняет меньше половины разброса; для отдельного пациента ошибка велика — это учебная модель, не инструмент диагностики
+        - 45 % прогнозов модели точные
+        - Модель бесполезна — она не лучше ориентира
+      answer: 0
+      explain: R² — доля объяснённого разброса, а не доля верных ответов; ориентир ошибается на ≈ 62, так что модель заметно лучше, но далека от точности.
+    - q: "У `s1` коэффициент ≈ −51, у `s2` ≈ +28. Как это понимать?"
+      options:
+        - "`s1` и `s2` почти повторяют друг друга, модель разделила влияние между ними — по отдельности такие коэффициенты не толкуют"
+        - Холестерин `s1` замедляет болезнь
+        - "`s1` — самый важный показатель для врача"
+      answer: 0
+      explain: Когда признаки дублируют друг друга, коэффициенты становятся большими и разных знаков. О причинах они ничего не говорят.
+    - q: "MAE на train ≈ 43,8, на validation ≈ 42,9. Что делать, чтобы модель стала точнее?"
+      options:
+        - Искать новые признаки или более гибкую модель — переобучения нет, модель слишком проста
+        - Бороться с переобучением
+        - Подобрать модель по test
+      answer: 0
+      explain: Одинаковые ошибки на train и validation — признак недостатка гибкости. Test для подбора не используют.
+    - q: "После проверки на test хочется добавить признак и проверить ещё раз. Можно?"
+      options:
+        - Нет — test используют один раз; новые варианты сравнивают на validation, а для новой итоговой оценки нужны новые данные
+        - Да, test для этого и нужен
+        - Да, если признак полезный
+      answer: 0
+      explain: Каждый взгляд на test с последующим выбором превращает его во вторую validation, и его оценка становится оптимистичной.
+  hints:
+    - Вспомните, что измеряет R², что бывает с коэффициентами похожих признаков и зачем нужен test.
+    - "R² — доля объяснённого разброса; похожие признаки делят влияние; одинаковые ошибки на train и validation — нет переобучения; test — один раз."
+    - "Ответы: первый вариант во всех четырёх вопросах."
+
+- id: m5-l10-t9
+  title: "Дополнительно: какой признак полезнее всего в одиночку"
+  difficulty: star
+  introduces: []
+  uses: [linear-regression, regression-metrics]
+  statement: |
+    Для каждого из десяти признаков обучите линейную регрессию **только по нему** и посчитайте MAE на validation. Соберите `single_mae` — Series «признак → MAE», отсортированную по возрастанию, и `best` — название признака с наименьшей ошибкой.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import mean_absolute_error
+    db = pd.read_csv('diabetes.csv')
+    X = db.drop(columns='target')
+    y = db['target']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    single_mae = {}
+    for col in X.columns:
+        m = ...
+        single_mae[col] = ...
+    single_mae = pd.Series(single_mae).sort_values()
+    best = ...
+    print(single_mae.round(1))
+    print(best)
+  solution: |
+    single_mae = {}
+    for col in X.columns:
+        m = LinearRegression().fit(X_train[[col]], y_train)
+        single_mae[col] = mean_absolute_error(y_valid, m.predict(X_valid[[col]]))
+    single_mae = pd.Series(single_mae).sort_values()
+    best = single_mae.index[0]
+    print(single_mae.round(1))
+    print(best)
+  explanation: |
+    - `X_train[[col]]` — таблица из одной колонки, имя колонки берём из переменной цикла.
+    - Лучше всех в одиночку — ИМТ (≈ 50,4), рядом давление `bp` (≈ 51,6) и `s5` (≈ 54,4). Пол почти ничего не даёт: MAE ≈ 64,3 — как у прогноза средним.
+    - Но все десять вместе дают ≈ 42,9 — лучше любого в отдельности: признаки дополняют друг друга. Перебор по одному признаку — простой способ понять данные, а не выбрать окончательную модель.
+  hints:
+    - "В цикле — модель по одному признаку: `LinearRegression().fit(X_train[[col]], y_train)`."
+    - "MAE — по прогнозам для `X_valid[[col]]`; лучший признак — первый после сортировки по возрастанию."
+    - "`single_mae[col] = mean_absolute_error(y_valid, m.predict(X_valid[[col]]))`; `best = single_mae.index[0]`."
+  tests: |
+    import pandas as pd
+    s = var('single_mae', pd.Series, 'Series')
+    e = ref('single_mae')
+    ensure(set(s.index) == set(e.index), 'В `single_mae` должно быть по значению для каждого из 10 признаков.')
+    same_array(s.reindex(e.index).to_numpy(dtype=float), e.to_numpy(dtype=float), 'MAE моделей по одному признаку не совпадают: для каждого признака — `LinearRegression().fit(X_train[[col]], y_train)` и MAE на validation.')
+    ensure(list(s.index) == list(e.index), 'Отсортируйте `single_mae` по возрастанию: `.sort_values()`.')
+    b = var('best', str, 'строкой — названием признака')
+    if b == e.index[-1]:
+        fail('Лучший признак — с **наименьшей** MAE, а у вас — с наибольшей.')
+    equal(b, ref('best'), 'Лучше всего в одиночку работает «{expected}», а у вас «{actual}».')
+    same_array(alt('single_mae').sort_index().to_numpy(dtype=float), alt_ref('single_mae').sort_index().to_numpy(dtype=float), HARDCODE_MSG)
+  files: [diabetes.csv]
+  wrong:
+    - code: |
+        single_mae = {}
+        for col in X.columns:
+            m = LinearRegression().fit(X_train[[col]], y_train)
+            single_mae[col] = mean_absolute_error(y_valid, m.predict(X_valid[[col]]))
+        single_mae = pd.Series(single_mae).sort_values()
+        best = single_mae.index[-1]
+      expect: наименьшей
+    - code: |
+        single_mae = {}
+        for col in X.columns:
+            m = LinearRegression().fit(X_train[[col]], y_train)
+            single_mae[col] = mean_absolute_error(y_train, m.predict(X_train[[col]]))
+        single_mae = pd.Series(single_mae).sort_values()
+        best = single_mae.index[0]
+      expect: на validation

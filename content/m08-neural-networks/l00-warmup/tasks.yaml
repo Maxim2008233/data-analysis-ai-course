@@ -1,0 +1,325 @@
+- id: m8-l0-t1
+  title: Прогноз как взвешенная сумма
+  difficulty: warmup
+  introduces: []
+  uses: [linear-regression, standard-scaler]
+  statement: |
+    Линейная модель `linear` уже обучена на масштабированных признаках. Посчитайте её прогнозы для **всех** машин validation без `predict`: каждый признак умножьте на свой вес из `linear.coef_`, сложите по строке и прибавьте `linear.intercept_`. Получите `manual` — массив прогнозов и `max_diff` — наибольшее по модулю расхождение с `linear.predict(X_valid_s)`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s, X_valid_s = scaler.transform(X_train), scaler.transform(X_valid)
+    linear = LinearRegression().fit(X_train_s, y_train)
+  starter: |
+    manual = ...
+    max_diff = ...
+    print(manual[:3].round(0))
+    print(max_diff)
+  solution: |
+    manual = (X_valid_s * linear.coef_).sum(axis=1) + linear.intercept_
+    max_diff = np.abs(manual - linear.predict(X_valid_s)).max()
+    print(manual[:3].round(0))
+    print(max_diff)
+  explanation: |
+    - `X_valid_s * linear.coef_` умножает каждую строку на вектор весов поэлементно (broadcasting, урок 1.10): столбец года — на вес года и так далее.
+    - `.sum(axis=1)` складывает произведения в строке, получается взвешенная сумма для каждой машины. Свободный член одинаков для всех.
+    - Расхождение с `predict` — порядка 1e-12, то есть только погрешность вычислений. Именно так считает и нейрон, только в конце ещё применяет функцию активации.
+  hints:
+    - "Произведение каждой строки на веса — `X_valid_s * linear.coef_`."
+    - "Сумма по строке — `.sum(axis=1)`, затем `+ linear.intercept_`."
+    - "`max_diff = np.abs(manual - linear.predict(X_valid_s)).max()`."
+  tests: |
+    import numpy as np
+    m = np.asarray(var('manual'), dtype=float)
+    ensure(m.shape == (len(ref('y_valid')),), '`manual` — по прогнозу на каждую машину validation: {0} значений, а у вас форма {1}.'.format(len(ref('y_valid')), m.shape))
+    lin = ref('linear')
+    if np.allclose(m, (ref('X_valid_s') * lin.coef_).sum(axis=1)):
+        fail('Не забудьте свободный член: `+ linear.intercept_`.')
+    same_array(m, lin.predict(ref('X_valid_s')), '`manual` не совпадает с прогнозами модели: сумма произведений признаков на веса по строке плюс свободный член.')
+    ensure(var('max_diff', 'number', 'числом') < 1e-6, '`max_diff` — наибольшее расхождение с `predict`, оно должно быть почти нулевым.')
+    same_array(np.asarray(alt('manual'), dtype=float), np.asarray(alt_ref('manual'), dtype=float), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        manual = (X_valid_s * linear.coef_).sum(axis=1)
+        max_diff = np.abs(manual - linear.predict(X_valid_s)).max()
+      expect: свободный член
+    - code: |
+        manual = (X_valid_s * linear.coef_).sum(axis=0) + linear.intercept_
+        max_diff = np.abs(manual[:1] - linear.predict(X_valid_s)[:1]).max()
+      expect: по прогнозу на каждую машину
+
+- id: m8-l0-t2
+  title: Шаг градиентного спуска
+  difficulty: warmup
+  introduces: []
+  uses: [gradient-descent, loss-mse]
+  statement: |
+    Напишите функцию `gd_step(x, y, w, b, lr)` — один шаг градиентного спуска для модели ŷ = w·x + b с потерями MSE (урок 5.2). Она возвращает пару `(w_new, b_new)`:
+
+    - ошибка `error = w * x + b - y`;
+    - градиенты: по `w` — `2 * mean(error * x)`, по `b` — `2 * mean(error)`;
+    - новые параметры — старые минус `lr` × градиент.
+
+    Сделайте шаг для данных `x`, `y` с `w = 0`, `b = 0`, `lr = 0.1`: `w1, b1`. Посчитайте MSE до шага (`mse_before`) и после (`mse_after`).
+  prelude: |
+    import numpy as np
+    x = np.array([0.0, 1.0, 2.0, 3.0])
+    y = np.array([1.0, 3.0, 5.0, 7.0])
+  starter: |
+    def gd_step(x, y, w, b, lr):
+        error = ...
+        grad_w = ...
+        grad_b = ...
+        return w - lr * grad_w, b - lr * grad_b
+
+    w1, b1 = gd_step(x, y, 0.0, 0.0, 0.1)
+    mse_before = ...
+    mse_after = ...
+    print(w1, b1, mse_before, mse_after)
+  solution: |
+    def gd_step(x, y, w, b, lr):
+        error = w * x + b - y
+        grad_w = 2 * np.mean(error * x)
+        grad_b = 2 * np.mean(error)
+        return w - lr * grad_w, b - lr * grad_b
+
+    w1, b1 = gd_step(x, y, 0.0, 0.0, 0.1)
+    mse_before = np.mean((0.0 * x + 0.0 - y) ** 2)
+    mse_after = np.mean((w1 * x + b1 - y) ** 2)
+    print(w1, b1, mse_before, mse_after)
+  explanation: |
+    - При w = 0 и b = 0 модель везде предсказывает 0, ошибки −1, −3, −5, −7, MSE = 21.
+    - Градиенты отрицательные (−17 по w, −8 по b): потери растут, если уменьшать параметры. Шаг против градиента увеличивает w до 1,7 и b до 0,8.
+    - После одного шага MSE = 0,535, в 40 раз меньше. Нейросеть учится так же, только параметров не два, а сотни, и градиенты для них считает обратное распространение (урок 8.3).
+  hints:
+    - "Ошибка — `w * x + b - y`."
+    - "`grad_w = 2 * np.mean(error * x)`, `grad_b = 2 * np.mean(error)`."
+    - "MSE до шага — `np.mean((0.0 * x + 0.0 - y) ** 2)`, после — то же с `w1`, `b1`."
+  tests: |
+    import numpy as np
+    f = var('gd_step')
+    ensure(callable(f), '`gd_step` должна быть функцией.')
+    rng = np.random.default_rng(3)
+    xr, yr = rng.normal(size=7), rng.normal(size=7)
+    w0, b0, lr0 = 0.4, -0.2, 0.05
+    e = w0 * xr + b0 - yr
+    exp = (w0 - lr0 * 2 * np.mean(e * xr), b0 - lr0 * 2 * np.mean(e))
+    got = f(xr, yr, w0, b0, lr0)
+    ensure(len(got) == 2, '`gd_step` возвращает пару `(w_new, b_new)`.')
+    if np.allclose(got, (w0 + lr0 * 2 * np.mean(e * xr), b0 + lr0 * 2 * np.mean(e))):
+        fail('Шаг сделан по градиенту, а нужно против него: `w - lr * grad_w`. Ошибка — прогноз минус ответ.')
+    same_array(np.asarray(got, dtype=float), np.asarray(exp, dtype=float), 'На других данных `gd_step` дал {0}, а должен {1}. Градиенты: `2 * mean(error * x)` и `2 * mean(error)`.'.format(np.round(got, 4), np.round(exp, 4)))
+    close(var('w1', 'number', 'числом'), ref('w1'), '`w1` — {expected}, а у вас {actual}.')
+    close(var('b1', 'number', 'числом'), ref('b1'), '`b1` — {expected}, а у вас {actual}.')
+    close(var('mse_before', 'number', 'числом'), ref('mse_before'), 'MSE до шага — {expected}, а у вас {actual}.')
+    close(var('mse_after', 'number', 'числом'), ref('mse_after'), 'MSE после шага — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        def gd_step(x, y, w, b, lr):
+            error = y - (w * x + b)
+            grad_w = 2 * np.mean(error * x)
+            grad_b = 2 * np.mean(error)
+            return w - lr * grad_w, b - lr * grad_b
+        w1, b1 = gd_step(x, y, 0.0, 0.0, 0.1)
+        mse_before = np.mean((0.0 * x + 0.0 - y) ** 2)
+        mse_after = np.mean((w1 * x + b1 - y) ** 2)
+      expect: против него
+    - code: |
+        def gd_step(x, y, w, b, lr):
+            error = w * x + b - y
+            grad_w = np.mean(error * x)
+            grad_b = np.mean(error)
+            return w - lr * grad_w, b - lr * grad_b
+        w1, b1 = gd_step(x, y, 0.0, 0.0, 0.1)
+        mse_before = np.mean((0.0 * x + 0.0 - y) ** 2)
+        mse_after = np.mean((w1 * x + b1 - y) ** 2)
+      expect: На других данных
+
+- id: m8-l0-t3
+  title: Отрицательные цены
+  difficulty: warmup
+  introduces: []
+  uses: [regression-metrics, linear-regression]
+  statement: |
+    Прогнозы линейной модели для validation — `pred`. Получите `n_negative` — сколько прогнозов меньше нуля, `mae` — MAE прогнозов, и `mae_clipped` — MAE, если все отрицательные прогнозы заменить нулём (`np.maximum(pred, 0)`).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    linear = LinearRegression().fit(scaler.transform(X_train), y_train)
+    pred = linear.predict(scaler.transform(X_valid))
+  starter: |
+    n_negative = ...
+    mae = ...
+    mae_clipped = ...
+    print(n_negative, round(mae), round(mae_clipped))
+  solution: |
+    n_negative = (pred < 0).sum()
+    mae = mean_absolute_error(y_valid, pred)
+    mae_clipped = mean_absolute_error(y_valid, np.maximum(pred, 0))
+    print(n_negative, round(mae), round(mae_clipped))
+  explanation: |
+    - У 506 машин из 6 414 прогноз меньше нуля. Это старые машины с большим пробегом: прямая уходит вниз, а цена не может быть отрицательной.
+    - Если заменить такие прогнозы нулём, MAE падает с 4 270 до 3 975 — почти на 300 евро. `np.maximum(pred, 0)` — это функция активации ReLU, применённая к выходу модели.
+    - Нейрон с ReLU делает такую «срезку» сам, а сеть из таких нейронов умеет сгибать прогноз в нескольких местах (уроки 8.1–8.2).
+  hints:
+    - "Число отрицательных — сумма маски `(pred < 0).sum()`."
+    - "MAE — `mean_absolute_error(y_valid, pred)`."
+    - "Срезанные прогнозы — `np.maximum(pred, 0)`."
+  tests: |
+    equal(int(var('n_negative', 'number', 'числом')), int(ref('n_negative')), 'Отрицательных прогнозов — {expected}, а у вас {actual}.')
+    close(var('mae', 'number', 'числом'), ref('mae'), 'MAE — {expected}, а у вас {actual}.')
+    mc = var('mae_clipped', 'number', 'числом')
+    if abs(mc - ref('mae')) < 1e-9:
+        fail('`mae_clipped` совпала с обычной MAE: замените отрицательные прогнозы нулём — `np.maximum(pred, 0)`.')
+    close(mc, ref('mae_clipped'), 'MAE со срезанными прогнозами — {expected}, а у вас {actual}.')
+    close(alt('mae_clipped'), alt_ref('mae_clipped'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        n_negative = (pred < 0).sum()
+        mae = mean_absolute_error(y_valid, pred)
+        mae_clipped = mean_absolute_error(y_valid, pred)
+      expect: np.maximum
+    - code: |
+        n_negative = (pred <= 0).mean()
+        mae = mean_absolute_error(y_valid, pred)
+        mae_clipped = mean_absolute_error(y_valid, np.maximum(pred, 0))
+      expect: Отрицательных прогнозов
+
+- id: m8-l0-t4
+  title: Недообучение и переобучение по ошибкам
+  difficulty: warmup
+  introduces: []
+  uses: [overfitting, validation-curve]
+  statement: |
+    Для деревьев разной глубины из `depths` посчитайте MAE на train и на validation: `errors` — DataFrame с индексом-глубиной и колонками `'train'` и `'validation'`. Добавьте колонку `'gap'` — разность validation − train. Получите `best_depth` — глубину с наименьшей MAE на validation.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.tree import DecisionTreeRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    depths = [2, 6, 12, 25]
+  starter: |
+    rows = {}
+    for d in depths:
+        tree = DecisionTreeRegressor(max_depth=d, random_state=42).fit(X_train, y_train)
+        rows[d] = {'train': ..., 'validation': ...}
+    errors = pd.DataFrame(rows).T
+    errors['gap'] = ...
+    best_depth = ...
+    print(errors.round(0))
+    print(best_depth)
+  solution: |
+    rows = {}
+    for d in depths:
+        tree = DecisionTreeRegressor(max_depth=d, random_state=42).fit(X_train, y_train)
+        rows[d] = {'train': mean_absolute_error(y_train, tree.predict(X_train)),
+                   'validation': mean_absolute_error(y_valid, tree.predict(X_valid))}
+    errors = pd.DataFrame(rows).T
+    errors['gap'] = errors['validation'] - errors['train']
+    best_depth = errors['validation'].idxmin()
+    print(errors.round(0))
+    print(best_depth)
+  explanation: |
+    - Глубина 2: ошибка большая и на train (4 243), и на validation (4 188) — модель слишком простая, **недообучение**.
+    - Глубина 25: на train всего 453, а на validation 3 318 — модель запомнила обучающие машины, **переобучение**. Разрыв вырос до 2 865.
+    - Лучшая — глубина 6 (2 841 на validation). С нейросетями будет то же самое, только вместо глубины — число нейронов и число эпох обучения (урок 8.5).
+  hints:
+    - "MAE на train — `mean_absolute_error(y_train, tree.predict(X_train))`, на validation — то же для `X_valid`."
+    - "`errors['gap'] = errors['validation'] - errors['train']`."
+    - "`best_depth = errors['validation'].idxmin()`."
+  tests: |
+    import pandas as pd
+    e = var('errors', pd.DataFrame, 'таблицей DataFrame')
+    ensure([int(v) for v in e.index] == list(ref('depths')), 'Индекс `errors` — глубины из `depths`.')
+    ensure({'train', 'validation', 'gap'} <= set(e.columns), 'Колонки `errors` — `train`, `validation` и `gap`.')
+    if (e['train'].to_numpy(dtype=float) == e['validation'].to_numpy(dtype=float)).all():
+        fail('MAE на train и validation совпали: на validation прогнозируйте по `X_valid` и сравнивайте с `y_valid`.')
+    same_array(e['train'].to_numpy(dtype=float), ref('errors')['train'].to_numpy(dtype=float), 'MAE на train не совпадает.')
+    same_array(e['validation'].to_numpy(dtype=float), ref('errors')['validation'].to_numpy(dtype=float), 'MAE на validation не совпадает.')
+    same_array(e['gap'].to_numpy(dtype=float), ref('errors')['gap'].to_numpy(dtype=float), '`gap` — разность validation − train.')
+    equal(int(var('best_depth', 'number', 'числом')), int(ref('best_depth')), 'Лучшая глубина — {expected}, а у вас {actual}.')
+    same_array(alt('errors')['validation'].to_numpy(dtype=float), alt_ref('errors')['validation'].to_numpy(dtype=float), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        rows = {}
+        for d in depths:
+            tree = DecisionTreeRegressor(max_depth=d, random_state=42).fit(X_train, y_train)
+            rows[d] = {'train': mean_absolute_error(y_train, tree.predict(X_train)),
+                       'validation': mean_absolute_error(y_valid, tree.predict(X_valid))}
+        errors = pd.DataFrame(rows).T
+        errors['gap'] = errors['train'] - errors['validation']
+        best_depth = errors['validation'].idxmin()
+      expect: "`gap`"
+    - code: |
+        rows = {}
+        for d in depths:
+            tree = DecisionTreeRegressor(max_depth=d, random_state=42).fit(X_train, y_train)
+            rows[d] = {'train': mean_absolute_error(y_train, tree.predict(X_train)),
+                       'validation': mean_absolute_error(y_valid, tree.predict(X_valid))}
+        errors = pd.DataFrame(rows).T
+        errors['gap'] = errors['validation'] - errors['train']
+        best_depth = errors['train'].idxmin()
+      expect: Лучшая глубина
+
+- id: m8-l0-t5
+  kind: quiz
+  title: Что понадобится в модуле 8
+  difficulty: warmup
+  introduces: []
+  uses: [gradient-descent, overfitting]
+  statement: |
+    Проверьте, что знакомые детали на месте.
+  quiz:
+    - q: Что считает линейная регрессия для одной машины?
+      options:
+        - Сумму произведений признаков на веса плюс свободный член
+        - Среднюю цену похожих машин
+        - Медиану цены по признакам
+      answer: 0
+      explain: Взвешенная сумма признаков. Нейрон считает её же, а затем применяет функцию активации.
+    - q: Зачем делать шаг против градиента функции потерь?
+      options:
+        - Градиент показывает, куда потери растут быстрее всего; шаг в обратную сторону их уменьшает
+        - Так модель быстрее запоминает train
+        - Чтобы веса стали положительными
+      answer: 0
+      explain: Это градиентный спуск (урок 5.2). Нейросеть учится так же.
+    - q: На train ошибка падает, а на validation начала расти. Что происходит?
+      options:
+        - Переобучение — модель подстраивается под шум train
+        - Недообучение — модель слишком простая
+        - Ничего особенного, так и должно быть
+      answer: 0
+      explain: Для сети это будет означать «пора остановить обучение» — ранняя остановка, урок 8.5.
+  hints:
+    - Вспомните уроки 5.2, 5.3 и 5.6.
+    - "Взвешенная сумма; шаг против градиента уменьшает потери; растущая ошибка на validation — переобучение."
+    - "Ответы: первый вариант во всех трёх вопросах."

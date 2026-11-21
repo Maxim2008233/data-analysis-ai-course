@@ -1,0 +1,452 @@
+- id: m5-l9-t1
+  title: Выше или ниже диагонали
+  difficulty: warmup
+  introduces: [pred-true-plot]
+  uses: [error-analysis]
+  statement: |
+    Для шести машин даны цены `y_true` и прогнозы `y_pred`. Посчитайте ошибки `errors` = прогноз − цена; `n_above` — сколько точек на графике «известная цена — прогноз» лежит **выше** диагонали, `n_below` — сколько **ниже**; `worst` — позицию машины с самой большой **по модулю** ошибкой.
+  prelude: |
+    import numpy as np
+    y_true = np.array([3000.0, 5500.0, 8000.0, 12000.0, 20000.0, 45000.0])
+    y_pred = np.array([4800.0, 6100.0, 7600.0, 12500.0, 21000.0, 26000.0])
+  starter: |
+    errors = ...
+    n_above = ...
+    n_below = ...
+    worst = ...
+    print(errors, n_above, n_below, worst)
+  solution: |
+    errors = y_pred - y_true
+    n_above = int((errors > 0).sum())
+    n_below = int((errors < 0).sum())
+    worst = int(np.argmax(np.abs(errors)))
+    print(errors, n_above, n_below, worst)
+  explanation: |
+    - Выше диагонали — прогноз больше цены, то есть ошибка положительна (завышение): таких машин 4. Ниже — 2.
+    - Самая большая ошибка −19 000 у самой дорогой машины (позиция 5): модель «тянет» прогнозы к середине — дешёвые завышает, дорогие занижает.
+    - `np.argmax(np.abs(errors))` — позиция наибольшего модуля (урок 1.6); без `abs` нашлось бы самое большое *завышение*.
+  hints:
+    - "Ошибка — `y_pred - y_true`; выше диагонали — ошибка больше нуля."
+    - "Число `True` в маске — `(errors > 0).sum()`."
+    - "`worst = int(np.argmax(np.abs(errors)))`."
+  tests: |
+    import numpy as np
+    e = var('errors', np.ndarray, 'массивом NumPy')
+    if e.shape == ref('errors').shape and np.allclose(e, -ref('errors')):
+        fail('Ошибка — прогноз минус цена: `y_pred - y_true`. Тогда «выше диагонали» — положительная ошибка.')
+    same_array(e, ref('errors'), 'Ошибки не совпадают: `y_pred - y_true`.')
+    a = var('n_above', 'number', 'числом')
+    if a == ref('n_below') and a != ref('n_above'):
+        fail('Выше диагонали — прогноз больше цены (ошибка > 0); вы посчитали точки ниже.')
+    equal(a, ref('n_above'), 'Выше диагонали — {expected} машины, а у вас {actual}.')
+    equal(var('n_below', 'number', 'числом'), ref('n_below'), 'Ниже диагонали — {expected} машины, а у вас {actual}.')
+    w = var('worst', 'number', 'числом')
+    if w == int(np.argmax(ref('errors'))) and w != ref('worst'):
+        fail('Нужна самая большая ошибка **по модулю**: `np.argmax(np.abs(errors))`.')
+    equal(w, ref('worst'), 'Самая большая по модулю ошибка — у машины с позицией {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        errors = y_true - y_pred
+        n_above = int((errors > 0).sum())
+        n_below = int((errors < 0).sum())
+        worst = int(np.argmax(np.abs(errors)))
+      expect: прогноз минус цена
+    - code: |
+        errors = y_pred - y_true
+        n_above = int((errors > 0).sum())
+        n_below = int((errors < 0).sum())
+        worst = int(np.argmax(errors))
+      expect: по модулю
+
+- id: m5-l9-t2
+  kind: plot
+  title: "График «известная цена — прогноз»"
+  difficulty: main
+  introduces: [pred-true-plot]
+  uses: [linear-regression, mpl-layers]
+  statement: |
+    Постройте для модели по четырём признакам график «известная цена — прогноз» на валидации: точки (`s=8`, `alpha=0.25`), по X — `y_valid`, по Y — `pred`. Добавьте красную пунктирную диагональ «прогноз = цена» от `lo` — общего минимума цен и прогнозов — до `hi` — общего максимума. Подпишите оси: «Известная цена, евро» и «Прогноз, евро».
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    pred = LinearRegression().fit(scaler.transform(X_train), y_train).predict(scaler.transform(X_valid))
+  starter: |
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.scatter(..., ..., s=8, alpha=0.25)
+    lo = ...
+    hi = ...
+    ax.plot(...)          # диагональ «прогноз = цена»
+    ax.set(xlabel=..., ylabel=...)
+    plt.show()
+  solution: |
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.scatter(y_valid, pred, s=8, alpha=0.25)
+    lo = min(y_valid.min(), pred.min())
+    hi = max(y_valid.max(), pred.max())
+    ax.plot([lo, hi], [lo, hi], 'r--')
+    ax.set(xlabel='Известная цена, евро', ylabel='Прогноз, евро')
+    plt.show()
+  explanation: |
+    - По X — настоящее значение, по Y — прогноз: тогда точки выше диагонали — завышение, ниже — занижение.
+    - `lo` берут по ценам **и** прогнозам: среди прогнозов есть отрицательные (≈ −22 650), и диагональ от нуля их бы не покрыла.
+    - Облако заметно положе диагонали, прогнозы не поднимаются выше ≈ 37 000 евро — модель тянет прогнозы к середине.
+  hints:
+    - "Точки: `ax.scatter(y_valid, pred, s=8, alpha=0.25)`. Диагональ — линия через две точки (lo, lo) и (hi, hi)."
+    - "`lo = min(y_valid.min(), pred.min())`, `hi = max(y_valid.max(), pred.max())`."
+    - "`ax.plot([lo, hi], [lo, hi], 'r--')`; `ax.set(xlabel='Известная цена, евро', ylabel='Прогноз, евро')`."
+  tests: |
+    import numpy as np
+    ax = axes()
+    pts = [c for c in ax.collections if type(c).__name__ == 'PathCollection']
+    ensure(len(pts) >= 1, 'Нарисуйте точки: `ax.scatter(y_valid, pred, s=8, alpha=0.25)`.')
+    yv = np.asarray(ref('y_valid'), dtype=float)
+    pr = np.asarray(ref('pred'), dtype=float)
+    offs = np.asarray(max(pts, key=lambda c: len(c.get_offsets())).get_offsets(), dtype=float)
+    ensure(len(offs) == len(yv), 'Точек должно быть {0} — по одной на машину validation, а у вас {1}.'.format(len(yv), len(offs)))
+    if np.allclose(offs[:, 0], pr) and np.allclose(offs[:, 1], yv):
+        fail('Оси перепутаны: по X — известная цена `y_valid`, по Y — прогноз `pred`.')
+    ensure(np.allclose(offs[:, 0], yv) and np.allclose(offs[:, 1], pr), 'По X должна быть известная цена `y_valid`, по Y — прогноз `pred`.')
+    diag = [l for l in ax.get_lines() if len(l.get_xdata()) >= 2 and np.allclose(np.asarray(l.get_xdata(), dtype=float), np.asarray(l.get_ydata(), dtype=float))]
+    ensure(len(diag) >= 1, 'Добавьте диагональ «прогноз = цена»: `ax.plot([lo, hi], [lo, hi], \'r--\')`.')
+    lo, hi = min(yv.min(), pr.min()), max(yv.max(), pr.max())
+    d = np.asarray(diag[0].get_xdata(), dtype=float)
+    span = hi - lo
+    ensure(d.min() <= lo + 0.01 * span and d.max() >= hi - 0.01 * span, 'Диагональ должна идти от общего минимума до общего максимума: `lo = min(y_valid.min(), pred.min())`, `hi = max(y_valid.max(), pred.max())` — среди прогнозов есть отрицательные.')
+    xl, yl = ax.get_xlabel().lower(), ax.get_ylabel().lower()
+    ensure('прогноз' not in xl, 'Подписи осей перепутаны: по X — известная цена, по Y — прогноз.')
+    ensure('цен' in xl and 'прогноз' in yl, 'Подпишите оси: по X — «Известная цена, евро», по Y — «Прогноз, евро».')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        fig, ax = plt.subplots(figsize=(7, 5))
+        ax.scatter(pred, y_valid, s=8, alpha=0.25)
+        lo = min(y_valid.min(), pred.min())
+        hi = max(y_valid.max(), pred.max())
+        ax.plot([lo, hi], [lo, hi], 'r--')
+        ax.set(xlabel='Прогноз, евро', ylabel='Известная цена, евро')
+        plt.show()
+      expect: Оси перепутаны
+    - code: |
+        fig, ax = plt.subplots(figsize=(7, 5))
+        ax.scatter(y_valid, pred, s=8, alpha=0.25)
+        ax.plot([0, y_valid.max()], [0, y_valid.max()], 'r--')
+        ax.set(xlabel='Известная цена, евро', ylabel='Прогноз, евро')
+        plt.show()
+      expect: общего минимума
+    - code: |
+        fig, ax = plt.subplots(figsize=(7, 5))
+        ax.scatter(y_valid, pred, s=8, alpha=0.25)
+        lo = min(y_valid.min(), pred.min())
+        hi = max(y_valid.max(), pred.max())
+        ax.plot([lo, hi], [lo, hi], 'r--')
+        plt.show()
+      expect: Подпишите оси
+
+- id: m5-l9-t3
+  title: Самые большие промахи
+  difficulty: main
+  introduces: [pred-true-plot]
+  uses: [error-analysis, pd-new-column]
+  statement: |
+    Соберите таблицу `res`: машины validation с колонками `Make`, `Model`, `Year`, `Engine`, `Price` (заготовка уже есть) и новыми колонками `pred` — прогноз, `error` — прогноз − цена, `abs_error` — модуль ошибки. Затем `top5` — пять строк с самыми большими по модулю ошибками (по убыванию) и `worst_over` — метку строки с самым большим **завышением**.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    pred = LinearRegression().fit(scaler.transform(X_train), y_train).predict(scaler.transform(X_valid))
+  starter: |
+    res = df.loc[X_valid.index, ['Make', 'Model', 'Year', 'Engine', 'Price']].copy()
+    res['pred'] = ...
+    res['error'] = ...        # прогноз − цена
+    res['abs_error'] = ...
+    top5 = ...
+    worst_over = ...          # метка строки с самым большим завышением
+    print(top5.round(0))
+    print(res.loc[worst_over])
+  solution: |
+    res = df.loc[X_valid.index, ['Make', 'Model', 'Year', 'Engine', 'Price']].copy()
+    res['pred'] = pred
+    res['error'] = res['pred'] - res['Price']
+    res['abs_error'] = res['error'].abs()
+    top5 = res.sort_values('abs_error', ascending=False).head(5)
+    worst_over = res['error'].idxmax()
+    print(top5.round(0))
+    print(res.loc[worst_over])
+  explanation: |
+    - `pred` — массив в порядке строк `X_valid`, поэтому его можно записать в колонку напрямую.
+    - Все пять крупнейших промахов — **занижения** на 85–125 тысяч: Mercedes G Class 2021 года (настоящая дорогая машина — модели не хватает марки) и четыре подозрительных объявления: машина 2009 года с моделью `Altele` за 120 000 и BMW 2001 года, Honda 2013 года и Volkswagen 2015 года — ровно по 100 000 евро.
+    - Самое большое завышение — Ford F-150 2012 года с двигателем 5,0 л: прогноз ≈ 33 200 при цене 13 200. Модель считает, что объём двигателя сильно поднимает цену, и не знает, что это старый пикап.
+  hints:
+    - "Ошибка — `res['pred'] - res['Price']`, модуль — `.abs()`."
+    - "Самые большие по модулю: `res.sort_values('abs_error', ascending=False).head(5)`."
+    - "Метка строки с максимальной ошибкой (со знаком) — `res['error'].idxmax()`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    r = var('res', pd.DataFrame, 'таблицей DataFrame')
+    for col in ['pred', 'error', 'abs_error']:
+        ensure(col in r.columns, 'В `res` нет колонки `{0}`.'.format(col))
+    e = ref('res')
+    ensure(len(r) == len(e), 'В `res` должно быть {0} строк — все машины validation.'.format(len(e)))
+    same_array(r['pred'].to_numpy(dtype=float), e['pred'].to_numpy(dtype=float), 'Колонка `pred` — прогнозы модели `pred` для машин validation.')
+    if np.allclose(r['error'].to_numpy(dtype=float), -e['error'].to_numpy(dtype=float)):
+        fail('Ошибка — прогноз минус цена: `res[\'pred\'] - res[\'Price\']`.')
+    same_array(r['error'].to_numpy(dtype=float), e['error'].to_numpy(dtype=float), 'Колонка `error` — прогноз минус цена.')
+    same_array(r['abs_error'].to_numpy(dtype=float), e['abs_error'].to_numpy(dtype=float), 'Колонка `abs_error` — модуль ошибки: `.abs()`.')
+    t = var('top5', pd.DataFrame, 'таблицей DataFrame')
+    ensure(len(t) == 5, 'В `top5` должно быть 5 строк, а у вас {0}.'.format(len(t)))
+    if list(t.index) == list(e.sort_values('abs_error').head(5).index):
+        fail('Это самые маленькие ошибки. Сортируйте по убыванию: `ascending=False`.')
+    if list(t.index) == list(e.sort_values('error', ascending=False).head(5).index):
+        fail('Сортируйте по модулю ошибки `abs_error`: самые большие промахи — занижения, у них ошибка отрицательная.')
+    equal(list(t.index), list(ref('top5').index), 'Метки строк `top5` не совпадают: сортируйте по `abs_error` по убыванию и возьмите первые 5.')
+    equal(var('worst_over'), ref('worst_over'), 'Самое большое завышение — у машины с меткой {expected}, а у вас {actual}. Нужна метка максимума ошибки со знаком: `idxmax`.')
+    equal(list(alt('top5').index), list(alt_ref('top5').index), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        res = df.loc[X_valid.index, ['Make', 'Model', 'Year', 'Engine', 'Price']].copy()
+        res['pred'] = pred
+        res['error'] = res['pred'] - res['Price']
+        res['abs_error'] = res['error'].abs()
+        top5 = res.sort_values('abs_error').head(5)
+        worst_over = res['error'].idxmax()
+      expect: самые маленькие
+    - code: |
+        res = df.loc[X_valid.index, ['Make', 'Model', 'Year', 'Engine', 'Price']].copy()
+        res['pred'] = pred
+        res['error'] = res['pred'] - res['Price']
+        res['abs_error'] = res['error'].abs()
+        top5 = res.sort_values('error', ascending=False).head(5)
+        worst_over = res['error'].idxmax()
+      expect: по модулю
+    - code: |
+        res = df.loc[X_valid.index, ['Make', 'Model', 'Year', 'Engine', 'Price']].copy()
+        res['pred'] = pred
+        res['error'] = res['pred'] - res['Price']
+        res['abs_error'] = res['error'].abs()
+        top5 = res.sort_values('abs_error', ascending=False).head(5)
+        worst_over = res['abs_error'].idxmax()
+      expect: idxmax
+
+- id: m5-l9-t4
+  title: Модель на логарифме цены
+  difficulty: main
+  introduces: [log-target]
+  uses: [linear-regression, regression-metrics]
+  statement: |
+    Обучите `log_model` — линейную регрессию на стандартизированных признаках, но для **логарифма** цены. Получите `pred_log` — прогнозы на валидации **в евро**, `mae_log` и `mape_log` (доля) в евро и `n_negative` — число отрицательных прогнозов. Для сравнения `mae_lin` — MAE обычной модели (прогнозы `pred`) — уже посчитана в заготовке.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s, X_valid_s = scaler.transform(X_train), scaler.transform(X_valid)
+    pred = LinearRegression().fit(X_train_s, y_train).predict(X_valid_s)
+  starter: |
+    log_model = LinearRegression().fit(X_train_s, ...)
+    pred_log = ...
+    mae_lin = mean_absolute_error(y_valid, pred)
+    mae_log = ...
+    mape_log = ...
+    n_negative = ...
+    print(round(mae_lin), round(mae_log), round(mape_log, 3), n_negative)
+  solution: |
+    log_model = LinearRegression().fit(X_train_s, np.log(y_train))
+    pred_log = np.exp(log_model.predict(X_valid_s))
+    mae_lin = mean_absolute_error(y_valid, pred)
+    mae_log = mean_absolute_error(y_valid, pred_log)
+    mape_log = mean_absolute_percentage_error(y_valid, pred_log)
+    n_negative = int((pred_log < 0).sum())
+    print(round(mae_lin), round(mae_log), round(mape_log, 3), n_negative)
+  explanation: |
+    - Учим на `np.log(y_train)`, прогноз возвращаем `np.exp(...)` — это прогноз в евро, и он всегда положителен: отрицательных прогнозов 0 (у обычной модели — 506).
+    - MAE 4 270 → 3 190: выигрыш ≈ 1 080 евро при тех же признаках. MAPE ≈ 0,41 вместо 0,92.
+    - Метрики считаем в евро — только так их можно сравнить с обычной моделью.
+  hints:
+    - "Модель учат на `np.log(y_train)`, а её прогноз — логарифм цены."
+    - "`pred_log = np.exp(log_model.predict(X_valid_s))`."
+    - "`mae_log = mean_absolute_error(y_valid, pred_log)`; `n_negative = int((pred_log < 0).sum())`."
+  tests: |
+    import numpy as np
+    p = np.asarray(var('pred_log', np.ndarray, 'массивом NumPy'), dtype=float)
+    ensure(p.shape == ref('pred_log').shape, 'Прогнозов должно быть {0} — по одному на машину validation.'.format(len(ref('pred_log'))))
+    if np.nanmax(p) < 50:
+        fail('Прогнозы около 8–10 — это логарифмы цены. Верните их в евро: `np.exp(log_model.predict(X_valid_s))`.')
+    if np.allclose(p, ref('pred')):
+        fail('Это прогнозы обычной модели. Учите её на логарифме цены: `.fit(X_train_s, np.log(y_train))`.')
+    same_array(p, ref('pred_log'), 'Прогнозы не совпадают: модель на `np.log(y_train)`, прогноз — `np.exp(log_model.predict(X_valid_s))`.', rtol=1e-6)
+    m = var('mae_log', 'number', 'числом')
+    if m < 5:
+        fail('MAE посчитана в логарифмах. Метрики считают в евро: `mean_absolute_error(y_valid, pred_log)`.')
+    close(m, ref('mae_log'), 'MAE модели на логарифме — {expected}, а у вас {actual}.')
+    close(var('mape_log', 'number', 'числом'), ref('mape_log'), 'MAPE (доля) — {expected}, а у вас {actual}.')
+    equal(var('n_negative', 'number', 'числом'), 0, 'Отрицательных прогнозов у модели на логарифме нет — e в любой степени положительно; у вас {actual}.')
+    close(alt('mae_log'), alt_ref('mae_log'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        log_model = LinearRegression().fit(X_train_s, np.log(y_train))
+        pred_log = log_model.predict(X_valid_s)
+        mae_lin = mean_absolute_error(y_valid, pred)
+        mae_log = mean_absolute_error(y_valid, pred_log)
+        mape_log = mean_absolute_percentage_error(y_valid, pred_log)
+        n_negative = int((pred_log < 0).sum())
+      expect: логарифмы цены
+    - code: |
+        log_model = LinearRegression().fit(X_train_s, y_train)
+        pred_log = log_model.predict(X_valid_s)
+        mae_lin = mean_absolute_error(y_valid, pred)
+        mae_log = mean_absolute_error(y_valid, pred_log)
+        mape_log = mean_absolute_percentage_error(y_valid, pred_log)
+        n_negative = int((pred_log < 0).sum())
+      expect: обычной модели
+    - code: |
+        log_model = LinearRegression().fit(X_train_s, np.log(y_train))
+        pred_log = np.exp(log_model.predict(X_valid_s))
+        mae_lin = mean_absolute_error(y_valid, pred)
+        mae_log = mean_absolute_error(np.log(y_valid), np.log(pred_log))
+        mape_log = mean_absolute_percentage_error(y_valid, pred_log)
+        n_negative = int((pred_log < 0).sum())
+      expect: в логарифмах
+
+- id: m5-l9-t5
+  kind: quiz
+  title: Читаем график ошибок
+  difficulty: main
+  introduces: [pred-true-plot, log-target]
+  uses: []
+  statement: |
+    Ответьте на вопросы о разборе ошибок.
+  quiz:
+    - q: На графике «известная цена — прогноз» точки образуют почти горизонтальную полосу на уровне 8 000 евро при любых ценах. Что это значит?
+      options:
+        - Модель почти всем ставит одно и то же — признаки ей почти не помогают
+        - Модель почти идеальна
+        - Модель переобучилась
+      answer: 0
+      explain: Прогноз не зависит от настоящей цены — как у константы; R² около нуля.
+    - q: С чего начать разбор самых больших промахов?
+      options:
+        - Посмотреть строки машин, чьи точки дальше всего от диагонали
+        - Сразу взять модель сложнее
+        - Удалить все машины дороже 30 000 евро
+      answer: 0
+      explain: Строки покажут причину — ошибку в данных или недостающий признак. Удалять «неудобные» машины без причины нельзя.
+    - q: Для какой целевой переменной модель на логарифме **не подходит** без изменений?
+      options:
+        - Изменение цены за месяц — оно бывает отрицательным
+        - Цена квартиры
+        - Зарплата
+      answer: 0
+      explain: Логарифм определён только для положительных чисел. Цены и зарплаты положительны и с длинным хвостом — для них логарифм как раз подходит.
+  hints:
+    - Вспомните, как читать график, что показывают строки с большими ошибками и где определён логарифм.
+    - "Горизонтальная полоса — прогноз не зависит от цены; разбор начинают со строк; логарифм — только для положительных y."
+    - "Ответы: одно и то же для всех; посмотреть строки; изменение цены за месяц."
+
+- id: m5-l9-t6
+  title: Где помог логарифм
+  difficulty: star
+  introduces: [log-target]
+  uses: [pd-groupby, error-analysis]
+  statement: |
+    Сравните две модели по ценовым группам. В таблице `res` (заготовка) — цена и прогнозы обеих моделей. Добавьте колонки `abs_lin` и `abs_log` — модули ошибок, постройте `by_group` — строки — ценовые группы, колонки `mae_lin` и `mae_log`, и `log_better` — список групп, где модель на логарифме точнее.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s, X_valid_s = scaler.transform(X_train), scaler.transform(X_valid)
+    pred = LinearRegression().fit(X_train_s, y_train).predict(X_valid_s)
+    pred_log = np.exp(LinearRegression().fit(X_train_s, np.log(y_train)).predict(X_valid_s))
+  starter: |
+    res = pd.DataFrame({'Price': y_valid, 'pred': pred, 'pred_log': pred_log})
+    res['price_group'] = pd.cut(res['Price'], bins=[0, 3000, 7000, 15000, 30000, np.inf],
+                                labels=['до 3k', '3–7k', '7–15k', '15–30k', '30k+'])
+    res['abs_lin'] = ...
+    res['abs_log'] = ...
+    by_group = ...
+    log_better = ...
+    print(by_group.round(0))
+    print(log_better)
+  solution: |
+    res = pd.DataFrame({'Price': y_valid, 'pred': pred, 'pred_log': pred_log})
+    res['price_group'] = pd.cut(res['Price'], bins=[0, 3000, 7000, 15000, 30000, np.inf],
+                                labels=['до 3k', '3–7k', '7–15k', '15–30k', '30k+'])
+    res['abs_lin'] = (res['pred'] - res['Price']).abs()
+    res['abs_log'] = (res['pred_log'] - res['Price']).abs()
+    by_group = res.groupby('price_group', observed=True).agg(mae_lin=('abs_lin', 'mean'), mae_log=('abs_log', 'mean'))
+    log_better = list(by_group.index[by_group['mae_log'] < by_group['mae_lin']])
+    print(by_group.round(0))
+    print(log_better)
+  explanation: |
+    - Именованная агрегация `agg(mae_lin=('abs_lin', 'mean'), ...)` (урок 3.2) сразу даёт нужные имена колонок; `observed=True` оставляет только встретившиеся группы.
+    - Логарифм резко улучшил дешёвые и средние машины (до 3 000: 3 870 → 1 440) и немного — самые дорогие, но для машин за 15–30 тысяч стал **хуже** (4 370 → 6 240): эти машины он занижает сильнее.
+    - Общая MAE всё равно ниже: дешёвых и средних машин гораздо больше. Сравнение по группам показывает, кому модель помогает, а кому — нет; одна общая цифра этого не скажет.
+  hints:
+    - "Модуль ошибки — `(res['pred'] - res['Price']).abs()`; для второй модели — с `pred_log`."
+    - "`by_group = res.groupby('price_group', observed=True).agg(mae_lin=('abs_lin', 'mean'), mae_log=('abs_log', 'mean'))`."
+    - "`log_better = list(by_group.index[by_group['mae_log'] < by_group['mae_lin']])`."
+  tests: |
+    import pandas as pd
+    b = var('by_group', pd.DataFrame, 'таблицей DataFrame')
+    ensure({'mae_lin', 'mae_log'} <= set(b.columns), 'В `by_group` нужны колонки `mae_lin` и `mae_log`.')
+    ensure(len(b) == 5, 'Строк должно быть 5 — по одной на ценовую группу, а у вас {0}.'.format(len(b)))
+    e = ref('by_group')
+    ensure([str(i) for i in b.index] == [str(i) for i in e.index], 'Строки — ценовые группы по порядку: до 3k, 3–7k, 7–15k, 15–30k, 30k+.')
+    same_array(b['mae_lin'].to_numpy(dtype=float), e['mae_lin'].to_numpy(dtype=float), 'MAE обычной модели по группам не совпадает: среднее модуля ошибки `(pred - Price).abs()`.')
+    same_array(b['mae_log'].to_numpy(dtype=float), e['mae_log'].to_numpy(dtype=float), 'MAE модели на логарифме по группам не совпадает: модуль ошибки `(pred_log - Price).abs()`.')
+    lb = [str(v) for v in var('log_better', list, 'списком')]
+    exp_lb = [str(v) for v in ref('log_better')]
+    if lb == [str(v) for v in e.index if str(v) not in exp_lb]:
+        fail('Это группы, где модель на логарифме **хуже**. Нужны те, где `mae_log < mae_lin`.')
+    equal(lb, exp_lb, 'Модель на логарифме точнее в группах {expected}, а у вас {actual}.')
+    same_array(alt('by_group')['mae_log'].to_numpy(dtype=float), alt_ref('by_group')['mae_log'].to_numpy(dtype=float), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        res = pd.DataFrame({'Price': y_valid, 'pred': pred, 'pred_log': pred_log})
+        res['price_group'] = pd.cut(res['Price'], bins=[0, 3000, 7000, 15000, 30000, np.inf], labels=['до 3k', '3–7k', '7–15k', '15–30k', '30k+'])
+        res['abs_lin'] = (res['pred'] - res['Price']).abs()
+        res['abs_log'] = (res['pred_log'] - res['Price']).abs()
+        by_group = res.groupby('price_group', observed=True).agg(mae_lin=('abs_lin', 'mean'), mae_log=('abs_log', 'mean'))
+        log_better = list(by_group.index[by_group['mae_log'] > by_group['mae_lin']])
+      expect: хуже
+    - code: |
+        res = pd.DataFrame({'Price': y_valid, 'pred': pred, 'pred_log': pred_log})
+        res['price_group'] = pd.cut(res['Price'], bins=[0, 3000, 7000, 15000, 30000, np.inf], labels=['до 3k', '3–7k', '7–15k', '15–30k', '30k+'])
+        res['abs_lin'] = res['pred'] - res['Price']
+        res['abs_log'] = res['pred_log'] - res['Price']
+        by_group = res.groupby('price_group', observed=True).agg(mae_lin=('abs_lin', 'mean'), mae_log=('abs_log', 'mean'))
+        log_better = list(by_group.index[by_group['mae_log'] < by_group['mae_lin']])
+      expect: обычной модели по группам

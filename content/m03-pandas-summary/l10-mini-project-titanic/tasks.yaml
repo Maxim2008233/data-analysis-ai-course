@@ -1,0 +1,475 @@
+- id: m3-l10-t1
+  title: "Шаг 1. Первичная проверка пассажиров"
+  difficulty: main
+  introduces: []
+  uses: [pd-isna-duplicated, pd-value-counts, feature-types]
+  statement: |
+    Получите:
+
+    - `n_passengers` — число пассажиров;
+    - `missing` — Series с числом пропусков **только по колонкам, где они есть**;
+    - `n_men` и `n_women` — число мужчин и женщин (`Sex`: `'male'` и `'female'`).
+  prelude: |
+    import pandas as pd
+    titanic = pd.read_csv('titanic.csv', index_col='PassengerId')
+  starter: |
+    n_passengers = ...
+    missing = ...
+    n_men = ...
+    n_women = ...
+    print(n_passengers, n_men, n_women)
+    missing
+  solution: |
+    n_passengers = len(titanic)
+    missing = titanic.isna().sum()
+    missing = missing[missing > 0]
+    n_men = (titanic['Sex'] == 'male').sum()
+    n_women = (titanic['Sex'] == 'female').sum()
+    print(n_passengers, n_men, n_women)
+    missing
+  explanation: |
+    - `titanic.isna().sum()` — пропуски по колонкам; отбор `missing[missing > 0]` оставляет только колонки с пропусками.
+    - Число мужчин и женщин — суммы масок по колонке `Sex` (или `value_counts()`).
+  alternatives:
+    - |
+      n_passengers = titanic.shape[0]
+      counts = titanic.isna().sum()
+      missing = counts.loc[counts > 0]
+      sex = titanic['Sex'].value_counts()
+      n_men, n_women = sex['male'], sex['female']
+  hints:
+    - Пропуски по колонкам и частоты пола — инструменты модуля 2.
+    - "`titanic.isna().sum()` и отбор `[... > 0]`; пол — `value_counts()` или маски `titanic['Sex'] == 'male'`."
+    - "`missing = missing[missing > 0]`, `n_men = (titanic['Sex'] == 'male').sum()`."
+  tests: |
+    import pandas as pd
+    close(var('n_passengers', 'number', 'числом'), ref('n_passengers'), 'Пассажиров — {expected}, а у вас {actual}.')
+    m = var('missing', pd.Series, 'Series')
+    if (m == 0).any():
+        fail('В `missing` остались колонки без пропусков — отберите только `missing > 0`.')
+    same_frame(m, ref('missing'), 'Пропуски по колонкам не совпадают.', check_dtype=False)
+    close(var('n_men', 'number', 'числом'), ref('n_men'), 'Мужчин — {expected}, а у вас {actual}.')
+    close(var('n_women', 'number', 'числом'), ref('n_women'), 'Женщин — {expected}, а у вас {actual}.')
+    close(alt('n_men'), alt_ref('n_men'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        n_passengers = len(titanic)
+        missing = titanic.isna().sum()
+        n_men = (titanic['Sex'] == 'male').sum()
+        n_women = (titanic['Sex'] == 'female').sum()
+      expect: без пропусков
+    - code: |
+        n_passengers = len(titanic)
+        missing = titanic.isna().sum()
+        missing = missing[missing > 0]
+        n_men, n_women = 577, 314
+      expect: вписан вручную
+
+- id: m3-l10-t2
+  title: "Шаг 2. Доли выживших по полу и классу"
+  difficulty: main
+  introduces: []
+  uses: [pd-crosstab, count-vs-share, pd-groupby]
+  statement: |
+    Получите:
+
+    - `survival_by_sex` — долю выживших среди женщин и среди мужчин (Series по полу, значения от 0 до 1);
+    - `survival_by_class` — долю выживших в каждом классе (Series по `Pclass`);
+    - `best_class` — класс с наибольшей долей выживших.
+  prelude: |
+    import pandas as pd
+    titanic = pd.read_csv('titanic.csv', index_col='PassengerId')
+  starter: |
+    survival_by_sex = ...
+    survival_by_class = ...
+    best_class = ...
+    print(survival_by_sex.round(3))
+    print(survival_by_class.round(3))
+    print(best_class)
+  solution: |
+    survival_by_sex = pd.crosstab(titanic['Sex'], titanic['Survived'], normalize='index')[1]
+    survival_by_class = titanic.groupby('Pclass')['Survived'].mean()
+    best_class = survival_by_class.idxmax()
+    print(survival_by_sex.round(3))
+    print(survival_by_class.round(3))
+    print(best_class)
+  explanation: |
+    - `crosstab(..., normalize='index')` — доли исходов внутри каждого пола; колонка `1` — доля выживших.
+    - Так как `Survived` — нули и единицы, среднее по группе тоже равно доле выживших: `groupby('Pclass')['Survived'].mean()`.
+    - Знаменатели — все женщины, все мужчины, все пассажиры класса.
+  alternatives:
+    - |
+      survival_by_sex = titanic.groupby('Sex')['Survived'].mean()
+      survival_by_class = pd.crosstab(titanic['Pclass'], titanic['Survived'], normalize='index')[1]
+      best_class = int(survival_by_class.idxmax())
+  hints:
+    - "Доля выживших — доля единиц в колонке `Survived`. Есть два способа: доли таблицы сочетаний или среднее по группе."
+    - "`pd.crosstab(titanic['Sex'], titanic['Survived'], normalize='index')[1]`; `titanic.groupby('Pclass')['Survived'].mean()`."
+    - "`best_class = survival_by_class.idxmax()`."
+  tests: |
+    import pandas as pd
+    s = var('survival_by_sex', pd.Series, 'Series по полу')
+    if (s > 1).any():
+        fail('В `survival_by_sex` количества, а нужны доли (от 0 до 1).')
+    if abs(float(s.sum()) - 1.0) < 1e-9:
+        fail('Доли в сумме дают 1 — похоже, это доли пола среди выживших (`normalize=\'columns\'`). Нужна доля выживших внутри каждого пола: `normalize=\'index\'` или среднее по группе.')
+    same_frame(s, ref('survival_by_sex'), 'Доли выживших по полу не совпадают.', check_dtype=False, check_index=False)
+    c = var('survival_by_class', pd.Series, 'Series по классу')
+    same_frame(c, ref('survival_by_class'), 'Доли выживших по классам не совпадают.', check_dtype=False, check_index=False)
+    equal(int(var('best_class', 'number', 'числом')), int(ref('best_class')), 'Больше всего выживших в {expected}-м классе, а у вас {actual}.')
+    close(float(alt('survival_by_class').iloc[0]), float(alt_ref('survival_by_class').iloc[0]), HARDCODE_MSG)
+  files: [titanic.csv]
+  wrong:
+    - code: |
+        survival_by_sex = pd.crosstab(titanic['Sex'], titanic['Survived'], normalize='columns')[1]
+        survival_by_class = titanic.groupby('Pclass')['Survived'].mean()
+        best_class = survival_by_class.idxmax()
+      expect: normalize='index'
+    - code: |
+        survival_by_sex = titanic.groupby('Sex')['Survived'].sum()
+        survival_by_class = titanic.groupby('Pclass')['Survived'].mean()
+        best_class = survival_by_class.idxmax()
+      expect: нужны доли
+
+- id: m3-l10-t3
+  title: "Шаг 3. Сводная «пол × класс» с размерами групп"
+  difficulty: main
+  introduces: []
+  uses: [pd-pivot-table, group-size-caution, pd-crosstab]
+  statement: |
+    Получите две сводные таблицы: пол по строкам, класс по колонкам.
+
+    - `survival_pivot` — доля выживших в каждой группе;
+    - `size_pivot` — число пассажиров в каждой группе.
+
+    Затем `lowest_group` — пару `(пол, класс)` с самой низкой долей выживших и `lowest_size` — число пассажиров в ней.
+  prelude: |
+    import pandas as pd
+    titanic = pd.read_csv('titanic.csv', index_col='PassengerId')
+  starter: |
+    survival_pivot = ...
+    size_pivot = ...
+    lowest_group = ...
+    lowest_size = ...
+    print(lowest_group, lowest_size)
+    survival_pivot.round(3)
+  solution: |
+    survival_pivot = titanic.pivot_table(index='Sex', columns='Pclass', values='Survived', aggfunc='mean')
+    size_pivot = pd.crosstab(titanic['Sex'], titanic['Pclass'])
+    lowest_group = survival_pivot.stack().idxmin()
+    lowest_size = size_pivot.loc[lowest_group]
+    print(lowest_group, lowest_size)
+    survival_pivot.round(3)
+  explanation: |
+    - `aggfunc='mean'` по колонке `Survived` даёт долю выживших в каждой ячейке «пол × класс».
+    - Размеры групп — таблица сочетаний (или `pivot_table(..., aggfunc='size')`): без них доли нельзя сравнивать уверенно.
+    - `stack()` сворачивает сводную в Series с парами (пол, класс) — `idxmin()` возвращает пару с наименьшей долей; по этой паре берём размер из `size_pivot`.
+  alternatives:
+    - |
+      survival_pivot = pd.pivot_table(titanic, index='Sex', columns='Pclass', values='Survived', aggfunc='mean')
+      size_pivot = pd.pivot_table(titanic, index='Sex', columns='Pclass', values='Survived', aggfunc='size')
+      s = survival_pivot.stack()
+      lowest_group = s.idxmin()
+      lowest_size = int(size_pivot.loc[lowest_group[0], lowest_group[1]])
+  hints:
+    - Доля выживших в ячейке — среднее `Survived`; размер — число строк в ячейке.
+    - "`titanic.pivot_table(index='Sex', columns='Pclass', values='Survived', aggfunc='mean')` и `pd.crosstab(titanic['Sex'], titanic['Pclass'])`."
+    - "`lowest_group = survival_pivot.stack().idxmin()`, `lowest_size = size_pivot.loc[lowest_group]`."
+  tests: |
+    import pandas as pd
+    sp = var('survival_pivot', pd.DataFrame, 'таблицей DataFrame')
+    same_frame(sp, ref('survival_pivot'), 'Сводная долей выживших не совпадает: пол по строкам, класс по колонкам, среднее Survived.', check_dtype=False)
+    zp = var('size_pivot', pd.DataFrame, 'таблицей DataFrame')
+    same_frame(zp, ref('size_pivot'), 'Сводная размеров групп не совпадает.', check_dtype=False)
+    g = var('lowest_group')
+    equal(tuple(g), tuple(ref('lowest_group')), 'Самая низкая доля выживших — у группы {expected}, а у вас {actual}.')
+    equal(int(var('lowest_size', 'number', 'числом')), int(ref('lowest_size')), 'В этой группе {expected} пассажиров, а у вас {actual}.')
+  files: [titanic.csv]
+  wrong:
+    - code: |
+        survival_pivot = titanic.pivot_table(index='Sex', columns='Pclass', values='Survived', aggfunc='sum')
+        size_pivot = pd.crosstab(titanic['Sex'], titanic['Pclass'])
+        lowest_group = survival_pivot.stack().idxmin()
+        lowest_size = size_pivot.loc[lowest_group]
+      expect: Сводная долей выживших
+    - code: |
+        survival_pivot = titanic.pivot_table(index='Sex', columns='Pclass', values='Survived', aggfunc='mean')
+        size_pivot = pd.crosstab(titanic['Sex'], titanic['Pclass'])
+        lowest_group = survival_pivot.stack().idxmax()
+        lowest_size = size_pivot.loc[lowest_group]
+      expect: Самая низкая доля
+
+- id: m3-l10-t4
+  title: "Шаг 4. Молодые и пожилые пассажиры"
+  difficulty: main
+  introduces: []
+  uses: [pd-bool-filter, group-size-caution, mean-median]
+  statement: |
+    Сравните выживаемость пассажиров **моложе 30 лет** и **старше 60 лет** (пассажиров с неизвестным возрастом не учитывайте). Получите `share_young`, `share_old` — доли выживших в группах, и `n_young`, `n_old` — размеры групп.
+  prelude: |
+    import pandas as pd
+    titanic = pd.read_csv('titanic.csv', index_col='PassengerId')
+  starter: |
+    young = ...
+    old = ...
+    share_young, share_old = ...
+    n_young, n_old = ...
+    print(round(share_young, 3), n_young, '|', round(share_old, 3), n_old)
+  solution: |
+    young = titanic[titanic['Age'] < 30]
+    old = titanic[titanic['Age'] > 60]
+    share_young, share_old = young['Survived'].mean(), old['Survived'].mean()
+    n_young, n_old = len(young), len(old)
+    print(round(share_young, 3), n_young, '|', round(share_old, 3), n_old)
+  explanation: |
+    - Сравнение с числом для неизвестного возраста (`NaN`) даёт False, поэтому пассажиры без возраста не попадают ни в одну группу.
+    - Доля выживших в группе — среднее `Survived`.
+    - Группа старше 60 лет — всего 22 человека: разница долей заметная, но вывод нужно формулировать осторожно.
+  alternatives:
+    - |
+      young = titanic.loc[titanic['Age'] < 30, 'Survived']
+      old = titanic.loc[titanic['Age'] > 60, 'Survived']
+      share_young, share_old = young.mean(), old.mean()
+      n_young, n_old = young.size, old.size
+  hints:
+    - Две маски по возрасту; доля выживших — среднее нулей и единиц.
+    - "`titanic[titanic['Age'] < 30]` и `titanic[titanic['Age'] > 60]`; доли — `['Survived'].mean()`, размеры — `len(...)`."
+    - "`share_young, share_old = young['Survived'].mean(), old['Survived'].mean()`."
+  tests: |
+    close(var('share_young', 'number', 'числом'), ref('share_young'), 'Доля выживших моложе 30 — {expected}, а у вас {actual}.')
+    close(var('share_old', 'number', 'числом'), ref('share_old'), 'Доля выживших старше 60 — {expected}, а у вас {actual}.')
+    ny = var('n_young', 'number', 'числом')
+    if ny == int((ref('titanic')['Age'] <= 30).sum()) and ny != ref('n_young'):
+        fail('В «моложе 30» попали 30-летние: нужно строго `< 30`.')
+    close(ny, ref('n_young'), 'Моложе 30 — {expected} пассажиров, а у вас {actual}.')
+    close(var('n_old', 'number', 'числом'), ref('n_old'), 'Старше 60 — {expected} пассажиров, а у вас {actual}.')
+    close(alt('share_young'), alt_ref('share_young'), HARDCODE_MSG)
+  files: [titanic.csv]
+  wrong:
+    - code: |
+        young = titanic[titanic['Age'] <= 30]
+        old = titanic[titanic['Age'] > 60]
+        share_young, share_old = young['Survived'].mean(), old['Survived'].mean()
+        n_young, n_old = len(young), len(old)
+      expect: Доля выживших моложе 30
+    - code: |
+        young = titanic[titanic['Age'] < 30]
+        old = titanic[titanic['Age'] > 60]
+        share_young, share_old = young['Survived'].sum(), old['Survived'].sum()
+        n_young, n_old = len(young), len(old)
+      expect: Доля выживших моложе 30
+
+- id: m3-l10-t5
+  title: "Шаг 5. Самое частое мужское имя"
+  difficulty: star
+  introduces: []
+  uses: [pd-apply, pd-value-counts, pd-bool-filter]
+  statement: |
+    Имена записаны так: `"Braund, Mr. Owen Harris"` — фамилия, обращение с точкой, затем имя. Напишите функцию `first_name(name)`, которая возвращает первое слово **после** обращения (для примера — `'Owen'`), примените её к именам **мужчин** и получите `top_name` — самое частое мужское имя и `top_count` — сколько раз оно встречается.
+  prelude: |
+    import pandas as pd
+    titanic = pd.read_csv('titanic.csv', index_col='PassengerId')
+  starter: |
+    def first_name(name):
+        ...
+
+    men_names = ...
+    top_name = ...
+    top_count = ...
+    print(first_name('Braund, Mr. Owen Harris'), top_name, top_count)
+  solution: |
+    def first_name(name):
+        rest = name.split('. ', 1)[1]
+        return rest.split()[0]
+
+    men_names = titanic.loc[titanic['Sex'] == 'male', 'Name'].apply(first_name)
+    top_name = men_names.value_counts().index[0]
+    top_count = men_names.value_counts().iloc[0]
+    print(first_name('Braund, Mr. Owen Harris'), top_name, top_count)
+  explanation: |
+    - `name.split('. ', 1)[1]` — всё, что после первого «точка-пробел» (после обращения Mr., Master., Dr.); `.split()[0]` — первое слово.
+    - `apply(first_name)` вызывает функцию для каждого имени мужчины (урок 2.9).
+    - `value_counts()` упорядочивает имена по частоте: первая метка — самое частое имя.
+  hints:
+    - Разбейте строку по «точке с пробелом» и возьмите часть после обращения, а из неё — первое слово.
+    - "`name.split('. ', 1)[1].split()[0]`; применение — `.apply(first_name)` к колонке `Name` мужчин."
+    - "`men_names = titanic.loc[titanic['Sex'] == 'male', 'Name'].apply(first_name)`, `top_name = men_names.value_counts().index[0]`."
+  tests: |
+    f = var('first_name')
+    ensure(callable(f), '`first_name` должна быть функцией.')
+    for name, want in [('Braund, Mr. Owen Harris', 'Owen'), ('Palsson, Master. Gosta Leonard', 'Gosta'), ('Allen, Mr. William Henry', 'William')]:
+        got = f(name)
+        ensure(got == want, 'first_name({0!r}) вернула {1!r}, а нужно {2!r} — первое слово после обращения с точкой.'.format(name, got, want))
+    equal(var('top_name'), ref('top_name'), 'Самое частое мужское имя — {expected}, а у вас {actual}.')
+    equal(int(var('top_count', 'number', 'числом')), int(ref('top_count')), 'Оно встречается {expected} раз, а у вас {actual}.')
+  files: [titanic.csv]
+  wrong:
+    - code: |
+        def first_name(name):
+            return name.split()[1]
+        men_names = titanic.loc[titanic['Sex'] == 'male', 'Name'].apply(first_name)
+        top_name = men_names.value_counts().index[0]
+        top_count = men_names.value_counts().iloc[0]
+      expect: первое слово после обращения
+    - code: |
+        def first_name(name):
+            return name.split('. ', 1)[1].split()[0]
+        men_names = titanic['Name'].apply(first_name)
+        top_name = men_names.value_counts().index[0]
+        top_count = men_names.value_counts().iloc[0]
+      expect: Оно встречается
+
+- id: m3-l10-t6
+  title: "Шаг 6. Сводная средних возрастов для отчёта"
+  difficulty: main
+  introduces: []
+  uses: [pd-pivot-table, pd-styler]
+  statement: |
+    Получите `age_pivot` — средний возраст (известный) по полу (строки) и классу (колонки), а затем `styled` — её оформление: один знак после запятой, цветовая шкала `'Blues'` по всей таблице, заголовок.
+  prelude: |
+    import pandas as pd
+    titanic = pd.read_csv('titanic.csv', index_col='PassengerId')
+  starter: |
+    age_pivot = ...
+    styled = ...
+    styled
+  solution: |
+    age_pivot = titanic.pivot_table(index='Sex', columns='Pclass', values='Age', aggfunc='mean')
+    styled = (age_pivot.style
+                  .format(precision=1)
+                  .background_gradient(cmap='Blues', axis=None)
+                  .set_caption('Средний возраст пассажиров по полу и классу, лет'))
+    styled
+  explanation: |
+    - Среднее по колонке `Age` считается по известным значениям; пропуски возраста в расчёт не входят.
+    - `axis=None` — одна общая цветовая шкала для всей таблицы: одинаковый цвет — одинаковый возраст.
+    - В первом классе пассажиры в среднем старше — это видно сразу по цвету.
+  hints:
+    - Сначала сводная средних возрастов, затем оформление цепочкой.
+    - "`titanic.pivot_table(index='Sex', columns='Pclass', values='Age', aggfunc='mean')`; `style.format(precision=1).background_gradient(cmap='Blues', axis=None).set_caption('…')`."
+    - "`styled = age_pivot.style.format(precision=1).background_gradient(cmap='Blues', axis=None).set_caption('Средний возраст')`."
+  tests: |
+    import pandas as pd
+    p = var('age_pivot', pd.DataFrame, 'таблицей DataFrame')
+    same_frame(p, ref('age_pivot'), 'Сводная средних возрастов не совпадает: пол по строкам, класс по колонкам, среднее Age.', check_dtype=False)
+    s = var('styled')
+    ensure(type(s).__name__ == 'Styler', '`styled` должен быть объектом Styler — результатом `age_pivot.style...`.')
+    try:
+        s._compute()
+    except Exception as e:
+        fail('Оформление не удалось применить ({0}). Проверьте аргументы методов Styler.'.format(type(e).__name__))
+    colored = [k for k, v in s.ctx.items() if any(x[0] == 'background-color' for x in v)]
+    ensure(len(colored) == p.size, 'Цветовая шкала должна охватывать все ячейки: `background_gradient(cmap=\'Blues\', axis=None)`.')
+    html = s.to_html()
+    ensure('{:.1f}'.format(float(ref('age_pivot').iloc[0, 0])) in html, 'Числа — с одним знаком после запятой: `format(precision=1)`.')
+    ensure((s.caption or '').strip() != '', 'Добавьте заголовок таблицы.')
+  files: [titanic.csv]
+  wrong:
+    - code: |
+        age_pivot = titanic.pivot_table(index='Sex', columns='Pclass', values='Age', aggfunc='median')
+        styled = age_pivot.style.format(precision=1).background_gradient(cmap='Blues', axis=None).set_caption('Возраст')
+      expect: Сводная средних возрастов
+    - code: |
+        age_pivot = titanic.pivot_table(index='Sex', columns='Pclass', values='Age', aggfunc='mean')
+        styled = age_pivot.style.format(precision=1).set_caption('Возраст')
+      expect: Цветовая шкала
+
+- id: m3-l10-t7
+  kind: quiz
+  title: "Шаг 7. Выводы по «Титанику»"
+  difficulty: main
+  introduces: []
+  uses: [count-vs-share, group-size-caution]
+  statement: |
+    Выберите корректные формулировки для итогового вывода.
+  quiz:
+    - q: Какая формулировка о поле корректна?
+      options:
+        - "Среди женщин выжили 74,2 % (из 314), среди мужчин — 18,9 % (из 577)"
+        - Женщины выживали в 4 раза лучше, потому что были сильнее
+        - Выжило 74 % пассажиров
+      answer: 0
+      explain: Доли со знаменателями и размерами групп, без придуманных причин.
+    - q: Выжили 40,6 % пассажиров моложе 30 лет (384 человека) и 22,7 % старше 60 (22 человека). Что верно?
+      options:
+        - Возраст точно определял выживание
+        - Доли различаются, но группа старше 60 очень маленькая, а у 177 пассажиров возраст неизвестен — вывод предварительный
+        - Пожилых нужно исключить из анализа
+      answer: 1
+      explain: Размер группы и пропуски возраста ограничивают уверенность вывода.
+    - q: Доля выживших в первом классе — 63 %, в третьем — 24 %. Можно ли сказать, что класс билета был причиной?
+      options:
+        - Да, это доказано данными
+        - Нет — класс связан и с полом, и с расположением кают; данные показывают связь, а не причину
+        - Нет, потому что разница маленькая
+      answer: 1
+      explain: Различие групп описывает данные; причинные выводы требуют другого анализа.
+  hints:
+    - "Вспомните правила проекта: знаменатель доли, размер группы, связь ≠ причина."
+    - "Доли — со знаменателями; маленькая группа и пропуски — осторожность; различие групп — не причина."
+    - "Ответы: доли со знаменателями; вывод предварительный; связь, а не причина."
+
+- id: m3-l10-t8
+  title: "Шаг 8. ★ Женатые и холостые мужчины в данных Adult"
+  difficulty: star
+  introduces: []
+  uses: [pd-bool-filter, pd-apply, count-vs-share]
+  statement: |
+    Данные Adult — анкеты переписи США. Среди **мужчин** (`sex == 'Male'`) сравните долю зарабатывающих больше 50 тыс. долларов в год (`salary == '>50K'`) у женатых и холостых. Женатыми считаем тех, у кого `marital-status` **начинается** с `'Married'`, остальных — холостыми. Получите `share_married`, `share_single` и `n_married`, `n_single`.
+  prelude: |
+    import pandas as pd
+    adult = pd.read_csv('adult.csv')
+  starter: |
+    men = ...
+    married = ...
+    rich = ...
+    share_married, share_single = ...
+    n_married, n_single = ...
+    print(round(share_married, 3), n_married, '|', round(share_single, 3), n_single)
+  solution: |
+    men = adult[adult['sex'] == 'Male']
+    married = men['marital-status'].apply(lambda s: s.startswith('Married'))
+    rich = men['salary'] == '>50K'
+    share_married, share_single = rich[married].mean(), rich[~married].mean()
+    n_married, n_single = married.sum(), (~married).sum()
+    print(round(share_married, 3), n_married, '|', round(share_single, 3), n_single)
+  explanation: |
+    - `apply(lambda s: s.startswith('Married'))` даёт маску «женат» для каждой строки: строковый метод `startswith` проверяет начало текста.
+    - `rich[married]` — значения маски «доход > 50K» только у женатых; её среднее — доля.
+    - `~married` — холостые. Разница долей огромная, но это связь, а не причина: женатые мужчины в среднем старше.
+  alternatives:
+    - |
+      men = adult.loc[adult['sex'] == 'Male']
+      married = men['marital-status'].isin(['Married-civ-spouse', 'Married-spouse-absent', 'Married-AF-spouse'])
+      share_married = (men.loc[married, 'salary'] == '>50K').mean()
+      share_single = (men.loc[~married, 'salary'] == '>50K').mean()
+      n_married, n_single = int(married.sum()), int((~married).sum())
+  files: [adult.csv]
+  hints:
+    - Сначала отберите мужчин, затем две маски — «женат» и «доход больше 50K».
+    - "`men['marital-status'].apply(lambda s: s.startswith('Married'))`; `rich = men['salary'] == '>50K'`; доля — `rich[married].mean()`."
+    - "`share_married, share_single = rich[married].mean(), rich[~married].mean()`."
+  tests: |
+    close(var('share_married', 'number', 'числом'), ref('share_married'), 'Доля среди женатых — {expected}, а у вас {actual}.')
+    close(var('share_single', 'number', 'числом'), ref('share_single'), 'Доля среди холостых — {expected}, а у вас {actual}.')
+    nm = var('n_married', 'number', 'числом')
+    if nm == int((ref('adult')['marital-status'] == 'Married-civ-spouse').sum()):
+        fail('Посчитаны все женатые, включая женщин, и только Married-civ-spouse. Отберите мужчин и все статусы, начинающиеся с Married.')
+    close(nm, ref('n_married'), 'Женатых мужчин — {expected}, а у вас {actual}.')
+    close(var('n_single', 'number', 'числом'), ref('n_single'), 'Холостых мужчин — {expected}, а у вас {actual}.')
+    close(alt('share_married'), alt_ref('share_married'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        men = adult
+        married = men['marital-status'].apply(lambda s: s.startswith('Married'))
+        rich = men['salary'] == '>50K'
+        share_married, share_single = rich[married].mean(), rich[~married].mean()
+        n_married, n_single = married.sum(), (~married).sum()
+      expect: Доля среди женатых
+    - code: |
+        men = adult[adult['sex'] == 'Male']
+        married = men['marital-status'] == 'Married-civ-spouse'
+        rich = men['salary'] == '>50K'
+        share_married, share_single = rich[married].mean(), rich[~married].mean()
+        n_married, n_single = married.sum(), (~married).sum()
+      expect: Доля среди женатых

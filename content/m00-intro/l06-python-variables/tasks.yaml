@@ -1,0 +1,212 @@
+- id: m0-l6-t1
+  title: Возраст и цена в тысячах
+  difficulty: warmup
+  introduces: [py-variables]
+  uses: []
+  statement: |
+    Даны `year` (год выпуска) и `price` (цена, евро). Получите:
+
+    - `age` — возраст машины на 2021 год;
+    - `price_k` — цену в тысячах евро (дробное число).
+  prelude: |
+    year = 2014
+    price = 8550
+  starter: |
+    age = ...
+    price_k = ...
+    print(age, price_k)
+  solution: |
+    age = 2021 - year
+    price_k = price / 1000
+    print(age, price_k)
+  explanation: |
+    - Возраст — разность годов.
+    - Обычное деление `/` всегда даёт дробное число: 8.55.
+  hints:
+    - Обе величины — простая арифметика над данными переменными.
+    - "Возраст: `2021 - year`; тысячи: деление на 1000."
+    - "`age = 2021 - year`, `price_k = price / 1000`."
+  tests: |
+    equal(var('age', 'int', 'целым числом'), 7, 'age должен быть {expected}, а у вас {actual}.')
+    v = var('price_k', 'number', 'числом')
+    if v == 8:
+        fail('price_k = 8 — похоже, использовано //. Нужна дробная часть: обычное деление /.')
+    close(v, 8.55, 'price_k должно быть {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        age = 2021 - year
+        price_k = price // 1000
+      expect: использовано //
+    - code: |
+        age = year - 2021
+        price_k = price / 1000
+      expect: age должен быть
+
+- id: m0-l6-t2
+  title: Строка из CSV в число
+  difficulty: main
+  introduces: [py-variables]
+  uses: []
+  statement: |
+    Значения из CSV часто читаются как текст. Даны строки `price_text` и `distance_text`. Получите числа `price` (дробное) и `distance` (целое), а затем `price_per_10k_km` — цену, делённую на число десятков тысяч км пробега.
+  prelude: |
+    price_text = '7750.0'
+    distance_text = '195000'
+  starter: |
+    price = ...
+    distance = ...
+    price_per_10k_km = ...
+    print(price, distance, price_per_10k_km)
+  solution: |
+    price = float(price_text)
+    distance = int(distance_text)
+    price_per_10k_km = price / (distance / 10000)
+    print(price, distance, price_per_10k_km)
+  explanation: |
+    - `float('7750.0')` и `int('195000')` превращают текст в числа.
+    - Десятков тысяч км: `distance / 10000` = 19.5; цена на них — `price / 19.5`.
+  hints:
+    - Сначала переведите строки в числа подходящего типа.
+    - "`float(...)` для дробного, `int(...)` для целого; десятки тысяч км — `distance / 10000`."
+    - "`price_per_10k_km = price / (distance / 10000)`"
+  tests: |
+    p = var('price', 'float', 'дробным числом (float)')
+    d = var('distance', 'int', 'целым числом (int)')
+    close(p, 7750.0, 'price должно быть {expected}, а у вас {actual}.')
+    equal(d, 195000, 'distance должно быть {expected}, а у вас {actual}.')
+    close(var('price_per_10k_km', 'number', 'числом'), 7750 / 19.5, 'price_per_10k_km должно быть {expected}, а у вас {actual}. Скобки: price / (distance / 10000).')
+  wrong:
+    - code: |
+        price = price_text
+        distance = distance_text
+        price_per_10k_km = 0
+      expect: дробным числом
+    - code: |
+        price = float(price_text)
+        distance = int(distance_text)
+        price_per_10k_km = price / distance / 10000
+      expect: Скобки
+
+- id: m0-l6-t3
+  title: Отчёт одной строкой
+  difficulty: main
+  introduces: [py-fstrings]
+  uses: [py-variables]
+  statement: |
+    Составьте строку `report` ровно такого вида (для данных значений):
+
+    `Средняя цена 9 727 € по 41007 объявлениям; дороже 10 000 € — 31.0%`
+
+    Требования к формату: среднюю цену — без дробной части с разделителем тысяч, но разделитель — **пробел** (подсказка: сначала формат `,.0f`, затем `.replace(',', ' ')`), долю — в процентах с одним знаком.
+  prelude: |
+    mean_price = 9727.1146
+    total = 41007
+    expensive = 12716
+  starter: |
+    mean_text = ...
+    report = ...
+    print(report)
+  solution: |
+    mean_text = f'{mean_price:,.0f}'.replace(',', ' ')
+    report = f'Средняя цена {mean_text} € по {total} объявлениям; дороже 10 000 € — {expensive / total:.1%}'
+    print(report)
+  explanation: |
+    - `f'{mean_price:,.0f}'` → `'9,727'`; `.replace(',', ' ')` меняет запятую на пробел.
+    - Долю вычисляем прямо в фигурных скобках и форматируем `:.1%`.
+  hints:
+    - "Соберите строку из двух f-строк: сначала текст средней цены, затем весь отчёт."
+    - "Средняя: `f'{mean_price:,.0f}'.replace(',', ' ')`; доля: `{expensive / total:.1%}`."
+    - "`report = f'Средняя цена {mean_text} € по {total} объявлениям; дороже 10 000 € — {expensive / total:.1%}'`"
+  tests: |
+    r = var('report', 'str', 'строкой')
+    want = 'Средняя цена 9 727 € по 41007 объявлениям; дороже 10 000 € — 31.0%'
+    if r != want:
+        fail('Строка не совпадает.\nНужно: «%s»\nУ вас:  «%s»' % (want, r))
+    ensure('%' in source() and '{' in source(), 'Используйте форматирование f-строки, а не готовый текст.')
+  wrong:
+    - code: |
+        mean_text = f'{mean_price:.0f}'
+        report = f'Средняя цена {mean_text} € по {total} объявлениям; дороже 10 000 € — {expensive / total:.1%}'
+      expect: не совпадает
+    - code: |
+        report = 'Средняя цена 9 727 € по 41007 объявлениям; дороже 10 000 € — 31.0%'
+      expect: f-строки
+
+- id: m0-l6-t4
+  kind: predict
+  title: Что выведет код
+  difficulty: main
+  introduces: []
+  uses: [py-variables, py-fstrings]
+  statement: |
+    Предскажите вывод, не запуская код.
+  quiz:
+    - q: Что выведет код?
+      code: |
+        price = 5000
+        price = price * 2
+        price = price + 500
+        print(price)
+      options:
+        - "5000"
+        - "10500"
+        - "10000"
+      answer: 1
+      explain: Каждое присваивание заменяет значение — 5000 · 2 = 10000, + 500 = 10500.
+    - q: Что выведет код?
+      code: |
+        a = '10'
+        b = 10
+        print(a * 2, b * 2)
+      options:
+        - "20 20"
+        - "1010 20"
+        - Ошибку
+      answer: 1
+      explain: Строка при умножении повторяется, число — умножается.
+  hints:
+    - Выполняйте строки по порядку, отслеживая значение переменной.
+    - "Повторное присваивание заменяет значение; `*` для строки — повторение."
+    - "10500; 1010 20."
+
+- id: m0-l6-t5
+  title: Сколько полных лет и месяцев
+  difficulty: star
+  introduces: []
+  uses: [py-variables, py-fstrings]
+  statement: |
+    Автомобиль эксплуатировался `months` месяцев. Получите `years` — число полных лет, `rest` — оставшиеся месяцы, и строку `text` вида `8 лет 5 мес.` (для 101 месяца). Используйте `//` и `%`.
+  prelude: |
+    months = 101
+  starter: |
+    years = ...
+    rest = ...
+    text = ...
+    print(text)
+  solution: |
+    years = months // 12
+    rest = months % 12
+    text = f'{years} лет {rest} мес.'
+    print(text)
+  explanation: |
+    - `101 // 12 = 8` — полных лет; `101 % 12 = 5` — оставшиеся месяцы.
+  hints:
+    - Полные годы — целочисленное деление, остаток месяцев — остаток от деления.
+    - "`months // 12` и `months % 12`."
+    - "`text = f'{years} лет {rest} мес.'`"
+  tests: |
+    equal(var('years', 'int', 'целым числом'), 8, 'years должно быть {expected}, а у вас {actual}.')
+    equal(var('rest', 'int', 'целым числом'), 5, 'rest должно быть {expected}, а у вас {actual}.')
+    equal(var('text', 'str', 'строкой'), '8 лет 5 мес.', 'text должен быть «{expected}», а у вас {actual}.')
+    ensure('//' in source() and '%' in source(), 'Посчитайте через // и %, а не вписывайте числа.')
+  wrong:
+    - code: |
+        years = months / 12
+        rest = months % 12
+        text = f'{years} лет {rest} мес.'
+      expect: целым числом
+    - code: |
+        years = 8
+        rest = 5
+        text = '8 лет 5 мес.'
+      expect: через // и %

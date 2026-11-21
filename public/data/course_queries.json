@@ -1,0 +1,1406 @@
+[
+ {
+  "term": "Переменная, типы",
+  "glossary": "py-variable",
+  "concept": "py-variables",
+  "lesson": "0.6"
+ },
+ {
+  "term": "f-строка, print",
+  "glossary": "py-fstring",
+  "concept": "py-fstrings",
+  "lesson": "0.6"
+ },
+ {
+  "term": "Список (list)",
+  "glossary": "py-list",
+  "concept": "py-lists",
+  "lesson": "0.7"
+ },
+ {
+  "term": "Словарь (dict)",
+  "glossary": "py-dict",
+  "concept": "py-dicts",
+  "lesson": "0.7"
+ },
+ {
+  "term": "Цикл for, range, zip, enumerate",
+  "glossary": "py-for",
+  "concept": "py-loops",
+  "lesson": "0.8"
+ },
+ {
+  "term": "Условие if / elif / else",
+  "glossary": "py-if",
+  "concept": "py-loops",
+  "lesson": "0.8"
+ },
+ {
+  "term": "Функция (def, return)",
+  "glossary": "py-def",
+  "concept": "py-functions",
+  "lesson": "0.8"
+ },
+ {
+  "term": "Искусственный интеллект (ИИ)",
+  "glossary": "ai",
+  "concept": "ai-definition",
+  "lesson": "0.1"
+ },
+ {
+  "term": "Тест Тьюринга (игра в имитацию)",
+  "glossary": "turing-test",
+  "concept": "ai-definition",
+  "lesson": "0.1"
+ },
+ {
+  "term": "«Зима» искусственного интеллекта",
+  "glossary": "ai-winter",
+  "concept": "ai-history",
+  "lesson": "0.1"
+ },
+ {
+  "term": "Экспертная система",
+  "glossary": "expert-system",
+  "concept": "ai-history",
+  "lesson": "0.1"
+ },
+ {
+  "term": "Нейронная сеть",
+  "glossary": "neural-network",
+  "concept": "ai-history",
+  "lesson": "0.1"
+ },
+ {
+  "term": "Слабый и сильный ИИ",
+  "glossary": "weak-ai",
+  "concept": "weak-strong-ai",
+  "lesson": "0.2"
+ },
+ {
+  "term": "Китайская комната",
+  "glossary": "chinese-room",
+  "concept": "weak-strong-ai",
+  "lesson": "0.2"
+ },
+ {
+  "term": "Машинное обучение",
+  "glossary": "machine-learning",
+  "concept": "ai-approaches",
+  "lesson": "0.2"
+ },
+ {
+  "term": "Символьный (нисходящий) подход",
+  "glossary": "symbolic-ai",
+  "concept": "ai-approaches",
+  "lesson": "0.2"
+ },
+ {
+  "term": "CRISP-DM",
+  "glossary": "crisp-dm",
+  "concept": "crisp-dm",
+  "lesson": "0.3"
+ },
+ {
+  "term": "Data shift и concept shift",
+  "glossary": "data-shift",
+  "concept": "data-shift",
+  "lesson": "0.3"
+ },
+ {
+  "term": "Наблюдение (объект, запись)",
+  "glossary": "observation",
+  "concept": "observation-feature",
+  "lesson": "1.1"
+ },
+ {
+  "term": "Признак (столбец, переменная)",
+  "glossary": "feature",
+  "concept": "observation-feature",
+  "lesson": "1.1"
+ },
+ {
+  "term": "np.genfromtxt",
+  "glossary": "np-genfromtxt",
+  "concept": "np-genfromtxt",
+  "lesson": "1.1"
+ },
+ {
+  "term": "np.array",
+  "glossary": "np-array",
+  "concept": "ndarray",
+  "lesson": "1.2"
+ },
+ {
+  "term": "ndarray (массив NumPy)",
+  "glossary": "np-ndarray",
+  "concept": "ndarray",
+  "lesson": "1.2"
+ },
+ {
+  "term": "shape, size, ndim",
+  "glossary": "np-shape",
+  "concept": "shape-dtype",
+  "lesson": "1.2"
+ },
+ {
+  "term": "dtype (тип элементов)",
+  "glossary": "np-dtype",
+  "concept": "shape-dtype",
+  "lesson": "1.2"
+ },
+ {
+  "term": "Индексация X[i, j]",
+  "glossary": "np-indexing",
+  "concept": "np-indexing",
+  "lesson": "1.3"
+ },
+ {
+  "term": "Срезы a[start:stop:step]",
+  "glossary": "np-slicing",
+  "concept": "np-slicing",
+  "lesson": "1.3"
+ },
+ {
+  "term": "Векторизация",
+  "glossary": "vectorization",
+  "concept": "vectorization",
+  "lesson": "1.4"
+ },
+ {
+  "term": "view и copy",
+  "glossary": "np-view-copy",
+  "concept": "view-copy",
+  "lesson": "1.4"
+ },
+ {
+  "term": "np.nan, np.inf",
+  "glossary": "np-nan",
+  "concept": "nan-inf",
+  "lesson": "1.5"
+ },
+ {
+  "term": "np.isnan",
+  "glossary": "np-isnan",
+  "concept": "nan-inf",
+  "lesson": "1.5"
+ },
+ {
+  "term": "np.isfinite",
+  "glossary": "np-isfinite",
+  "concept": "nan-inf",
+  "lesson": "1.5"
+ },
+ {
+  "term": "np.nanmean и другие nan-функции",
+  "glossary": "np-nanmean",
+  "concept": "nan-inf",
+  "lesson": "1.5"
+ },
+ {
+  "term": "Логическая маска",
+  "glossary": "boolean-mask",
+  "concept": "bool-mask",
+  "lesson": "1.5"
+ },
+ {
+  "term": "np.count_nonzero",
+  "glossary": "np-count-nonzero",
+  "concept": "bool-mask",
+  "lesson": "1.5"
+ },
+ {
+  "term": "& | ~ (логические операции с масками)",
+  "glossary": "mask-operators",
+  "concept": "mask-combine",
+  "lesson": "1.5"
+ },
+ {
+  "term": "np.mean (среднее)",
+  "glossary": "np-mean",
+  "concept": "mean-median",
+  "lesson": "1.6"
+ },
+ {
+  "term": "np.median (медиана)",
+  "glossary": "np-median",
+  "concept": "mean-median",
+  "lesson": "1.6"
+ },
+ {
+  "term": "np.min, np.max, np.ptp",
+  "glossary": "np-min-max",
+  "concept": "extremes-argsort",
+  "lesson": "1.6"
+ },
+ {
+  "term": "np.argmax, np.argmin",
+  "glossary": "np-argmax",
+  "concept": "extremes-argsort",
+  "lesson": "1.6"
+ },
+ {
+  "term": "np.argsort, np.sort",
+  "glossary": "np-argsort",
+  "concept": "extremes-argsort",
+  "lesson": "1.6"
+ },
+ {
+  "term": "np.arange, np.linspace",
+  "glossary": "np-arange",
+  "concept": "row-ids",
+  "lesson": "1.6"
+ },
+ {
+  "term": "np.quantile",
+  "glossary": "np-quantile",
+  "concept": "quantiles-iqr",
+  "lesson": "1.7"
+ },
+ {
+  "term": "IQR (межквартильный размах)",
+  "glossary": "iqr",
+  "concept": "quantiles-iqr",
+  "lesson": "1.7"
+ },
+ {
+  "term": "np.std, np.var",
+  "glossary": "np-std-var",
+  "concept": "std-var",
+  "lesson": "1.7"
+ },
+ {
+  "term": "np.histogram",
+  "glossary": "np-histogram",
+  "concept": "histogram-counts",
+  "lesson": "1.7"
+ },
+ {
+  "term": "Сравнение групп",
+  "glossary": "group-comparison",
+  "concept": "group-compare",
+  "lesson": "1.8"
+ },
+ {
+  "term": "np.random.default_rng",
+  "glossary": "np-default-rng",
+  "concept": "rng-sample",
+  "lesson": "1.9"
+ },
+ {
+  "term": "rng.choice",
+  "glossary": "rng-choice",
+  "concept": "rng-sample",
+  "lesson": "1.9"
+ },
+ {
+  "term": "Выборочная изменчивость",
+  "glossary": "sampling-variability",
+  "concept": "sampling-variability",
+  "lesson": "1.9"
+ },
+ {
+  "term": "axis (ось)",
+  "glossary": "np-axis",
+  "concept": "axis",
+  "lesson": "1.10"
+ },
+ {
+  "term": "Broadcasting",
+  "glossary": "np-broadcasting",
+  "concept": "broadcasting",
+  "lesson": "1.10"
+ },
+ {
+  "term": "reshape, .T",
+  "glossary": "np-reshape",
+  "concept": "broadcasting",
+  "lesson": "1.10"
+ },
+ {
+  "term": "pd.read_csv",
+  "glossary": "pd-read-csv",
+  "concept": "pd-read-csv",
+  "lesson": "2.1"
+ },
+ {
+  "term": "copy (копия таблицы)",
+  "glossary": "pd-copy",
+  "concept": "pd-read-csv",
+  "lesson": "2.1"
+ },
+ {
+  "term": "DataFrame",
+  "glossary": "pd-dataframe",
+  "concept": "pd-dataframe",
+  "lesson": "2.1"
+ },
+ {
+  "term": "Series",
+  "glossary": "pd-series",
+  "concept": "pd-dataframe",
+  "lesson": "2.1"
+ },
+ {
+  "term": "head, tail, sample",
+  "glossary": "pd-head-tail-sample",
+  "concept": "pd-dataframe",
+  "lesson": "2.1"
+ },
+ {
+  "term": "info",
+  "glossary": "pd-info",
+  "concept": "pd-info-dtypes",
+  "lesson": "2.2"
+ },
+ {
+  "term": "dtypes (типы колонок)",
+  "glossary": "pd-dtypes",
+  "concept": "pd-info-dtypes",
+  "lesson": "2.2"
+ },
+ {
+  "term": "describe",
+  "glossary": "pd-describe",
+  "concept": "pd-info-dtypes",
+  "lesson": "2.2"
+ },
+ {
+  "term": "sort_values",
+  "glossary": "pd-sort-values",
+  "concept": "pd-sort-values",
+  "lesson": "2.2"
+ },
+ {
+  "term": "isna, notna",
+  "glossary": "pd-isna",
+  "concept": "pd-isna-duplicated",
+  "lesson": "2.3"
+ },
+ {
+  "term": "duplicated",
+  "glossary": "pd-duplicated",
+  "concept": "pd-isna-duplicated",
+  "lesson": "2.3"
+ },
+ {
+  "term": "value_counts",
+  "glossary": "pd-value-counts",
+  "concept": "pd-value-counts",
+  "lesson": "2.3"
+ },
+ {
+  "term": "nunique, unique",
+  "glossary": "pd-nunique",
+  "concept": "pd-value-counts",
+  "lesson": "2.3"
+ },
+ {
+  "term": "Выбор колонок списком df[[...]]",
+  "glossary": "pd-double-brackets",
+  "concept": "pd-select-columns",
+  "lesson": "2.4"
+ },
+ {
+  "term": "loc",
+  "glossary": "pd-loc",
+  "concept": "pd-loc-iloc",
+  "lesson": "2.4"
+ },
+ {
+  "term": "iloc",
+  "glossary": "pd-iloc",
+  "concept": "pd-loc-iloc",
+  "lesson": "2.4"
+ },
+ {
+  "term": "Метка ≠ позиция",
+  "glossary": "pd-label-position",
+  "concept": "label-vs-position",
+  "lesson": "2.4"
+ },
+ {
+  "term": "Фильтр по условию (маска)",
+  "glossary": "pd-boolean-filter",
+  "concept": "pd-bool-filter",
+  "lesson": "2.5"
+ },
+ {
+  "term": "query",
+  "glossary": "pd-query",
+  "concept": "pd-bool-filter",
+  "lesson": "2.5"
+ },
+ {
+  "term": "isin",
+  "glossary": "pd-isin",
+  "concept": "pd-isin-between",
+  "lesson": "2.5"
+ },
+ {
+  "term": "between",
+  "glossary": "pd-between",
+  "concept": "pd-isin-between",
+  "lesson": "2.5"
+ },
+ {
+  "term": "drop_duplicates",
+  "glossary": "pd-drop-duplicates",
+  "concept": "pd-drop-duplicates",
+  "lesson": "2.6"
+ },
+ {
+  "term": "dropna",
+  "glossary": "pd-dropna",
+  "concept": "pd-dropna",
+  "lesson": "2.6"
+ },
+ {
+  "term": "fillna",
+  "glossary": "pd-fillna",
+  "concept": "pd-dropna",
+  "lesson": "2.6"
+ },
+ {
+  "term": "Журнал обработки",
+  "glossary": "processing-log",
+  "concept": "processing-log",
+  "lesson": "2.6"
+ },
+ {
+  "term": "Учебная область анализа",
+  "glossary": "analysis-scope",
+  "concept": "analysis-scope",
+  "lesson": "2.7"
+ },
+ {
+  "term": "reset_index",
+  "glossary": "pd-reset-index",
+  "concept": "pd-reset-index",
+  "lesson": "2.7"
+ },
+ {
+  "term": "rename",
+  "glossary": "pd-rename",
+  "concept": "pd-rename-drop",
+  "lesson": "2.8"
+ },
+ {
+  "term": "drop",
+  "glossary": "pd-drop",
+  "concept": "pd-rename-drop",
+  "lesson": "2.8"
+ },
+ {
+  "term": "Новая колонка (признак)",
+  "glossary": "pd-new-column",
+  "concept": "pd-new-column",
+  "lesson": "2.8"
+ },
+ {
+  "term": "map",
+  "glossary": "pd-map",
+  "concept": "pd-map",
+  "lesson": "2.9"
+ },
+ {
+  "term": "apply",
+  "glossary": "pd-apply",
+  "concept": "pd-apply",
+  "lesson": "2.9"
+ },
+ {
+  "term": "Присваивание через loc",
+  "glossary": "pd-loc-assign",
+  "concept": "pd-loc-assign",
+  "lesson": "2.9"
+ },
+ {
+  "term": "Присваивание по цепочке",
+  "glossary": "chained-assignment",
+  "concept": "pd-loc-assign",
+  "lesson": "2.9"
+ },
+ {
+  "term": "Редкая категория (Rare)",
+  "glossary": "rare-category",
+  "concept": "rare-categories",
+  "lesson": "2.10"
+ },
+ {
+  "term": "to_csv",
+  "glossary": "pd-to-csv",
+  "concept": "pd-to-csv",
+  "lesson": "2.11"
+ },
+ {
+  "term": "select_dtypes",
+  "glossary": "pd-select-dtypes",
+  "concept": "pd-to-csv",
+  "lesson": "2.11"
+ },
+ {
+  "term": "Целевая переменная (y)",
+  "glossary": "target-variable",
+  "concept": "target-features",
+  "lesson": "2.11"
+ },
+ {
+  "term": "Входные признаки (X)",
+  "glossary": "input-features",
+  "concept": "target-features",
+  "lesson": "2.11"
+ },
+ {
+  "term": "EDA (разведочный анализ данных)",
+  "glossary": "eda",
+  "concept": "eda-questions",
+  "lesson": "3.1"
+ },
+ {
+  "term": "Числовые и категориальные признаки",
+  "glossary": "feature-types",
+  "concept": "feature-types",
+  "lesson": "3.1"
+ },
+ {
+  "term": "groupby",
+  "glossary": "pd-groupby",
+  "concept": "pd-groupby",
+  "lesson": "3.2"
+ },
+ {
+  "term": "agg (агрегация)",
+  "glossary": "pd-agg",
+  "concept": "pd-agg",
+  "lesson": "3.2"
+ },
+ {
+  "term": "pivot_table",
+  "glossary": "pd-pivot-table",
+  "concept": "pd-pivot-table",
+  "lesson": "3.4"
+ },
+ {
+  "term": "MultiIndex (составной индекс)",
+  "glossary": "pd-multiindex",
+  "concept": "pd-multiindex",
+  "lesson": "3.4"
+ },
+ {
+  "term": "crosstab",
+  "glossary": "pd-crosstab",
+  "concept": "pd-crosstab",
+  "lesson": "3.5"
+ },
+ {
+  "term": "Знаменатель доли",
+  "glossary": "share-denominator",
+  "concept": "count-vs-share",
+  "lesson": "3.5"
+ },
+ {
+  "term": "transform",
+  "glossary": "pd-transform",
+  "concept": "group-estimate",
+  "lesson": "3.6"
+ },
+ {
+  "term": "MAE (средняя абсолютная ошибка)",
+  "glossary": "mae",
+  "concept": "metric-mae-mape",
+  "lesson": "3.7"
+ },
+ {
+  "term": "MAPE (средняя ошибка в процентах)",
+  "glossary": "mape",
+  "concept": "metric-mae-mape",
+  "lesson": "3.7"
+ },
+ {
+  "term": "plot (графики Pandas)",
+  "glossary": "pd-plot",
+  "concept": "pd-plot",
+  "lesson": "3.8"
+ },
+ {
+  "term": "Styler (df.style)",
+  "glossary": "pd-styler",
+  "concept": "pd-styler",
+  "lesson": "3.9"
+ },
+ {
+  "term": "Две цели визуализации",
+  "glossary": "viz-goals",
+  "concept": "viz-question",
+  "lesson": "4.1"
+ },
+ {
+  "term": "Выбор типа графика",
+  "glossary": "chart-choice",
+  "concept": "chart-choice",
+  "lesson": "4.1"
+ },
+ {
+  "term": "Figure и Axes",
+  "glossary": "mpl-figure-axes",
+  "concept": "mpl-fig-ax",
+  "lesson": "4.2"
+ },
+ {
+  "term": "ax.plot и ax.scatter",
+  "glossary": "ax-plot-scatter",
+  "concept": "mpl-fig-ax",
+  "lesson": "4.2"
+ },
+ {
+  "term": "Деления осей",
+  "glossary": "mpl-ticks",
+  "concept": "mpl-fig-ax",
+  "lesson": "4.2"
+ },
+ {
+  "term": "Легенда",
+  "glossary": "mpl-legend",
+  "concept": "mpl-layers",
+  "lesson": "4.2"
+ },
+ {
+  "term": "bar и barh (столбцы)",
+  "glossary": "mpl-barh",
+  "concept": "mpl-bar-labels",
+  "lesson": "4.3"
+ },
+ {
+  "term": "bar_label (подписи столбцов)",
+  "glossary": "bar-label",
+  "concept": "mpl-bar-labels",
+  "lesson": "4.3"
+ },
+ {
+  "term": "Цвета в Matplotlib",
+  "glossary": "mpl-colors",
+  "concept": "color-emphasis",
+  "lesson": "4.3"
+ },
+ {
+  "term": "Сетка графиков (subplots)",
+  "glossary": "plt-subplots-grid",
+  "concept": "mpl-subplots",
+  "lesson": "4.4"
+ },
+ {
+  "term": "twinx (вторая ось Y)",
+  "glossary": "twinx",
+  "concept": "mpl-subplots",
+  "lesson": "4.4"
+ },
+ {
+  "term": "Круговая и кольцевая диаграмма",
+  "glossary": "pie-donut",
+  "concept": "part-of-whole",
+  "lesson": "4.4"
+ },
+ {
+  "term": "Диаграмма Парето",
+  "glossary": "pareto",
+  "concept": "part-of-whole",
+  "lesson": "4.4"
+ },
+ {
+  "term": "Гистограмма (hist)",
+  "glossary": "plt-hist",
+  "concept": "hist-bins",
+  "lesson": "4.5"
+ },
+ {
+  "term": "Логарифмическая шкала",
+  "glossary": "log-scale",
+  "concept": "log-axis",
+  "lesson": "4.5"
+ },
+ {
+  "term": "Seaborn",
+  "glossary": "seaborn",
+  "concept": "sns-basics",
+  "lesson": "4.6"
+ },
+ {
+  "term": "Боксплот (ящик с усами)",
+  "glossary": "boxplot",
+  "concept": "boxplot-rule",
+  "lesson": "4.6"
+ },
+ {
+  "term": "Violin и KDE",
+  "glossary": "violin-kde",
+  "concept": "dist-views",
+  "lesson": "4.6"
+ },
+ {
+  "term": "ECDF (накопленная доля)",
+  "glossary": "ecdf",
+  "concept": "dist-views",
+  "lesson": "4.6"
+ },
+ {
+  "term": "Нормальное и логнормальное распределение",
+  "glossary": "normal-distribution",
+  "concept": "dist-views",
+  "lesson": "4.6"
+ },
+ {
+  "term": "Условное распределение",
+  "glossary": "conditional-distribution",
+  "concept": "conditional-dist",
+  "lesson": "4.7"
+ },
+ {
+  "term": "catplot (панели по группам)",
+  "glossary": "sns-catplot",
+  "concept": "facet-grid",
+  "lesson": "4.7"
+ },
+ {
+  "term": "heatmap (тепловая карта)",
+  "glossary": "sns-heatmap",
+  "concept": "heatmap-shares",
+  "lesson": "4.7"
+ },
+ {
+  "term": "Диаграмма рассеяния (scatter)",
+  "glossary": "scatter-plot",
+  "concept": "overplotting",
+  "lesson": "4.8"
+ },
+ {
+  "term": "hexbin",
+  "glossary": "hexbin",
+  "concept": "overplotting",
+  "lesson": "4.8"
+ },
+ {
+  "term": "Граница фильтрации",
+  "glossary": "filter-boundary",
+  "concept": "filter-boundary",
+  "lesson": "4.8"
+ },
+ {
+  "term": "hue (цвет по категории)",
+  "glossary": "hue",
+  "concept": "hue-channel",
+  "lesson": "4.9"
+ },
+ {
+  "term": "Общие шкалы панелей",
+  "glossary": "shared-axes",
+  "concept": "shared-scales",
+  "lesson": "4.9"
+ },
+ {
+  "term": "Plotly (plotly.express)",
+  "glossary": "plotly",
+  "concept": "plotly-express",
+  "lesson": "4.10"
+ },
+ {
+  "term": "hover_data (подсказки при наведении)",
+  "glossary": "hover-data",
+  "concept": "plotly-express",
+  "lesson": "4.10"
+ },
+ {
+  "term": "Treemap",
+  "glossary": "treemap",
+  "concept": "plotly-treemap",
+  "lesson": "4.10"
+ },
+ {
+  "term": "Фильтр сегмента",
+  "glossary": "segment-filter",
+  "concept": "segment-filter",
+  "lesson": "4.10"
+ },
+ {
+  "term": "BI-панель (дашборд)",
+  "glossary": "bi-dashboard",
+  "concept": "bi-panel",
+  "lesson": "4.11"
+ },
+ {
+  "term": "make_subplots и graph_objects",
+  "glossary": "make-subplots",
+  "concept": "plotly-subplots",
+  "lesson": "4.11"
+ },
+ {
+  "term": "Дата-история (Data Story)",
+  "glossary": "data-story",
+  "concept": "data-story",
+  "lesson": "4.12"
+ },
+ {
+  "term": "Заголовок-вывод",
+  "glossary": "takeaway-title",
+  "concept": "takeaway-title",
+  "lesson": "4.12"
+ },
+ {
+  "term": "Обучение с учителем, без учителя, с подкреплением",
+  "glossary": "supervised-learning",
+  "concept": "ml-task",
+  "lesson": "5.1"
+ },
+ {
+  "term": "Регрессия, классификация, кластеризация",
+  "glossary": "regression-classification",
+  "concept": "ml-task-types",
+  "lesson": "5.1"
+ },
+ {
+  "term": "Параметрическая модель",
+  "glossary": "parametric-model",
+  "concept": "param-model",
+  "lesson": "5.2"
+ },
+ {
+  "term": "Функция потерь",
+  "glossary": "loss-function",
+  "concept": "loss-mse",
+  "lesson": "5.2"
+ },
+ {
+  "term": "MSE (средняя квадратичная ошибка)",
+  "glossary": "mse",
+  "concept": "loss-mse",
+  "lesson": "5.2"
+ },
+ {
+  "term": "Метод наименьших квадратов",
+  "glossary": "least-squares",
+  "concept": "loss-mse",
+  "lesson": "5.2"
+ },
+ {
+  "term": "Градиентный спуск",
+  "glossary": "gradient-descent",
+  "concept": "gradient-descent",
+  "lesson": "5.2"
+ },
+ {
+  "term": "Обобщающая способность",
+  "glossary": "generalization",
+  "concept": "overfitting",
+  "lesson": "5.3"
+ },
+ {
+  "term": "Переобучение и недообучение",
+  "glossary": "overfitting",
+  "concept": "overfitting",
+  "lesson": "5.3"
+ },
+ {
+  "term": "Обучающая, валидационная и тестовая выборки",
+  "glossary": "train-valid-test",
+  "concept": "train-valid-test",
+  "lesson": "5.3"
+ },
+ {
+  "term": "train_test_split",
+  "glossary": "train-test-split",
+  "concept": "sk-split",
+  "lesson": "5.4"
+ },
+ {
+  "term": "Утечка данных",
+  "glossary": "data-leakage",
+  "concept": "data-leakage",
+  "lesson": "5.4"
+ },
+ {
+  "term": "fit, predict и атрибуты модели",
+  "glossary": "sk-estimator",
+  "concept": "sk-fit-predict",
+  "lesson": "5.5"
+ },
+ {
+  "term": "DummyRegressor",
+  "glossary": "dummy-regressor",
+  "concept": "baseline-model",
+  "lesson": "5.5"
+ },
+ {
+  "term": "LinearRegression",
+  "glossary": "linear-regression",
+  "concept": "linear-regression",
+  "lesson": "5.6"
+ },
+ {
+  "term": "coef_ и intercept_",
+  "glossary": "coef-intercept",
+  "concept": "linear-regression",
+  "lesson": "5.6"
+ },
+ {
+  "term": "Ошибка прогноза (остатки)",
+  "glossary": "residuals",
+  "concept": "error-analysis",
+  "lesson": "5.6"
+ },
+ {
+  "term": "StandardScaler",
+  "glossary": "standard-scaler",
+  "concept": "standard-scaler",
+  "lesson": "5.7"
+ },
+ {
+  "term": "Функции метрик sklearn.metrics",
+  "glossary": "sk-metrics",
+  "concept": "regression-metrics",
+  "lesson": "5.8"
+ },
+ {
+  "term": "RMSE",
+  "glossary": "rmse",
+  "concept": "regression-metrics",
+  "lesson": "5.8"
+ },
+ {
+  "term": "R² (коэффициент детерминации)",
+  "glossary": "r2-score",
+  "concept": "regression-metrics",
+  "lesson": "5.8"
+ },
+ {
+  "term": "Бизнес-метрика",
+  "glossary": "business-metric",
+  "concept": "business-metric",
+  "lesson": "5.8"
+ },
+ {
+  "term": "График «известное значение — прогноз»",
+  "glossary": "pred-true-plot",
+  "concept": "pred-true-plot",
+  "lesson": "5.9"
+ },
+ {
+  "term": "Логарифм целевой переменной",
+  "glossary": "log-target",
+  "concept": "log-target",
+  "lesson": "5.9"
+ },
+ {
+  "term": "Pipeline (конвейер)",
+  "glossary": "pipeline",
+  "concept": "sk-pipeline",
+  "lesson": "6.1"
+ },
+ {
+  "term": "Метод k ближайших соседей (kNN)",
+  "glossary": "knn",
+  "concept": "knn",
+  "lesson": "6.2"
+ },
+ {
+  "term": "Евклидово расстояние",
+  "glossary": "euclidean-distance",
+  "concept": "feature-distance",
+  "lesson": "6.2"
+ },
+ {
+  "term": "Гиперпараметр",
+  "glossary": "hyperparameter",
+  "concept": "hyperparameter",
+  "lesson": "6.3"
+ },
+ {
+  "term": "Кривая ошибки от гиперпараметра",
+  "glossary": "validation-curve",
+  "concept": "validation-curve",
+  "lesson": "6.3"
+ },
+ {
+  "term": "Дерево решений",
+  "glossary": "decision-tree",
+  "concept": "decision-tree",
+  "lesson": "6.4"
+ },
+ {
+  "term": "Разбиение в дереве",
+  "glossary": "tree-split",
+  "concept": "tree-split",
+  "lesson": "6.4"
+ },
+ {
+  "term": "Энтропия и прирост информации",
+  "glossary": "entropy",
+  "concept": "tree-split",
+  "lesson": "6.4"
+ },
+ {
+  "term": "Глубина дерева и размер листа",
+  "glossary": "max-depth",
+  "concept": "tree-depth",
+  "lesson": "6.5"
+ },
+ {
+  "term": "Важность признаков",
+  "glossary": "feature-importance",
+  "concept": "feature-importance",
+  "lesson": "6.5"
+ },
+ {
+  "term": "Бутстрэп-выборка",
+  "glossary": "bootstrap",
+  "concept": "bagging",
+  "lesson": "6.6"
+ },
+ {
+  "term": "Бэггинг",
+  "glossary": "bagging",
+  "concept": "bagging",
+  "lesson": "6.6"
+ },
+ {
+  "term": "Ансамбль моделей",
+  "glossary": "ensemble",
+  "concept": "bagging",
+  "lesson": "6.6"
+ },
+ {
+  "term": "Случайный лес",
+  "glossary": "random-forest",
+  "concept": "random-forest",
+  "lesson": "6.6"
+ },
+ {
+  "term": "Выбор модели",
+  "glossary": "model-selection",
+  "concept": "model-comparison",
+  "lesson": "6.7"
+ },
+ {
+  "term": "Кросс-валидация",
+  "glossary": "cross-validation",
+  "concept": "k-fold-cv",
+  "lesson": "6.8"
+ },
+ {
+  "term": "cross_validate и cross_val_score",
+  "glossary": "cross-validate",
+  "concept": "cross-validate",
+  "lesson": "6.8"
+ },
+ {
+  "term": "Кодирование категорий",
+  "glossary": "categorical-encoding",
+  "concept": "categorical-encoding",
+  "lesson": "7.1"
+ },
+ {
+  "term": "Бинарный признак",
+  "glossary": "binary-encoding",
+  "concept": "binary-encoding",
+  "lesson": "7.1"
+ },
+ {
+  "term": "Порядковое кодирование (OrdinalEncoder)",
+  "glossary": "ordinal-encoding",
+  "concept": "ordinal-encoding",
+  "lesson": "7.2"
+ },
+ {
+  "term": "ColumnTransformer",
+  "glossary": "column-transformer",
+  "concept": "column-transformer",
+  "lesson": "7.2"
+ },
+ {
+  "term": "Редкие категории в кодировщике",
+  "glossary": "infrequent-categories",
+  "concept": "infrequent-categories",
+  "lesson": "7.3"
+ },
+ {
+  "term": "Отбор признаков",
+  "glossary": "feature-selection",
+  "concept": "feature-selection",
+  "lesson": "7.3"
+ },
+ {
+  "term": "One-Hot Encoding",
+  "glossary": "one-hot-encoding",
+  "concept": "one-hot-encoding",
+  "lesson": "7.4"
+ },
+ {
+  "term": "Target Encoding",
+  "glossary": "target-encoding",
+  "concept": "target-encoding",
+  "lesson": "7.5"
+ },
+ {
+  "term": "Регуляризация",
+  "glossary": "regularization",
+  "concept": "regularization",
+  "lesson": "7.6"
+ },
+ {
+  "term": "Ridge (L2-регуляризация)",
+  "glossary": "ridge",
+  "concept": "ridge-lasso",
+  "lesson": "7.6"
+ },
+ {
+  "term": "Lasso (L1-регуляризация)",
+  "glossary": "lasso",
+  "concept": "ridge-lasso",
+  "lesson": "7.6"
+ },
+ {
+  "term": "Градиентный бустинг",
+  "glossary": "gradient-boosting",
+  "concept": "gradient-boosting",
+  "lesson": "7.7"
+ },
+ {
+  "term": "LightGBM, XGBoost, CatBoost",
+  "glossary": "lightgbm",
+  "concept": "gradient-boosting",
+  "lesson": "7.7"
+ },
+ {
+  "term": "Скорость обучения бустинга",
+  "glossary": "learning-rate",
+  "concept": "learning-rate",
+  "lesson": "7.7"
+ },
+ {
+  "term": "Разброс метрики по разбиениям",
+  "glossary": "metric-variability",
+  "concept": "metric-variability",
+  "lesson": "7.8"
+ },
+ {
+  "term": "Распределение ошибок",
+  "glossary": "error-distribution",
+  "concept": "error-distribution",
+  "lesson": "7.8"
+ },
+ {
+  "term": "Искусственный нейрон",
+  "glossary": "artificial-neuron",
+  "concept": "artificial-neuron",
+  "lesson": "8.1"
+ },
+ {
+  "term": "Функция активации",
+  "glossary": "activation-function",
+  "concept": "activation-function",
+  "lesson": "8.1"
+ },
+ {
+  "term": "Многослойный персептрон (MLP)",
+  "glossary": "mlp",
+  "concept": "mlp",
+  "lesson": "8.2"
+ },
+ {
+  "term": "Скрытый слой",
+  "glossary": "hidden-layer",
+  "concept": "hidden-layer",
+  "lesson": "8.2"
+ },
+ {
+  "term": "Обратное распространение ошибки",
+  "glossary": "backpropagation",
+  "concept": "backpropagation",
+  "lesson": "8.3"
+ },
+ {
+  "term": "Эпоха и мини-батч",
+  "glossary": "epoch-batch",
+  "concept": "epoch-batch",
+  "lesson": "8.3"
+ },
+ {
+  "term": "Выбор функции потерь",
+  "glossary": "loss-choice",
+  "concept": "loss-choice",
+  "lesson": "8.4"
+ },
+ {
+  "term": "Ранняя остановка",
+  "glossary": "early-stopping",
+  "concept": "early-stopping",
+  "lesson": "8.5"
+ },
+ {
+  "term": "Вклад группы в изменение ошибки",
+  "glossary": "error-contribution",
+  "concept": "error-contribution",
+  "lesson": "8.6"
+ },
+ {
+  "term": "Бинарная классификация",
+  "glossary": "binary-classification",
+  "concept": "binary-classification",
+  "lesson": "8.7"
+ },
+ {
+  "term": "Доля верных ответов (accuracy)",
+  "glossary": "accuracy",
+  "concept": "binary-classification",
+  "lesson": "8.7"
+ },
+ {
+  "term": "Граница решений",
+  "glossary": "decision-boundary",
+  "concept": "decision-boundary",
+  "lesson": "8.7"
+ },
+ {
+  "term": "Языковая модель",
+  "glossary": "language-model",
+  "concept": "language-model",
+  "lesson": "9.1"
+ },
+ {
+  "term": "n-граммы",
+  "glossary": "n-gram",
+  "concept": "n-gram",
+  "lesson": "9.1"
+ },
+ {
+  "term": "Эмбеддинг (векторное представление)",
+  "glossary": "word-embedding",
+  "concept": "word-embedding",
+  "lesson": "9.2"
+ },
+ {
+  "term": "Косинусное сходство",
+  "glossary": "cosine-similarity",
+  "concept": "cosine-similarity",
+  "lesson": "9.2"
+ },
+ {
+  "term": "Механизм внимания",
+  "glossary": "attention",
+  "concept": "attention",
+  "lesson": "9.3"
+ },
+ {
+  "term": "softmax",
+  "glossary": "softmax",
+  "concept": "attention",
+  "lesson": "9.3"
+ },
+ {
+  "term": "Трансформер",
+  "glossary": "transformer",
+  "concept": "transformer",
+  "lesson": "9.3"
+ },
+ {
+  "term": "Hugging Face и pipeline",
+  "glossary": "hf-pipeline",
+  "concept": "hf-pipeline",
+  "lesson": "9.4"
+ },
+ {
+  "term": "Токенизатор",
+  "glossary": "tokenizer",
+  "concept": "tokenizer",
+  "lesson": "9.5"
+ },
+ {
+  "term": "Padding, truncation и attention mask",
+  "glossary": "attention-mask",
+  "concept": "attention-mask",
+  "lesson": "9.5"
+ },
+ {
+  "term": "Логиты",
+  "glossary": "logits",
+  "concept": "logits",
+  "lesson": "9.6"
+ },
+ {
+  "term": "Zero-shot классификация",
+  "glossary": "zero-shot",
+  "concept": "zero-shot",
+  "lesson": "9.7"
+ },
+ {
+  "term": "CLIP",
+  "glossary": "clip",
+  "concept": "zero-shot",
+  "lesson": "9.7"
+ },
+ {
+  "term": "Промпт для zero-shot",
+  "glossary": "prompt-template",
+  "concept": "prompt-template",
+  "lesson": "9.8"
+ },
+ {
+  "term": "Перенос обучения",
+  "glossary": "transfer-learning",
+  "concept": "transfer-learning",
+  "lesson": "9.9"
+ },
+ {
+  "term": "Запрос к чат-модели",
+  "glossary": "llm-chat-api",
+  "concept": "llm-chat-api",
+  "lesson": "10.1"
+ },
+ {
+  "term": "Температура, top-p",
+  "glossary": "sampling-temperature",
+  "concept": "sampling-temperature",
+  "lesson": "10.2"
+ },
+ {
+  "term": "Системный промпт",
+  "glossary": "system-prompt",
+  "concept": "system-prompt",
+  "lesson": "10.3"
+ },
+ {
+  "term": "Контекстное окно",
+  "glossary": "context-window",
+  "concept": "context-window",
+  "lesson": "10.3"
+ },
+ {
+  "term": "Few-shot промпт",
+  "glossary": "few-shot",
+  "concept": "few-shot",
+  "lesson": "10.4"
+ },
+ {
+  "term": "Ответ в заданном формате",
+  "glossary": "structured-output",
+  "concept": "structured-output",
+  "lesson": "10.5"
+ },
+ {
+  "term": "Вызов функций (function calling)",
+  "glossary": "function-calling",
+  "concept": "function-calling",
+  "lesson": "10.6"
+ },
+ {
+  "term": "Цепочка (chain)",
+  "glossary": "llm-chain",
+  "concept": "llm-chain",
+  "lesson": "10.7"
+ },
+ {
+  "term": "Оценка LLM-решения",
+  "glossary": "llm-evaluation",
+  "concept": "llm-evaluation",
+  "lesson": "10.8"
+ }
+]

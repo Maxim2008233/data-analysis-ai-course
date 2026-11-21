@@ -1,0 +1,93 @@
+# Справочник: сводный анализ в Pandas и первые метрики (модуль 3).
+- id: eda
+  term: EDA (разведочный анализ данных)
+  category: Статистика
+  aliases: [разведочный анализ, exploratory data analysis, первичный анализ]
+  summary: "Изучение данных до построения модели: какие объекты представлены, какие значения типичны, где данных мало и какие записи требуют проверки. Инструменты — статистики, группировки, сводные таблицы, графики."
+- id: feature-types
+  term: Числовые и категориальные признаки
+  category: Статистика
+  aliases: [категориальный признак, числовой признак, категория]
+  summary: "Числовой признак принимает числовые значения, с которыми имеет смысл считать (пробег, цена). Категориальный — значения из ограниченного набора (марка, тип кузова, топливо); его описывают частотами, а среднее для него не имеет смысла."
+- id: pd-groupby
+  term: groupby
+  category: Pandas
+  aliases: [группировка, сгруппировать, по группам]
+  summary: "`df.groupby(колонки)[колонка].функция()` — разбить строки на группы по значениям колонок, выбрать колонку и посчитать статистику в каждой группе. Результат — Series или DataFrame, где группы в индексе."
+  syntax: |
+    df.groupby(by)[columns].mean()   # median, size, count, min, max, sum
+  example: |
+    df.groupby('Make')['Price'].median()
+    df.groupby(['Make', 'Year'])['Price'].agg(['mean', 'count'])
+- id: pd-agg
+  term: agg (агрегация)
+  category: Pandas
+  aliases: [агрегация, именованная агрегация, size, count]
+  summary: "`agg` считает несколько статистик за один вызов: списком имён `agg(['mean', 'median'])` или с понятными названиями результатов `agg(n=('Price', 'size'), median_price=('Price', 'median'))`. `size` — число строк в группе, `count` — число известных (непустых) значений."
+  example: |
+    df.groupby('Make').agg(n=('Price', 'size'), median_price=('Price', 'median'))
+- id: pd-pivot-table
+  term: pivot_table
+  category: Pandas
+  aliases: [сводная таблица, пивот, pivot]
+  summary: "`pd.pivot_table(df, index=..., columns=..., values=..., aggfunc=...)` — сводная таблица: группы одной колонки по строкам, другой — по колонкам, в ячейках — статистика `values`. `aggfunc='size'` — число записей; `fill_value=0` заполняет отсутствующие сочетания (уместно для количеств, но не для цен)."
+  example: |
+    pd.pivot_table(df, index='Make', columns='Style', aggfunc='size', fill_value=0)
+    df.pivot_table(index='Make', columns='Transmission', values='Price', aggfunc='median')
+- id: pd-multiindex
+  term: MultiIndex (составной индекс)
+  category: Pandas
+  aliases: [составной индекс, несколько уровней индекса, unstack]
+  summary: "Индекс из нескольких уровней — появляется после группировки по нескольким колонкам. `s.loc['Toyota']` выбирает все строки первого уровня, `s.loc[('Toyota', 2012)]` — одну группу. `unstack()` переносит последний уровень индекса в колонки."
+  example: |
+    s = df.groupby(['Make', 'Year'])['Price'].mean()
+    s.loc[('Toyota', 2012)]
+    df.groupby(['Make', 'Style']).size().unstack(fill_value=0)
+- id: pd-crosstab
+  term: crosstab
+  category: Pandas
+  aliases: [таблица сопряжённости, таблица сочетаний, normalize]
+  summary: "`pd.crosstab(строки, колонки)` — сколько раз встречается каждое сочетание двух категорий. `normalize='index'` — доли внутри каждой строки, `'columns'` — внутри колонки, `True` — от всех записей."
+  example: |
+    pd.crosstab(df['Make'], df['Style'])
+    100 * pd.crosstab(df['Make'], df['Style'], normalize='index')
+- id: share-denominator
+  term: Знаменатель доли
+  category: Статистика
+  aliases: [доля, процент, от чего доля]
+  summary: "Доля имеет смысл только вместе со знаменателем: «доля SUV среди машин марки» и «доля марки среди всех SUV» — разные числа. В отчёте всегда пишут, от чего посчитана доля и сколько записей в знаменателе."
+- id: pd-transform
+  term: transform
+  category: Pandas
+  aliases: [групповое значение для каждой строки, transform mean]
+  summary: "`df.groupby(колонки)[колонка].transform('mean')` возвращает Series той же длины, что таблица: для каждой строки — статистику её группы. Удобно для оценки «по похожим» и для отклонений от группы."
+  example: |
+    df['group_mean'] = df.groupby(['Make', 'Year'])['Price'].transform('mean')
+- id: mae
+  term: MAE (средняя абсолютная ошибка)
+  category: Метрики
+  aliases: [mean absolute error, средняя абсолютная ошибка, абсолютная ошибка]
+  summary: "Среднее модулей разностей между фактическими значениями и оценками: MAE = (1/N)·Σ|yᵢ − ŷᵢ|. Измеряется в единицах цели (евро) и показывает, на сколько в среднем ошибается оценка."
+  example: |
+    mae = (y - y_hat).abs().mean()
+- id: mape
+  term: MAPE (средняя ошибка в процентах)
+  category: Метрики
+  aliases: [mean absolute percentage error, процентная ошибка]
+  summary: "Средняя абсолютная ошибка в процентах от фактического значения: MAPE = 100 % · (1/N)·Σ|yᵢ − ŷᵢ| / |yᵢ|. Удобна для сравнения дешёвых и дорогих объектов; не определена при нулевых фактических значениях и сильно растёт на очень дешёвых."
+  example: |
+    mape = ((y - y_hat).abs() / y).mean() * 100
+- id: pd-plot
+  term: plot (графики Pandas)
+  category: Визуализация
+  aliases: [график, df.plot, series.plot, kind bar, logy]
+  summary: "`s.plot()` рисует линию по индексу Series, `kind='bar'` — столбцы, `kind='barh'` — горизонтальные столбцы. Подписи: `title`, `xlabel`, `ylabel`; `grid=True` — сетка; `logy=True` — логарифмическая ось Y; `figsize=(ширина, высота)`."
+  example: |
+    s.plot(kind='bar', title='Медианная цена по маркам', xlabel='Марка', ylabel='Цена, евро')
+- id: pd-styler
+  term: Styler (df.style)
+  category: Pandas
+  aliases: [оформление таблицы, style, background_gradient, highlight_max, format]
+  summary: "`df.style` — оформление таблицы для отчёта, сами числа не меняются. `format(precision=0, thousands=' ', na_rep='—')` — формат чисел и пропусков; `background_gradient(subset=..., cmap=...)` — цветовая шкала; `bar(subset=...)` — полосы в ячейках; `highlight_max`, `highlight_null` — выделение; `set_caption` — заголовок."
+  example: |
+    table.style.format(precision=0, thousands=' ').background_gradient(subset=['Медиана'], cmap='Blues')

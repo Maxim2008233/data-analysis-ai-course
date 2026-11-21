@@ -1,0 +1,322 @@
+- id: m1-l5-t1
+  title: Сколько пропусков в объёме двигателя
+  difficulty: warmup
+  introduces: [nan-inf]
+  uses: [np-slicing]
+  statement: |
+    Получите `missing_engine` — число пропусков (`nan`) в векторе `engine`, и `missing_share` — их долю среди всех записей.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]   # векторы признаков — урок 1.3
+  starter: |
+    missing_engine = ...
+    missing_share = ...
+    print(missing_engine, round(missing_share, 4))
+  solution: |
+    missing_engine = np.isnan(engine).sum()
+    missing_share = np.isnan(engine).mean()
+    print(missing_engine, round(missing_share, 4))
+  explanation: |
+    - `np.isnan(engine)` — маска: `True` там, где пропуск.
+    - `.sum()` считает `True` (каждое — единица), `.mean()` — их долю.
+  alternatives:
+    - |
+      missing_engine = np.count_nonzero(np.isnan(engine))
+      missing_share = missing_engine / len(engine)
+  hints:
+    - Какая функция NumPy находит пропуски? Пропуск нельзя найти сравнением `== np.nan`.
+    - "`np.isnan(engine)` возвращает маску; у маски есть `.sum()` (количество) и `.mean()` (доля)."
+    - "`missing_engine = np.isnan(engine).sum()`, `missing_share = np.isnan(engine).mean()`."
+  tests: |
+    v = var('missing_engine', 'number', 'числом')
+    if v == 0:
+        fail('Получилось 0 пропусков. Сравнение с np.nan всегда даёт False — используйте np.isnan(engine).')
+    close(v, ref('missing_engine'), 'Пропусков должно быть {expected}, а у вас {actual}.')
+    close(var('missing_share', 'number', 'числом'), ref('missing_share'), 'Доля пропусков должна быть {expected}, а у вас {actual}. Доля = число пропусков / число всех записей.')
+    close(alt('missing_engine'), alt_ref('missing_engine'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        missing_engine = (engine == np.nan).sum()
+        missing_share = missing_engine / len(engine)
+      expect: np.isnan
+    - code: |
+        missing_engine = 205
+        missing_share = 205 / 41007
+      expect: вписан вручную
+
+- id: m1-l5-t2
+  title: Доля дорогих объявлений
+  difficulty: main
+  introduces: [bool-mask]
+  uses: [nan-inf]
+  statement: |
+    Получите:
+
+    - `price_values` — вектор только конечных цен (через маску `np.isfinite`);
+    - `n_over_20k` — сколько из них **больше** 20 000 евро;
+    - `share_over_20k` — доля таких цен среди конечных.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]
+  starter: |
+    price_values = ...
+    n_over_20k = ...
+    share_over_20k = ...
+    print(price_values.size, n_over_20k, round(share_over_20k, 4))
+  solution: |
+    price_values = price[np.isfinite(price)]
+    n_over_20k = (price_values > 20_000).sum()
+    share_over_20k = (price_values > 20_000).mean()
+    print(price_values.size, n_over_20k, round(share_over_20k, 4))
+  explanation: |
+    - `price[np.isfinite(price)]` — выбор по маске оставляет только конечные цены.
+    - `price_values > 20_000` — новая маска; её сумма — количество, среднее — доля среди конечных цен.
+  hints:
+    - Сначала отберите конечные цены маской, потом сравните их с порогом.
+    - "`price[np.isfinite(price)]`; маска `price_values > 20_000`; у маски `.sum()` и `.mean()`."
+    - "`n_over_20k = (price_values > 20_000).sum()`, `share_over_20k = (price_values > 20_000).mean()`."
+  tests: |
+    import numpy as np
+    pv = var('price_values', 'ndarray', 'массивом NumPy')
+    ensure(np.isfinite(pv).all(), 'В price_values есть nan или inf — отберите цены маской np.isfinite(price).')
+    same_array(pv, ref('price_values'), 'price_values должен содержать все конечные цены в исходном порядке.')
+    n = var('n_over_20k', 'number', 'числом')
+    if n == (ref('price_values') >= 20000).sum() and n != ref('n_over_20k'):
+        fail('Вы посчитали «не меньше 20 000» (>=). Нужно строго больше: >.')
+    close(n, ref('n_over_20k'), 'Цен выше 20 000 должно быть {expected}, а у вас {actual}.')
+    close(var('share_over_20k', 'number', 'числом'), ref('share_over_20k'), 'Доля должна быть {expected}, а у вас {actual}. Знаменатель — число конечных цен.')
+    close(alt('share_over_20k'), alt_ref('share_over_20k'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        price_values = price[np.isfinite(price)]
+        n_over_20k = (price_values >= 20_000).sum()
+        share_over_20k = (price_values >= 20_000).mean()
+      expect: строго больше
+    - code: |
+        price_values = price[np.isfinite(price)]
+        n_over_20k = (price_values > 20_000).sum()
+        share_over_20k = n_over_20k
+      expect: Доля должна быть
+
+- id: m1-l5-t3
+  title: Нулевые и гигантские пробеги
+  difficulty: main
+  introduces: [bool-mask]
+  uses: []
+  statement: |
+    Посчитайте среди конечных пробегов:
+
+    - `zero_distance` — сколько записей с пробегом ровно 0 км;
+    - `million_plus` — сколько записей с пробегом больше 1 000 000 км.
+
+    Это не ошибки «по определению», а записи, которые аналитик отметит для проверки.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]
+  starter: |
+    known_distance = np.isfinite(distance)
+    zero_distance = ...
+    million_plus = ...
+    print(zero_distance, million_plus)
+  solution: |
+    known_distance = np.isfinite(distance)
+    zero_distance = (distance[known_distance] == 0).sum()
+    million_plus = (distance[known_distance] > 1_000_000).sum()
+    print(zero_distance, million_plus)
+  explanation: |
+    - `distance[known_distance]` — только конечные пробеги.
+    - `== 0` и `> 1_000_000` дают маски; `.sum()` считает записи, где условие выполнено.
+  alternatives:
+    - |
+      zero_distance = np.count_nonzero(np.isfinite(distance) & (distance == 0))
+      million_plus = np.count_nonzero(np.isfinite(distance) & (distance > 1_000_000))
+  hints:
+    - Нужны две маски сравнения по конечным пробегам и подсчёт `True` в каждой.
+    - "Сравнение на равенство — `==`; число `True` — `.sum()` или `np.count_nonzero`."
+    - "`zero_distance = (distance[known_distance] == 0).sum()`; для миллиона — `> 1_000_000`."
+  tests: |
+    z = var('zero_distance', 'number', 'числом')
+    m = var('million_plus', 'number', 'числом')
+    close(z, ref('zero_distance'), 'Нулевых пробегов должно быть {expected}, а у вас {actual}. Сравнивайте на равенство: == 0.')
+    close(m, ref('million_plus'), 'Пробегов больше 1 000 000 км должно быть {expected}, а у вас {actual}.')
+    close(alt('million_plus'), alt_ref('million_plus'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        known_distance = np.isfinite(distance)
+        zero_distance = (distance[known_distance] <= 1).sum()
+        million_plus = (distance[known_distance] > 1_000_000).sum()
+      expect: на равенство
+    - code: |
+        known_distance = np.isfinite(distance)
+        zero_distance = (distance[known_distance] == 0).sum()
+        million_plus = (distance[known_distance] > 100_000).sum()
+      expect: 1 000 000
+
+- id: m1-l5-t4
+  title: Новые, но дешёвые
+  difficulty: main
+  introduces: [mask-combine]
+  uses: [bool-mask]
+  statement: |
+    Найдите необычные сочетания признаков:
+
+    - `new_cheap` — число записей, где год выпуска **не раньше 2015** И цена **меньше 5000** евро;
+    - `old_or_huge` — число записей, где год выпуска **раньше 1980** ИЛИ пробег **больше 1 000 000** км.
+
+    Используйте `&`, `|` и скобки.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]
+  starter: |
+    new_cheap = ...
+    old_or_huge = ...
+    print(new_cheap, old_or_huge)
+  solution: |
+    new_cheap = ((year >= 2015) & (price < 5000)).sum()
+    old_or_huge = ((year < 1980) | (distance > 1_000_000)).sum()
+    print(new_cheap, old_or_huge)
+  explanation: |
+    - Каждое сравнение — в своих скобках, затем `&` (оба условия) или `|` (хотя бы одно).
+    - Внешние скобки нужны, чтобы вызвать `.sum()` у общей маски.
+  hints:
+    - Для «и» и «или» у масок есть свои операторы; не забудьте скобки вокруг каждого сравнения.
+    - "«И» — `&`, «или» — `|`; например `((year >= 2015) & (price < 5000)).sum()`."
+    - "`old_or_huge = ((year < 1980) | (distance > 1_000_000)).sum()`"
+  tests: |
+    nc = var('new_cheap', 'number', 'числом')
+    oh = var('old_or_huge', 'number', 'числом')
+    import numpy as np
+    y, p, d = ref('year'), ref('price'), ref('distance')
+    if nc == ((y > 2015) & (p < 5000)).sum() and nc != ref('new_cheap'):
+        fail('new_cheap: «не раньше 2015» включает сам 2015 год — используйте >=.')
+    if nc == ((y >= 2015) | (p < 5000)).sum():
+        fail('new_cheap: нужны оба условия сразу — оператор &, а не |.')
+    close(nc, ref('new_cheap'), 'new_cheap должно быть {expected}, а у вас {actual}.')
+    if oh == ((y < 1980) & (d > 1_000_000)).sum():
+        fail('old_or_huge: достаточно одного из условий — оператор |, а не &.')
+    close(oh, ref('old_or_huge'), 'old_or_huge должно быть {expected}, а у вас {actual}.')
+    close(alt('new_cheap'), alt_ref('new_cheap'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        new_cheap = ((year > 2015) & (price < 5000)).sum()
+        old_or_huge = ((year < 1980) | (distance > 1_000_000)).sum()
+      expect: включает сам 2015
+    - code: |
+        new_cheap = ((year >= 2015) & (price < 5000)).sum()
+        old_or_huge = ((year < 1980) & (distance > 1_000_000)).sum()
+      expect: оператор |
+
+- id: m1-l5-t5
+  kind: bug
+  title: "Найдите ошибку: «truth value is ambiguous»"
+  difficulty: main
+  introduces: []
+  uses: [mask-combine]
+  statement: |
+    Код падает с ошибкой `ValueError: The truth value of an array with more than one element is ambiguous`. Исправьте его, чтобы в `diesel_like` оказалось число записей с объёмом двигателя от 2000 до 3000 см³ включительно.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]
+  starter: |
+    mask = engine >= 2000 and engine <= 3000
+    diesel_like = mask.sum()
+    print(diesel_like)
+  solution: |
+    mask = (engine >= 2000) & (engine <= 3000)
+    diesel_like = mask.sum()
+    print(diesel_like)
+  explanation: |
+    - `and` пытается проверить на истинность весь массив целиком — для массива это не определено.
+    - Поэлементное «и» — `&`, и каждое сравнение в скобках.
+  hints:
+    - Слова `and` / `or` работают с одиночными значениями, а у нас массивы.
+    - "Поэлементное «и» для масок — оператор `&`; сравнения заключите в скобки."
+    - "`mask = (engine >= 2000) & (engine <= 3000)`"
+  tests: |
+    close(var('diesel_like', 'number', 'числом'), ref('diesel_like'), 'Должно получиться {expected} записей с объёмом от 2000 до 3000 см³ включительно, а у вас {actual}.')
+    close(alt('diesel_like'), alt_ref('diesel_like'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        mask = (engine > 2000) & (engine < 3000)
+        diesel_like = mask.sum()
+      expect: включительно
+    - code: |
+        mask = engine >= 2000 & engine <= 3000
+        diesel_like = mask.sum()
+      expect: ошибкой
+
+- id: m1-l5-t6
+  title: Сводная маска «проверить»
+  difficulty: star
+  introduces: []
+  uses: [mask-combine, nan-inf, shape-dtype]
+  statement: |
+    Соберите маску `suspicious` — записи, у которых **хотя бы одно** из условий выполнено:
+
+    - пробег больше 1 000 000 км;
+    - объём двигателя меньше или равен 0 (пропуск `nan` подозрительным не считаем);
+    - цена меньше 100 евро;
+    - год выпуска раньше 1950.
+
+    Затем получите `n_suspicious` — сколько таких записей, `share_suspicious` — их долю среди всех записей и `first_suspicious_rows` — номера (позиции в `X`) **первых пяти** подозрительных записей.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]
+    row_id = np.arange(X.shape[0])   # номера записей — урок 1.2
+  starter: |
+    suspicious = ...
+    n_suspicious = ...
+    share_suspicious = ...
+    first_suspicious_rows = ...
+    print(n_suspicious, round(share_suspicious, 4), first_suspicious_rows)
+  solution: |
+    suspicious = (distance > 1_000_000) | (engine <= 0) | (price < 100) | (year < 1950)
+    n_suspicious = suspicious.sum()
+    share_suspicious = suspicious.mean()
+    first_suspicious_rows = row_id[suspicious][:5]
+    print(n_suspicious, round(share_suspicious, 4), first_suspicious_rows)
+  explanation: |
+    - Четыре сравнения объединены через `|` — достаточно одного.
+    - Сравнение `nan <= 0` даёт `False`, поэтому пропуски объёма не попадают в маску автоматически.
+    - `row_id[suspicious]` — номера записей, где маска `True`; `[:5]` — первые пять.
+  hints:
+    - Условие «хотя бы одно из» — это объединение масок оператором «или».
+    - "Соедините четыре сравнения через `|`; номера записей — `row_id[маска]`."
+    - "`suspicious = (distance > 1_000_000) | (engine <= 0) | (price < 100) | (year < 1950)`; дальше `.sum()`, `.mean()`, `row_id[suspicious][:5]`."
+  tests: |
+    import numpy as np
+    s = var('suspicious', 'ndarray', 'массивом NumPy (маской)')
+    ensure(s.dtype == bool, 'suspicious должна быть логической маской (True/False), а её тип %s.' % s.dtype)
+    ensure(s.shape == ref('suspicious').shape, 'Маска должна иметь длину, равную числу записей.')
+    if s.sum() < ref('suspicious').sum() and (s & ~ref('suspicious')).sum() == 0:
+        fail('В маске меньше записей, чем нужно: проверьте, что условия объединены через | (или), а не &, и что учтены все четыре условия.')
+    same_array(s, ref('suspicious'), 'Маска не совпадает: проверьте пороги (> 1 000 000, <= 0, < 100, < 1950).')
+    close(var('n_suspicious', 'number', 'числом'), ref('n_suspicious'), 'n_suspicious должно быть {expected}, а у вас {actual}.')
+    close(var('share_suspicious', 'number', 'числом'), ref('share_suspicious'), 'share_suspicious должно быть {expected}, а у вас {actual}.')
+    same_array(var('first_suspicious_rows', 'ndarray', 'массивом NumPy'), ref('first_suspicious_rows'), 'Номера первых пяти подозрительных записей не совпадают — используйте row_id[suspicious][:5].')
+    same_array(alt('first_suspicious_rows'), alt_ref('first_suspicious_rows'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        suspicious = (distance > 1_000_000) & (engine <= 0) & (price < 100) & (year < 1950)
+        n_suspicious = suspicious.sum()
+        share_suspicious = suspicious.mean()
+        first_suspicious_rows = row_id[suspicious][:5]
+      expect: через |
+    - code: |
+        suspicious = (distance > 1_000_000) | (engine <= 0) | (price < 100) | (year < 1950)
+        n_suspicious = suspicious.sum()
+        share_suspicious = suspicious.mean()
+        first_suspicious_rows = np.where(suspicious)[0][:4]
+      expect: первых пяти

@@ -1,0 +1,253 @@
+- id: m0-l8-t1
+  title: Сколько дорогих машин
+  difficulty: warmup
+  introduces: [py-loops]
+  uses: [py-lists]
+  statement: |
+    С помощью цикла `for` посчитайте `n_expensive` — сколько цен в списке `prices` **строго больше** 10 000.
+  prelude: |
+    prices = [7750, 12500, 2200, 15000, 10000, 9900, 31000]
+  starter: |
+    n_expensive = 0
+    for p in prices:
+        ...
+    print(n_expensive)
+  solution: |
+    n_expensive = 0
+    for p in prices:
+        if p > 10000:
+            n_expensive += 1
+    print(n_expensive)
+  explanation: |
+    - Счётчик задан до цикла; внутри цикла — условие и увеличение на 1.
+    - 10 000 не больше 10 000, поэтому не считается.
+  hints:
+    - Внутри цикла проверьте условие и увеличьте счётчик.
+    - "`if p > 10000:` и `n_expensive += 1` (с отступом)."
+    - "Добавьте две строки: `if p > 10000:` и под ней `n_expensive += 1`."
+  tests: |
+    v = var('n_expensive', 'int', 'целым числом')
+    if v == 4:
+        fail('Получилось 4 — посчитана и цена ровно 10 000. Нужно строго больше: >.')
+    equal(v, 3, 'n_expensive должно быть {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        n_expensive = 0
+        for p in prices:
+            if p >= 10000:
+                n_expensive += 1
+      expect: строго больше
+    - code: |
+        for p in prices:
+            n_expensive = 0
+            if p > 10000:
+                n_expensive += 1
+      expect: n_expensive должно быть
+
+- id: m0-l8-t2
+  title: Классы цен генератором списка
+  difficulty: main
+  introduces: [py-loops]
+  uses: [py-lists]
+  statement: |
+    Получите список `cheap` — цены меньше 5000 из `prices` (в исходном порядке) — и список `prices_k` — все цены в тысячах евро. Используйте генераторы списков.
+  prelude: |
+    prices = [7750, 4200, 2200, 15000, 4999, 9900]
+  starter: |
+    cheap = ...
+    prices_k = ...
+    print(cheap, prices_k)
+  solution: |
+    cheap = [p for p in prices if p < 5000]
+    prices_k = [p / 1000 for p in prices]
+    print(cheap, prices_k)
+  explanation: |
+    - `[p for p in prices if p < 5000]` — фильтр с условием.
+    - `[p / 1000 for p in prices]` — преобразование каждого элемента.
+  hints:
+    - Генератор списка — выражение, цикл и (необязательно) условие в квадратных скобках.
+    - "Фильтр: `[p for p in prices if условие]`; преобразование: `[p / 1000 for p in prices]`."
+    - "`cheap = [p for p in prices if p < 5000]`"
+  tests: |
+    equal(var('cheap', 'list', 'списком'), [4200, 2200, 4999], 'cheap должен быть {expected}, а у вас {actual}.')
+    pk = var('prices_k', 'list', 'списком')
+    ensure(len(pk) == 6, 'В prices_k должно быть 6 значений.')
+    ensure(all(abs(a - b) < 1e-9 for a, b in zip(pk, [7.75, 4.2, 2.2, 15.0, 4.999, 9.9])), 'prices_k: делите каждую цену на 1000.')
+  wrong:
+    - code: |
+        cheap = [p for p in prices if p <= 4200]
+        prices_k = [p / 1000 for p in prices]
+      expect: cheap должен быть
+    - code: |
+        cheap = [p for p in prices if p < 5000]
+        prices_k = [p * 1000 for p in prices]
+      expect: делите
+
+- id: m0-l8-t3
+  title: Функция описания набора
+  difficulty: main
+  introduces: [py-functions]
+  uses: [py-lists, py-dicts]
+  statement: |
+    Напишите функцию `describe(values)`, которая возвращает словарь с ключами `'n'` (количество), `'min'`, `'max'` и `'mean'` (среднее). Для пустого списка верните `{'n': 0}`.
+  starter: |
+    def describe(values):
+        ...
+
+    print(describe([7750, 8550, 2200]))
+    print(describe([]))
+  solution: |
+    def describe(values):
+        if len(values) == 0:
+            return {'n': 0}
+        return {'n': len(values), 'min': min(values), 'max': max(values), 'mean': sum(values) / len(values)}
+
+    print(describe([7750, 8550, 2200]))
+    print(describe([]))
+  explanation: |
+    - Пустой список обрабатываем отдельно — иначе `min([])` вызовет ошибку, а среднее — деление на ноль.
+    - Встроенные функции `len`, `min`, `max`, `sum` работают со списками.
+  hints:
+    - Сначала обработайте пустой список, затем соберите словарь из встроенных функций.
+    - "`if len(values) == 0: return {'n': 0}`; дальше `len`, `min`, `max`, `sum(values) / len(values)`."
+    - "`return {'n': len(values), 'min': min(values), 'max': max(values), 'mean': sum(values) / len(values)}`"
+  tests: |
+    f = var('describe')
+    ensure(callable(f), 'describe должна быть функцией.')
+    r = f([7750, 8550, 2200])
+    ensure(isinstance(r, dict), 'Функция должна вернуть словарь, а вернула %s. Нужен return.' % type(r).__name__)
+    for k, want in [('n', 3), ('min', 2200), ('max', 8550)]:
+        ensure(r.get(k) == want, "Для [7750, 8550, 2200] ключ %r должен быть %s, а у вас %r." % (k, want, r.get(k)))
+    close(r.get('mean', -1), 6166.666666666667, "Среднее должно быть {expected}, а у вас {actual}.")
+    try:
+        e = f([])
+    except Exception as ex:
+        fail('Для пустого списка функция падает с ошибкой (%s). Верните {"n": 0}.' % type(ex).__name__)
+    ensure(e == {'n': 0}, "Для пустого списка нужно {'n': 0}, а получено %r." % (e,))
+  wrong:
+    - code: |
+        def describe(values):
+            return {'n': len(values), 'min': min(values), 'max': max(values), 'mean': sum(values) / len(values)}
+      expect: пустого списка
+    - code: |
+        def describe(values):
+            print({'n': len(values)})
+      expect: return
+
+- id: m0-l8-t4
+  kind: bug
+  title: "Найдите ошибку: средняя цена по маркам"
+  difficulty: main
+  introduces: []
+  uses: [py-loops, py-dicts]
+  statement: |
+    Код должен посчитать среднюю цену для каждой марки (`mean_by_make`), но средние получаются неверными. Найдите и исправьте ошибку.
+  prelude: |
+    cars = [('Toyota', 7750), ('BMW', 9900), ('Toyota', 6250), ('BMW', 12100), ('Toyota', 8000)]
+  starter: |
+    sums, counts = {}, {}
+    for make, price in cars:
+        sums[make] = sums.get(make, 0) + price
+        counts[make] = 1
+    mean_by_make = {make: sums[make] / counts[make] for make in sums}
+    print(mean_by_make)
+  solution: |
+    sums, counts = {}, {}
+    for make, price in cars:
+        sums[make] = sums.get(make, 0) + price
+        counts[make] = counts.get(make, 0) + 1
+    mean_by_make = {make: sums[make] / counts[make] for make in sums}
+    print(mean_by_make)
+  explanation: |
+    - Счётчик каждый раз сбрасывался в 1, поэтому сумма делилась на 1.
+    - Нужно увеличивать счётчик так же, как сумму: `counts.get(make, 0) + 1`.
+  hints:
+    - Сравните, как обновляются `sums` и `counts`.
+    - "`counts[make] = 1` перезаписывает счётчик на каждом шаге."
+    - "`counts[make] = counts.get(make, 0) + 1`"
+  tests: |
+    m = var('mean_by_make', 'dict', 'словарём')
+    close(m.get('Toyota', -1), 22000 / 3, 'Средняя цена Toyota должна быть {expected}, а у вас {actual}.')
+    close(m.get('BMW', -1), 11000.0, 'Средняя цена BMW должна быть {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        sums, counts = {}, {}
+        for make, price in cars:
+            sums[make] = sums.get(make, 0) + price
+            counts[make] = 1
+        mean_by_make = {make: sums[make] / counts[make] for make in sums}
+      expect: Средняя цена Toyota
+    - code: |
+        sums, counts = {}, {}
+        for make, price in cars:
+            sums[make] = price
+            counts[make] = counts.get(make, 0) + 1
+        mean_by_make = {make: sums[make] / counts[make] for make in sums}
+      expect: Средняя цена Toyota
+
+- id: m0-l8-t5
+  title: Функция классификации с параметрами
+  difficulty: star
+  introduces: []
+  uses: [py-functions, py-loops, py-lists]
+  statement: |
+    Напишите функцию `label(price, low=5000, high=15000)`, которая возвращает `'дешёвая'`, `'средняя'` или `'дорогая'` (границы: меньше `low` — дешёвая, от `low` до `high` не включая `high` — средняя, иначе — дорогая). Параметры `low` и `high` имеют значения по умолчанию.
+
+    Затем получите `labels_default` — классы для `prices` с границами по умолчанию, и `labels_strict` — с границами `low=3000, high=8000`.
+  prelude: |
+    prices = [2500, 4200, 7750, 9000, 16000]
+  starter: |
+    def label(price, low=5000, high=15000):
+        ...
+
+    labels_default = ...
+    labels_strict = ...
+    print(labels_default)
+    print(labels_strict)
+  solution: |
+    def label(price, low=5000, high=15000):
+        if price < low:
+            return 'дешёвая'
+        elif price < high:
+            return 'средняя'
+        return 'дорогая'
+
+    labels_default = [label(p) for p in prices]
+    labels_strict = [label(p, low=3000, high=8000) for p in prices]
+    print(labels_default)
+    print(labels_strict)
+  explanation: |
+    - Значения по умолчанию подставляются, если аргумент не передан.
+    - Именованные аргументы `low=3000, high=8000` меняют границы для конкретного вызова.
+  hints:
+    - Внутри функции сравнивайте не с числами 5000 и 15000, а с параметрами `low` и `high`.
+    - "Вызов с другими границами: `label(p, low=3000, high=8000)`."
+    - "`labels_strict = [label(p, low=3000, high=8000) for p in prices]`"
+  tests: |
+    f = var('label')
+    ensure(callable(f), 'label должна быть функцией.')
+    ensure(f(4999) == 'дешёвая' and f(5000) == 'средняя' and f(15000) == 'дорогая', 'Проверьте границы по умолчанию: 4999 — дешёвая, 5000 — средняя, 15000 — дорогая.')
+    ensure(f(100, low=50, high=200) == 'средняя', 'Функция должна использовать параметры low и high, а не числа 5000 и 15000.')
+    equal(var('labels_default', 'list', 'списком'), ['дешёвая', 'дешёвая', 'средняя', 'средняя', 'дорогая'], 'labels_default: нужно {expected}, у вас {actual}.')
+    equal(var('labels_strict', 'list', 'списком'), ['дешёвая', 'средняя', 'средняя', 'дорогая', 'дорогая'], 'labels_strict: нужно {expected}, у вас {actual}.')
+  wrong:
+    - code: |
+        def label(price, low=5000, high=15000):
+            if price < 5000:
+                return 'дешёвая'
+            elif price < 15000:
+                return 'средняя'
+            return 'дорогая'
+        labels_default = [label(p) for p in prices]
+        labels_strict = [label(p, low=3000, high=8000) for p in prices]
+      expect: параметры low и high
+    - code: |
+        def label(price, low=5000, high=15000):
+            if price < low:
+                return 'дешёвая'
+            elif price < high:
+                return 'средняя'
+            return 'дорогая'
+        labels_default = [label(p) for p in prices]
+        labels_strict = [label(p) for p in prices]
+      expect: labels_strict

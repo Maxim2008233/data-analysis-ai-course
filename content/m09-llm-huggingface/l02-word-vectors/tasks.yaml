@@ -1,0 +1,432 @@
+- id: m9-l2-t1
+  title: Косинусное сходство
+  difficulty: warmup
+  introduces: [cosine-similarity]
+  uses: [vectorization]
+  statement: |
+    Напишите функцию `cosine(a, b)` — косинусное сходство двух векторов: скалярное произведение, делённое на произведение их длин. Получите `cos_values` — список сходств для пар из `pairs` (по порядку).
+  prelude: |
+    import numpy as np
+    pairs = [(np.array([1.0, 2.0]), np.array([2.0, 4.0])),
+             (np.array([1.0, 0.0]), np.array([0.0, 5.0])),
+             (np.array([1.0, 1.0]), np.array([-2.0, -2.0])),
+             (np.array([3.0, 1.0, 2.0]), np.array([1.0, 2.0, 3.0]))]
+  starter: |
+    def cosine(a, b):
+        return ...
+
+    cos_values = [cosine(a, b) for a, b in pairs]
+    print(np.round(cos_values, 3))
+  solution: |
+    def cosine(a, b):
+        return a @ b / (np.sqrt(a @ a) * np.sqrt(b @ b))
+
+    cos_values = [cosine(a, b) for a, b in pairs]
+    print(np.round(cos_values, 3))
+  explanation: |
+    - [1, 2] и [2, 4] смотрят в одну сторону — косинус 1, хотя второй вектор вдвое длиннее.
+    - [1, 0] и [0, 5] перпендикулярны — 0. [1, 1] и [−2, −2] противоположны — −1.
+    - У [3, 1, 2] и [1, 2, 3] косинус 11/14 ≈ 0,786: направления похожи, но не совпадают.
+  hints:
+    - "Длина вектора — `np.sqrt(a @ a)`."
+    - "Косинус — `a @ b / (длина a · длина b)`."
+    - "`a @ b / (np.sqrt(a @ a) * np.sqrt(b @ b))`."
+  tests: |
+    import numpy as np
+    f = var('cosine')
+    ensure(callable(f), '`cosine` должна быть функцией.')
+    rng = np.random.default_rng(11)
+    for _ in range(4):
+        a, b = rng.normal(size=8), rng.normal(size=8)
+        exp = a @ b / (np.linalg.norm(a) * np.linalg.norm(b))
+        got = float(f(a, b))
+        if abs(got - a @ b) < 1e-9 and abs(exp - got) > 1e-9:
+            fail('Это просто скалярное произведение: разделите его на произведение длин векторов.')
+        close(got, exp, 'На других векторах косинус {expected}, а у вас {actual}.')
+    same_array(np.asarray(var('cos_values', list, 'списком'), dtype=float), np.asarray(ref('cos_values'), dtype=float), '`cos_values` — сходства для пар из `pairs` по порядку.')
+  wrong:
+    - code: |
+        def cosine(a, b):
+            return a @ b
+        cos_values = [cosine(a, b) for a, b in pairs]
+      expect: произведение длин
+    - code: |
+        def cosine(a, b):
+            return a @ b / (a @ a * b @ b)
+        cos_values = [cosine(a, b) for a, b in pairs]
+      expect: На других векторах
+
+- id: m9-l2-t2
+  title: Сходство со всеми сразу
+  difficulty: main
+  introduces: [word-embedding]
+  uses: [cosine-similarity, vectorization]
+  statement: |
+    `names` — английские названия 349 классов картинок, `name_vecs` — их векторы модели CLIP (по 512 чисел). Получите:
+
+    - `name_unit` — те же векторы, нормированные к длине 1 (каждая строка);
+    - функцию `nearest(word, k=5)` — список `k` названий, самых похожих на `word`, без самого `word`. Сходство со всеми названиями считайте одним умножением матрицы на вектор;
+    - `top5 = nearest('blue whale')`;
+    - `farthest` — название, самое непохожее на `'blue whale'`.
+  prelude: |
+    import numpy as np
+    with np.load('zs_prompts.npz') as data:
+        en = data['variant'] == 'en'
+        names = [str(x) for x in data['prompt'][en]]
+        name_vecs = data['emb'][en].astype(np.float32)
+  starter: |
+    name_unit = ...
+
+    def nearest(word, k=5):
+        sims = ...
+        order = np.argsort(-sims)
+        return ...
+
+    top5 = nearest('blue whale')
+    farthest = ...
+    print(top5, farthest)
+  solution: |
+    name_unit = name_vecs / np.linalg.norm(name_vecs, axis=1, keepdims=True)
+
+    def nearest(word, k=5):
+        sims = name_unit @ name_unit[names.index(word)]
+        order = np.argsort(-sims)
+        return [names[j] for j in order[1:k + 1]]
+
+    top5 = nearest('blue whale')
+    farthest = names[int(np.argmin(name_unit @ name_unit[names.index('blue whale')]))]
+    print(top5, farthest)
+  explanation: |
+    - `np.linalg.norm(..., axis=1, keepdims=True)` — длины всех строк сразу; `keepdims=True` оставляет столбец, чтобы деление прошло построчно.
+    - Ближайшие к «blue whale» — «humpback whale», «sperm whale», «great white shark», «dolphin» и «bass fish»: киты, акула, дельфин и рыба. Модель ничего не знает о наших классах, но видела сотни миллионов подписей к фотографиям.
+    - Первым в сортировке идёт само слово (сходство 1), поэтому срез начинается с позиции 1: `order[1:k + 1]`.
+  hints:
+    - "Нормировка строк — `name_vecs / np.linalg.norm(name_vecs, axis=1, keepdims=True)`."
+    - "Сходство со всеми — `name_unit @ name_unit[names.index(word)]`."
+    - "Соседи без самого слова — `order[1:k + 1]` (позиция 0 — само слово); самое непохожее — `np.argmin` от сходств."
+  tests: |
+    import numpy as np
+    nu = np.asarray(var('name_unit'), dtype=float)
+    ensure(nu.shape == ref('name_unit').shape, '`name_unit` — матрица той же формы, что `name_vecs`: 349 × 512.')
+    if not np.allclose(np.linalg.norm(nu, axis=1), 1, atol=1e-4):
+        fail('Строки `name_unit` должны иметь длину 1: делите на длину каждой строки (`axis=1, keepdims=True`).')
+    same_array(nu, ref('name_unit'), '`name_unit` — векторы, делённые на свою длину.', rtol=1e-4, atol=1e-5)
+    f = var('nearest')
+    ensure(callable(f), '`nearest` должна быть функцией.')
+    t5 = list(var('top5', list, 'списком'))
+    if t5 and t5[0] == 'blue whale':
+        fail('Само слово «blue whale» — первое в сортировке; соседи начинаются с позиции 1.')
+    equal(t5, list(ref('top5')), 'Пять ближайших — {expected}, а у вас {actual}.')
+    g = ref('nearest')
+    for w, k in [('tiramisu', 3), ('crab', 4), ('bald eagle', 2)]:
+        equal(list(f(w, k)), list(g(w, k)), 'nearest(' + repr(w) + ', ' + str(k) + ') должна вернуть {expected}, а у вас {actual}.')
+    equal(var('farthest', str, 'строкой'), ref('farthest'), 'Самое непохожее название — {expected}, а у вас {actual}.')
+  files: [zs_prompts.npz]
+  wrong:
+    - code: |
+        name_unit = name_vecs / np.linalg.norm(name_vecs, axis=1, keepdims=True)
+        def nearest(word, k=5):
+            sims = name_unit @ name_unit[names.index(word)]
+            order = np.argsort(-sims)
+            return [names[j] for j in order[:k]]
+        top5 = nearest('blue whale')
+        farthest = names[int(np.argmin(name_unit @ name_unit[names.index('blue whale')]))]
+      expect: позиции 1
+    - code: |
+        name_unit = name_vecs / np.linalg.norm(name_vecs)
+        def nearest(word, k=5):
+            sims = name_unit @ name_unit[names.index(word)]
+            order = np.argsort(-sims)
+            return [names[j] for j in order[1:k + 1]]
+        top5 = nearest('blue whale')
+        farthest = names[int(np.argmin(name_unit @ name_unit[names.index('blue whale')]))]
+      expect: длину 1
+    - code: |
+        name_unit = name_vecs / np.linalg.norm(name_vecs, axis=1, keepdims=True)
+        def nearest(word, k=5):
+            return ['humpback whale', 'sperm whale', 'great white shark', 'dolphin', 'bass fish'][:k]
+        top5 = nearest('blue whale')
+        farthest = names[int(np.argmin(name_unit @ name_unit[names.index('blue whale')]))]
+      expect: "nearest('tiramisu'"
+
+- id: m9-l2-t3
+  title: Соседи по текстам курса
+  difficulty: main
+  introduces: []
+  uses: [word-embedding, cosine-similarity]
+  statement: |
+    Постройте векторы слов по соседству в текстах курса, как в уроке. `vocab` — 800 частых слов (без служебных), `index` — номер слова. Получите:
+
+    - `M` — матрицу 800 × 800: `M[a, b]` — сколько раз слово `b` встречалось в окне ±3 слова от слова `a`;
+    - `neighbors` — словарь: для слов `'деревья'` и `'гистограмма'` — по три самых похожих слова (косинус строк `M`, без самого слова).
+  prelude: |
+    import re
+    from collections import Counter
+    import numpy as np
+    with open('course_texts.txt', encoding='utf-8') as fh:
+        text = fh.read()
+    sentences = [s for s in re.split(r'(?<=[.!?…])\s+|\n', text) if s.strip()]
+    sents = [w for w in (re.findall(r'[а-яё]+', s.lower()) for s in sentences) if w]
+    counts = Counter(w for s in sents for w in s)
+    stop = {w for w, _ in counts.most_common(60)}
+    vocab = [w for w, c in counts.most_common() if w not in stop and len(w) > 2][:800]
+    index = {w: i for i, w in enumerate(vocab)}
+  starter: |
+    M = np.zeros((len(vocab), len(vocab)))
+    for s in sents:
+        ids = [index.get(w) for w in s]
+        for i, a in enumerate(ids):
+            if a is None:
+                continue
+            for b in ...:
+                if b is not None:
+                    M[a, b] += 1
+    M_unit = ...
+    neighbors = {}
+    for w in ['деревья', 'гистограмма']:
+        sims = ...
+        neighbors[w] = ...
+    print(neighbors)
+  solution: |
+    M = np.zeros((len(vocab), len(vocab)))
+    for s in sents:
+        ids = [index.get(w) for w in s]
+        for i, a in enumerate(ids):
+            if a is None:
+                continue
+            for b in ids[max(0, i - 3):i] + ids[i + 1:i + 4]:
+                if b is not None:
+                    M[a, b] += 1
+    M_unit = M / np.linalg.norm(M, axis=1, keepdims=True)
+    neighbors = {}
+    for w in ['деревья', 'гистограмма']:
+        sims = M_unit @ M_unit[index[w]]
+        neighbors[w] = [vocab[j] for j in np.argsort(-sims)[1:4]]
+    print(neighbors)
+  explanation: |
+    - Окно ±3 — это три слова слева (`ids[max(0, i - 3):i]`) и три справа (`ids[i + 1:i + 4]`). `max(0, …)` нужен, чтобы в начале предложения срез не ушёл в отрицательные номера.
+    - «деревья» оказались рядом с «деревьев», «случайный» и «бустинг»: в курсе о лесе и бустинге говорят теми же словами. «гистограмма» — рядом с «боксплот» и «распределения»: это соседи по урокам визуализации.
+    - Модель не знает ни грамматики, ни смысла — только кто с кем стоит рядом. Этого уже хватает, чтобы похожие слова оказались рядом.
+  hints:
+    - "Соседи в окне ±3 — `ids[max(0, i - 3):i] + ids[i + 1:i + 4]`."
+    - "Нормировка строк — `M / np.linalg.norm(M, axis=1, keepdims=True)`; сходство со всеми — `M_unit @ M_unit[index[w]]`."
+    - "Три соседа без самого слова — `np.argsort(-sims)[1:4]`."
+  tests: |
+    import numpy as np
+    Ms = np.asarray(var('M'), dtype=float)
+    ensure(Ms.shape == ref('M').shape, '`M` — матрица {0}, а у вас {1}.'.format(ref('M').shape, Ms.shape))
+    if np.allclose(Ms, ref('M') - np.diag(np.diag(ref('M')))) and not np.allclose(Ms, ref('M')):
+        fail('Повторы слова внутри окна тоже считаются соседями — не исключайте их.')
+    if Ms.sum() < ref('M').sum() * 0.75:
+        fail('Соседей слишком мало: окно — три слова слева и три справа, `ids[max(0, i - 3):i] + ids[i + 1:i + 4]`.')
+    same_array(Ms, ref('M'), 'Матрица соседства не совпадает: окно ±3 слова вокруг каждого слова.')
+    nb = var('neighbors', dict, 'словарём')
+    for w in ['деревья', 'гистограмма']:
+        got = list(nb[w])
+        if got and got[0] == w:
+            fail('Само слово — первое в сортировке: соседи начинаются с позиции 1.')
+        equal(got, list(ref('neighbors')[w]), 'Соседи слова «' + w + '» — {expected}, а у вас {actual}.')
+    equal(alt('neighbors')['деревья'], alt_ref('neighbors')['деревья'], HARDCODE_MSG)
+  files: [course_texts.txt]
+  wrong:
+    - code: |
+        M = np.zeros((len(vocab), len(vocab)))
+        for s in sents:
+            ids = [index.get(w) for w in s]
+            for i, a in enumerate(ids):
+                if a is None:
+                    continue
+                for b in ids[i + 1:i + 4]:
+                    if b is not None:
+                        M[a, b] += 1
+        M_unit = M / np.maximum(np.linalg.norm(M, axis=1, keepdims=True), 1e-12)
+        neighbors = {}
+        for w in ['деревья', 'гистограмма']:
+            sims = M_unit @ M_unit[index[w]]
+            neighbors[w] = [vocab[j] for j in np.argsort(-sims)[1:4]]
+      expect: слишком мало
+    - code: |
+        M = np.zeros((len(vocab), len(vocab)))
+        for s in sents:
+            ids = [index.get(w) for w in s]
+            for i, a in enumerate(ids):
+                if a is None:
+                    continue
+                for b in ids[max(0, i - 3):i] + ids[i + 1:i + 4]:
+                    if b is not None:
+                        M[a, b] += 1
+        M_unit = M / np.linalg.norm(M, axis=1, keepdims=True)
+        neighbors = {}
+        for w in ['деревья', 'гистограмма']:
+            sims = M_unit @ M_unit[index[w]]
+            neighbors[w] = [vocab[j] for j in np.argsort(-sims)[:3]]
+      expect: позиции 1
+
+- id: m9-l2-t4
+  title: Близкие и далёкие группы
+  difficulty: main
+  introduces: []
+  uses: [word-embedding, cosine-similarity]
+  statement: |
+    В словаре `groups` — три группы названий: инструменты, транспорт и десерты. По нормированным векторам CLIP получите:
+
+    - `S` — матрицу 9 × 9 косинусов между всеми девятью словами (в порядке групп);
+    - `within` и `between` — среднее сходство пар из одной группы (без пар слова с самим собой) и пар из разных групп;
+    - `closest_cross` — самая похожая пара слов из **разных** групп (кортеж из двух слов, в порядке списка).
+  prelude: |
+    import numpy as np
+    with np.load('zs_prompts.npz') as data:
+        en = data['variant'] == 'en'
+        names = [str(x) for x in data['prompt'][en]]
+        name_vecs = data['emb'][en].astype(np.float32)
+    name_unit = name_vecs / np.linalg.norm(name_vecs, axis=1, keepdims=True)
+    groups = {'инструменты': ['grand piano', 'saxophone', 'accordion'],
+              'транспорт': ['ferry', 'motorbike', 'helicopter'],
+              'десерты': ['tiramisu', 'cheesecake', 'donuts']}
+  starter: |
+    flat = [w for ws in groups.values() for w in ws]
+    group_of = [g for g, ws in groups.items() for _ in ws]
+    V = ...
+    S = ...
+    same = np.array([[group_of[i] == group_of[j] and i != j for j in range(9)] for i in range(9)])
+    other = ...
+    within = ...
+    between = ...
+    i, j = np.unravel_index(np.where(other, S, -np.inf).argmax(), S.shape)
+    closest_cross = ...
+    print(round(within, 3), round(between, 3), closest_cross)
+  solution: |
+    flat = [w for ws in groups.values() for w in ws]
+    group_of = [g for g, ws in groups.items() for _ in ws]
+    V = name_unit[[names.index(w) for w in flat]]
+    S = V @ V.T
+    same = np.array([[group_of[i] == group_of[j] and i != j for j in range(9)] for i in range(9)])
+    other = np.array([[group_of[i] != group_of[j] for j in range(9)] for i in range(9)])
+    within = S[same].mean()
+    between = S[other].mean()
+    i, j = np.unravel_index(np.where(other, S, -np.inf).argmax(), S.shape)
+    closest_cross = (flat[min(i, j)], flat[max(i, j)])
+    print(round(within, 3), round(between, 3), closest_cross)
+  explanation: |
+    - `V @ V.T` — все попарные скалярные произведения нормированных векторов, то есть косинусы.
+    - Внутри групп среднее сходство 0,76, между группами — 0,70: модель разложила инструменты, транспорт и десерты по разным «углам» пространства.
+    - Но самая похожая пара из разных групп — «saxophone» и «motorbike» (0,79). Это больше, чем у «ferry» и «helicopter» из одной группы (0,72). Векторы названий — неточная карта смысла: модель училась на подписях к картинкам, а не по словарю.
+    - `np.unravel_index` переводит номер максимума в плоском массиве обратно в пару (строка, столбец).
+  hints:
+    - "Векторы девяти слов — `name_unit[[names.index(w) for w in flat]]`, косинусы — `V @ V.T`."
+    - "Маска разных групп — `group_of[i] != group_of[j]`; средние — `S[same].mean()` и `S[other].mean()`."
+    - "Пара по номерам — `(flat[min(i, j)], flat[max(i, j)])`."
+  tests: |
+    import numpy as np
+    Sm = np.asarray(var('S'), dtype=float)
+    ensure(Sm.shape == (9, 9), '`S` — матрица 9 × 9.')
+    same_array(Sm, ref('S'), '`S` — косинусы между девятью словами: `V @ V.T` для нормированных векторов.', rtol=1e-4, atol=1e-5)
+    w = var('within', 'number', 'числом')
+    if abs(w - ref('S')[np.array([[i // 3 == j // 3 for j in range(9)] for i in range(9)])].mean()) < 1e-6:
+        fail('В `within` не берите пары слова с самим собой — их сходство всегда 1.')
+    close(w, ref('within'), 'Среднее сходство внутри групп — {expected}, а у вас {actual}.', rtol=1e-4)
+    close(var('between', 'number', 'числом'), ref('between'), 'Среднее сходство между группами — {expected}, а у вас {actual}.', rtol=1e-4)
+    equal(tuple(var('closest_cross')), tuple(ref('closest_cross')), 'Самая похожая пара из разных групп — {expected}, а у вас {actual}.')
+  files: [zs_prompts.npz]
+  wrong:
+    - code: |
+        flat = [w for ws in groups.values() for w in ws]
+        group_of = [g for g, ws in groups.items() for _ in ws]
+        V = name_unit[[names.index(w) for w in flat]]
+        S = V @ V.T
+        same = np.array([[group_of[i] == group_of[j] for j in range(9)] for i in range(9)])
+        other = np.array([[group_of[i] != group_of[j] for j in range(9)] for i in range(9)])
+        within = S[same].mean()
+        between = S[other].mean()
+        i, j = np.unravel_index(np.where(other, S, -np.inf).argmax(), S.shape)
+        closest_cross = (flat[min(i, j)], flat[max(i, j)])
+      expect: с самим собой
+    - code: |
+        flat = [w for ws in groups.values() for w in ws]
+        group_of = [g for g, ws in groups.items() for _ in ws]
+        V = name_unit[[names.index(w) for w in flat]]
+        S = V @ V.T
+        same = np.array([[group_of[i] == group_of[j] and i != j for j in range(9)] for i in range(9)])
+        other = np.array([[group_of[i] != group_of[j] for j in range(9)] for i in range(9)])
+        within = S[same].mean()
+        between = S[other].mean()
+        i, j = np.unravel_index(np.where(same, S, -np.inf).argmax(), S.shape)
+        closest_cross = (flat[min(i, j)], flat[max(i, j)])
+      expect: из разных групп
+
+- id: m9-l2-t5
+  title: Знает ли CLIP латынь
+  difficulty: star
+  introduces: []
+  uses: [word-embedding, cosine-similarity, pd-groupby]
+  statement: |
+    Для каждого класса картинок в файле есть два варианта подписи: `'raw'` — название как в разметке (на английском, латыни или испанском) и `'en'` — английское название. Если модель «понимает» исходное название, их векторы будут близки. Получите:
+
+    - `pair_sims` — массив: косинус векторов `'raw'` и `'en'` для каждого из 349 классов (в порядке массивов `raw_*` и `en_*`);
+    - `by_language` — Series: средний косинус по языку исходного названия;
+    - `worst_latin` — список пяти латинских названий с наименьшим сходством.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    with np.load('zs_prompts.npz') as data:
+        raw = data['variant'] == 'raw'
+        en = data['variant'] == 'en'
+        raw_names = [str(x) for x in data['prompt'][raw]]
+        raw_vecs = data['emb'][raw].astype(np.float32)
+        en_vecs = data['emb'][en].astype(np.float32)
+        languages = [str(x) for x in data['language'][raw]]
+  starter: |
+    raw_unit = ...
+    en_unit = ...
+    pair_sims = ...
+    by_language = ...
+    latin = [i for i, lang in enumerate(languages) if lang == 'Latina']
+    worst_latin = ...
+    print(by_language.round(3))
+    print(worst_latin)
+  solution: |
+    raw_unit = raw_vecs / np.linalg.norm(raw_vecs, axis=1, keepdims=True)
+    en_unit = en_vecs / np.linalg.norm(en_vecs, axis=1, keepdims=True)
+    pair_sims = (raw_unit * en_unit).sum(axis=1)
+    by_language = pd.Series(pair_sims).groupby(pd.Series(languages)).mean()
+    latin = [i for i, lang in enumerate(languages) if lang == 'Latina']
+    worst_latin = [raw_names[i] for i in sorted(latin, key=lambda i: pair_sims[i])[:5]]
+    print(by_language.round(3))
+    print(worst_latin)
+  explanation: |
+    - `(raw_unit * en_unit).sum(axis=1)` — скалярные произведения строк попарно: косинус для каждого класса сразу, без цикла.
+    - Для английских названий сходство 0,98 — подписи почти совпадают. Для испанских — 0,80, для латинских — 0,68: научные названия редких видов модель почти не связывает с животными.
+    - Хуже всего — «passerina-ciris», певчая птица painted bunting: сходство 0,36. А «gorilla-gorilla» и «dugong-dugon» модель узнаёт (0,95): их латынь почти совпадает с английским «gorilla» и «dugong». Отсюда главный приём урока 9.8 — переводить названия классов на понятный модели английский.
+  hints:
+    - "Нормируйте строки обеих матриц, затем `(raw_unit * en_unit).sum(axis=1)`."
+    - "Среднее по языку — `pd.Series(pair_sims).groupby(pd.Series(languages)).mean()`."
+    - "Пять худших латинских — номера из `latin`, отсортированные по `pair_sims`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    ps = np.asarray(var('pair_sims'), dtype=float)
+    ensure(ps.shape == (349,), '`pair_sims` — по одному числу на каждый из 349 классов.')
+    if ps.max() > 1.0001:
+        fail('Сходство больше 1: нормируйте векторы перед скалярным произведением.')
+    same_array(ps, ref('pair_sims'), '`pair_sims` — косинусы векторов «raw» и «en» для каждого класса.', rtol=1e-4, atol=1e-5)
+    bl = var('by_language', pd.Series, 'Series')
+    same_array(bl.reindex(ref('by_language').index).to_numpy(dtype=float), ref('by_language').to_numpy(dtype=float), '`by_language` — средний косинус по языку.', rtol=1e-4)
+    equal(list(var('worst_latin', list, 'списком')), list(ref('worst_latin')), 'Пять латинских названий с наименьшим сходством — {expected}, а у вас {actual}.')
+  files: [zs_prompts.npz]
+  wrong:
+    - code: |
+        raw_unit = raw_vecs
+        en_unit = en_vecs
+        pair_sims = (raw_unit * en_unit).sum(axis=1) * 2
+        by_language = pd.Series(pair_sims).groupby(pd.Series(languages)).mean()
+        latin = [i for i, lang in enumerate(languages) if lang == 'Latina']
+        worst_latin = [raw_names[i] for i in sorted(latin, key=lambda i: pair_sims[i])[:5]]
+      expect: больше 1
+    - code: |
+        raw_unit = raw_vecs / np.linalg.norm(raw_vecs, axis=1, keepdims=True)
+        en_unit = en_vecs / np.linalg.norm(en_vecs, axis=1, keepdims=True)
+        pair_sims = (raw_unit * en_unit).sum(axis=1)
+        by_language = pd.Series(pair_sims).groupby(pd.Series(languages)).mean()
+        latin = [i for i, lang in enumerate(languages) if lang == 'Latina']
+        worst_latin = [raw_names[i] for i in sorted(latin, key=lambda i: -pair_sims[i])[:5]]
+      expect: наименьшим сходством

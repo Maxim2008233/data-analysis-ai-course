@@ -1,0 +1,319 @@
+- id: m3-l2-t1
+  title: Медианная цена по типу топлива
+  difficulty: warmup
+  introduces: [pd-groupby]
+  uses: [mean-median]
+  statement: |
+    Получите `median_by_fuel` — медианную цену для каждого типа топлива (Series) и `top_fuel` — тип топлива с самой высокой медианной ценой.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')   # результат модуля 2
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    median_by_fuel = ...
+    top_fuel = ...
+    print(top_fuel)
+    median_by_fuel
+  solution: |
+    median_by_fuel = df.groupby('Fuel_type')['Price'].median()
+    top_fuel = median_by_fuel.idxmax()
+    print(top_fuel)
+    median_by_fuel
+  explanation: |
+    - `groupby('Fuel_type')['Price'].median()` — медиана цены в каждой группе топлива.
+    - `idxmax()` возвращает метку (здесь — тип топлива) с наибольшим значением.
+  alternatives:
+    - |
+      median_by_fuel = df.groupby('Fuel_type')['Price'].median()
+      top_fuel = median_by_fuel.sort_values(ascending=False).index[0]
+  hints:
+    - Сгруппируйте по топливу, выберите цену и посчитайте медиану.
+    - "`df.groupby('Fuel_type')['Price'].median()`; метка максимума — `.idxmax()`."
+    - "`top_fuel = median_by_fuel.idxmax()`."
+  tests: |
+    import pandas as pd
+    m = var('median_by_fuel', pd.Series, 'Series — результатом groupby')
+    if abs(float(m.get('Diesel', 0)) - float(ref('df').loc[ref('df')['Fuel_type'] == 'Diesel', 'Price'].mean())) < 1e-6:
+        fail('Похоже, посчитано среднее, а нужна медиана: `.median()`.')
+    same_frame(m, ref('median_by_fuel'), 'Медианы цен по топливу не совпадают.')
+    equal(var('top_fuel'), ref('top_fuel'), 'Самая высокая медиана — у {expected}, а у вас {actual}.')
+    same_frame(alt('median_by_fuel'), alt_ref('median_by_fuel'), 'На другой части данных медианы должны получиться другими — считайте их группировкой.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        median_by_fuel = df.groupby('Fuel_type')['Price'].mean()
+        top_fuel = median_by_fuel.idxmax()
+      expect: медиана
+    - code: |
+        median_by_fuel = df.groupby('Fuel_type')['Price'].median()
+        top_fuel = median_by_fuel.index[0]
+      expect: Самая высокая медиана
+
+- id: m3-l2-t2
+  title: Три статистики по типу кузова
+  difficulty: main
+  introduces: [pd-agg]
+  uses: [pd-sort-values]
+  statement: |
+    Получите `style_stats` — таблицу со средней ценой, медианой и числом объявлений для каждого типа кузова (колонки `mean`, `median`, `size`), отсортированную по числу объявлений по убыванию.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    style_stats = ...
+    style_stats.round(0)
+  solution: |
+    style_stats = df.groupby('Style')['Price'].agg(['mean', 'median', 'size']).sort_values('size', ascending=False)
+    style_stats.round(0)
+  explanation: |
+    - `agg(['mean', 'median', 'size'])` — три статистики для каждого кузова; колонки названы по функциям.
+    - `sort_values('size', ascending=False)` — самые частые кузова сверху.
+  hints:
+    - Несколько функций сразу — метод `agg` со списком их названий.
+    - "`df.groupby('Style')['Price'].agg(['mean', 'median', 'size'])`, затем сортировка по колонке `size`."
+    - "`.sort_values('size', ascending=False)`."
+  tests: |
+    import pandas as pd
+    s = var('style_stats', pd.DataFrame, 'таблицей DataFrame — результатом agg')
+    ensure(list(s.columns) == ['mean', 'median', 'size'], 'Колонки должны быть mean, median, size (в этом порядке), а у вас {0}.'.format(list(s.columns)))
+    ensure(s['size'].is_monotonic_decreasing, 'Строки должны быть отсортированы по числу объявлений по убыванию.')
+    same_frame(s, ref('style_stats'), 'Статистики по кузовам не совпадают.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        style_stats = df.groupby('Style')['Price'].agg(['mean', 'median', 'size'])
+      expect: отсортированы
+    - code: |
+        style_stats = df.groupby('Style')['Price'].agg(['mean', 'size']).sort_values('size', ascending=False)
+      expect: Колонки должны быть
+
+- id: m3-l2-t3
+  title: Сколько объявлений каждого года
+  difficulty: main
+  introduces: [pd-groupby]
+  uses: [bool-mask]
+  statement: |
+    Получите `count_by_year` — число объявлений для каждого года выпуска (Series, по годам), `n_big_years` — сколько лет представлено **не менее чем 1400** объявлениями, и `median_2010` — медианную цену машин 2010 года из группировки по годам.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    count_by_year = ...
+    n_big_years = ...
+    median_2010 = ...
+    print(n_big_years, median_2010)
+  solution: |
+    count_by_year = df.groupby('Year')['Price'].size()
+    n_big_years = (count_by_year >= 1400).sum()
+    median_2010 = df.groupby('Year')['Price'].median()[2010]
+    print(n_big_years, median_2010)
+  explanation: |
+    - `groupby('Year')['Price'].size()` — число объявлений в каждой группе года; индекс — годы по возрастанию.
+    - Маска по Series частот `count_by_year >= 1400` и её сумма — число «крупных» лет.
+    - Значение группировки по метке: `[2010]` — медиана для группы 2010 года.
+  alternatives:
+    - |
+      count_by_year = df.groupby('Year').size()
+      n_big_years = int((count_by_year >= 1400).sum())
+      median_2010 = df.loc[df['Year'] == 2010, 'Price'].median()
+  hints:
+    - Число строк в группе — функция `size`. Значение Series берут по метке.
+    - "`df.groupby('Year')['Price'].size()`; маска `>= 1400` и `.sum()`; медианы по годам — `.median()`, значение — `[2010]`."
+    - "`median_2010 = df.groupby('Year')['Price'].median()[2010]`."
+  tests: |
+    import pandas as pd
+    c = var('count_by_year', pd.Series, 'Series — числом объявлений по годам')
+    same_frame(c, ref('count_by_year'), 'Число объявлений по годам не совпадает.', check_dtype=False)
+    n = var('n_big_years', 'number', 'числом')
+    if n == int((ref('count_by_year') > 1400).sum()) and n != ref('n_big_years'):
+        fail('«Не менее 1400» включает ровно 1400: нужно `>= 1400`.')
+    close(n, ref('n_big_years'), 'Лет с 1400+ объявлений — {expected}, а у вас {actual}.')
+    close(var('median_2010', 'number', 'числом'), ref('median_2010'), 'Медиана цены машин 2010 года — {expected}, а у вас {actual}.')
+    close(alt('median_2010'), alt_ref('median_2010'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        count_by_year = df.groupby('Year')['Price'].size()
+        n_big_years = (count_by_year > 1400).sum()
+        median_2010 = df.groupby('Year')['Price'].median()[2010]
+      expect: ">= 1400"
+    - code: |
+        count_by_year = df.groupby('Year')['Price'].size()
+        n_big_years = (count_by_year >= 1400).sum()
+        median_2010 = df.groupby('Year')['Price'].mean()[2010]
+      expect: Медиана цены машин 2010
+
+- id: m3-l2-t4
+  title: Сводка по маркам с понятными именами
+  difficulty: main
+  introduces: [pd-agg]
+  uses: [quantiles-iqr]
+  statement: |
+    Получите `make_summary` — таблицу по маркам с колонками (именованная агрегация):
+
+    - `n` — число объявлений;
+    - `median_price` — медианная цена;
+    - `q1` и `q3` — первый и третий квартили цены.
+
+    Затем `widest` — марку с самым большим межквартильным размахом `q3 − q1`.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    make_summary = df.groupby('Make').agg(
+        n=...,
+        median_price=...,
+        q1=('Price', lambda s: s.quantile(0.25)),
+        q3=...,
+    )
+    widest = ...
+    print(widest)
+    make_summary.round(0)
+  solution: |
+    make_summary = df.groupby('Make').agg(
+        n=('Price', 'size'),
+        median_price=('Price', 'median'),
+        q1=('Price', lambda s: s.quantile(0.25)),
+        q3=('Price', lambda s: s.quantile(0.75)),
+    )
+    widest = (make_summary['q3'] - make_summary['q1']).idxmax()
+    print(widest)
+    make_summary.round(0)
+  explanation: |
+    - Каждая пара `('Price', функция)` говорит: «из колонки Price посчитай вот это», а имя слева становится названием колонки результата.
+    - `lambda s: s.quantile(0.75)` получает цены группы и возвращает третий квартиль.
+    - Разность колонок — IQR каждой марки; `idxmax()` возвращает марку с наибольшим разбросом.
+  hints:
+    - "Формат именованной агрегации: `имя=('колонка', 'функция')`. Для квартилей пригодится `lambda`."
+    - "`n=('Price', 'size')`, `median_price=('Price', 'median')`, `q3=('Price', lambda s: s.quantile(0.75))`."
+    - "`widest = (make_summary['q3'] - make_summary['q1']).idxmax()`."
+  tests: |
+    import pandas as pd
+    s = var('make_summary', pd.DataFrame, 'таблицей DataFrame')
+    missing = [c for c in ['n', 'median_price', 'q1', 'q3'] if c not in s.columns]
+    if missing:
+        fail('В `make_summary` нет колонок {0}. Имена колонок задаются слева: `n=(...)`.'.format(missing))
+    same_frame(s[['n', 'median_price', 'q1', 'q3']], ref('make_summary'), 'Сводка по маркам не совпадает.', check_dtype=False)
+    equal(var('widest'), ref('widest'), 'Самый большой IQR — у {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        make_summary = df.groupby('Make').agg(
+            n=('Price', 'size'),
+            median_price=('Price', 'median'),
+            q1=('Price', lambda s: s.quantile(0.25)),
+            q3=('Price', lambda s: s.quantile(0.25)),
+        )
+        widest = (make_summary['q3'] - make_summary['q1']).idxmax()
+      expect: Сводка по маркам не совпадает
+    - code: |
+        make_summary = df.groupby('Make').agg(
+            n=('Price', 'size'),
+            median_price=('Price', 'median'),
+            q1=('Price', lambda s: s.quantile(0.25)),
+            q3=('Price', lambda s: s.quantile(0.75)),
+        )
+        widest = make_summary['median_price'].idxmax()
+      expect: Самый большой IQR
+
+- id: m3-l2-t5
+  kind: predict
+  title: Предскажите результат группировки
+  difficulty: main
+  introduces: [pd-groupby, pd-agg]
+  uses: []
+  statement: |
+    Не запуская код, ответьте на вопросы. Таблица:
+
+    ```python
+    t = pd.DataFrame({'make':  ['VW', 'BMW', 'VW', 'Audi', 'VW', 'BMW'],
+                      'price': [10,   30,    12,   25,     None, 20]})
+    ```
+  quiz:
+    - q: Что выведет код?
+      code: |
+        print(t.groupby('make')['price'].size()['VW'])
+      options:
+        - "2"
+        - "3"
+        - "6"
+      answer: 1
+      ordered: true
+      explain: "`size` считает все строки группы VW, включая строку с пропуском."
+    - q: Что выведет код?
+      code: |
+        print(t.groupby('make')['price'].mean()['VW'])
+      options:
+        - "11.0"
+        - "7.33"
+        - "nan"
+      answer: 0
+      explain: Среднее считается по известным значениям 10 и 12; пропуск не участвует.
+    - q: В каком порядке будут марки в индексе результата?
+      code: |
+        t.groupby('make')['price'].max()
+      options:
+        - VW, BMW, Audi — в порядке появления
+        - Audi, BMW, VW — по алфавиту
+        - BMW, Audi, VW — по убыванию максимума
+      answer: 1
+      explain: По умолчанию группы упорядочены по значению ключа; для рейтинга нужен `sort_values`.
+  hints:
+    - "Вспомните разницу между `size` и `count` и как функции обрабатывают пропуски."
+    - "`size` — все строки, `mean` — только известные значения; группы по умолчанию сортируются по ключу."
+    - "Ответы: 3; 11.0; по алфавиту."
+
+- id: m3-l2-t6
+  title: Десять самых дорогих марок и размер их групп
+  difficulty: star
+  introduces: [pd-agg]
+  uses: [pd-sort-values]
+  statement: |
+    Получите `top10` — 10 марок с самой высокой **средней** ценой: таблицу с колонками `mean_price` и `n` (число объявлений), по убыванию средней цены. Затем `smallest_top` — марку из этой десятки с наименьшим числом объявлений.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    top10 = ...
+    smallest_top = ...
+    print(smallest_top)
+    top10.round(0)
+  solution: |
+    top10 = (df.groupby('Make')
+               .agg(mean_price=('Price', 'mean'), n=('Price', 'size'))
+               .sort_values('mean_price', ascending=False)
+               .head(10))
+    smallest_top = top10['n'].idxmin()
+    print(smallest_top)
+    top10.round(0)
+  explanation: |
+    - Именованная агрегация даёт сразу две колонки — среднюю цену и размер группы.
+    - Сортировка по средней цене по убыванию и `head(10)` — десятка самых дорогих.
+    - `idxmin()` по колонке `n` — марка с самой маленькой группой: её место в рейтинге наименее надёжно.
+  hints:
+    - Сначала таблица по маркам с двумя колонками, потом сортировка и первые 10 строк.
+    - "`agg(mean_price=('Price', 'mean'), n=('Price', 'size'))`, `.sort_values('mean_price', ascending=False).head(10)`."
+    - "`smallest_top = top10['n'].idxmin()`."
+  tests: |
+    import pandas as pd
+    t = var('top10', pd.DataFrame, 'таблицей DataFrame')
+    if len(t) != 10:
+        fail('В `top10` {0} строк, а нужно 10.'.format(len(t)))
+    ensure(set(['mean_price', 'n']) <= set(t.columns), 'В `top10` должны быть колонки mean_price и n.')
+    ensure(t['mean_price'].is_monotonic_decreasing, 'Марки должны идти по убыванию средней цены.')
+    same_frame(t[['mean_price', 'n']], ref('top10')[['mean_price', 'n']], 'Десятка марок не совпадает с нужной.', check_dtype=False)
+    equal(var('smallest_top'), ref('smallest_top'), 'Меньше всего объявлений в десятке — у {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        top10 = df.groupby('Make').agg(mean_price=('Price', 'mean'), n=('Price', 'size')).sort_values('mean_price').head(10)
+        smallest_top = top10['n'].idxmin()
+      expect: по убыванию средней цены
+    - code: |
+        top10 = df.groupby('Make').agg(mean_price=('Price', 'mean'), n=('Price', 'size')).sort_values('mean_price', ascending=False).head(10)
+        smallest_top = top10['n'].idxmax()
+      expect: Меньше всего объявлений

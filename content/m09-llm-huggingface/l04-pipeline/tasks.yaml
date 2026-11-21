@@ -1,0 +1,377 @@
+- id: m9-l4-t1
+  title: Метки и вероятности
+  difficulty: warmup
+  introduces: [hf-pipeline]
+  uses: [binary-classification]
+  statement: |
+    Создайте `classifier` — pipeline тональности с моделью `'distilbert-base-uncased-finetuned-sst-2-english'` — и примените его к трём отзывам из `texts`. Получите:
+
+    - `labels` — список меток (`'POSITIVE'` или `'NEGATIVE'`);
+    - `scores` — список уверенностей модели;
+    - `p_positive` — список вероятностей класса POSITIVE: уверенность, если метка POSITIVE, и 1 минус уверенность, если NEGATIVE.
+  prelude: |
+    from transformers import pipeline
+    texts = ['The soup was cold and the bread was stale.',
+             'We had a wonderful stay and will definitely come back.',
+             'Oh wonderful, the app deleted all my photos.']
+  starter: |
+    classifier = pipeline(...)
+    preds = classifier(texts)
+    labels = ...
+    scores = ...
+    p_positive = ...
+    print(labels)
+    print([round(p, 4) for p in p_positive])
+  solution: |
+    classifier = pipeline('sentiment-analysis', model='distilbert-base-uncased-finetuned-sst-2-english')
+    preds = classifier(texts)
+    labels = [p['label'] for p in preds]
+    scores = [p['score'] for p in preds]
+    p_positive = [p['score'] if p['label'] == 'POSITIVE' else 1 - p['score'] for p in preds]
+    print(labels)
+    print([round(p, 4) for p in p_positive])
+  explanation: |
+    - Pipeline возвращает список словарей по одному на текст: `{'label': ..., 'score': ...}`.
+    - `score` — уверенность в выбранной метке, а не вероятность положительного класса. Для отрицательного отзыва о супе score = 0,9998, а вероятность POSITIVE — 0,0002.
+    - Третий отзыв — сарказм, и модель ошиблась: вероятность POSITIVE у неё 0,85.
+  hints:
+    - "`pipeline('sentiment-analysis', model='distilbert-base-uncased-finetuned-sst-2-english')`."
+    - "Метки — `[p['label'] for p in preds]`, уверенности — так же по ключу `'score'`."
+    - "`p['score'] if p['label'] == 'POSITIVE' else 1 - p['score']`."
+  tests: |
+    ensure(callable(var('classifier')), '`classifier` — результат `pipeline(...)`.')
+    lb = list(var('labels', list, 'списком'))
+    if lb and isinstance(lb[0], dict):
+        fail('`labels` — список строк-меток: возьмите из каждого словаря значение по ключу `\'label\'`.')
+    equal(lb, list(ref('labels')), 'Метки — {expected}, а у вас {actual}.')
+    same_array([float(x) for x in var('scores', list, 'списком')], [float(x) for x in ref('scores')], '`scores` — уверенности модели по ключу `\'score\'`.')
+    pp = [float(x) for x in var('p_positive', list, 'списком')]
+    if abs(pp[0] - float(ref('scores')[0])) < 1e-9:
+        fail('Для отзыва с меткой NEGATIVE вероятность POSITIVE — это 1 минус уверенность.')
+    same_array(pp, [float(x) for x in ref('p_positive')], '`p_positive` — вероятности класса POSITIVE.')
+  files: [distilbert_vocab.txt, sst2_logits.json]
+  wrong:
+    - code: |
+        classifier = pipeline('sentiment-analysis', model='distilbert-base-uncased-finetuned-sst-2-english')
+        preds = classifier(texts)
+        labels = preds
+        scores = [p['score'] for p in preds]
+        p_positive = [p['score'] if p['label'] == 'POSITIVE' else 1 - p['score'] for p in preds]
+      expect: строк-меток
+    - code: |
+        classifier = pipeline('sentiment-analysis', model='distilbert-base-uncased-finetuned-sst-2-english')
+        preds = classifier(texts)
+        labels = [p['label'] for p in preds]
+        scores = [p['score'] for p in preds]
+        p_positive = scores
+      expect: 1 минус
+
+- id: m9-l4-t2
+  title: Где ошибается модель
+  difficulty: main
+  introduces: []
+  uses: [hf-pipeline, pd-groupby]
+  statement: |
+    `preds` — ответы pipeline для всех отзывов `reviews`. Получите:
+
+    - столбцы `reviews['pred']` (1 — POSITIVE, 0 — NEGATIVE) и `reviews['correct']` (`True`, если прогноз совпал с `label`);
+    - `errors` — Series: число ошибок модели в каждой теме `domain`;
+    - `acc_by_lang` — Series: доля верных ответов для каждого языка `lang`;
+    - `worst_domain` — тему с наименьшей долей верных ответов.
+  prelude: |
+    import pandas as pd
+    from transformers import pipeline
+    classifier = pipeline('sentiment-analysis', model='distilbert-base-uncased-finetuned-sst-2-english')
+    reviews = pd.read_csv('reviews.csv')
+    preds = classifier(list(reviews['text']))
+  starter: |
+    reviews['pred'] = ...
+    reviews['correct'] = ...
+    errors = ...
+    acc_by_lang = ...
+    worst_domain = ...
+    print(errors.sort_values(ascending=False))
+    print(acc_by_lang.round(3), worst_domain)
+  solution: |
+    reviews['pred'] = [1 if p['label'] == 'POSITIVE' else 0 for p in preds]
+    reviews['correct'] = reviews['pred'] == reviews['label']
+    errors = (~reviews['correct']).groupby(reviews['domain']).sum()
+    acc_by_lang = reviews.groupby('lang')['correct'].mean()
+    worst_domain = reviews.groupby('domain')['correct'].mean().idxmin()
+    print(errors.sort_values(ascending=False))
+    print(acc_by_lang.round(3), worst_domain)
+  explanation: |
+    - `~reviews['correct']` — маска ошибок; сумма маски по группам — число ошибок в каждой теме. Такой Series содержит и темы без ошибок (с нулём).
+    - По две ошибки — в русских и «хитрых» отзывах, по одной — в товарах и сервисах. На английских отзывах доля верных 0,95, на русских — 0,75.
+    - Хуже всего модель справляется с русскими отзывами. Её дообучали на английских отзывах о фильмах, и русского она не понимает.
+  hints:
+    - "Прогноз — `1 if p['label'] == 'POSITIVE' else 0` для каждого словаря из `preds`; верность — сравнение с `reviews['label']`."
+    - "Ошибки по темам — `(~reviews['correct']).groupby(reviews['domain']).sum()`."
+    - "Доля верных по группам — `.groupby(...)['correct'].mean()`, тема с наименьшей долей — `.idxmin()`."
+  tests: |
+    import pandas as pd
+    rv = var('reviews', pd.DataFrame, 'таблицей')
+    ensure('pred' in rv.columns and 'correct' in rv.columns, 'Добавьте в `reviews` столбцы `pred` и `correct`.')
+    same_array(rv['pred'].to_numpy(dtype=float), ref('reviews')['pred'].to_numpy(dtype=float), '`pred` — 1 для POSITIVE и 0 для NEGATIVE.')
+    same_array(rv['correct'].to_numpy(dtype=float), ref('reviews')['correct'].to_numpy(dtype=float), '`correct` — совпал ли прогноз с `label`.')
+    er = var('errors', pd.Series, 'Series')
+    if abs(float(er.sum()) - float(ref('reviews')['correct'].sum())) < 1e-9:
+        fail('Это число верных ответов, а нужно число ошибок: суммируйте маску `~reviews[\'correct\']`.')
+    same_array(er.reindex(ref('errors').index).fillna(0).to_numpy(dtype=float), ref('errors').to_numpy(dtype=float), '`errors` — число ошибок в каждой теме.')
+    al = var('acc_by_lang', pd.Series, 'Series')
+    same_array(al.reindex(ref('acc_by_lang').index).to_numpy(dtype=float), ref('acc_by_lang').to_numpy(dtype=float), '`acc_by_lang` — доля верных ответов для каждого языка.')
+    equal(var('worst_domain', str, 'строкой'), ref('worst_domain'), 'Хуже всего модель справляется с темой {expected}, а у вас {actual}.')
+    ae, aref = alt('errors'), alt_ref('errors')
+    equal(ae.reindex(aref.index).fillna(0).astype(int).to_dict(), aref.astype(int).to_dict(), HARDCODE_MSG)
+  files: [reviews.csv, distilbert_vocab.txt, sst2_logits.json]
+  wrong:
+    - code: |
+        reviews['pred'] = [1 if p['label'] == 'POSITIVE' else 0 for p in preds]
+        reviews['correct'] = reviews['pred'] == reviews['label']
+        errors = reviews.groupby('domain')['correct'].sum()
+        acc_by_lang = reviews.groupby('lang')['correct'].mean()
+        worst_domain = reviews.groupby('domain')['correct'].mean().idxmin()
+      expect: число верных
+    - code: |
+        reviews['pred'] = [1 if p['label'] == 'POSITIVE' else 0 for p in preds]
+        reviews['correct'] = reviews['pred'] == reviews['label']
+        errors = (~reviews['correct']).groupby(reviews['domain']).sum()
+        acc_by_lang = reviews.groupby('lang')['correct'].mean()
+        worst_domain = reviews.groupby('domain')['correct'].mean().idxmax()
+      expect: Хуже всего
+
+- id: m9-l4-t3
+  title: Уверенные ошибки
+  difficulty: main
+  introduces: []
+  uses: [hf-pipeline, binary-classification]
+  statement: |
+    В `reviews` уже есть прогноз модели `pred`, её уверенность `score` и столбец `correct`. Получите:
+
+    - `wrong` — таблицу ошибок модели, отсортированную по убыванию уверенности;
+    - `n_confident` — сколько ошибок модель сделала с уверенностью выше 0,9;
+    - `score_right` и `score_wrong` — среднюю уверенность модели на верных и на ошибочных ответах.
+  prelude: |
+    import pandas as pd
+    from transformers import pipeline
+    classifier = pipeline('sentiment-analysis', model='distilbert-base-uncased-finetuned-sst-2-english')
+    reviews = pd.read_csv('reviews.csv')
+    preds = classifier(list(reviews['text']))
+    reviews['pred'] = [1 if p['label'] == 'POSITIVE' else 0 for p in preds]
+    reviews['score'] = [p['score'] for p in preds]
+    reviews['correct'] = reviews['pred'] == reviews['label']
+  starter: |
+    wrong = ...
+    n_confident = ...
+    score_right = ...
+    score_wrong = ...
+    print(wrong[['text', 'score']])
+    print(n_confident, round(score_right, 3), round(score_wrong, 3))
+  solution: |
+    wrong = reviews[~reviews['correct']].sort_values('score', ascending=False)
+    n_confident = int((wrong['score'] > 0.9).sum())
+    score_right = reviews.loc[reviews['correct'], 'score'].mean()
+    score_wrong = reviews.loc[~reviews['correct'], 'score'].mean()
+    print(wrong[['text', 'score']])
+    print(n_confident, round(score_right, 3), round(score_wrong, 3))
+  explanation: |
+    - Четыре ошибки из шести модель сделала с уверенностью выше 0,9. Самая уверенная — «Customer support solved my problem in five minutes»: модель сочла отзыв отрицательным с уверенностью 0,991.
+    - Средняя уверенность на ошибках — 0,87, на верных ответах — 0,96. На ошибках она ниже, но всё равно высокая: по одной уверенности ошибку не отличить.
+    - Поэтому модель, взятую с Hub, проверяют на своих размеченных примерах, прежде чем ей доверять.
+  hints:
+    - "Ошибки — `reviews[~reviews['correct']]`, сортировка — `.sort_values('score', ascending=False)`."
+    - "Уверенные ошибки — `(wrong['score'] > 0.9).sum()`."
+    - "Средние — `reviews.loc[reviews['correct'], 'score'].mean()` и то же для `~reviews['correct']`."
+  tests: |
+    import pandas as pd
+    w = var('wrong', pd.DataFrame, 'таблицей')
+    exp_texts = list(ref('wrong')['text'])
+    got_texts = list(w['text'])
+    if sorted(got_texts) == sorted(exp_texts) and got_texts == exp_texts[::-1]:
+        fail('Сортируйте по убыванию уверенности: `ascending=False`.')
+    equal(got_texts, exp_texts, 'В `wrong` должны быть ошибки модели по убыванию уверенности: {expected}, а у вас {actual}.')
+    nc = int(var('n_confident', 'number', 'числом'))
+    if nc == int((ref('reviews')['score'] > 0.9).sum()):
+        fail('Считайте только ошибки: уверенность выше 0,9 среди строк `wrong`.')
+    equal(nc, int(ref('n_confident')), 'Уверенных ошибок — {expected}, а у вас {actual}.')
+    close(var('score_right', 'number', 'числом'), ref('score_right'), 'Средняя уверенность на верных ответах — {expected}, а у вас {actual}.')
+    close(var('score_wrong', 'number', 'числом'), ref('score_wrong'), 'Средняя уверенность на ошибках — {expected}, а у вас {actual}.')
+    close(alt('score_wrong'), alt_ref('score_wrong'), HARDCODE_MSG)
+  files: [reviews.csv, distilbert_vocab.txt, sst2_logits.json]
+  wrong:
+    - code: |
+        wrong = reviews[~reviews['correct']].sort_values('score')
+        n_confident = int((wrong['score'] > 0.9).sum())
+        score_right = reviews.loc[reviews['correct'], 'score'].mean()
+        score_wrong = reviews.loc[~reviews['correct'], 'score'].mean()
+      expect: по убыванию
+    - code: |
+        wrong = reviews[~reviews['correct']].sort_values('score', ascending=False)
+        n_confident = int((reviews['score'] > 0.9).sum())
+        score_right = reviews.loc[reviews['correct'], 'score'].mean()
+        score_wrong = reviews.loc[~reviews['correct'], 'score'].mean()
+      expect: только ошибки
+
+- id: m9-l4-t4
+  title: Отложить сомнительные ответы
+  difficulty: main
+  introduces: []
+  uses: [hf-pipeline]
+  statement: |
+    Модель отвечает сама, только если её уверенность `score` не ниже порога `t`; остальные отзывы проверяет человек. Напишите функцию `answer_rate(df, t)`, которая возвращает пару:
+
+    - долю отзывов, на которые модель отвечает сама (уверенность не ниже `t`);
+    - долю верных ответов среди них (по столбцу `correct`).
+
+    Получите `rate_95 = answer_rate(reviews, 0.95)` и таблицу `table` для порогов из `thresholds`: столбцы `t`, `coverage` (доля отвеченных) и `accuracy` (доля верных среди них).
+  prelude: |
+    import pandas as pd
+    from transformers import pipeline
+    classifier = pipeline('sentiment-analysis', model='distilbert-base-uncased-finetuned-sst-2-english')
+    reviews = pd.read_csv('reviews.csv')
+    preds = classifier(list(reviews['text']))
+    reviews['pred'] = [1 if p['label'] == 'POSITIVE' else 0 for p in preds]
+    reviews['score'] = [p['score'] for p in preds]
+    reviews['correct'] = reviews['pred'] == reviews['label']
+    thresholds = [0.5, 0.7, 0.9, 0.95, 0.99]
+  starter: |
+    def answer_rate(df, t):
+        sure = ...
+        return ..., ...
+
+    rate_95 = answer_rate(reviews, 0.95)
+    table = pd.DataFrame([(t, *answer_rate(reviews, t)) for t in thresholds], columns=['t', 'coverage', 'accuracy'])
+    print(table.round(3))
+  solution: |
+    def answer_rate(df, t):
+        sure = df['score'] >= t
+        return sure.mean(), df.loc[sure, 'correct'].mean()
+
+    rate_95 = answer_rate(reviews, 0.95)
+    table = pd.DataFrame([(t, *answer_rate(reviews, t)) for t in thresholds], columns=['t', 'coverage', 'accuracy'])
+    print(table.round(3))
+  explanation: |
+    - Чем выше порог, тем реже модель отвечает сама, но тем чаще права. При пороге 0,5 она отвечает на всё с точностью 0,932, при 0,95 — на 87,5 % отзывов с точностью 0,974, при 0,99 — на 81 % с точностью 0,986.
+    - Порог выбирают по цене ошибки. Если ошибка дорогая (жалобу клиента пропустили), лучше отдать человеку больше отзывов.
+    - Даже при пороге 0,99 одна ошибка остаётся: «Customer support solved my problem in five minutes» модель оценила отрицательно с уверенностью 0,991.
+  hints:
+    - "Маска уверенных ответов — `df['score'] >= t`."
+    - "Доля отвеченных — среднее маски, точность — `df.loc[sure, 'correct'].mean()`."
+    - "`return sure.mean(), df.loc[sure, 'correct'].mean()`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    f = var('answer_rate')
+    ensure(callable(f), '`answer_rate` должна быть функцией.')
+    rng = np.random.default_rng(21)
+    df = pd.DataFrame({'score': rng.uniform(0.5, 1, 40), 'correct': rng.random(40) < 0.8})
+    for t in [0.6, 0.85]:
+        res = f(df, t)
+        ensure(isinstance(res, (tuple, list)) and len(res) == 2, '`answer_rate` должна возвращать пару: доля отвеченных и доля верных среди них.')
+        sure = df['score'] >= t
+        if abs(float(res[1]) - float(df['correct'].mean())) < 1e-12 and abs(float(df['correct'].mean()) - float(df.loc[sure, 'correct'].mean())) > 1e-9:
+            fail('Долю верных считайте только среди отвеченных: `df.loc[sure, \'correct\'].mean()`.')
+        close(float(res[0]), float(sure.mean()), 'На других данных доля отвеченных при пороге ' + str(t) + ' — {expected}, а у вас {actual}.')
+        close(float(res[1]), float(df.loc[sure, 'correct'].mean()), 'На других данных доля верных при пороге ' + str(t) + ' — {expected}, а у вас {actual}.')
+    r = var('rate_95')
+    same_array([float(x) for x in r], [float(x) for x in ref('rate_95')], '`rate_95` — пара для порога 0,95.')
+    tb = var('table', pd.DataFrame, 'таблицей')
+    same_array(tb[['t', 'coverage', 'accuracy']].to_numpy(dtype=float), ref('table')[['t', 'coverage', 'accuracy']].to_numpy(dtype=float), '`table` — порог, доля отвеченных и доля верных для каждого порога.')
+    same_array([float(x) for x in alt('rate_95')], [float(x) for x in alt_ref('rate_95')], HARDCODE_MSG)
+  files: [reviews.csv, distilbert_vocab.txt, sst2_logits.json]
+  wrong:
+    - code: |
+        def answer_rate(df, t):
+            sure = df['score'] >= t
+            return sure.mean(), df['correct'].mean()
+        rate_95 = answer_rate(reviews, 0.95)
+        table = pd.DataFrame([(t, *answer_rate(reviews, t)) for t in thresholds], columns=['t', 'coverage', 'accuracy'])
+      expect: среди отвеченных
+    - code: |
+        def answer_rate(df, t):
+            sure = df['score'] >= t
+            return sure.sum(), df.loc[sure, 'correct'].mean()
+        rate_95 = answer_rate(reviews, 0.95)
+        table = pd.DataFrame([(t, *answer_rate(reviews, t)) for t in thresholds], columns=['t', 'coverage', 'accuracy'])
+      expect: доля отвеченных
+
+- id: m9-l4-t5
+  title: Честна ли уверенность
+  difficulty: star
+  introduces: []
+  uses: [hf-pipeline, pd-groupby]
+  statement: |
+    Если модель «честна», то среди ответов с уверенностью около 0,8 верных тоже около 80 %. Проверим. Ответы уже разбиты на три группы по уверенности (столбец `group`). Получите:
+
+    - `calib` — таблицу с группами в индексе и столбцами `n` (число ответов), `mean_score` (средняя уверенность) и `accuracy` (доля верных);
+    - `gap` — Series: `accuracy − mean_score` для каждой группы. Отрицательный gap — модель переоценивает себя;
+    - `overconfident` — группу с наименьшим gap;
+    - `ece` — средний модуль gap, взвешенный по числу ответов в группах: сумма |gap| · n, делённая на общее число ответов. Это ожидаемая ошибка калибровки (expected calibration error, ECE).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from transformers import pipeline
+    classifier = pipeline('sentiment-analysis', model='distilbert-base-uncased-finetuned-sst-2-english')
+    reviews = pd.read_csv('reviews.csv')
+    preds = classifier(list(reviews['text']))
+    reviews['pred'] = [1 if p['label'] == 'POSITIVE' else 0 for p in preds]
+    reviews['score'] = [p['score'] for p in preds]
+    reviews['correct'] = reviews['pred'] == reviews['label']
+    reviews['group'] = np.where(reviews['score'] >= 0.99, '>=0.99', np.where(reviews['score'] >= 0.9, '0.9-0.99', '<0.9'))
+  starter: |
+    g = reviews.groupby('group')
+    calib = pd.DataFrame({'n': ..., 'mean_score': ..., 'accuracy': ...})
+    gap = ...
+    overconfident = ...
+    ece = ...
+    print(calib.round(3))
+    print(gap.round(3), overconfident, round(ece, 4))
+  solution: |
+    g = reviews.groupby('group')
+    calib = pd.DataFrame({'n': g.size(), 'mean_score': g['score'].mean(), 'accuracy': g['correct'].mean()})
+    gap = calib['accuracy'] - calib['mean_score']
+    overconfident = gap.idxmin()
+    ece = (gap.abs() * calib['n']).sum() / calib['n'].sum()
+    print(calib.round(3))
+    print(gap.round(3), overconfident, round(ece, 4))
+  explanation: |
+    - Ответов с уверенностью от 0,99 — 71, верных среди них 98,6 % при средней уверенности 0,999: здесь модель почти честна.
+    - В группе 0,9–0,99 средняя уверенность 0,965, а верных лишь 62,5 % (5 из 8). Модель сильно переоценивает себя: сюда попали три из четырёх уверенных ошибок.
+    - В группе ниже 0,9 наоборот: уверенность в среднем 0,60, а верных 78 % — русские отзывы модель часто «угадывает», сама в них сомневаясь. ECE ≈ 0,06. Групп мало, а отзывов в них — по 8–9, поэтому эти доли очень неточные: для честной проверки калибровки нужны сотни примеров.
+  hints:
+    - "`g.size()` — число строк в группах, `g['score'].mean()` и `g['correct'].mean()` — средние."
+    - "`gap = calib['accuracy'] - calib['mean_score']`, группа с наименьшим — `gap.idxmin()`."
+    - "ECE — `(gap.abs() * calib['n']).sum() / calib['n'].sum()`."
+  tests: |
+    import pandas as pd
+    cb = var('calib', pd.DataFrame, 'таблицей')
+    for col in ['n', 'mean_score', 'accuracy']:
+        ensure(col in cb.columns, 'В `calib` нужен столбец `' + col + '`.')
+    rc = ref('calib')
+    same_array(cb.reindex(rc.index)[['n', 'mean_score', 'accuracy']].to_numpy(dtype=float), rc[['n', 'mean_score', 'accuracy']].to_numpy(dtype=float), '`calib` — число ответов, средняя уверенность и доля верных в каждой группе.')
+    gp = var('gap', pd.Series, 'Series')
+    if gp.reindex(rc.index).to_numpy(dtype=float).tolist() == (-ref('gap')).to_numpy(dtype=float).tolist():
+        fail('gap — это accuracy минус mean_score, а не наоборот.')
+    same_array(gp.reindex(rc.index).to_numpy(dtype=float), ref('gap').to_numpy(dtype=float), '`gap` — accuracy − mean_score для каждой группы.')
+    equal(var('overconfident', str, 'строкой'), ref('overconfident'), 'Сильнее всего модель переоценивает себя в группе {expected}, а у вас {actual}.')
+    e = var('ece', 'number', 'числом')
+    if abs(e - float(ref('gap').abs().mean())) < 1e-9:
+        fail('ECE взвешивают по числу ответов в группах: сумма |gap| · n, делённая на общее число ответов.')
+    close(e, ref('ece'), 'ECE — {expected}, а у вас {actual}.')
+    close(alt('ece'), alt_ref('ece'), HARDCODE_MSG)
+  files: [reviews.csv, distilbert_vocab.txt, sst2_logits.json]
+  wrong:
+    - code: |
+        g = reviews.groupby('group')
+        calib = pd.DataFrame({'n': g.size(), 'mean_score': g['score'].mean(), 'accuracy': g['correct'].mean()})
+        gap = calib['mean_score'] - calib['accuracy']
+        overconfident = gap.idxmax()
+        ece = (gap.abs() * calib['n']).sum() / calib['n'].sum()
+      expect: а не наоборот
+    - code: |
+        g = reviews.groupby('group')
+        calib = pd.DataFrame({'n': g.size(), 'mean_score': g['score'].mean(), 'accuracy': g['correct'].mean()})
+        gap = calib['accuracy'] - calib['mean_score']
+        overconfident = gap.idxmin()
+        ece = gap.abs().mean()
+      expect: взвешивают

@@ -1,0 +1,361 @@
+- id: c3-l2-t1
+  title: Какие вопросы не оцениваются
+  difficulty: warmup
+  introduces: []
+  uses: [llm-evaluation]
+  statement: |
+    В тесте есть вопросы, которые не идут в долю верных. Найдите два вида из них — те, что видно по самим данным:
+
+    - `n_news` — сколько вопросов о событиях 2025–2026 годов: категория «новости 2025» **или** в тексте вопроса есть «2025» или «2026»;
+    - `n_broken` — у скольких вопросов варианты не разбираются: `parse_options` (готова) возвращает `None`;
+    - `broken_ids` — список `id` таких вопросов.
+  prelude: |
+    import ast
+    import json
+    import warnings
+    import pandas as pd
+    test = pd.read_csv('qa_test.csv')
+
+    def parse_options(s):
+        s = s.strip().rstrip(',').strip()
+        try:
+            value = json.loads(s)
+        except json.JSONDecodeError:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', SyntaxWarning)
+                try:
+                    value = ast.literal_eval(s)
+                except (ValueError, SyntaxError):
+                    return None
+        return [str(x) for x in value] if isinstance(value, (list, tuple)) else None
+  starter: |
+    news = (test['категория'] == 'новости 2025') | test['вопрос'].str.contains(...)
+    n_news = ...
+    options = test['варианты'].apply(parse_options)
+    n_broken = ...
+    broken_ids = ...
+    print(n_news, n_broken, broken_ids)
+  solution: |
+    news = (test['категория'] == 'новости 2025') | test['вопрос'].str.contains('2025|2026')
+    n_news = int(news.sum())
+    options = test['варианты'].apply(parse_options)
+    n_broken = int(options.isna().sum())
+    broken_ids = test.loc[options.isna(), 'id'].tolist()
+    print(n_news, n_broken, broken_ids)
+  explanation: |
+    - Вопросов о событиях 2025–2026 годов — 30: 25 в категории «новости 2025» и ещё 5 без категории, но с годом в тексте. Поэтому нужны оба условия через `|`.
+    - Варианты не разбираются у трёх вопросов: в одном вместо списка записан сам вопрос, в двух — формулы с апострофом внутри кавычек. Эти два вопроса человек и модель прочтут, и в соревновании они оцениваются.
+    - Ещё 23 испорченных вопроса программой не найти: варианты в них разбираются, но не подходят к вопросу или верного варианта нет. Их нашли, когда размечали тест вручную, — так и проверяют данные.
+  hints:
+    - "Шаблон `'2025|2026'` в `str.contains` ищет любой из двух годов."
+    - "Не разобралось — `options.isna()`; число — `.sum()`."
+    - "`broken_ids = test.loc[options.isna(), 'id'].tolist()`."
+  tests: |
+    nn = int(var('n_news', 'number', 'числом'))
+    if nn == 25:
+        fail('25 — только категория «новости 2025». Добавьте вопросы, в тексте которых есть 2025 или 2026: условия соединяет `|`.')
+    equal(nn, ref('n_news'), 'Вопросов о 2025–2026 годах — {expected}, а у вас {actual}.')
+    equal(int(var('n_broken', 'number', 'числом')), ref('n_broken'), 'Неразобранных вариантов — {expected}, а у вас {actual}.')
+    equal([int(x) for x in var('broken_ids', list, 'списком')], [int(x) for x in ref('broken_ids')], '`broken_ids` — {expected}, а у вас {actual}.')
+    equal(int(alt('n_news')), int(alt_ref('n_news')), HARDCODE_MSG)
+  files: [qa_test.csv]
+  wrong:
+    - code: |
+        news = test['категория'] == 'новости 2025'
+        n_news = int(news.sum())
+        options = test['варианты'].apply(parse_options)
+        n_broken = int(options.isna().sum())
+        broken_ids = test.loc[options.isna(), 'id'].tolist()
+      expect: соединяет `|`
+    - code: |
+        news = (test['категория'] == 'новости 2025') | test['вопрос'].str.contains('2025|2026')
+        n_news = int(news.sum())
+        options = test['варианты'].apply(parse_options)
+        n_broken = int(options.isna().sum())
+        broken_ids = options[options.isna()].index.tolist()[:2]
+      expect: broken_ids
+
+- id: c3-l2-t2
+  title: Простые ориентиры на обучающих вопросах
+  difficulty: main
+  introduces: []
+  uses: [llm-evaluation, pd-groupby]
+  statement: |
+    Прежде чем звать модель, узнаем, сколько дают решения без неё. На обучающих вопросах `train` посчитайте:
+
+    - `acc_const` — словарь «номер → доля верных, если всегда отвечать этим номером» для номеров 0, 1, 2 и 3;
+    - `acc_by_category` — долю верных у правила «отвечай номером, который чаще всего правильный в этой же категории». Чтобы не подглядеть ответ, для каждого вопроса номер выбирают по **остальным** вопросам категории. Если других вопросов в категории нет или категория «-», ответ — самый частый номер по всем остальным вопросам. При равенстве частот берётся меньший номер.
+  prelude: |
+    import pandas as pd
+    train = pd.read_csv('qa_train.csv')
+  starter: |
+    acc_const = {k: (train['ответ'] == k).mean() for k in [0, 1, 2, 3]}
+
+    def most_common(answers):
+        counts = answers.value_counts()
+        return int(counts[counts == counts.max()].index.min())
+
+    hits = []
+    for i in train.index:
+        others = train.drop(index=i)
+        same = others[(others['категория'] == train.loc[i, 'категория']) & (train.loc[i, 'категория'] != '-')]
+        guess = most_common(same['ответ']) if len(same) else ...
+        hits.append(guess == train.loc[i, 'ответ'])
+    acc_by_category = ...
+    print({k: round(float(v), 3) for k, v in acc_const.items()}, round(acc_by_category, 3))
+  solution: |
+    acc_const = {k: (train['ответ'] == k).mean() for k in [0, 1, 2, 3]}
+
+    def most_common(answers):
+        counts = answers.value_counts()
+        return int(counts[counts == counts.max()].index.min())
+
+    hits = []
+    for i in train.index:
+        others = train.drop(index=i)
+        same = others[(others['категория'] == train.loc[i, 'категория']) & (train.loc[i, 'категория'] != '-')]
+        guess = most_common(same['ответ']) if len(same) else most_common(others['ответ'])
+        hits.append(guess == train.loc[i, 'ответ'])
+    acc_by_category = sum(hits) / len(hits)
+    print({k: round(float(v), 3) for k, v in acc_const.items()}, round(acc_by_category, 3))
+  explanation: |
+    - Лучший постоянный ответ — «1»: он верен в 36,8 % обучающих вопросов. Номер 3 правилен всего в 6,9 % вопросов: варианты в тесте явно не перемешаны случайно.
+    - Самый частый номер своей категории угадывает столько же, сколько постоянный ответ «1», — 36,8 %. В категориях мало вопросов, частоты по ним случайны, и правило ничего не добавляет.
+    - Эти доли — нижняя планка. Решение с моделью, которое не обгоняет их уверенно, почти ничего не добавляет (урок 10.8).
+  hints:
+    - "Если похожих вопросов нет, ответ — `most_common(others['ответ'])`."
+    - "`hits` — список True и False; доля верных — `sum(hits) / len(hits)`."
+    - "Сам вопрос убран из `others` через `train.drop(index=i)` — так ответ не подглядывается."
+  tests: |
+    ac = var('acc_const', dict, 'словарём')
+    ensure(sorted(int(k) for k in ac) == [0, 1, 2, 3], '`acc_const` — доли верных для номеров 0, 1, 2 и 3.')
+    for k in [0, 1, 2, 3]:
+        close(ac[k], ref('acc_const')[k], 'Доля верных при ответе {0} — {{expected}}, а у вас {{actual}}.'.format(k))
+    abc = var('acc_by_category', 'number', 'числом')
+    close(abc, ref('acc_by_category'), 'Доля верных у правила «частый номер категории» — {expected}, а у вас {actual}.')
+    close(alt('acc_by_category'), alt_ref('acc_by_category'), HARDCODE_MSG)
+  files: [qa_train.csv]
+  wrong:
+    - code: |
+        acc_const = {k: (train['ответ'] == k).mean() for k in [0, 1, 2, 3]}
+        def most_common(answers):
+            counts = answers.value_counts()
+            return int(counts[counts == counts.max()].index.min())
+        hits = []
+        for i in train.index:
+            same = train[(train['категория'] == train.loc[i, 'категория']) & (train.loc[i, 'категория'] != '-')]
+            guess = most_common(same['ответ']) if len(same) else most_common(train['ответ'])
+            hits.append(guess == train.loc[i, 'ответ'])
+        acc_by_category = sum(hits) / len(hits)
+      expect: частый номер категории
+    - code: |
+        acc_const = {k: (train['ответ'] == k).sum() for k in [0, 1, 2, 3]}
+        def most_common(answers):
+            counts = answers.value_counts()
+            return int(counts[counts == counts.max()].index.min())
+        hits = []
+        for i in train.index:
+            others = train.drop(index=i)
+            same = others[(others['категория'] == train.loc[i, 'категория']) & (train.loc[i, 'категория'] != '-')]
+            guess = most_common(same['ответ']) if len(same) else most_common(others['ответ'])
+            hits.append(guess == train.loc[i, 'ответ'])
+        acc_by_category = sum(hits) / len(hits)
+      expect: Доля верных при ответе
+
+- id: c3-l2-t3
+  title: Запасной ответ вместо недопустимого
+  difficulty: main
+  introduces: []
+  uses: [structured-output, llm-evaluation]
+  statement: |
+    Первое улучшение baseline — без модели. Соберите таблицу `submission` с колонками `id` и `prediction` по ответам базового решения `baseline`, но каждый недопустимый номер (меньше 0 или не меньше числа вариантов `n`) замените номером `fallback` — самым частым правильным номером обучающих вопросов. У вопросов, варианты которых не разбираются, `n = 0`: их ответ тоже заменяется.
+
+    Получите `fallback`, `submission` (по строке на каждый вопрос теста, в порядке `baseline`) и `n_replaced` — сколько ответов заменено. Эту таблицу можно отправить из формы урока С3.3.
+  prelude: |
+    import ast
+    import json
+    import warnings
+    import pandas as pd
+    train = pd.read_csv('qa_train.csv')
+    test = pd.read_csv('qa_test.csv')
+    baseline = pd.read_csv('qa_gigachat_baseline.csv')
+
+    def n_options(s):
+        s = s.strip().rstrip(',').strip()
+        try:
+            value = json.loads(s)
+        except json.JSONDecodeError:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', SyntaxWarning)
+                try:
+                    value = ast.literal_eval(s)
+                except (ValueError, SyntaxError):
+                    return 0
+        return len(value) if isinstance(value, (list, tuple)) else 0
+
+    n = baseline['id'].map(test.set_index('id')['варианты'].map(n_options))      # число вариантов для каждой строки baseline
+  starter: |
+    fallback = int(train['ответ'].mode()[0])
+    bad = (baseline['prediction'] < 0) | (...)
+    submission = baseline[['id', 'prediction']].copy()
+    submission.loc[bad, 'prediction'] = ...
+    n_replaced = ...
+    print(fallback, n_replaced, submission.shape)
+  solution: |
+    fallback = int(train['ответ'].mode()[0])
+    bad = (baseline['prediction'] < 0) | (baseline['prediction'] >= n)
+    submission = baseline[['id', 'prediction']].copy()
+    submission.loc[bad, 'prediction'] = fallback
+    n_replaced = int(bad.sum())
+    print(fallback, n_replaced, submission.shape)
+  explanation: |
+    - Заменено 96 ответов: годы, числа из вопроса и «4» при четырёх вариантах (урок 10.5). Все они были заведомо неверны, а запасной номер 1 угадывает примерно в каждом третьем случае.
+    - Остальные 690 ответов остались как были — их проверить без правильных ответов нельзя.
+    - Отправьте эту таблицу из формы урока С3.3 и сравните с baseline. Если разница больше пары вопросов, починка формата действительно помогла.
+  hints:
+    - "Недопустимый номер — `baseline['prediction'] >= n` (и отрицательный)."
+    - "Замена — `submission.loc[bad, 'prediction'] = fallback`."
+    - "`n_replaced = int(bad.sum())`."
+  tests: |
+    import pandas as pd
+    equal(int(var('fallback', 'number', 'числом')), int(ref('fallback')), 'Самый частый правильный номер — {expected}, а у вас {actual}.')
+    sub = var('submission', pd.DataFrame, 'таблицей')
+    ensure(list(sub.columns) == ['id', 'prediction'], 'В `submission` нужны колонки `id` и `prediction`.')
+    ensure(len(sub) == len(ref('baseline')), 'В `submission` нужна строка на каждый вопрос теста: {0}, а у вас {1}.'.format(len(ref('baseline')), len(sub)))
+    base = ref('baseline')
+    changed = (sub['prediction'].to_numpy() != base['prediction'].to_numpy())
+    if (changed & ~ref('bad').to_numpy()).any():
+        fail('Допустимые ответы менять нельзя — заменяются только номера вне вариантов.')
+    equal(int(var('n_replaced', 'number', 'числом')), ref('n_replaced'), 'Заменено {expected} ответов, а у вас {actual}.')
+    same_frame(sub.reset_index(drop=True), ref('submission').reset_index(drop=True), '`submission` — baseline с запасным номером вместо недопустимых.')
+    equal(int(alt('n_replaced')), int(alt_ref('n_replaced')), HARDCODE_MSG)
+  files: [qa_train.csv, qa_test.csv, qa_gigachat_baseline.csv]
+  wrong:
+    - code: |
+        fallback = int(train['ответ'].mode()[0])
+        bad = (baseline['prediction'] < 0) | (baseline['prediction'] > n)
+        submission = baseline[['id', 'prediction']].copy()
+        submission.loc[bad, 'prediction'] = fallback
+        n_replaced = int(bad.sum())
+      expect: Заменено
+    - code: |
+        fallback = int(train['ответ'].mode()[0])
+        submission = baseline[['id', 'prediction']].copy()
+        submission['prediction'] = fallback
+        n_replaced = len(submission)
+        bad = submission['prediction'] >= 0
+      expect: Допустимые ответы менять нельзя
+
+- id: c3-l2-t4
+  title: Разбор ответа модели для Colab
+  difficulty: star
+  introduces: []
+  uses: [structured-output]
+  statement: |
+    В своём решении в Colab ответы GigaChat придётся разбирать. Напишите функцию `parse_answer(text, n)`: номер варианта `int` или `None`. Принимаются ответы трёх видов (с пробелами вокруг):
+
+    1. одно число, возможно с точкой: `2`, `2.`;
+    2. число после слова «Ответ» (любой регистр) с необязательным двоеточием: `Ответ: 2`;
+    3. JSON `{"answer": 2}`, возможно в рамке блока кода (`fence` — три обратные кавычки, готова).
+
+    Номер должен быть от 0 до `n - 1`, иначе `None`. Всё прочее — `None`. Получите `parsed` — результаты для `REPLIES` при четырёх вариантах и `n_none` — сколько из них `None`.
+  prelude: |
+    import json
+    import re
+    fence = '`' * 3
+    REPLIES = ['2', ' 1. ', 'Ответ: 3', 'ответ 0', '{"answer": 1}', fence + 'json\n{"answer": 2}\n' + fence,
+               'Правильный ответ — вариант 2', '4', '{"answer": "два"}', 'В 1662 году', '']
+  starter: |
+    def parse_answer(text, n):
+        text = text.strip()
+        body = text.removeprefix(fence + 'json').removeprefix(fence).removesuffix(fence).strip()
+        if body.startswith('{'):
+            try:
+                value = json.loads(body).get('answer')
+            except (json.JSONDecodeError, AttributeError):
+                return None
+        else:
+            m = re.fullmatch(..., text, flags=re.IGNORECASE)
+            value = int(m.group(1)) if m else None
+        if isinstance(value, bool) or not isinstance(value, int):
+            return None
+        return ...
+
+    parsed = [parse_answer(t, 4) for t in REPLIES]
+    n_none = ...
+    print(parsed, n_none)
+  solution: |
+    def parse_answer(text, n):
+        text = text.strip()
+        body = text.removeprefix(fence + 'json').removeprefix(fence).removesuffix(fence).strip()
+        if body.startswith('{'):
+            try:
+                value = json.loads(body).get('answer')
+            except (json.JSONDecodeError, AttributeError):
+                return None
+        else:
+            m = re.fullmatch(r'(?:ответ\s*:?\s*)?(\d+)\s*\.?', text, flags=re.IGNORECASE)
+            value = int(m.group(1)) if m else None
+        if isinstance(value, bool) or not isinstance(value, int):
+            return None
+        return value if 0 <= value < n else None
+
+    parsed = [parse_answer(t, 4) for t in REPLIES]
+    n_none = sum(p is None for p in parsed)
+    print(parsed, n_none)
+  explanation: |
+    - Одна функция понимает все три формата, о которых модель могли попросить, и честно отказывается от остального. Отказ — сигнал переспросить или поставить запасной номер (урок 10.5).
+    - «Правильный ответ — вариант 2» строгий разбор не принял. Если таких ответов много, лучше уточнить формат в промпте, чем расширять разбор до «любое число в тексте» — так возвращаются годы из ответов.
+    - Из 11 ответов разобрались шесть, пять дали `None`: свободный текст, недопустимый номер 4, номер словами в JSON, год и пустая строка.
+  hints:
+    - "Число с необязательным словом «ответ» и двоеточием — `r'(?:ответ\\s*:?\\s*)?(\\d+)\\s*\\.?'`."
+    - "Допустимый номер — `0 <= value < n`."
+    - "`n_none = sum(p is None for p in parsed)`."
+  tests: |
+    f = var('parse_answer')
+    ensure(callable(f), '`parse_answer` должна быть функцией.')
+    fence = '`' * 3
+    good = [('3', 4, 3), ('0.', 4, 0), ('Ответ: 1', 4, 1), ('ОТВЕТ 2', 4, 2), ('{"answer": 3}', 4, 3),
+            (fence + 'json\n{"answer": 0}\n' + fence, 4, 0), ('9', 10, 9)]
+    for text, n, want in good:
+        try:
+            got = f(text, n)
+        except Exception as e:
+            fail('На ответе {0!r} функция упала ({1}).'.format(text, type(e).__name__))
+        equal(got, want, 'Ответ {0!r} при {1} вариантах — номер {2}, а функция вернула {{actual}}.'.format(text, n, want))
+    bad = ['4', 'Ответ: 7', '{"answer": 5}', '{"answer": true}', 'вариант 2', '2, но не уверен', '{"answer": "1"', 'не знаю']
+    for text in bad:
+        try:
+            got = f(text, 4)
+        except Exception as e:
+            fail('На ответе {0!r} функция упала ({1}): ошибки разбора нужно ловить и возвращать None.'.format(text, type(e).__name__))
+        if got is not None:
+            fail('Ответ {0!r} не годится — функция должна вернуть None, а вернула {1!r}.'.format(text, got))
+    equal(var('parsed', list, 'списком'), ref('parsed'), '`parsed` — {expected}, а у вас {actual}.')
+    equal(int(var('n_none', 'number', 'числом')), ref('n_none'), '`None` у {expected} ответов, а у вас {actual}.')
+  wrong:
+    - code: |
+        def parse_answer(text, n):
+            m = re.search(r'\d+', text)
+            return int(m.group(0)) if m and int(m.group(0)) < n else None
+        parsed = [parse_answer(t, 4) for t in REPLIES]
+        n_none = sum(p is None for p in parsed)
+      expect: не годится
+    - code: |
+        def parse_answer(text, n):
+            text = text.strip()
+            body = text.removeprefix(fence + 'json').removeprefix(fence).removesuffix(fence).strip()
+            if body.startswith('{'):
+                try:
+                    value = json.loads(body).get('answer')
+                except (json.JSONDecodeError, AttributeError):
+                    return None
+            else:
+                m = re.fullmatch(r'(?:ответ\s*:?\s*)?(\d+)\s*\.?', text, flags=re.IGNORECASE)
+                value = int(m.group(1)) if m else None
+            if not isinstance(value, int):
+                return None
+            return value if 0 <= value < n else None
+        parsed = [parse_answer(t, 4) for t in REPLIES]
+        n_none = sum(p is None for p in parsed)
+      expect: не годится

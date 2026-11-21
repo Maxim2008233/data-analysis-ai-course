@@ -1,0 +1,236 @@
+- id: m3-l0-t1
+  title: Сколько дизелей с автоматом
+  difficulty: warmup
+  introduces: []
+  uses: [pd-bool-filter]
+  statement: |
+    Получите `n_diesel_auto` — число объявлений с дизельным двигателем (`Fuel_type` равно `'Diesel'`) **и** автоматической коробкой (`Transmission` равно `'Automatic'`).
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')   # результат модуля 2
+  starter: |
+    n_diesel_auto = ...
+    print(n_diesel_auto)
+  solution: |
+    n_diesel_auto = len(df[(df['Fuel_type'] == 'Diesel') & (df['Transmission'] == 'Automatic')])
+    print(n_diesel_auto)
+  explanation: |
+    - Два сравнения дают две маски; `&` — «и», каждое сравнение в скобках (урок 2.5).
+    - `df[маска]` оставляет подходящие строки, `len` считает их.
+  alternatives:
+    - |
+      n_diesel_auto = int(((df['Fuel_type'] == 'Diesel') & (df['Transmission'] == 'Automatic')).sum())
+  hints:
+    - Два условия одновременно — две маски, объединённые «и».
+    - "`(df['Fuel_type'] == 'Diesel') & (df['Transmission'] == 'Automatic')`; число строк — `len(df[маска])` или сумма маски."
+    - "`n_diesel_auto = len(df[(df['Fuel_type'] == 'Diesel') & (df['Transmission'] == 'Automatic')])`."
+  tests: |
+    n = var('n_diesel_auto', 'number', 'числом')
+    d = ref('df')
+    if n == int(((d['Fuel_type'] == 'Diesel') | (d['Transmission'] == 'Automatic')).sum()):
+        fail('Получилось слишком много: условия объединены через `|` («или»). Нужно «и» — `&`.')
+    close(n, ref('n_diesel_auto'), 'Дизелей с автоматом — {expected}, а у вас {actual}.')
+    close(alt('n_diesel_auto'), alt_ref('n_diesel_auto'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        n_diesel_auto = len(df[(df['Fuel_type'] == 'Diesel') | (df['Transmission'] == 'Automatic')])
+      expect: "`|`"
+    - code: |
+        n_diesel_auto = len(df[df['Fuel_type'] == 'Diesel'])
+      expect: Дизелей с автоматом
+
+- id: m3-l0-t2
+  title: Доля седанов
+  difficulty: warmup
+  introduces: []
+  uses: [pd-value-counts]
+  statement: |
+    Получите `style_share` — долю каждого типа кузова (Series, по убыванию) и `sedan_share` — долю седанов (`'Sedan'`).
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    style_share = ...
+    sedan_share = ...
+    print(round(sedan_share, 4))
+  solution: |
+    style_share = df['Style'].value_counts(normalize=True)
+    sedan_share = style_share['Sedan']
+    print(round(sedan_share, 4))
+  explanation: |
+    - `value_counts(normalize=True)` — доли вместо количеств, уже по убыванию (урок 2.3).
+    - Доля седанов — значение этой Series по метке `'Sedan'`.
+  alternatives:
+    - |
+      style_share = df['Style'].value_counts() / len(df)
+      sedan_share = (df['Style'] == 'Sedan').mean()
+  hints:
+    - Какой параметр `value_counts` превращает частоты в доли?
+    - "`df['Style'].value_counts(normalize=True)`; значение по метке — `style_share['Sedan']`."
+    - "`sedan_share = style_share['Sedan']`."
+  tests: |
+    import pandas as pd
+    s = var('style_share', pd.Series, 'Series')
+    if (s > 1).any():
+        fail('В `style_share` количества, а нужны доли: `value_counts(normalize=True)`.')
+    same_frame(s, ref('style_share'), 'Доли типов кузова не совпадают.')
+    close(var('sedan_share', 'number', 'числом'), ref('sedan_share'), 'Доля седанов — {expected}, а у вас {actual}.')
+    close(alt('sedan_share'), alt_ref('sedan_share'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        style_share = df['Style'].value_counts()
+        sedan_share = style_share['Sedan']
+      expect: нужны доли
+    - code: |
+        style_share = df['Style'].value_counts(normalize=True)
+        sedan_share = style_share.max() / 2
+      expect: Доля седанов
+
+- id: m3-l0-t3
+  title: Медиана и квартили цены новых машин
+  difficulty: warmup
+  introduces: []
+  uses: [pd-bool-filter, quantiles-iqr, mean-median]
+  statement: |
+    Для автомобилей **2015 года выпуска и новее** получите `median_new` — медианную цену, `q1_new` и `q3_new` — первый и третий квартили цены, `iqr_new` — межквартильный размах.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    new_prices = ...
+    median_new = ...
+    q1_new, q3_new = ...
+    iqr_new = ...
+    print(median_new, q1_new, q3_new, iqr_new)
+  solution: |
+    new_prices = df.loc[df['Year'] >= 2015, 'Price']
+    median_new = new_prices.median()
+    q1_new, q3_new = new_prices.quantile([0.25, 0.75])
+    iqr_new = q3_new - q1_new
+    print(median_new, q1_new, q3_new, iqr_new)
+  explanation: |
+    - `df.loc[маска, 'Price']` — цены только нужных строк (урок 2.5).
+    - `quantile([0.25, 0.75])` возвращает два квартиля, их удобно сразу разложить в две переменные.
+    - IQR = Q3 − Q1 — ширина центральной половины цен (урок 1.7).
+  alternatives:
+    - |
+      import numpy as np
+      new_prices = df[df['Year'] >= 2015]['Price']
+      median_new = np.median(new_prices)
+      q1_new = np.quantile(new_prices, 0.25)
+      q3_new = np.quantile(new_prices, 0.75)
+      iqr_new = q3_new - q1_new
+  hints:
+    - Сначала цены только нужных машин, затем статистики по ним.
+    - "`df.loc[df['Year'] >= 2015, 'Price']`; у Series есть `median()` и `quantile([0.25, 0.75])`."
+    - "`q1_new, q3_new = new_prices.quantile([0.25, 0.75])`, `iqr_new = q3_new - q1_new`."
+  tests: |
+    m = var('median_new', 'number', 'числом')
+    if abs(float(m) - float(ref('df').loc[ref('df')['Year'] > 2015, 'Price'].median())) < 1e-9 and abs(float(m) - float(ref('median_new'))) > 1e-9:
+        fail('В выборку не попали машины 2015 года: «2015 и новее» — это `>= 2015`.')
+    close(m, ref('median_new'), 'Медиана цены — {expected}, а у вас {actual}.')
+    close(var('q1_new', 'number', 'числом'), ref('q1_new'), 'Q1 — {expected}, а у вас {actual}.')
+    close(var('q3_new', 'number', 'числом'), ref('q3_new'), 'Q3 — {expected}, а у вас {actual}.')
+    close(var('iqr_new', 'number', 'числом'), ref('iqr_new'), 'IQR — {expected}, а у вас {actual}. IQR = Q3 − Q1.')
+    close(alt('median_new'), alt_ref('median_new'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        new_prices = df.loc[df['Year'] > 2015, 'Price']
+        median_new = new_prices.median()
+        q1_new, q3_new = new_prices.quantile([0.25, 0.75])
+        iqr_new = q3_new - q1_new
+      expect: ">= 2015"
+    - code: |
+        new_prices = df.loc[df['Year'] >= 2015, 'Price']
+        median_new = new_prices.median()
+        q1_new, q3_new = new_prices.quantile([0.25, 0.75])
+        iqr_new = q3_new + q1_new
+      expect: IQR
+
+- id: m3-l0-t4
+  title: Цена в тысячах и дорогие объявления
+  difficulty: warmup
+  introduces: []
+  uses: [pd-new-column, bool-mask]
+  statement: |
+    Создайте колонку `Price_k` — цену в тысячах евро, и получите `share_over_20k` — долю объявлений, у которых `Price_k` **больше** 20.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    df['Price_k'] = ...
+    share_over_20k = ...
+    print(round(share_over_20k, 4))
+  solution: |
+    df['Price_k'] = df['Price'] / 1000
+    share_over_20k = (df['Price_k'] > 20).mean()
+    print(round(share_over_20k, 4))
+  explanation: |
+    - Новая колонка — выражение над колонкой: деление сразу для всех строк (урок 2.8).
+    - Среднее маски `df['Price_k'] > 20` — доля дорогих объявлений (урок 1.5).
+  hints:
+    - Новая колонка создаётся присваиванием, доля — среднее маски.
+    - "`df['Price_k'] = df['Price'] / 1000`; маска `df['Price_k'] > 20` и её `.mean()`."
+    - "`share_over_20k = (df['Price_k'] > 20).mean()`."
+  tests: |
+    import pandas as pd
+    d = var('df', pd.DataFrame, 'таблицей')
+    ensure('Price_k' in d.columns, 'В таблице нет колонки `Price_k`.')
+    same_frame(d['Price_k'], ref('df')['Price_k'], 'Колонка Price_k должна быть ценой в тысячах: `Price / 1000`.')
+    close(var('share_over_20k', 'number', 'числом'), ref('share_over_20k'), 'Доля объявлений дороже 20 тыс. евро — {expected}, а у вас {actual}.')
+    close(alt('share_over_20k'), alt_ref('share_over_20k'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        df['Price_k'] = df['Price'] * 1000
+        share_over_20k = (df['Price_k'] > 20).mean()
+      expect: Price / 1000
+    - code: |
+        df['Price_k'] = df['Price'] / 1000
+        share_over_20k = (df['Price_k'] > 20).sum()
+      expect: Доля объявлений
+
+- id: m3-l0-t5
+  title: Три самые дорогие Toyota
+  difficulty: main
+  introduces: []
+  uses: [pd-bool-filter, pd-sort-values]
+  statement: |
+    Получите `top_toyota` — три самых дорогих объявления марки Toyota (все колонки, от самого дорогого).
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    top_toyota = ...
+    top_toyota[['Model', 'Year', 'Price']]
+  solution: |
+    top_toyota = df[df['Make'] == 'Toyota'].sort_values('Price', ascending=False).head(3)
+    top_toyota[['Model', 'Year', 'Price']]
+  explanation: |
+    - Сначала фильтр по марке, затем сортировка по цене по убыванию и первые три строки (уроки 2.2 и 2.5).
+  alternatives:
+    - |
+      top_toyota = df[df['Make'] == 'Toyota'].nlargest(3, 'Price')
+  hints:
+    - Отфильтруйте марку, потом отсортируйте по цене.
+    - "`df[df['Make'] == 'Toyota']`, затем `.sort_values('Price', ascending=False).head(3)`."
+    - "`top_toyota = df[df['Make'] == 'Toyota'].sort_values('Price', ascending=False).head(3)`."
+  tests: |
+    import pandas as pd
+    t = var('top_toyota', pd.DataFrame, 'таблицей DataFrame')
+    if len(t) != 3:
+        fail('В `top_toyota` {0} строк, а нужно 3.'.format(len(t)))
+    ensure((t['Make'] == 'Toyota').all(), 'В `top_toyota` попали не только Toyota.')
+    ensure(t['Price'].is_monotonic_decreasing, 'Строки должны идти от самой дорогой: `ascending=False`.')
+    ensure(set(t.index) == set(ref('top_toyota').index), 'Это не три самых дорогих Toyota — проверьте сортировку.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        top_toyota = df[df['Make'] == 'Toyota'].sort_values('Price').head(3)
+      expect: ascending=False
+    - code: |
+        top_toyota = df.sort_values('Price', ascending=False).head(3)
+      expect: не только Toyota

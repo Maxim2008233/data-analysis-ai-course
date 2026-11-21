@@ -1,0 +1,20 @@
+id: m5
+number: 5
+label: Модуль 5
+title: "Машинное обучение и первая модель в Scikit-learn"
+short: Первая модель
+firstLessonIndex: 0
+description: >-
+  Что такое машинное обучение: объект, признаки и ответ, виды задач, модель как семейство функций, функция потерь,
+  метод наименьших квадратов и градиентный спуск, обобщающая способность и переобучение, обучающая, валидационная и
+  тестовая выборки. Практика в Scikit-learn: X и y, два разделения 60/20/20, модель-ориентир, fit и predict, MAE руками
+  и через sklearn, линейная регрессия, StandardScaler без утечки, метрики RMSE, R², MAPE и график «цена — прогноз».
+  Мини-проект — первая модель на медицинских данных Diabetes.
+sources:
+  - Lec/02_Машинное_обучение.pptx
+  - Lec/03_Модели_машинного_обучения.pptx
+  - Workshops/05_Sklearn_первая_модель.ipynb
+  - Workshops/2025/04_SKLearnBasics.ipynb
+  - MLtextbook/Глава_3_Линейная_Регрессия_Cars.ipynb
+  - MLtextbook/Глава_3_Линейная_Регрессия_Синтетические_данные.ipynb
+warmupReviews: [target-features, pd-select-columns, pd-new-column, pd-loc-iloc, pd-bool-filter, pd-value-counts, mean-median, std-var, broadcasting, rng-sample, vectorization]

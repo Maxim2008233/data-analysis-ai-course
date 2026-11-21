@@ -1,0 +1,235 @@
+- id: np-array
+  term: np.array
+  category: NumPy
+  aliases: [array, создание массива]
+  summary: Создаёт массив из списка (или списка списков для матрицы). Все элементы приводятся к общему типу.
+  syntax: |
+    np.array(список, dtype=None)
+  example: |
+    a = np.array([5000, 8000, 10000])
+    m = np.array([[1, 2], [3, 4]])
+- id: np-ndarray
+  term: ndarray (массив NumPy)
+  category: NumPy
+  aliases: [массив, матрица, вектор]
+  summary: Основной объект NumPy — многомерный массив с элементами одного типа `dtype`. Одномерный массив — вектор, двумерный — матрица «строки × столбцы». Операции выполняются сразу над всеми элементами.
+  example: |
+    X.ndim, X.shape, X.dtype   # 2, (41007, 4), float64
+- id: np-shape
+  term: shape, size, ndim
+  category: NumPy
+  aliases: [форма, размер, оси, len]
+  summary: "`a.shape` — кортеж размеров по осям; `a.size` — число всех элементов; `a.ndim` — число осей; `len(a)` — размер первой оси. Это атрибуты: без скобок."
+  example: |
+    n_rows, n_features = X.shape   # (41007, 4)
+    X.size                         # 164028
+- id: np-dtype
+  term: dtype (тип элементов)
+  category: NumPy
+  aliases: [тип, float64, int32, int64, astype]
+  summary: Тип всех элементов массива. Числовая матрица с пропусками хранится как `float64`, поэтому год выглядит как `2011.0`. В браузерном Python (Pyodide) целые по умолчанию `int32`, на обычном компьютере — чаще `int64`. Преобразовать — `a.astype(int)`.
+  example: |
+    np.array([1, 2]).dtype      # int32 в браузере, int64 на компьютере
+    np.array([1.5, 2]).dtype    # float64
+- id: np-genfromtxt
+  term: np.genfromtxt
+  category: NumPy
+  aliases: [чтение csv, загрузка, loadtxt]
+  summary: Читает числа из текстового файла. `delimiter` — разделитель, `skip_header` — сколько строк пропустить сверху, `usecols` — номера столбцов (с нуля), `dtype=float` — тип, `ndmin=2` — всегда матрица. Нечисловые и пустые значения становятся `nan`.
+  syntax: |
+    np.genfromtxt(путь, delimiter=',', skip_header=1, usecols=[...], dtype=float, ndmin=2)
+  example: |
+    X = np.genfromtxt('cars.csv', delimiter=',', skip_header=1,
+                      usecols=[2, 4, 5, 8], dtype=float, ndmin=2)
+- id: np-indexing
+  term: Индексация X[i, j]
+  category: NumPy
+  aliases: [индекс, элемент, отрицательный индекс]
+  summary: "`X[i, j]` — элемент строки `i` и столбца `j`, нумерация с 0. Отрицательные индексы считают с конца: `a[-1]` — последний. Список индексов выбирает несколько элементов: `a[[0, 5, 9]]`."
+  example: |
+    X[0, 3]          # цена первой записи
+    price[-1]        # последняя цена
+    X[100, :]        # вся запись 100
+- id: np-slicing
+  term: Срезы a[start:stop:step]
+  category: NumPy
+  aliases: [срез, slice, двоеточие]
+  summary: "Срез берёт позиции от `start` до `stop − 1` с шагом `step`. Пропущенный `start` — с начала, `stop` — до конца. `:` — все элементы оси: `X[:, 3]` — весь столбец 3."
+  example: |
+    price[:5]        # позиции 0–4
+    X[10:15, :]      # строки 10–14
+    year[::1000]     # каждый тысячный год
+- id: vectorization
+  term: Векторизация
+  category: NumPy
+  aliases: [поэлементные операции, без цикла]
+  summary: Операция над массивом применяется к каждому элементу без явного цикла — короче и в десятки раз быстрее. Два массива одинаковой формы складываются/умножаются попарно.
+  example: |
+    engine_litres = engine / 1000
+    price_per_litre = price / engine_litres
+- id: np-view-copy
+  term: view и copy
+  category: NumPy
+  aliases: [представление, копия, .copy()]
+  summary: Срез обычно не копирует данные, а ссылается на них (view). Изменение такого среза меняет исходный массив. `.copy()` создаёт независимую копию. Выбор по маске или списку индексов всегда даёт копию.
+  example: |
+    part = price[:5]          # view
+    safe = price[:5].copy()   # копия
+- id: np-nan
+  term: np.nan, np.inf
+  category: NumPy
+  aliases: [nan, пропуск, бесконечность, inf]
+  summary: "`np.nan` — специальное значение «не число», обозначает пропуск. Любая арифметика с `nan` даёт `nan`; `nan == nan` — False. `np.inf` — бесконечность."
+  example: |
+    np.mean(np.array([1.0, np.nan]))   # nan
+- id: np-isnan
+  term: np.isnan
+  category: NumPy
+  aliases: [isnan, найти пропуски]
+  summary: "Возвращает маску той же формы: True там, где значение — `nan`. `np.isnan(a).sum()` — число пропусков."
+  example: |
+    np.isnan(engine).sum()   # 205
+- id: np-isfinite
+  term: np.isfinite
+  category: NumPy
+  aliases: [isfinite, конечные значения, isinf]
+  summary: True для обычных конечных чисел; False для `nan`, `inf` и `-inf`. Удобно для отбора значений, пригодных для статистик.
+  example: |
+    known_price = np.isfinite(price)
+    price_values = price[known_price]
+- id: np-nanmean
+  term: np.nanmean и другие nan-функции
+  category: NumPy
+  aliases: [nanmean, nanmedian, nanstd, nanmin, nanmax]
+  summary: Варианты статистик, которые игнорируют `nan`. Это не очистка данных — бесконечности, нули и ошибочные значения они не исправляют.
+  example: |
+    np.nanmean(engine)     # 1853.86
+- id: boolean-mask
+  term: Логическая маска
+  category: NumPy
+  aliases: [маска, фильтр, условие, True/False]
+  summary: Массив True/False, полученный сравнением. `a[mask]` оставляет элементы с True; `mask.sum()` или `np.count_nonzero(mask)` — их число; `mask.mean()` — доля. Маска должна совпадать по длине с массивом.
+  example: |
+    expensive = price_values > 10_000
+    expensive.sum(), expensive.mean()   # 12716, 0.31
+- id: np-count-nonzero
+  term: np.count_nonzero
+  category: NumPy
+  aliases: [count_nonzero, подсчёт True]
+  summary: Считает ненулевые элементы — для маски это число True.
+  example: |
+    np.count_nonzero(price_values > 20_000)   # 3617
+- id: mask-operators
+  term: "& | ~ (логические операции с масками)"
+  category: NumPy
+  aliases: [and, or, not, объединение условий]
+  summary: "`&` — «и», `|` — «или», `~` — «не», поэлементно. Каждое сравнение берите в скобки: `(a > 1) & (b < 2)` — у `&` приоритет выше, чем у сравнения. `and`/`or` с массивами вызывают ошибку «truth value … is ambiguous»."
+  example: |
+    suspicious = (distance > 1_000_000) | (engine <= 0)
+- id: np-mean
+  term: np.mean (среднее)
+  category: NumPy
+  aliases: [mean, среднее арифметическое]
+  summary: Сумма значений, делённая на их количество. Одно крайнее значение может сильно сдвинуть среднее. С `nan` возвращает `nan`.
+  example: |
+    np.mean(price_values)    # 9727.11
+- id: np-median
+  term: np.median (медиана)
+  category: NumPy
+  aliases: [median, медиана]
+  summary: Значение посередине упорядоченного набора (для чётного числа — среднее двух центральных). Устойчива к выбросам.
+  example: |
+    np.median(price_values)  # 6600.0
+- id: np-min-max
+  term: np.min, np.max, np.ptp
+  category: NumPy
+  aliases: [min, max, ptp, размах]
+  summary: "Наименьшее и наибольшее значения; `np.ptp(a)` — размах `max − min`."
+  example: |
+    np.min(price_values), np.max(price_values)   # 1.0, 10000000.0
+- id: np-argmax
+  term: np.argmax, np.argmin
+  category: NumPy
+  aliases: [argmax, argmin, позиция максимума]
+  summary: Позиция (индекс) наибольшего / наименьшего элемента. После фильтрации это позиция в отфильтрованном векторе, а не номер исходной строки.
+  example: |
+    pos = np.argmax(price_values)
+    price_rows[pos]          # номер исходной записи
+- id: np-argsort
+  term: np.argsort, np.sort
+  category: NumPy
+  aliases: [argsort, sort, сортировка, топ]
+  summary: "`np.sort(a)` — отсортированные значения, `np.argsort(a)` — позиции, которые упорядочивают массив по возрастанию. `[-5:][::-1]` — пять наибольших в порядке убывания."
+  example: |
+    top5 = np.argsort(price_values)[-5:][::-1]
+- id: np-arange
+  term: np.arange, np.linspace
+  category: NumPy
+  aliases: [arange, linspace, номера строк, zeros, ones]
+  summary: "`np.arange(n)` — числа 0…n−1 (удобно как номера строк), `np.arange(a, b, шаг)`; `np.linspace(a, b, k)` — k равноотстоящих чисел; `np.zeros`, `np.ones` — массивы нулей и единиц."
+  example: |
+    row_id = np.arange(len(X))
+    np.linspace(0, 1, 5)    # [0., 0.25, 0.5, 0.75, 1.]
+- id: np-quantile
+  term: np.quantile
+  category: NumPy
+  aliases: [quantile, percentile, квантиль, перцентиль, квартиль]
+  summary: Граница, ниже которой лежит доля q упорядоченных значений. 0.5 — медиана, 0.25 и 0.75 — квартили Q1 и Q3. Можно передать список уровней. `np.percentile` то же в процентах.
+  example: |
+    np.quantile(price_values, [0.25, 0.5, 0.75])   # [3500., 6600., 12150.]
+- id: np-std-var
+  term: np.std, np.var
+  category: NumPy
+  aliases: [std, var, стандартное отклонение, дисперсия, ddof]
+  summary: "Дисперсия — среднее квадратов отклонений от среднего (единицы²), стандартное отклонение — корень из неё (единицы признака). `ddof=0` описывает данный набор, `ddof=1` — оценка по выборке."
+  example: |
+    np.std(price_values, ddof=0)   # 50438.65
+- id: np-histogram
+  term: np.histogram
+  category: NumPy
+  aliases: [histogram, частоты, интервалы, bins]
+  summary: Считает, сколько значений попало в каждый интервал. Возвращает `(counts, edges)`. Интервалы `[левая, правая)`, последний включает правую границу. Можно задать число интервалов или их границы.
+  example: |
+    counts, edges = np.histogram(values, bins=[0, 5000, 10000, np.inf])
+- id: np-column-stack
+  term: np.column_stack
+  category: NumPy
+  aliases: [column_stack, склеить столбцы, hstack, vstack]
+  summary: Склеивает векторы как столбцы матрицы — удобно, чтобы показать номер записи рядом с её значениями.
+  example: |
+    np.column_stack((price_rows[:3], price_values[:3]))
+- id: np-default-rng
+  term: np.random.default_rng
+  category: NumPy
+  aliases: [random, seed, генератор случайных чисел, rng]
+  summary: Создаёт генератор случайных чисел. Одинаковый seed — одинаковая последовательность, поэтому опыт можно повторить.
+  example: |
+    rng = np.random.default_rng(42)
+- id: rng-choice
+  term: rng.choice
+  category: NumPy
+  aliases: [choice, случайная выборка, replace]
+  summary: "Случайно выбирает элементы или позиции: `rng.choice(n, size=k, replace=False)` — k разных позиций из 0…n−1. `replace=True` разрешает повторы."
+  example: |
+    pos = rng.choice(price_values.size, size=100, replace=False)
+- id: np-axis
+  term: axis (ось)
+  category: NumPy
+  aliases: [axis=0, axis=1, по столбцам, по строкам]
+  summary: Параметр статистик для матриц. `axis=0` сворачивает строки — получается результат для каждого столбца; `axis=1` сворачивает столбцы — результат для каждой строки.
+  example: |
+    np.isnan(X).sum(axis=0)    # [0, 0, 205, 0]
+- id: np-broadcasting
+  term: Broadcasting
+  category: NumPy
+  aliases: [трансляция, растяжение, совместимые формы]
+  summary: Правило, по которому NumPy выполняет операции над массивами разной формы. Формы сравниваются с конца; размеры совпадают или один из них равен 1 (он «растягивается»).
+  example: |
+    X_centered = X - X.mean(axis=0)   # (n, 4) - (4,) → (n, 4)
+- id: np-reshape
+  term: reshape, .T
+  category: NumPy
+  aliases: [reshape, транспонирование, столбец]
+  summary: "`a.reshape(-1, 1)` превращает вектор в столбец (−1 — «вычисли сам»). `.T` транспонирует матрицу; у одномерного вектора `.T` ничего не меняет."
+  example: |
+    np.array([1, 2, 3]).reshape(-1, 1).shape   # (3, 1)

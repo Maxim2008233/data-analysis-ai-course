@@ -1,0 +1,345 @@
+- id: m2-l8-t1
+  title: Короткие имена колонок
+  difficulty: warmup
+  introduces: [pd-rename-drop]
+  uses: [pd-reset-index]
+  statement: |
+    Получите `renamed` — таблицу `df`, в которой колонка `Engine_capacity(cm3)` называется `Engine`, а `Price(euro)` — `Price`. Остальные колонки и все значения не меняются.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    # уроки 2.6–2.7: повторы, неполные записи, область анализа, исходная метка строки
+    df = raw.drop_duplicates().dropna().copy()
+    df = df[df['Year'].between(1951, 2021) & df['Distance'].between(0, 1_000_000) &
+            df['Engine_capacity(cm3)'].between(200, 5000) & df['Price(euro)'].between(101, 500_000) &
+            ~((df['Year'] < 2021) & (df['Distance'] < 1100))].copy()
+    df['source_row_id'] = df.index
+    df = df.reset_index(drop=True)
+  starter: |
+    renamed = ...
+    print(renamed.columns.tolist())
+  solution: |
+    renamed = df.rename(columns={'Engine_capacity(cm3)': 'Engine', 'Price(euro)': 'Price'})
+    print(renamed.columns.tolist())
+  explanation: |
+    - Словарь `{старое: новое}` перечисляет, что переименовать; остальные колонки остаются как есть.
+    - Параметр `columns=` обязателен: без него переименовываются метки строк.
+  hints:
+    - Какой метод меняет имена колонок? Какой параметр говорит, что речь о колонках?
+    - "`df.rename(columns={'старое': 'новое', ...})`."
+    - "`renamed = df.rename(columns={'Engine_capacity(cm3)': 'Engine', 'Price(euro)': 'Price'})`."
+  tests: |
+    import pandas as pd
+    r = var('renamed', pd.DataFrame, 'таблицей DataFrame')
+    cols = [str(c) for c in r.columns]
+    if 'Price(euro)' in cols and 'Engine_capacity(cm3)' in cols:
+        fail('Имена колонок не изменились. Передайте словарь в параметр `columns=`: без него rename переименовывает метки строк.')
+    same_frame(r, ref('renamed'), 'Таблица `renamed` не совпадает с нужной.')
+  wrong:
+    - code: |
+        renamed = df.rename({'Engine_capacity(cm3)': 'Engine', 'Price(euro)': 'Price'})
+      expect: columns=
+    - code: |
+        renamed = df.rename(columns={'Price(euro)': 'Price'})
+      expect: Engine
+
+- id: m2-l8-t2
+  title: Возраст и пробег в год
+  difficulty: main
+  introduces: [pd-new-column]
+  uses: [vectorization]
+  statement: |
+    В копии `cars` таблицы `renamed` создайте две колонки:
+
+    - `Age` — условный возраст: `REFERENCE_YEAR − Year`;
+    - `km_year` — условный среднегодовой пробег: пробег, делённый на возраст.
+
+    Опорный год `REFERENCE_YEAR` уже задан константой.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.drop_duplicates().dropna().copy()   # уроки 2.6–2.7
+    df = df[df['Year'].between(1951, 2021) & df['Distance'].between(0, 1_000_000) &
+            df['Engine_capacity(cm3)'].between(200, 5000) & df['Price(euro)'].between(101, 500_000) &
+            ~((df['Year'] < 2021) & (df['Distance'] < 1100))].copy()
+    df['source_row_id'] = df.index
+    df = df.reset_index(drop=True)
+    renamed = df.rename(columns={'Engine_capacity(cm3)': 'Engine', 'Price(euro)': 'Price'})   # задание 2.8.1
+    REFERENCE_YEAR = 2022
+  starter: |
+    cars = renamed.copy()
+    cars['Age'] = ...
+    cars['km_year'] = ...
+    cars[['Year', 'Age', 'Distance', 'km_year']].head()
+  solution: |
+    cars = renamed.copy()
+    cars['Age'] = REFERENCE_YEAR - cars['Year']
+    cars['km_year'] = cars['Distance'] / cars['Age']
+    cars[['Year', 'Age', 'Distance', 'km_year']].head()
+  explanation: |
+    - `REFERENCE_YEAR - cars['Year']` — вычитание из каждого значения колонки сразу, без цикла.
+    - `cars['Distance'] / cars['Age']` — поэлементное деление: пробег каждой строки на возраст той же строки.
+    - Присваивание `cars['имя'] = ...` создаёт новую колонку.
+  hints:
+    - Новая колонка — это присваивание выражения над колонками в `cars['имя']`.
+    - "`cars['Age'] = REFERENCE_YEAR - cars['Year']`; для пробега в год разделите колонку `Distance` на `Age`."
+    - "`cars['km_year'] = cars['Distance'] / cars['Age']`."
+  tests: |
+    import pandas as pd
+    c = var('cars', pd.DataFrame, 'таблицей DataFrame')
+    for col in ['Age', 'km_year']:
+        if col not in c.columns:
+            fail('В `cars` нет колонки `{0}`. Создайте её присваиванием `cars[\'{0}\'] = ...`.'.format(col))
+    if (c['Age'] < 0).any():
+        fail('Возраст получился отрицательным — вычитайте год выпуска из опорного года: `REFERENCE_YEAR - cars[\'Year\']`.')
+    same_frame(c['Age'], ref('cars')['Age'], 'Колонка Age не совпадает с `REFERENCE_YEAR - Year`.')
+    if (c['km_year'] > c['Distance'] + 1e-9).any():
+        fail('Пробег в год больше общего пробега — похоже, вы умножили вместо деления. Нужно `Distance / Age`.')
+    same_frame(c['km_year'], ref('cars')['km_year'], 'Колонка km_year не совпадает с `Distance / Age`.')
+    same_frame(alt('cars')['km_year'], alt_ref('cars')['km_year'], 'На другой части данных km_year не совпадает — вычисляйте колонку формулой.')
+  wrong:
+    - code: |
+        cars = renamed.copy()
+        cars['Age'] = cars['Year'] - REFERENCE_YEAR
+        cars['km_year'] = cars['Distance'] / cars['Age']
+      expect: отрицательным
+    - code: |
+        cars = renamed.copy()
+        cars['Age'] = REFERENCE_YEAR - cars['Year']
+        cars['km_year'] = cars['Distance'] * cars['Age']
+      expect: умножили
+
+- id: m2-l8-t3
+  title: Кандидаты с очень большим пробегом в год
+  difficulty: main
+  introduces: [pd-new-column]
+  uses: [pd-bool-filter, mean-median]
+  statement: |
+    Получите:
+
+    - `high_km` — объявления с пробегом **больше** 100 000 км в год;
+    - `n_high_km` — их число;
+    - `median_km_year` — медиану `km_year` по **всей** таблице `cars`.
+
+    Посмотрите на `high_km`: какие записи похожи на ошибку, а какие могут быть правдой?
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.drop_duplicates().dropna().copy()   # уроки 2.6–2.7
+    df = df[df['Year'].between(1951, 2021) & df['Distance'].between(0, 1_000_000) &
+            df['Engine_capacity(cm3)'].between(200, 5000) & df['Price(euro)'].between(101, 500_000) &
+            ~((df['Year'] < 2021) & (df['Distance'] < 1100))].copy()
+    df['source_row_id'] = df.index
+    df = df.reset_index(drop=True)
+    cars = df.rename(columns={'Engine_capacity(cm3)': 'Engine', 'Price(euro)': 'Price'})
+    cars['Age'] = 2022 - cars['Year']                # задание 2.8.2
+    cars['km_year'] = cars['Distance'] / cars['Age']
+  starter: |
+    high_km = ...
+    n_high_km = ...
+    median_km_year = ...
+    print(n_high_km, round(median_km_year))
+    high_km[['Make', 'Model', 'Year', 'Distance', 'km_year', 'Price']]
+  solution: |
+    high_km = cars[cars['km_year'] > 100_000]
+    n_high_km = len(high_km)
+    median_km_year = cars['km_year'].median()
+    print(n_high_km, round(median_km_year))
+    high_km[['Make', 'Model', 'Year', 'Distance', 'km_year', 'Price']]
+  explanation: |
+    - Маска `cars['km_year'] > 100_000` отбирает строки с очень большим пробегом в год.
+    - Медиана по всей таблице показывает «типичный» пробег в год — с ней удобно сравнивать кандидатов.
+  hints:
+    - Отберите строки маской по новой колонке; медиану считайте по всей колонке.
+    - "`cars[cars['km_year'] > 100_000]`; `len(...)`; `cars['km_year'].median()`."
+    - "`median_km_year = cars['km_year'].median()`."
+  tests: |
+    import pandas as pd
+    h = var('high_km', pd.DataFrame, 'таблицей DataFrame')
+    same_frame(h, ref('high_km'), 'В `high_km` должны быть все объявления с km_year больше 100 000.')
+    close(var('n_high_km', 'number', 'числом'), ref('n_high_km'), 'Таких объявлений — {expected}, а у вас {actual}.')
+    m = var('median_km_year', 'number', 'числом')
+    if abs(float(m) - float(ref('high_km')['km_year'].median())) < 1e-9:
+        fail('Медиана посчитана только по `high_km`. Нужна медиана по всей таблице `cars`.')
+    close(m, ref('median_km_year'), 'Медиана km_year — {expected}, а у вас {actual}.')
+    close(alt('median_km_year'), alt_ref('median_km_year'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        high_km = cars[cars['km_year'] > 100_000]
+        n_high_km = len(high_km)
+        median_km_year = high_km['km_year'].median()
+      expect: всей таблице
+    - code: |
+        high_km = cars[cars['Distance'] > 100_000]
+        n_high_km = len(high_km)
+        median_km_year = cars['km_year'].median()
+      expect: km_year больше 100 000
+
+- id: m2-l8-t4
+  title: Таблица без технической колонки
+  difficulty: main
+  introduces: [pd-rename-drop]
+  uses: []
+  statement: |
+    Получите `no_tech` — таблицу `cars` без колонки `source_row_id`. Сама `cars` должна сохранить эту колонку: по ней мы проверяем происхождение строк.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.drop_duplicates().dropna().copy()   # уроки 2.6–2.7
+    df = df[df['Year'].between(1951, 2021) & df['Distance'].between(0, 1_000_000) &
+            df['Engine_capacity(cm3)'].between(200, 5000) & df['Price(euro)'].between(101, 500_000) &
+            ~((df['Year'] < 2021) & (df['Distance'] < 1100))].copy()
+    df['source_row_id'] = df.index
+    df = df.reset_index(drop=True)
+    cars = df.rename(columns={'Engine_capacity(cm3)': 'Engine', 'Price(euro)': 'Price'})
+  starter: |
+    no_tech = ...
+    print(cars.shape, no_tech.shape)
+  solution: |
+    no_tech = cars.drop(columns=['source_row_id'])
+    print(cars.shape, no_tech.shape)
+  explanation: |
+    - `drop(columns=[...])` возвращает новую таблицу без указанных колонок.
+    - Исходная `cars` не меняется, потому что результат записан в другую переменную.
+  alternatives:
+    - |
+      no_tech = cars[[c for c in cars.columns if c != 'source_row_id']]
+  hints:
+    - Какой метод удаляет колонки и возвращает новую таблицу?
+    - "`cars.drop(columns=['source_row_id'])` — результат сохраните в `no_tech`."
+    - "`no_tech = cars.drop(columns=['source_row_id'])`."
+  tests: |
+    import pandas as pd
+    n = var('no_tech', pd.DataFrame, 'таблицей DataFrame')
+    ensure('source_row_id' not in n.columns, 'В `no_tech` осталась колонка `source_row_id`.')
+    ensure('source_row_id' in var('cars').columns, 'Из `cars` пропала колонка `source_row_id`. Удаляйте её только в `no_tech`, не перезаписывая `cars`.')
+    same_frame(n, ref('no_tech'), 'Таблица `no_tech` не совпадает с нужной.')
+  wrong:
+    - code: |
+        cars = cars.drop(columns=['source_row_id'])
+        no_tech = cars
+      expect: пропала колонка
+    - code: |
+        no_tech = cars.drop(columns=['source_row_id', 'Model'])
+      expect: Не хватает колонок
+
+- id: m2-l8-t5
+  kind: predict
+  title: Предскажите результат
+  difficulty: main
+  introduces: [pd-rename-drop, pd-new-column]
+  uses: []
+  statement: |
+    Не запуская код, ответьте на вопросы. В таблице `t` 10 колонок, среди них `Year`, `Distance` и `Price(euro)`.
+  quiz:
+    - q: Что выведет код?
+      code: |
+        t2 = t.rename({'Price(euro)': 'Price'})
+        print('Price' in t2.columns)
+      options:
+        - "True"
+        - "False"
+        - Ошибку KeyError
+      answer: 1
+      explain: Без `columns=` переименовываются метки строк; колонка остаётся `Price(euro)`.
+    - q: Сколько колонок станет в `t`?
+      code: |
+        t['Age'] = 2022 - t['Year']
+        t['km_year'] = t['Distance'] / t['Age']
+        print(t.shape[1])
+      options:
+        - "10"
+        - "11"
+        - "12"
+      answer: 2
+      ordered: true
+      explain: Каждое присваивание в новое имя добавляет колонку.
+    - q: Что будет в `t` после этой строки?
+      code: |
+        t.drop(columns=['Distance'])
+      options:
+        - Колонка Distance удалена из `t`
+        - "`t` не изменится — результат не присвоен"
+        - Удалятся все строки с пропусками в Distance
+      answer: 1
+      explain: "`drop` возвращает новую таблицу. Нужно `t = t.drop(columns=['Distance'])`."
+  hints:
+    - Вспомните, что `rename` без `columns=` работает с метками строк, а `drop` возвращает новую таблицу.
+    - "Каждое `t['новое имя'] = ...` добавляет колонку; методы без присваивания таблицу не меняют."
+    - "Ответы: False; 12; t не изменится."
+
+- id: m2-l8-t6
+  title: Опасный опорный год
+  difficulty: star
+  introduces: [pd-new-column]
+  uses: [nan-inf]
+  statement: |
+    Проверим, что было бы с опорным годом 2021 (максимальный год в данных, без «+1»). Получите:
+
+    - `age_bad` — возраст `2021 − Year`;
+    - `km_bad` — пробег, делённый на `age_bad`;
+    - `n_zero_age` — сколько машин получили возраст 0;
+    - `n_inf` — сколько значений `km_bad` стали бесконечностью;
+    - `n_nan` — сколько стали пропуском (это 0 / 0).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.drop_duplicates().dropna().copy()   # уроки 2.6–2.7
+    df = df[df['Year'].between(1951, 2021) & df['Distance'].between(0, 1_000_000) &
+            df['Engine_capacity(cm3)'].between(200, 5000) & df['Price(euro)'].between(101, 500_000) &
+            ~((df['Year'] < 2021) & (df['Distance'] < 1100))].copy()
+    cars = df.rename(columns={'Engine_capacity(cm3)': 'Engine', 'Price(euro)': 'Price'})
+  starter: |
+    age_bad = ...
+    km_bad = ...
+    n_zero_age = ...
+    n_inf = ...
+    n_nan = ...
+    print(n_zero_age, n_inf, n_nan)
+  solution: |
+    age_bad = 2021 - cars['Year']
+    km_bad = cars['Distance'] / age_bad
+    n_zero_age = (age_bad == 0).sum()
+    n_inf = np.isinf(km_bad).sum()
+    n_nan = km_bad.isna().sum()
+    print(n_zero_age, n_inf, n_nan)
+  explanation: |
+    - У машин 2021 года `age_bad` равен 0, и деление пробега на 0 даёт `inf`.
+    - Если и пробег равен 0, получается 0 / 0 — неопределённость, `nan`.
+    - `np.isinf` находит бесконечности (урок 1.5), `isna()` — пропуски. Вместе их столько же, сколько машин с нулевым возрастом.
+  alternatives:
+    - |
+      age_bad = 2021 - cars['Year']
+      km_bad = cars['Distance'] / age_bad
+      n_zero_age = int((cars['Year'] == 2021).sum())
+      n_inf = int((km_bad == np.inf).sum())
+      n_nan = int(np.isnan(km_bad).sum())
+  hints:
+    - Деление на ноль даёт бесконечность, а 0 / 0 — неопределённость. Какими функциями их искать?
+    - "Маска нулевого возраста — `age_bad == 0`; бесконечности — `np.isinf(km_bad)`; пропуски — `km_bad.isna()`."
+    - "`n_inf = np.isinf(km_bad).sum()`, `n_nan = km_bad.isna().sum()`."
+  tests: |
+    close(var('n_zero_age', 'number', 'числом'), ref('n_zero_age'), 'Машин с нулевым возрастом — {expected}, а у вас {actual}.')
+    i = var('n_inf', 'number', 'числом')
+    n = var('n_nan', 'number', 'числом')
+    if i == ref('n_zero_age'):
+        fail('Не все машины с нулевым возрастом дают бесконечность: если пробег тоже 0, получается 0 / 0 = nan. Посчитайте бесконечности через `np.isinf`.')
+    close(i, ref('n_inf'), 'Бесконечностей — {expected}, а у вас {actual}.')
+    close(n, ref('n_nan'), 'Пропусков (0 / 0) — {expected}, а у вас {actual}.')
+    close(alt('n_inf'), alt_ref('n_inf'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        age_bad = 2021 - cars['Year']
+        km_bad = cars['Distance'] / age_bad
+        n_zero_age = (age_bad == 0).sum()
+        n_inf = n_zero_age
+        n_nan = 0
+      expect: 0 / 0
+    - code: |
+        age_bad = 2022 - cars['Year']
+        km_bad = cars['Distance'] / age_bad
+        n_zero_age = (age_bad == 0).sum()
+        n_inf = np.isinf(km_bad).sum()
+        n_nan = km_bad.isna().sum()
+      expect: нулевым возрастом

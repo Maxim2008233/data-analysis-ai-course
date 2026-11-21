@@ -1,0 +1,323 @@
+- id: m1-l6-t1
+  title: Медианная цена
+  difficulty: warmup
+  introduces: [mean-median]
+  uses: [bool-mask]
+  statement: |
+    Вектор конечных цен `price_values` уже готов. Получите `median_price` — медианную цену в евро.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]
+    price_values = price[np.isfinite(price)]   # конечные цены — урок 1.5
+  starter: |
+    median_price = ...
+    print(median_price)
+  solution: |
+    median_price = np.median(price_values)
+    print(median_price)
+  explanation: |
+    - `np.median` упорядочивает значения и берёт центральное (для чётного числа — среднее двух центральных).
+  hints:
+    - Нужна статистика «середины» набора, устойчивая к выбросам.
+    - "Функция NumPy `np.median(...)` — см. справочник «np.median»."
+    - "`median_price = np.median(price_values)`"
+  tests: |
+    v = var('median_price', 'number', 'числом')
+    if abs(v - ref('price_values').mean()) < 1e-6:
+        fail('Вы посчитали среднее, а нужна медиана — np.median.')
+    close(v, ref('median_price'), 'Медиана должна быть {expected}, а у вас {actual}.')
+    close(alt('median_price'), alt_ref('median_price'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        median_price = np.mean(price_values)
+      expect: среднее
+    - code: |
+        median_price = 6600.0
+      expect: вписан вручную
+
+- id: m1-l6-t2
+  title: Среднее и медиана пробега
+  difficulty: main
+  introduces: [mean-median]
+  uses: [nan-inf, bool-mask]
+  statement: |
+    Для конечных пробегов посчитайте:
+
+    - `mean_distance` — средний пробег, км;
+    - `median_distance` — медианный пробег, км;
+    - `ratio` — во сколько раз среднее больше медианы (`mean_distance / median_distance`).
+
+    Подумайте, о чём говорит такой большой `ratio`.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]
+  starter: |
+    distance_values = distance[np.isfinite(distance)]
+    mean_distance = ...
+    median_distance = ...
+    ratio = ...
+    print(round(mean_distance), round(median_distance), round(ratio, 2))
+  solution: |
+    distance_values = distance[np.isfinite(distance)]
+    mean_distance = np.mean(distance_values)
+    median_distance = np.median(distance_values)
+    ratio = mean_distance / median_distance
+    print(round(mean_distance), round(median_distance), round(ratio, 2))
+  explanation: |
+    - Среднее ≈ 456 735 км, медиана 168 000 км: среднее почти в 2,7 раза больше.
+    - Причина — немного огромных пробегов (до 100 млн км), которые тянут среднее вверх. Медиана к ним устойчива.
+  hints:
+    - Обе статистики — функции NumPy для вектора конечных пробегов.
+    - "`np.mean(distance_values)` и `np.median(distance_values)`; отношение — деление."
+    - "`ratio = mean_distance / median_distance`"
+  tests: |
+    close(var('mean_distance', 'number', 'числом'), ref('mean_distance'), 'Средний пробег должен быть {expected}, а у вас {actual}.')
+    close(var('median_distance', 'number', 'числом'), ref('median_distance'), 'Медианный пробег должен быть {expected}, а у вас {actual}.')
+    r = var('ratio', 'number', 'числом')
+    if r < 1:
+        fail('ratio меньше 1 — похоже, делите медиану на среднее. Нужно среднее / медиана.')
+    close(r, ref('ratio'), 'ratio должно быть {expected}, а у вас {actual}.')
+    close(alt('ratio'), alt_ref('ratio'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        distance_values = distance[np.isfinite(distance)]
+        mean_distance = np.mean(distance_values)
+        median_distance = np.median(distance_values)
+        ratio = median_distance / mean_distance
+      expect: делите медиану на среднее
+    - code: |
+        distance_values = distance[np.isfinite(distance)]
+        mean_distance = np.median(distance_values)
+        median_distance = np.median(distance_values)
+        ratio = 1.0
+      expect: Средний пробег
+
+- id: m1-l6-t3
+  title: Рекордный объём двигателя — какая это запись?
+  difficulty: main
+  introduces: [extremes-argsort, row-ids]
+  uses: [nan-inf, bool-mask]
+  statement: |
+    В объёме двигателя есть пропуски, поэтому позиции после фильтрации сдвигаются. Получите:
+
+    - `max_engine` — наибольший объём двигателя среди конечных значений;
+    - `max_engine_row` — **номер исходной записи** в `X` с таким объёмом (первой по порядку, если их несколько).
+
+    Используйте `np.argmax` и вектор номеров записей.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]
+    row_id = np.arange(X.shape[0])        # номера записей — урок 1.2
+    known_engine = np.isfinite(engine)
+    engine_values = engine[known_engine]  # конечные объёмы — урок 1.5
+  starter: |
+    engine_rows = ...
+    position = ...
+    max_engine = ...
+    max_engine_row = ...
+    print(max_engine, max_engine_row, X[max_engine_row])
+  solution: |
+    engine_rows = row_id[known_engine]
+    position = np.argmax(engine_values)
+    max_engine = engine_values[position]
+    max_engine_row = engine_rows[position]
+    print(max_engine, max_engine_row, X[max_engine_row])
+  explanation: |
+    - `engine_rows = row_id[known_engine]` — номера записей, отобранные **тем же** фильтром, что и значения.
+    - `np.argmax` возвращает позицию максимума в `engine_values`, а не номер записи.
+    - `engine_rows[position]` переводит позицию в номер исходной записи.
+  hints:
+    - Позиция в отфильтрованном векторе не равна номеру записи. Какой вектор хранит номера записей для отфильтрованных значений?
+    - "Отберите номера тем же фильтром: `row_id[known_engine]`; позиция максимума — `np.argmax(engine_values)`."
+    - "`engine_rows = row_id[known_engine]`, `position = np.argmax(engine_values)`, `max_engine_row = engine_rows[position]`."
+  tests: |
+    import numpy as np
+    me = var('max_engine', 'number', 'числом')
+    close(me, ref('max_engine'), 'Наибольший объём должен быть {expected}, а у вас {actual}.')
+    r = var('max_engine_row', 'int', 'целым числом (номером записи)')
+    if r == ref('position'):
+        fail('max_engine_row равен позиции в отфильтрованном векторе. Из-за пропусков номер исходной записи другой — переведите позицию через row_id[known_engine].')
+    ensure(0 <= r < len(student['X']), 'Номер записи %s вне диапазона таблицы.' % r)
+    ensure(student['X'][r, 2] == ref('max_engine'), 'У записи %d объём %s, а не максимальный. Проверьте перевод позиции в номер записи.' % (r, student['X'][r, 2]))
+    equal(r, ref('max_engine_row'), 'Нужна первая по порядку запись с максимальным объёмом (np.argmax возвращает первую): {expected}, а у вас {actual}.')
+    equal(alt('max_engine_row'), alt_ref('max_engine_row'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        engine_rows = row_id[known_engine]
+        position = np.argmax(engine_values)
+        max_engine = engine_values[position]
+        max_engine_row = position
+      expect: равен позиции
+    - code: |
+        engine_rows = row_id[known_engine]
+        position = np.argmax(engine_values)
+        max_engine = engine_values[position]
+        max_engine_row = 7303
+      expect: вписан вручную
+
+- id: m1-l6-t4
+  title: Пять самых дорогих объявлений
+  difficulty: main
+  introduces: [extremes-argsort]
+  uses: [row-ids]
+  statement: |
+    Получите пять самых высоких цен и номера их записей:
+
+    - `top5_prices` — цены по убыванию;
+    - `top5_rows` — номера исходных записей в том же порядке.
+
+    Вектор `price_rows` с номерами записей для `price_values` уже готов.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]
+    row_id = np.arange(X.shape[0])
+    known_price = np.isfinite(price)
+    price_values = price[known_price]
+    price_rows = row_id[known_price]      # номера исходных записей
+  starter: |
+    top_positions = ...
+    top5_prices = ...
+    top5_rows = ...
+    print(np.column_stack((top5_rows, top5_prices)))
+  solution: |
+    top_positions = np.argsort(price_values)[-5:][::-1]
+    top5_prices = price_values[top_positions]
+    top5_rows = price_rows[top_positions]
+    print(np.column_stack((top5_rows, top5_prices)))
+  explanation: |
+    - `np.argsort(price_values)` — позиции цен по возрастанию; `[-5:]` — пять последних (наибольших); `[::-1]` — по убыванию.
+    - Одни и те же позиции дают и цены, и номера записей.
+  alternatives:
+    - |
+      top_positions = np.argsort(-price_values)[:5]
+      top5_prices = price_values[top_positions]
+      top5_rows = price_rows[top_positions]
+  hints:
+    - Нужны позиции пяти наибольших значений, упорядоченные по убыванию.
+    - "`np.argsort(...)` даёт позиции по возрастанию; возьмите последние 5 и переверните `[::-1]`."
+    - "`top_positions = np.argsort(price_values)[-5:][::-1]`, затем `price_values[top_positions]` и `price_rows[top_positions]`."
+  tests: |
+    import numpy as np
+    tp = var('top5_prices', 'ndarray', 'массивом NumPy')
+    ensure(tp.shape == (5,), 'Нужно 5 цен, а форма %s.' % (tp.shape,))
+    exp = np.sort(ref('price_values'))[-5:][::-1]
+    if np.allclose(tp, exp[::-1]):
+        fail('Цены идут по возрастанию — переверните порядок: [::-1].')
+    same_array(tp, exp, 'top5_prices должны быть пятью наибольшими ценами по убыванию.')
+    tr = var('top5_rows', 'ndarray', 'массивом NumPy')
+    ensure(tr.shape == (5,), 'Нужно 5 номеров записей.')
+    ensure(len(set(int(r) for r in tr)) == 5, 'Номера записей должны быть разными.')
+    same_array(student['X'][tr.astype(int), 3], exp, 'Номера записей не соответствуют ценам: X[top5_rows, 3] должно совпадать с top5_prices.')
+    alt_tp = alt('top5_prices')
+    same_array(alt_tp, alt_ref('top5_prices'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        top_positions = np.argsort(price_values)[-5:]
+        top5_prices = price_values[top_positions]
+        top5_rows = price_rows[top_positions]
+      expect: по возрастанию
+    - code: |
+        top_positions = np.argsort(price_values)[-5:][::-1]
+        top5_prices = price_values[top_positions]
+        top5_rows = top_positions[::-1]
+      expect: не соответствуют
+
+- id: m1-l6-t5
+  kind: predict
+  title: Что сдвинется сильнее?
+  difficulty: main
+  introduces: []
+  uses: [mean-median]
+  statement: |
+    Предскажите результат, не запуская код.
+  quiz:
+    - q: Что выведет код?
+      code: |
+        a = np.array([10., 20., 30., 40.])
+        print(np.median(a))
+      options:
+        - "20.0"
+        - "25.0"
+        - "30.0"
+      answer: 1
+      explain: Чётное число значений — медиана равна среднему двух центральных (20 и 30).
+    - q: Что выведет код?
+      code: |
+        a = np.array([5000., 6000., 7000.])
+        b = np.array([5000., 6000., 700000.])
+        print(np.median(b) - np.median(a), np.mean(b) - np.mean(a))
+      options:
+        - "0.0 231000.0"
+        - "231000.0 0.0"
+        - "0.0 0.0"
+      answer: 0
+      explain: Медиана — центральное значение 6000 в обоих случаях; среднее выросло на (700000 − 7000) / 3 = 231000.
+  hints:
+    - Медиана — середина упорядоченного набора; среднее — сумма / количество.
+    - "Для четырёх чисел медиана — среднее второго и третьего; крайнее значение сдвигает только среднее."
+    - "25.0; медиана не изменилась, среднее выросло на 693000 / 3."
+
+- id: m1-l6-t6
+  title: Насколько один рекорд двигает среднее
+  difficulty: star
+  introduces: []
+  uses: [mean-median, extremes-argsort]
+  statement: |
+    Уберите из `price_values` **одну** запись с максимальной ценой (по её позиции, через `np.delete`) и посчитайте:
+
+    - `mean_drop` — насколько уменьшилось среднее;
+    - `median_drop` — насколько уменьшилась медиана.
+
+    Одна запись из 41 007 — а изменения очень разные.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    price = X[:, 3]
+    price_values = price[np.isfinite(price)]
+  starter: |
+    without_max = ...
+    mean_drop = ...
+    median_drop = ...
+    print(round(mean_drop, 2), median_drop)
+  solution: |
+    without_max = np.delete(price_values, np.argmax(price_values))
+    mean_drop = np.mean(price_values) - np.mean(without_max)
+    median_drop = np.median(price_values) - np.median(without_max)
+    print(round(mean_drop, 2), median_drop)
+  explanation: |
+    - `np.argmax` находит позицию рекорда, `np.delete(a, позиция)` возвращает новый массив без неё.
+    - Среднее падает примерно на 244 €, медиана не меняется: она устойчива к единичному выбросу.
+  hints:
+    - Нужна позиция максимума и функция, которая возвращает массив без элемента в этой позиции.
+    - "`np.delete(price_values, np.argmax(price_values))`; затем разности средних и медиан «до − после»."
+    - "`mean_drop = np.mean(price_values) - np.mean(without_max)`; аналогично с медианой."
+  tests: |
+    import numpy as np
+    wm = var('without_max', 'ndarray', 'массивом NumPy')
+    ensure(len(wm) == len(ref('price_values')) - 1, 'В without_max должно быть ровно на одно значение меньше, чем в price_values, а сейчас %d вместо %d.' % (len(wm), len(ref('price_values')) - 1))
+    md = var('mean_drop', 'number', 'числом')
+    if md < 0:
+        fail('mean_drop отрицательный — считайте «до минус после»: среднее всех цен минус среднее без рекорда.')
+    close(md, ref('mean_drop'), 'mean_drop должно быть {expected}, а у вас {actual}.', rtol=1e-6)
+    close(var('median_drop', 'number', 'числом'), ref('median_drop'), 'median_drop должно быть {expected}, а у вас {actual}.', atol=1e-6)
+    close(alt('mean_drop'), alt_ref('mean_drop'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        without_max = price_values[price_values < 100000]
+        mean_drop = np.mean(price_values) - np.mean(without_max)
+        median_drop = np.median(price_values) - np.median(without_max)
+      expect: на одно значение меньше
+    - code: |
+        without_max = np.delete(price_values, np.argmax(price_values))
+        mean_drop = np.mean(without_max) - np.mean(price_values)
+        median_drop = np.median(without_max) - np.median(price_values)
+      expect: отрицательный

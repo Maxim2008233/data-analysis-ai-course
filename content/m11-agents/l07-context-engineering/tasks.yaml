@@ -1,0 +1,491 @@
+- id: m11-l7-t1
+  title: Из чего состоит контекст
+  difficulty: warmup
+  introduces: [context-engineering]
+  uses: [context-window]
+  statement: |
+    Напишите функцию `context_report(parts)`: `parts` — словарь «название части → текст». Функция возвращает словарь «название → оценка токенов» (`round(len(текст) / 5.09)`, функция `tokens` уже есть) и в конце ключ `'всего'` — сумму этих оценок.
+
+    Для частей контекста агента `parts` получите `report`, `biggest` — название самой большой части и `share` — её долю во всём контексте (`float`, по оценкам токенов).
+  prelude: |
+    import json
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    CHARS_PER_TOKEN = 5.09
+
+    def tokens(text):
+        return round(len(text) / CHARS_PER_TOKEN)
+
+    observations = ['\n\n'.join(f"[{d['lesson']}] {d['section']}\n{d['text']}" for d in [x for x in docs if x['lesson'] == lesson][:3])
+                    for lesson in ['6.8', '6.7', '5.3']]
+    parts = {
+        'инструкция': 'Ты — помощник по курсу. Отвечай по-русски, коротко, по материалам уроков, со ссылками [номер урока].',
+        'инструменты': '- search_course: поиск по урокам курса\n- lesson_info: оглавление урока\n- calculate: калькулятор',
+        'вопрос': 'Чем кросс-валидация лучше одной проверки и сколько блоков брать?',
+        'результаты инструментов': '\n'.join(observations),
+    }
+  starter: |
+    def context_report(parts):
+        report = {name: tokens(text) for name, text in parts.items()}
+        report['всего'] = ...
+        return report
+
+    report = context_report(parts)
+    biggest = max(parts, key=lambda name: report[name])
+    share = ...
+    print(report)
+    print(biggest, round(share, 2))
+  solution: |
+    def context_report(parts):
+        report = {name: tokens(text) for name, text in parts.items()}
+        report['всего'] = sum(report.values())
+        return report
+
+    report = context_report(parts)
+    biggest = max(parts, key=lambda name: report[name])
+    share = report[biggest] / report['всего']
+    print(report)
+    print(biggest, round(share, 2))
+  explanation: |
+    - Сумму считаем по готовым оценкам частей — до того, как в словарь добавлен ключ `'всего'`. Если сложить словарь после, итог посчитается дважды.
+    - `max(parts, key=...)` перебирает только названия частей, без `'всего'`: оно было бы больше любой части.
+    - Результаты инструментов — около 94 % контекста. Инструкцию и вопрос сокращать почти бессмысленно; экономия — в результатах инструментов.
+  hints:
+    - "Итог — `sum(report.values())`, посчитанный до добавления ключа `'всего'`."
+    - "Доля — `report[biggest] / report['всего']`."
+    - "Название части с наибольшей оценкой уже найдено: `biggest`."
+  tests: |
+    f = var('context_report')
+    ensure(callable(f), '`context_report` должна быть функцией.')
+    got = f({'a': 'x' * 509, 'b': 'y' * 1018})
+    equal(got, {'a': 100, 'b': 200, 'всего': 300}, 'Для 509 и 1018 символов ожидалось {expected}, а у вас {actual}.')
+    equal(list(got)[-1], 'всего', 'Ключ «всего» — последним.')
+    equal(f({}), {'всего': 0}, 'Для пустого словаря — {expected}, а у вас {actual}.')
+    equal(var('report', dict, 'словарём'), ref('report'), 'Оценка частей контекста — {expected}, а у вас {actual}.')
+    equal(var('biggest', str, 'строкой'), ref('biggest'), 'Самая большая часть — {expected}, а у вас {actual}.')
+    close(var('share', 'number', 'числом'), ref('share'), 'Доля самой большой части — {expected}, а у вас {actual}.')
+  files: [course_docs.json]
+  wrong:
+    - code: |
+        def context_report(parts):
+            report = {name: tokens(text) for name, text in parts.items()}
+            report['всего'] = 0
+            report['всего'] = sum(report.values()) + sum(report.values())
+            return report
+        report = context_report(parts)
+        biggest = max(parts, key=lambda name: report[name])
+        share = report[biggest] / report['всего']
+      expect: Для 509 и 1018 символов
+    - code: |
+        def context_report(parts):
+            report = {name: tokens(text) for name, text in parts.items()}
+            report['всего'] = sum(report.values())
+            return report
+        report = context_report(parts)
+        biggest = max(parts, key=lambda name: report[name])
+        share = report[biggest] / sum(report.values())
+      expect: Доля самой большой части
+
+- id: m11-l7-t2
+  title: Цена шагов агента
+  difficulty: main
+  introduces: []
+  uses: [context-engineering, react-loop]
+  statement: |
+    Модель на каждом шаге получает всё, что было раньше. Напишите функцию `requests_sizes(first, added)`: `first` — токены первого запроса, `added[k]` — сколько токенов история получает после шага `k` (мысль модели и результат инструмента). Агент делает `len(added) + 1` запросов. Функция возвращает список размеров запросов: первый — `first`, каждый следующий — больше предыдущего на очередное `added[k]`.
+
+    Посчитайте для шагов агента `steps_full` (результаты целиком) и `steps_short` (каждый результат обрезан до 100 токенов: `min(a, 100)`):
+
+    - `sent_full` и `sent_short` — сколько токенов отправлено за весь разговор (сумма размеров всех запросов);
+    - `saving` — какую долю отправленного экономит обрезка (`1 - sent_short / sent_full`).
+  prelude: |
+    first = 90
+    steps_full = [420, 380, 510, 300, 460, 390]
+  starter: |
+    def requests_sizes(first, added):
+        sizes = [first]
+        for a in added:
+            sizes.append(...)
+        return sizes
+
+    steps_short = [min(a, 100) for a in steps_full]
+    sent_full = sum(requests_sizes(first, steps_full))
+    sent_short = ...
+    saving = ...
+    print(requests_sizes(first, steps_full))
+    print(sent_full, sent_short, round(saving, 3))
+  solution: |
+    def requests_sizes(first, added):
+        sizes = [first]
+        for a in added:
+            sizes.append(sizes[-1] + a)
+        return sizes
+
+    steps_short = [min(a, 100) for a in steps_full]
+    sent_full = sum(requests_sizes(first, steps_full))
+    sent_short = sum(requests_sizes(first, steps_short))
+    saving = 1 - sent_short / sent_full
+    print(requests_sizes(first, steps_full))
+    print(sent_full, sent_short, round(saving, 3))
+  explanation: |
+    - Каждый запрос — предыдущий плюс то, что добавил последний шаг: `sizes[-1] + a`. Последний запрос самый большой — в нём вся история.
+    - Отправлено за разговор — сумма всех запросов: 9 300 токенов, хотя в последнем запросе, где есть вся история, их 2 550. Результат первого шага пересылается шесть раз.
+    - Обрезка результатов до 100 токенов сокращает отправленное с 9 300 до 2 730 — на 71 %. Чем раньше в разговоре стоит длинный результат, тем дороже он обходится.
+  hints:
+    - "Следующий размер — `sizes[-1] + a`."
+    - "Отправлено — `sum(requests_sizes(first, steps_short))`."
+    - "Экономия — `1 - sent_short / sent_full`."
+  tests: |
+    f = var('requests_sizes')
+    ensure(callable(f), '`requests_sizes` должна быть функцией.')
+    got = f(10, [5, 3, 2])
+    if got == [10, 15, 13, 12]:
+        fail('Каждый запрос содержит всю историю: прибавляйте к предыдущему размеру, а не к первому.')
+    equal(got, [10, 15, 18, 20], 'Для first=10 и added=[5, 3, 2] размеры запросов — {expected}, а у вас {actual}.')
+    equal(f(7, []), [7], 'Без шагов — один запрос размером first.')
+    equal(int(var('sent_full', 'number', 'числом')), int(ref('sent_full')), 'Отправлено за разговор (полные результаты) — {expected}, а у вас {actual}.')
+    equal(int(var('sent_short', 'number', 'числом')), int(ref('sent_short')), 'Отправлено с обрезкой — {expected}, а у вас {actual}.')
+    close(var('saving', 'number', 'числом'), ref('saving'), 'Доля экономии — {expected}, а у вас {actual}.')
+  files: []
+  wrong:
+    - code: |
+        def requests_sizes(first, added):
+            return [first] + [first + a for a in added]
+        steps_short = [min(a, 100) for a in steps_full]
+        sent_full = sum(requests_sizes(first, steps_full))
+        sent_short = sum(requests_sizes(first, steps_short))
+        saving = 1 - sent_short / sent_full
+      expect: всю историю
+    - code: |
+        def requests_sizes(first, added):
+            sizes = [first]
+            for a in added:
+                sizes.append(sizes[-1] + a)
+            return sizes
+        steps_short = [min(a, 100) for a in steps_full]
+        sent_full = sum(requests_sizes(first, steps_full))
+        sent_short = sum(requests_sizes(first, steps_short))
+        saving = sent_short / sent_full
+      expect: Доля экономии
+
+- id: m11-l7-t3
+  title: Сократить и скрыть
+  difficulty: main
+  introduces: []
+  uses: [context-engineering]
+  statement: |
+    Напишите две функции для результатов инструментов.
+
+    1. `shorten(text, limit)`: текст не длиннее `limit` — как есть; иначе первые `limit` символов без пробелов в конце и пометка `' … [сокращено, всего {N} символов]'`, где N — длина исходного текста.
+    2. `mask_old(observations, keep)`: последние `keep` результатов — как есть, все более ранние заменяются строкой `'[результат скрыт: {N} символов]'` (N — длина скрытого результата). При `keep = 0` скрыто всё, при `keep` больше числа результатов — ничего.
+
+    Получите `compact_obs` — результаты `observations`: сначала скрыть все, кроме последнего, потом каждый пропустить через `shorten(…, 300)`.
+  prelude: |
+    import json
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    observations = ['\n\n'.join(f"[{d['lesson']}] {d['section']}\n{d['text']}" for d in [x for x in docs if x['lesson'] == lesson][:3])
+                    for lesson in ['6.8', '6.7', '5.3']]
+  starter: |
+    def shorten(text, limit):
+        if len(text) <= limit:
+            return text
+        return ...
+
+    def mask_old(observations, keep):
+        cut = max(len(observations) - keep, 0)        # сколько результатов скрыть
+        hidden = [... for o in observations[:cut]]
+        return hidden + observations[cut:]
+
+    compact_obs = [shorten(o, 300) for o in mask_old(observations, 1)]
+    for o in compact_obs:
+        print(o[:100])
+  solution: |
+    def shorten(text, limit):
+        if len(text) <= limit:
+            return text
+        return text[:limit].rstrip() + f' … [сокращено, всего {len(text)} символов]'
+
+    def mask_old(observations, keep):
+        cut = max(len(observations) - keep, 0)        # сколько результатов скрыть
+        hidden = [f'[результат скрыт: {len(o)} символов]' for o in observations[:cut]]
+        return hidden + observations[cut:]
+
+    compact_obs = [shorten(o, 300) for o in mask_old(observations, 1)]
+    for o in compact_obs:
+        print(o[:100])
+  explanation: |
+    - Число скрываемых считаем явно: `len(observations) - keep`. Короткая запись `observations[:-keep]` ломается при `keep = 0`: `-0` — это 0, срез `[:0]` пустой, и не скрылось бы ничего, хотя нужно скрыть всё.
+    - `max(..., 0)` защищает от `keep` больше числа результатов: скрывать нечего.
+    - Порядок важен: сначала скрыть, потом сократить. Тогда пометка «скрыт: 1317 символов» говорит о настоящей длине результата, а не об уже обрезанной.
+  hints:
+    - "Сокращение — `text[:limit].rstrip() + f' … [сокращено, всего {len(text)} символов]'`."
+    - "Пометка скрытого — `f'[результат скрыт: {len(o)} символов]'`."
+    - "Проверьте `mask_old(['a', 'b'], 0)` — должно скрыться всё."
+  tests: |
+    s = var('shorten')
+    m = var('mask_old')
+    ensure(callable(s) and callable(m), '`shorten` и `mask_old` должны быть функциями.')
+    equal(s('короткий', 20), 'короткий', 'Текст не длиннее limit — без изменений.')
+    equal(s('абв где жзи', 4), 'абв … [сокращено, всего 11 символов]', 'Сокращение: первые limit символов без пробелов в конце и пометка — ожидалось {expected}, а у вас {actual}.')
+    equal(m(['aa', 'bbb', 'c'], 1), ['[результат скрыт: 2 символов]', '[результат скрыт: 3 символов]', 'c'], 'keep=1: ожидалось {expected}, а у вас {actual}.')
+    got0 = m(['aa', 'bbb'], 0)
+    if got0 == ['aa', 'bbb']:
+        fail('При keep=0 нужно скрыть всё, а у вас ничего не скрыто. Срез observations[:-0] пустой — считайте число скрываемых явно.')
+    equal(got0, ['[результат скрыт: 2 символов]', '[результат скрыт: 3 символов]'], 'keep=0: ожидалось {expected}, а у вас {actual}.')
+    equal(m(['aa'], 5), ['aa'], 'keep больше числа результатов — ничего не скрыто.')
+    equal(var('compact_obs', list, 'списком'), ref('compact_obs'), 'Результаты после скрытия и сокращения — {expected}, а у вас {actual}.')
+  files: [course_docs.json]
+  wrong:
+    - code: |
+        def shorten(text, limit):
+            if len(text) <= limit:
+                return text
+            return text[:limit].rstrip() + f' … [сокращено, всего {len(text)} символов]'
+        def mask_old(observations, keep):
+            hidden = [f'[результат скрыт: {len(o)} символов]' for o in observations[:-keep]]
+            return hidden + observations[-keep:]
+        compact_obs = [shorten(o, 300) for o in mask_old(observations, 1)]
+      expect: observations[:-0]
+    - code: |
+        def shorten(text, limit):
+            if len(text) <= limit:
+                return text
+            return text[:limit].rstrip() + f' … [сокращено, всего {len(text)} символов]'
+        def mask_old(observations, keep):
+            cut = max(len(observations) - keep, 0)
+            hidden = [f'[результат скрыт: {len(o)} символов]' for o in observations[:cut]]
+            return hidden + observations[cut:]
+        compact_obs = mask_old([shorten(o, 300) for o in observations], 1)
+      expect: после скрытия и сокращения
+
+- id: m11-l7-t4
+  title: Пересказ вместо начала разговора
+  difficulty: main
+  introduces: []
+  uses: [context-engineering, context-window]
+  statement: |
+    Напишите функцию `compact_history(messages, keep_last, summarize)`. `messages` — история в виде словарей `{'role': ..., 'content': ...}`, первое сообщение — системное. Функция возвращает новую историю:
+
+    - системное сообщение остаётся первым;
+    - последние `keep_last` сообщений остаются как есть;
+    - всё, что между ними, заменяется одним сообщением `{'role': 'user', 'content': 'Пересказ начала разговора: ' + summarize(убранные_сообщения)}`;
+    - если убирать нечего, история возвращается без изменений (новым списком). При `keep_last = 0` пересказывается всё, кроме системного сообщения.
+
+    `summarize` — функция, которая по списку сообщений возвращает строку (в настоящем агенте её пишет модель). Получите `compacted` для истории `history`, `keep_last = 2` и учебного пересказчика `tiny_summary`.
+  prelude: |
+    history = [
+        {'role': 'system', 'content': 'Ты — помощник по курсу.'},
+        {'role': 'user', 'content': 'Что такое кросс-валидация?'},
+        {'role': 'assistant', 'content': 'Это несколько проверок модели на разных частях данных [6.8].'},
+        {'role': 'user', 'content': 'А сколько блоков брать?'},
+        {'role': 'assistant', 'content': 'Обычно 5 или 10 [6.8].'},
+        {'role': 'user', 'content': 'Покажи пример кода.'},
+        {'role': 'assistant', 'content': 'cross_val_score(model, X, y, cv=5) [6.8].'},
+    ]
+
+    def tiny_summary(messages):
+        questions = [m['content'] for m in messages if m['role'] == 'user']
+        return f'сообщений: {len(messages)}; вопросы: ' + ' | '.join(questions)
+  starter: |
+    def compact_history(messages, keep_last, summarize):
+        system, rest = messages[0], messages[1:]
+        cut = max(len(rest) - keep_last, 0)            # сколько сообщений пересказать
+        if cut == 0:
+            return list(messages)
+        summary = {'role': 'user', 'content': ...}
+        return [system, summary] + ...
+
+    compacted = compact_history(history, 2, tiny_summary)
+    for m in compacted:
+        print(m['role'], '|', m['content'])
+  solution: |
+    def compact_history(messages, keep_last, summarize):
+        system, rest = messages[0], messages[1:]
+        cut = max(len(rest) - keep_last, 0)            # сколько сообщений пересказать
+        if cut == 0:
+            return list(messages)
+        summary = {'role': 'user', 'content': 'Пересказ начала разговора: ' + summarize(rest[:cut])}
+        return [system, summary] + rest[cut:]
+
+    compacted = compact_history(history, 2, tiny_summary)
+    for m in compacted:
+        print(m['role'], '|', m['content'])
+  explanation: |
+    - Системное сообщение не пересказывается никогда: это инструкция, а не разговор. Поэтому делим историю на `system` и `rest` и работаем только с `rest`.
+    - Как и в прошлом задании, число пересказываемых считаем явно: срез `rest[-0:]` вернул бы всё, а не пустой список.
+    - Из семи сообщений осталось четыре: системное, пересказ и два последних. Пересказ теряет детали — ответ про 5 или 10 блоков в нём не сохранился. Значит, важные решения стоит записывать в заметки, а не надеяться на пересказ.
+  hints:
+    - "Пересказать — `rest[:cut]`, оставить — `rest[cut:]`."
+    - "Текст пересказа — `'Пересказ начала разговора: ' + summarize(rest[:cut])`."
+    - "Проверьте `keep_last=0`: остаются только системное сообщение и пересказ."
+  tests: |
+    f = var('compact_history')
+    ensure(callable(f), '`compact_history` должна быть функцией.')
+    msgs = [{'role': 'system', 'content': 'S'}] + [{'role': 'user', 'content': str(i)} for i in range(5)]
+    summ = lambda ms: ','.join(m['content'] for m in ms)
+    got = f(msgs, 2, summ)
+    equal(got, [{'role': 'system', 'content': 'S'}, {'role': 'user', 'content': 'Пересказ начала разговора: 0,1,2'}, {'role': 'user', 'content': '3'}, {'role': 'user', 'content': '4'}], 'keep_last=2: ожидалось {expected}, а у вас {actual}.')
+    got0 = f(msgs, 0, summ)
+    if len(got0) != 2:
+        fail('При keep_last=0 остаются только системное сообщение и пересказ всего остального, а у вас {0} сообщений. Срез rest[-0:] возвращает всё — считайте границу явно.'.format(len(got0)))
+    equal(got0[1]['content'], 'Пересказ начала разговора: 0,1,2,3,4', 'keep_last=0: пересказывается всё, кроме системного сообщения.')
+    same = f(msgs, 10, summ)
+    equal(same, msgs, 'Если пересказывать нечего, история возвращается без изменений.')
+    ensure(same is not msgs, 'Возвращайте новый список, а не тот же объект: вызывающий код может его менять.')
+    equal(f(msgs, 4, summ)[0], {'role': 'system', 'content': 'S'}, 'Системное сообщение всегда первое и не пересказывается.')
+    equal(var('compacted', list, 'списком'), ref('compacted'), 'Сжатая история — {expected}, а у вас {actual}.')
+  files: []
+  wrong:
+    - code: |
+        def compact_history(messages, keep_last, summarize):
+            system, rest = messages[0], messages[1:]
+            if len(rest) <= keep_last:
+                return list(messages)
+            summary = {'role': 'user', 'content': 'Пересказ начала разговора: ' + summarize(rest[:-keep_last])}
+            return [system, summary] + rest[-keep_last:]
+        compacted = compact_history(history, 2, tiny_summary)
+      expect: rest[-0:]
+    - code: |
+        def compact_history(messages, keep_last, summarize):
+            cut = max(len(messages) - keep_last, 0)
+            if cut == 0:
+                return list(messages)
+            summary = {'role': 'user', 'content': 'Пересказ начала разговора: ' + summarize(messages[:cut])}
+            return [summary] + messages[cut:]
+        compacted = compact_history(history, 2, tiny_summary)
+      expect: keep_last=2
+
+- id: m11-l7-t5
+  title: Только нужные инструменты
+  difficulty: star
+  introduces: []
+  uses: [context-engineering, document-search, char-ngrams]
+  statement: |
+    Когда у агента десятки инструментов, описания всех в каждом запросе стоят дорого и путают модель. Их можно **искать**, как документы: по запросу пользователя выбирать k самых подходящих.
+
+    1. Напишите функцию `select_tools(query, tools, k)`: `tools` — словарь «имя → описание». Обучите `TfidfVectorizer(analyzer='char_wb', ngram_range=(3, 5))` на строках `'{имя} {описание}'` и верните имена `k` инструментов по убыванию сходства с запросом (при равенстве — в порядке словаря).
+    2. Получите `recall3` — долю запросов из `REQUESTS`, для которых нужный инструмент попал в тройку.
+    3. Один запрос промахивается. Исправьте **только описание** этого инструмента (не длиннее 150 символов) так, чтобы в тройку попадали нужные инструменты для всех запросов. Новый словарь — `better_tools`, его доля — `recall3_better`.
+  prelude: |
+    import numpy as np
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    TOOLS = {
+        'search_course': 'Поиск по урокам курса «Анализ данных и ИИ»: возвращает подходящие разделы. Вход — вопрос или ключевые слова.',
+        'lesson_info': 'Название урока курса и список его разделов. Вход — номер урока, например 10.2.',
+        'calculate': 'Калькулятор: вычисляет арифметическое выражение из чисел, + - * / и скобок.',
+        'get_schedule': 'Расписание занятий пользователя на день: «сегодня» или «завтра».',
+        'create_event': 'Создаёт событие в календаре пользователя: название, дата и время.',
+        'send_email': 'Отправляет письмо: адрес получателя, тема и текст.',
+        'weather': 'Погода в городе на сегодня и завтра: температура, осадки, ветер.',
+        'translate': 'Переводит текст с английского на русский и обратно.',
+        'convert_currency': 'Переводит сумму из одной валюты в другую по курсу Центробанка.',
+        'read_file': 'Читает текстовый файл из папки проекта. Вход — путь к файлу.',
+        'run_sql': 'Выполняет SQL-запрос к учебной базе данных и возвращает таблицу.',
+        'web_search': 'Ищет в интернете свежие новости и страницы. Вход — поисковый запрос.',
+    }
+    REQUESTS = [
+        ('Сколько минут займут три пары по 90 минут?', 'calculate'),
+        ('Переведи слово overfitting на русский', 'translate'),
+        ('Когда у меня завтра консультация?', 'get_schedule'),
+        ('Что такое кросс-валидация?', 'search_course'),
+        ('Какие разделы в уроке 6.8?', 'lesson_info'),
+        ('Напиши старосте письмо, что я заболел', 'send_email'),
+        ('Сколько будет 150 долларов в рублях?', 'convert_currency'),
+        ('Какая погода завтра в Екатеринбурге?', 'weather'),
+        ('Добавь в календарь встречу с куратором в пятницу', 'create_event'),
+        ('Что нового пишут про GigaChat?', 'web_search'),
+        ('Открой файл notes.txt из проекта', 'read_file'),
+        ('Сколько строк в таблице cars учебной базы данных?', 'run_sql'),
+    ]
+  starter: |
+    def select_tools(query, tools, k):
+        names = list(tools)
+        vectorizer = TfidfVectorizer(analyzer='char_wb', ngram_range=(3, 5))
+        X = vectorizer.fit_transform([f'{n} {d}' for n, d in tools.items()])
+        scores = ...
+        return [names[i] for i in np.argsort(-scores, kind='stable')[:k]]
+
+    def recall_at3(tools):
+        return float(np.mean([right in select_tools(q, tools, 3) for q, right in REQUESTS]))
+
+    recall3 = recall_at3(TOOLS)
+    print([q for q, right in REQUESTS if right not in select_tools(q, TOOLS, 3)])
+    better_tools = dict(TOOLS)
+    better_tools['...'] = '...'
+    recall3_better = recall_at3(better_tools)
+    print(recall3, recall3_better)
+  solution: |
+    def select_tools(query, tools, k):
+        names = list(tools)
+        vectorizer = TfidfVectorizer(analyzer='char_wb', ngram_range=(3, 5))
+        X = vectorizer.fit_transform([f'{n} {d}' for n, d in tools.items()])
+        scores = (X @ vectorizer.transform([query]).T).toarray().ravel()
+        return [names[i] for i in np.argsort(-scores, kind='stable')[:k]]
+
+    def recall_at3(tools):
+        return float(np.mean([right in select_tools(q, tools, 3) for q, right in REQUESTS]))
+
+    recall3 = recall_at3(TOOLS)
+    print([q for q, right in REQUESTS if right not in select_tools(q, TOOLS, 3)])
+    better_tools = dict(TOOLS)
+    better_tools['convert_currency'] = 'Переводит сумму из одной валюты в другую по курсу Центробанка: рубли, доллары, евро.'
+    recall3_better = recall_at3(better_tools)
+    print(recall3, recall3_better)
+  explanation: |
+    - Это поиск из уроков 11.1–11.2, только документы — описания инструментов. Тройка из двенадцати описаний — четверть токенов, а нужный инструмент попадает в неё в 11 запросах из 12 (91,7 %).
+    - Промах — «Сколько будет 150 долларов в рублях?»: в описании `convert_currency` нет ни «долларов», ни «рублей», только «валюта» и «курс». Поиск по буквам не знает, что доллар — это валюта.
+    - Лечится описанием: стоит назвать в нём слова, которыми пользователи будут просить инструмент, — «рубли, доллары, евро». Хорошее описание помогает дважды: и при отборе инструментов, и модели, которая решает, звать ли инструмент. Другой путь — искать по эмбеддингам нейросети, которые знают о синонимах (урок 9.2).
+  hints:
+    - "Сходства — `(X @ vectorizer.transform([query]).T).toarray().ravel()`."
+    - "Посмотрите, какой запрос промахивается, и каких слов из него нет в описании нужного инструмента."
+    - "Допишите в описание `convert_currency` названия валют — так, как их пишут в запросах."
+  tests: |
+    import numpy as np
+    f = var('select_tools')
+    ensure(callable(f), '`select_tools` должна быть функцией.')
+    tools = {'apple_tool': 'работает с яблоками', 'pear_tool': 'работает с грушами', 'plum_tool': 'работает со сливами'}
+    equal(f('нужны груши', tools, 1), ['pear_tool'], 'Для запроса «нужны груши» лучший инструмент — pear_tool, а у вас {actual}.')
+    got = f('что-то про яблоки и груши', tools, 3)
+    equal(sorted(got), sorted(tools), 'При k=3 возвращаются все три инструмента, а у вас {actual}.')
+    ensure(got[2] == 'plum_tool', 'Инструменты идут по убыванию сходства: «сливы» в запросе нет, plum_tool — последний, а у вас порядок {0}.'.format(got))
+    close(var('recall3', 'number', 'числом'), ref('recall3'), 'Доля запросов с нужным инструментом в тройке — {expected}, а у вас {actual}.')
+    bt = var('better_tools', dict, 'словарём')
+    TOOLS0 = ref('TOOLS')
+    equal(sorted(bt), sorted(TOOLS0), 'В `better_tools` должны остаться те же двенадцать инструментов.')
+    changed = [n for n in TOOLS0 if bt[n] != TOOLS0[n]]
+    ensure(changed, 'Ни одно описание не изменено: исправьте описание инструмента, на котором поиск промахивается.')
+    ensure(changed == ['convert_currency'], 'Менять нужно только описание инструмента, на котором поиск промахивается, а изменены: {0}.'.format(changed))
+    ensure(len(bt['convert_currency']) <= 150, 'Описание не длиннее 150 символов, а у вас {0}.'.format(len(bt['convert_currency'])))
+    ensure('150' not in bt['convert_currency'] and 'Сколько будет' not in bt['convert_currency'], 'Не вписывайте в описание сам запрос: описание должно помогать любым похожим вопросам.')
+    close(var('recall3_better', 'number', 'числом'), 1.0, 'С новым описанием нужный инструмент должен попадать в тройку для всех запросов, а доля {actual}.')
+  files: []
+  wrong:
+    - code: |
+        def select_tools(query, tools, k):
+            names = list(tools)
+            vectorizer = TfidfVectorizer(analyzer='char_wb', ngram_range=(3, 5))
+            X = vectorizer.fit_transform([f'{n} {d}' for n, d in tools.items()])
+            scores = (X @ vectorizer.transform([query]).T).toarray().ravel()
+            return [names[i] for i in np.argsort(scores, kind='stable')[:k]]
+        def recall_at3(tools):
+            return float(np.mean([right in select_tools(q, tools, 3) for q, right in REQUESTS]))
+        recall3 = recall_at3(TOOLS)
+        better_tools = dict(TOOLS)
+        better_tools['convert_currency'] = 'Переводит сумму из одной валюты в другую по курсу Центробанка: рубли, доллары, евро.'
+        recall3_better = recall_at3(better_tools)
+      expect: лучший инструмент — pear_tool
+    - code: |
+        def select_tools(query, tools, k):
+            names = list(tools)
+            vectorizer = TfidfVectorizer(analyzer='char_wb', ngram_range=(3, 5))
+            X = vectorizer.fit_transform([f'{n} {d}' for n, d in tools.items()])
+            scores = (X @ vectorizer.transform([query]).T).toarray().ravel()
+            return [names[i] for i in np.argsort(-scores, kind='stable')[:k]]
+        def recall_at3(tools):
+            return float(np.mean([right in select_tools(q, tools, 3) for q, right in REQUESTS]))
+        recall3 = recall_at3(TOOLS)
+        better_tools = dict(TOOLS)
+        better_tools['calculate'] = 'Калькулятор: считает выражения и переводит доллары в рубли.'
+        recall3_better = recall_at3(better_tools)
+      expect: только описание инструмента

@@ -1,0 +1,21 @@
+id: m7
+number: 7
+label: Модуль 7
+title: "Категориальные признаки, Ridge и градиентный бустинг"
+short: Категории и бустинг
+firstLessonIndex: 0
+description: >-
+  Добавляем в модели всё, что известно о машине: марку, модель, кузов, топливо и коробку передач. Модели нужны
+  числа, поэтому учимся кодировать категории: бинарный признак, порядковые коды для деревьев, One-Hot для линейной
+  модели, Target Encoding и его утечка. Регуляризация Ridge и Lasso сдерживает коэффициенты редких категорий,
+  градиентный бустинг (scikit-learn и LightGBM) последовательно исправляет ошибки деревьев. В конце — итоговая проверка
+  на test, разброс метрик по разбиениям и ошибки по отдельным машинам. Мини-проект — новые данные: восстанавливаем
+  возраст по ответам анкеты переписи Adult, где почти все признаки категориальные.
+sources:
+  - Workshops/07_Категории_Ridge_LightGBM.ipynb
+  - addition/lab7 - Car Moldova pt1 LAST.ipynb
+  - addition/lab7 - Car Moldova pt 2_LAST.ipynb
+  - addition/LAB XGBoost LAST.ipynb
+  - ml_numpy/_ridge_regression.py
+  - ml_numpy/_lasso_regression.py
+warmupReviews: [feature-types, pd-map, pd-value-counts, rare-categories, pd-groupby, group-estimate, group-size-caution, boxplot-rule]

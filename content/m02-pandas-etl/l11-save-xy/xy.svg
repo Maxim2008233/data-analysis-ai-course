@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 236" font-family="Inter, Arial, sans-serif" font-size="12.5" role="img" aria-label="Колонки обработанной таблицы делятся на входные признаки X, целевую переменную y (Price) и колонки, которые в X не включаются: технический номер строки и дубли других колонок">
+  <g font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor">
+    <rect x="20" y="40" width="430" height="64" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9"/>
+    <text x="32" y="62">Make  Model  Year  Style  Distance  Engine</text>
+    <text x="32" y="84">Fuel_type  AutoTransmission  Age  km_year</text>
+    <rect x="470" y="40" width="90" height="64" rx="5" fill="#c2410c" fill-opacity="0.14" stroke="#c2410c"/>
+    <text x="515" y="77" text-anchor="middle" font-weight="700">Price</text>
+    <rect x="20" y="132" width="540" height="40" rx="5" fill="currentColor" fill-opacity="0.06" stroke="currentColor" stroke-opacity="0.35" stroke-dasharray="4 3"/>
+    <text x="32" y="157">source_row_id   Transmission   km_year_cat   Make_original</text>
+  </g>
+  <text x="20" y="30" fill="#3d5bd9" font-weight="700">X — входные признаки (что известно об автомобиле)</text>
+  <text x="470" y="30" fill="#c2410c" font-weight="700">y — цель</text>
+  <text x="20" y="124" fill="currentColor" fill-opacity="0.75">не включаем в X:</text>
+  <g fill="currentColor" font-size="12" fill-opacity="0.8">
+    <text x="20" y="194">source_row_id — технический номер строки CSV, не свойство автомобиля;</text>
+    <text x="20" y="212">Transmission и km_year_cat повторяют AutoTransmission и km_year; Make_original — ту же марку в другой детализации.</text>
+  </g>
+  <text x="590" y="62" fill="currentColor" font-size="12">модель ищет</text>
+  <text x="590" y="80" fill="currentColor" font-size="12">функцию f:</text>
+  <text x="590" y="102" fill="currentColor" font-family="JetBrains Mono, monospace" font-weight="700">y ≈ f(X)</text>
+</svg>

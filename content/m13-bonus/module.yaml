@@ -1,0 +1,25 @@
+id: b1
+number: 13
+label: Бонус
+kind: bonus
+lessonPrefix: Б
+firstLessonIndex: 0
+title: "Бонус: классификация, PCA, k-means и алгоритмы своими руками"
+short: Бонус
+description: >-
+  Необязательный модуль для тех, кто хочет глубже. Логистическая регрессия: сигмоида, логистическая функция потерь и
+  смысл коэффициентов на задаче «автомат или механика». Метрики классификации: матрица ошибок, точность и полнота, ROC
+  и AUC, выбор порога. Несбалансированные классы на гибридах среди машин: почему доля верных обманывает, веса классов,
+  дублирование и сдвиг порога. Обучение без учителя: метод главных компонент и кластеризация k-средних на машинах.
+  «Реализуй сам»: логистическая регрессия, PCA, k-means и дерево решений на NumPy с тем же устройством fit и predict,
+  что в scikit-learn. Мини-проект — данные о загрязнении воды из лабораторной: проверяем постановку задачи и честно
+  оцениваем, что из этих данных можно предсказать.
+sources:
+  - MLtextbook/Глава_4_Логистическая_Регрессия_Cars.ipynb
+  - MLtextbook/Глава_4_Логистическая_Регрессия_Синтетические_данные.ipynb
+  - MLtextbook/Глава_5_6_Метод_Главных_Компонент_и_Кластеризация_к_Средних_Car_Moldova_SE.ipynb
+  - MLtextbook/Глава_5_Уменьшение_Размерности_на_синтетических_данных.ipynb
+  - MLtextbook/Глава_6_Кластеризация_на_синтетических_данных.ipynb
+  - addition/lab8 - water-quality_balance.ipynb
+  - ml_numpy/
+warmupReviews: [binary-classification, train-valid-test, sk-split, standard-scaler, sk-pipeline, gradient-descent, column-transformer, one-hot-encoding, data-leakage, decision-tree, tree-split, pd-groupby, baseline-model]

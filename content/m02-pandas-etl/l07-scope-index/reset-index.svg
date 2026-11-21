@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 232" font-family="Inter, Arial, sans-serif" font-size="13" role="img" aria-label="После фильтрации метки строк 0, 1, 3, 4, 5 — с пропуском. Сохраняем их в колонку source_row_id, затем reset_index(drop=True) даёт метки 0, 1, 2, 3, 4">
+  <defs><marker id="ar2" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor" fill-opacity="0.7"/></marker></defs>
+  <text x="20" y="24" font-weight="700" fill="currentColor">после фильтрации</text>
+  <g font-family="JetBrains Mono, monospace" font-size="12" fill="currentColor">
+    <text x="20" y="50" fill-opacity="0.65">метка</text><text x="80" y="50" font-weight="700">Make</text>
+    <text x="40" y="74" font-weight="700" fill="#c2410c">0</text><text x="80" y="74">Toyota</text>
+    <text x="40" y="96" font-weight="700" fill="#c2410c">1</text><text x="80" y="96">Renault</text>
+    <text x="40" y="118" font-weight="700" fill="#c2410c">3</text><text x="80" y="118">Renault</text>
+    <text x="40" y="140" font-weight="700" fill="#c2410c">4</text><text x="80" y="140">Opel</text>
+    <text x="40" y="162" font-weight="700" fill="#c2410c">5</text><text x="80" y="162">Mercedes</text>
+  </g>
+  <text x="20" y="190" fill="currentColor" fill-opacity="0.7" font-size="12">строки 2 нет — она не прошла отбор</text>
+  <path d="M190 112 L268 112" stroke="currentColor" stroke-opacity="0.7" stroke-width="1.5" marker-end="url(#ar2)"/>
+  <text x="196" y="100" fill="currentColor" font-size="11.5" font-family="JetBrains Mono, monospace">source_row_id</text>
+  <text x="212" y="132" fill="currentColor" font-size="11.5" fill-opacity="0.7">= df.index</text>
+  <text x="290" y="24" font-weight="700" fill="currentColor">после reset_index(drop=True)</text>
+  <g font-family="JetBrains Mono, monospace" font-size="12" fill="currentColor">
+    <text x="290" y="50" fill-opacity="0.65">метка</text><text x="350" y="50" font-weight="700">Make</text><text x="450" y="50" font-weight="700" fill="#3d5bd9">source_row_id</text>
+    <text x="310" y="74" font-weight="700">0</text><text x="350" y="74">Toyota</text><text x="500" y="74" fill="#c2410c">0</text>
+    <text x="310" y="96" font-weight="700">1</text><text x="350" y="96">Renault</text><text x="500" y="96" fill="#c2410c">1</text>
+    <text x="310" y="118" font-weight="700">2</text><text x="350" y="118">Renault</text><text x="500" y="118" fill="#c2410c">3</text>
+    <text x="310" y="140" font-weight="700">3</text><text x="350" y="140">Opel</text><text x="500" y="140" fill="#c2410c">4</text>
+    <text x="310" y="162" font-weight="700">4</text><text x="350" y="162">Mercedes</text><text x="500" y="162" fill="#c2410c">5</text>
+  </g>
+  <rect x="444" y="58" width="112" height="112" rx="4" fill="#3d5bd9" fill-opacity="0.10" stroke="#3d5bd9"/>
+  <text x="580" y="96" fill="currentColor">новые метки — по порядку;</text>
+  <text x="580" y="116" fill="currentColor">исходная строка —</text>
+  <text x="580" y="136" fill="currentColor" font-family="JetBrains Mono, monospace" font-size="12">raw.loc[source_row_id]</text>
+  <text x="290" y="200" fill="currentColor" fill-opacity="0.75" font-size="12">Без drop=True старые метки стали бы колонкой с неясным именем index.</text>
+</svg>

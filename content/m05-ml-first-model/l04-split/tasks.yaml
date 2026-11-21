@@ -1,0 +1,329 @@
+- id: m5-l4-t1
+  title: "Шаг 1: отложим тестовую часть"
+  difficulty: warmup
+  introduces: [sk-split]
+  uses: [target-features, train-valid-test]
+  statement: |
+    Разделите `X` и `y` функцией `train_test_split` на временную часть (`X_temp`, `y_temp`) и тестовую (`X_test`, `y_test`): 20 % строк в тест, `random_state=42`. Получите `test_share` — долю строк в тесте.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('cars_processed.csv')
+    X = df[['Year', 'Distance', 'Engine', 'km_year']]
+    y = df['Price']
+  starter: |
+    X_temp, X_test, y_temp, y_test = ...
+    test_share = ...
+    print(X_temp.shape, X_test.shape, round(test_share, 3))
+  solution: |
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    test_share = len(X_test) / len(X)
+    print(X_temp.shape, X_test.shape, round(test_share, 3))
+  explanation: |
+    - `train_test_split(X, y, ...)` делит обе таблицы одним вызовом — пары «признаки — цена» сохраняются.
+    - Порядок результатов: X обучения, X отложенный, y обучения, y отложенный.
+    - `random_state=42` делает деление воспроизводимым.
+  hints:
+    - "Передайте X и y в один вызов; долю теста задаёт `test_size`."
+    - "`train_test_split(X, y, test_size=0.2, random_state=42)` — четыре результата."
+    - "`test_share = len(X_test) / len(X)`."
+  tests: |
+    import pandas as pd
+    Xt = var('X_test', pd.DataFrame, 'таблицей DataFrame')
+    yt = var('y_test', pd.Series, 'Series')
+    if len(Xt) > len(ref('X')) / 2:
+        fail('В `X_test` больше половины строк — проверьте порядок результатов: `X_temp, X_test, y_temp, y_test`.')
+    ensure(Xt.index.equals(yt.index), 'Метки строк `X_test` и `y_test` не совпадают — разбивайте X и y одним вызовом `train_test_split(X, y, ...)`.')
+    ensure(list(Xt.index[:5]) == list(ref('X_test').index[:5]), 'Тест не совпадает с ожидаемым: `test_size=0.2, random_state=42`.')
+    close(var('test_share', 'number', 'числом'), ref('test_share'), 'Доля теста — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        X_temp, X_test = train_test_split(X, test_size=0.2, random_state=42)
+        y_temp, y_test = train_test_split(y, test_size=0.2, random_state=1)
+        test_share = len(X_test) / len(X)
+      expect: одним вызовом
+    - code: |
+        X_test, X_temp, y_test, y_temp = train_test_split(X, y, test_size=0.2, random_state=42)
+        test_share = len(X_test) / len(X)
+      expect: порядок результатов
+
+- id: m5-l4-t2
+  title: "Шаг 2: обучение и валидация — 60/20/20"
+  difficulty: main
+  introduces: [sk-split]
+  uses: [train-valid-test]
+  statement: |
+    Разделите временную часть на обучающую (`X_train`, `y_train`) и валидационную (`X_valid`, `y_valid`) так, чтобы от **всех** строк получилось 60 % и 20 % (`random_state=42`). Получите `shares` — словарь долей `{'train': ..., 'valid': ..., 'test': ...}` от числа всех строк.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('cars_processed.csv')
+    X = df[['Year', 'Distance', 'Engine', 'km_year']]
+    y = df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)   # шаг 1
+  starter: |
+    X_train, X_valid, y_train, y_valid = ...
+    shares = {'train': ..., 'valid': ..., 'test': ...}
+    print({k: round(v, 3) for k, v in shares.items()})
+  solution: |
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    shares = {'train': len(X_train) / len(X), 'valid': len(X_valid) / len(X), 'test': len(X_test) / len(X)}
+    print({k: round(v, 3) for k, v in shares.items()})
+  explanation: |
+    - Во втором шаге делят **временную** часть: 0,25 от 80 % — это 20 % всех строк, остаётся 60 % на обучение.
+    - С `test_size=0.2` во втором шаге получилось бы 64/16/20.
+  hints:
+    - Второй шаг делит `X_temp` и `y_temp`; какая доля от 80 % даёт 20 % всех строк?
+    - "`train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)`."
+    - "Доли — длины частей, делённые на `len(X)`."
+  tests: |
+    s = var('shares', dict, 'словарём')
+    ensure(set(s.keys()) == {'train', 'valid', 'test'}, 'Ключи словаря — `train`, `valid`, `test`.')
+    if abs(s['valid'] - 0.16) < 0.005:
+        fail('Validation — 16 % всех строк: во втором шаге 0,2 берётся от оставшихся 80 %. Нужно `test_size=0.25`.')
+    for k in ['train', 'valid', 'test']:
+        close(s[k], ref('shares')[k], 'Доля {0} — {{expected}}, а у вас {{actual}}.'.format(k), rtol=1e-3)
+    import pandas as pd
+    ensure(list(var('X_valid', pd.DataFrame, 'таблицей').index[:5]) == list(ref('X_valid').index[:5]), 'Валидационная часть не совпадает: делите `X_temp, y_temp` с `random_state=42`.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.2, random_state=42)
+        shares = {'train': len(X_train) / len(X), 'valid': len(X_valid) / len(X), 'test': len(X_test) / len(X)}
+      expect: "test_size=0.25"
+    - code: |
+        X_train, X_valid, y_train, y_valid = train_test_split(X, y, test_size=0.2, random_state=42)
+        shares = {'train': len(X_train) / len(X), 'valid': len(X_valid) / len(X), 'test': len(X_test) / len(X)}
+      expect: Доля train
+
+- id: m5-l4-t3
+  title: Пересечения и полнота разбиения
+  difficulty: main
+  introduces: [data-leakage]
+  uses: [train-valid-test]
+  statement: |
+    Проверьте разбиение: `overlaps` — словарь с числом общих меток строк для пар `'train-valid'`, `'train-test'`, `'valid-test'`, и `covers_all` — `True`, если вместе три части содержат каждую строку исходной таблицы ровно один раз (сумма размеров равна числу строк **и** пересечений нет).
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('cars_processed.csv')
+    X = df[['Year', 'Distance', 'Engine', 'km_year']]
+    y = df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    overlaps = {
+        'train-valid': ...,
+        'train-test': ...,
+        'valid-test': ...,
+    }
+    covers_all = ...
+    print(overlaps, covers_all)
+  solution: |
+    overlaps = {
+        'train-valid': len(X_train.index.intersection(X_valid.index)),
+        'train-test': len(X_train.index.intersection(X_test.index)),
+        'valid-test': len(X_valid.index.intersection(X_test.index)),
+    }
+    covers_all = (len(X_train) + len(X_valid) + len(X_test) == len(X)) and sum(overlaps.values()) == 0
+    print(overlaps, covers_all)
+  explanation: |
+    - `A.index.intersection(B.index)` — общие метки строк; длина — сколько строк попало в обе части.
+    - Если сумма размеров равна числу строк и пересечений нет, каждая строка — ровно в одной части.
+    - Такая проверка занимает две строки и ловит самую грубую утечку — пересечение обучения и проверки.
+  hints:
+    - "Общие метки двух частей — `A.index.intersection(B.index)`, их число — `len(...)`."
+    - "`len(X_train.index.intersection(X_valid.index))` — и так для остальных пар."
+    - "`covers_all = (len(X_train) + len(X_valid) + len(X_test) == len(X)) and sum(overlaps.values()) == 0`."
+  tests: |
+    o = var('overlaps', dict, 'словарём')
+    ensure(set(o.keys()) == {'train-valid', 'train-test', 'valid-test'}, 'Ключи — `train-valid`, `train-test`, `valid-test`.')
+    for k, v in o.items():
+        equal(int(v), 0, 'В паре {0} общих меток должно быть {{expected}}, а у вас {{actual}}.'.format(k))
+    c = var('covers_all', None, 'логическим значением')
+    equal(bool(c), True, '`covers_all` должно быть {expected}: части без пересечений и вместе — все строки.')
+    import pandas as pd
+    if 'intersection' not in source():
+        fail('Посчитайте пересечения методом `index.intersection`.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        overlaps = {'train-valid': 0, 'train-test': 0, 'valid-test': 0}
+        covers_all = True
+      expect: intersection
+    - code: |
+        overlaps = {
+            'train-valid': len(X_train.index.intersection(X_valid.index)),
+            'train-test': len(X_train.index.intersection(X_test.index)),
+            'valid-test': len(X_valid.index.intersection(X_test.index)),
+        }
+        covers_all = len(X_train) + len(X_valid) == len(X)
+      expect: covers_all
+
+- id: m5-l4-t4
+  kind: quiz
+  title: Где утечка
+  difficulty: main
+  introduces: [data-leakage]
+  uses: []
+  statement: |
+    Найдите утечку данных.
+  quiz:
+    - q: "Признак «средняя цена модели» посчитали по всей таблице, а затем разделили данные."
+      options:
+        - Утечка — в средних участвовали цены валидационных и тестовых машин
+        - Утечки нет, это просто новый признак
+      answer: 0
+      explain: Статистики для признаков считают только по обучающей части.
+    - q: "Стандартизировали признаки, вычислив μ и σ по обучающей части, и тем же преобразованием обработали validation и test."
+      options:
+        - Утечка
+        - Утечки нет — так и нужно
+      answer: 1
+      explain: Параметры подготовки — по train, применение — ко всем частям (урок 5.7).
+    - q: "Для оценки цены добавили признак «цена в первом объявлении этого продавца» — продавцы часто выставляют машину повторно."
+      options:
+        - Утечка, если прошлое объявление той же машины попадает в разные части или сама цена известна только после
+        - Утечки быть не может
+      answer: 0
+      explain: Повторные объявления одной машины связывают части выборки; такие признаки требуют осторожности.
+  hints:
+    - Спросите себя, не участвуют ли в признаке или подготовке ответы проверочных частей.
+    - "Средние по всей таблице — утечка; параметры по train, применённые к остальным, — норма; повторы машины — риск."
+    - "Ответы: утечка; утечки нет; утечка."
+
+- id: m5-l4-t5
+  title: random_state и воспроизводимость
+  difficulty: main
+  introduces: [sk-split]
+  uses: [rng-sample]
+  statement: |
+    Разделите `X, y` три раза (`test_size=0.2`): дважды с `random_state=42` (тесты `test_a`, `test_b`) и один раз с `random_state=7` (`test_c`) — нужны только тестовые признаки. Получите `same_split` — `True`, если метки строк `test_a` и `test_b` совпадают, и `overlap_7` — сколько строк `test_c` попало и в `test_a`.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('cars_processed.csv')
+    X = df[['Year', 'Distance', 'Engine', 'km_year']]
+    y = df['Price']
+  starter: |
+    test_a = train_test_split(X, y, test_size=0.2, random_state=42)[1]
+    test_b = ...
+    test_c = ...
+    same_split = ...
+    overlap_7 = ...
+    print(same_split, overlap_7, round(overlap_7 / len(test_a), 3))
+  solution: |
+    test_a = train_test_split(X, y, test_size=0.2, random_state=42)[1]
+    test_b = train_test_split(X, y, test_size=0.2, random_state=42)[1]
+    test_c = train_test_split(X, y, test_size=0.2, random_state=7)[1]
+    same_split = test_a.index.equals(test_b.index)
+    overlap_7 = len(test_a.index.intersection(test_c.index))
+    print(same_split, overlap_7, round(overlap_7 / len(test_a), 3))
+  explanation: |
+    - `[1]` — второй результат вызова, то есть `X_test`.
+    - С одинаковым `random_state` деление повторяется в точности — результаты можно сравнивать между запусками и с коллегами.
+    - С другим `random_state` тест другой: случайно совпадает около 20 % строк — столько же, какова доля теста.
+  hints:
+    - "Тестовые признаки — второй результат вызова: `train_test_split(...)[1]`."
+    - "`same_split = test_a.index.equals(test_b.index)`."
+    - "`overlap_7 = len(test_a.index.intersection(test_c.index))`."
+  tests: |
+    equal(bool(var('same_split', None, 'логическим значением')), True, 'С одинаковым `random_state` тесты совпадают — `same_split` должно быть {expected}.')
+    close(var('overlap_7', 'number', 'числом'), ref('overlap_7'), 'Совпадающих строк у тестов с `random_state=42` и `7` — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        test_a = train_test_split(X, y, test_size=0.2, random_state=42)[1]
+        test_b = train_test_split(X, y, test_size=0.2, random_state=42)[1]
+        test_c = train_test_split(X, y, test_size=0.2, random_state=7)[0]
+        same_split = test_a.index.equals(test_b.index)
+        overlap_7 = len(test_a.index.intersection(test_c.index))
+      expect: Совпадающих строк
+    - code: |
+        test_a = train_test_split(X, y, test_size=0.2, random_state=42)[1]
+        test_b = train_test_split(X, y, test_size=0.2)[1]
+        test_c = train_test_split(X, y, test_size=0.2, random_state=7)[1]
+        same_split = test_a.index.equals(test_b.index)
+        overlap_7 = len(test_a.index.intersection(test_c.index))
+      expect: одинаковым
+- id: m5-l4-t6
+  title: Утечка через «цену как у похожих»
+  difficulty: star
+  introduces: [data-leakage]
+  uses: [pd-groupby, metric-mae-mape, sk-split]
+  statement: |
+    Оценим цену валидационных машин средней ценой их модели (`Model`) двумя способами:
+
+    - `est_leak` — средние посчитаны **по всей таблице** (с ценами валидационных машин);
+    - `est_ok` — средние посчитаны **только по train**; для моделей, которых нет в train, — медиана цен train.
+
+    Получите `mae_leak`, `mae_ok` (MAE на validation) и `leak_gain` = `mae_ok - mae_leak` — на сколько утечка «улучшает» оценку.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('cars_processed.csv')
+    X = df[['Year', 'Distance', 'Engine', 'km_year']]
+    y = df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    valid_models = df.loc[X_valid.index, 'Model']      # модели валидационных машин
+  starter: |
+    mean_all = ...
+    mean_train = ...
+    est_leak = valid_models.map(mean_all)
+    est_ok = ...
+    mae_leak = ...
+    mae_ok = ...
+    leak_gain = ...
+    print(round(mae_leak), round(mae_ok), round(leak_gain))
+  solution: |
+    mean_all = df.groupby('Model')['Price'].mean()
+    mean_train = df.loc[X_train.index].groupby('Model')['Price'].mean()
+    est_leak = valid_models.map(mean_all)
+    est_ok = valid_models.map(mean_train).fillna(y_train.median())
+    mae_leak = (y_valid - est_leak).abs().mean()
+    mae_ok = (y_valid - est_ok).abs().mean()
+    leak_gain = mae_ok - mae_leak
+    print(round(mae_leak), round(mae_ok), round(leak_gain))
+  explanation: |
+    - Средние по всей таблице включают цену самой оцениваемой машины — у редких моделей она почти совпадает с ответом.
+    - Средние только по train честны: так будет и в работе, когда цена нового объявления неизвестна. Модели, которых не было в train, получают медиану (урок 2.6).
+    - Утечка «улучшает» MAE почти на 200 евро — это обман: в работе такого качества не будет.
+  hints:
+    - "Средние по модели — группировка; для train — только строки `df.loc[X_train.index]`."
+    - "`mean_train = df.loc[X_train.index].groupby('Model')['Price'].mean()`; пропуски — `fillna(y_train.median())`."
+    - "`mae_ok = (y_valid - est_ok).abs().mean()`; `leak_gain = mae_ok - mae_leak`."
+  tests: |
+    import pandas as pd
+    mt = var('mean_train', pd.Series, 'Series')
+    if len(mt) == len(ref('mean_all')) and abs(mt.iloc[0] - ref('mean_all').iloc[0]) < 1e-9:
+        fail('`mean_train` совпадает со средними по всей таблице. Считайте только по обучающим строкам: `df.loc[X_train.index]`.')
+    eo = var('est_ok', pd.Series, 'Series')
+    ensure(eo.isna().sum() == 0, 'В `est_ok` остались пропуски — у моделей, которых нет в train: заполните медианой цен train.')
+    close(var('mae_leak', 'number', 'числом'), ref('mae_leak'), 'MAE с утечкой — {expected}, а у вас {actual}.')
+    close(var('mae_ok', 'number', 'числом'), ref('mae_ok'), 'Честная MAE — {expected}, а у вас {actual}.')
+    lg = var('leak_gain', 'number', 'числом')
+    close(lg, ref('leak_gain'), '«Выигрыш» от утечки — {expected}, а у вас {actual}.')
+    ensure(lg > 0, 'Утечка должна давать обманчиво меньшую ошибку: `mae_ok - mae_leak` > 0.')
+    close(alt('leak_gain'), alt_ref('leak_gain'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        mean_all = df.groupby('Model')['Price'].mean()
+        mean_train = df.groupby('Model')['Price'].mean()
+        est_leak = valid_models.map(mean_all)
+        est_ok = valid_models.map(mean_train).fillna(y_train.median())
+        mae_leak = (y_valid - est_leak).abs().mean()
+        mae_ok = (y_valid - est_ok).abs().mean()
+        leak_gain = mae_ok - mae_leak
+      expect: только по обучающим строкам
+    - code: |
+        mean_all = df.groupby('Model')['Price'].mean()
+        mean_train = df.loc[X_train.index].groupby('Model')['Price'].mean()
+        est_leak = valid_models.map(mean_all)
+        est_ok = valid_models.map(mean_train)
+        mae_leak = (y_valid - est_leak).abs().mean()
+        mae_ok = (y_valid - est_ok).abs().mean()
+        leak_gain = mae_ok - mae_leak
+      expect: пропуски

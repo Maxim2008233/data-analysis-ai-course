@@ -1,0 +1,314 @@
+- id: m3-l7-t1
+  title: MAE и MAPE своими руками
+  difficulty: warmup
+  introduces: [metric-mae-mape]
+  uses: [vectorization]
+  statement: |
+    Настоящие цены пяти машин — в Series `y`, оценка для всех одна — `y_hat`. Получите `mae` — среднюю абсолютную ошибку в евро и `mape` — среднюю абсолютную ошибку в процентах.
+  prelude: |
+    import pandas as pd
+    y = pd.Series([4000, 6500, 8000, 12000, 25000])
+    y_hat = 9000
+  starter: |
+    mae = ...
+    mape = ...
+    print(mae, round(mape, 2))
+  solution: |
+    mae = (y - y_hat).abs().mean()
+    mape = ((y - y_hat).abs() / y).mean() * 100
+    print(mae, round(mape, 2))
+  explanation: |
+    - `y - y_hat` — ошибка для каждой машины, `.abs()` — её модуль, `.mean()` — среднее: это MAE.
+    - Для MAPE каждый модуль ошибки делим на настоящую цену этой машины, усредняем и умножаем на 100.
+  alternatives:
+    - |
+      import numpy as np
+      mae = np.mean(np.abs(y - y_hat))
+      mape = 100 * np.mean(np.abs(y - y_hat) / y)
+  hints:
+    - Ошибка каждой машины — разность настоящей цены и оценки. Почему без модуля нельзя?
+    - "MAE — `(y - y_hat).abs().mean()`; MAPE — модуль ошибки разделить на `y`, усреднить, умножить на 100."
+    - "`mape = ((y - y_hat).abs() / y).mean() * 100`."
+  tests: |
+    m = var('mae', 'number', 'числом')
+    if abs(float(m) - float((ref('y') - ref('y_hat')).mean())) < 1e-9:
+        fail('Похоже, ошибки усреднены без модуля — разные знаки сокращаются. Добавьте `.abs()`.')
+    close(m, ref('mae'), 'MAE должна быть {expected}, а у вас {actual}.')
+    p = var('mape', 'number', 'числом')
+    if abs(float(p) - float(ref('mape')) / 100) < 1e-9:
+        fail('MAPE в долях, а нужно в процентах — умножьте на 100.')
+    close(p, ref('mape'), 'MAPE должна быть {expected} %, а у вас {actual}.')
+  wrong:
+    - code: |
+        mae = (y - y_hat).mean()
+        mape = ((y - y_hat).abs() / y).mean() * 100
+      expect: без модуля
+    - code: |
+        mae = (y - y_hat).abs().mean()
+        mape = ((y - y_hat).abs() / y_hat).mean() * 100
+      expect: MAPE должна быть
+
+- id: m3-l7-t2
+  title: Наивная оценка — одна цена для всех
+  difficulty: main
+  introduces: [metric-mae-mape]
+  uses: [mean-median]
+  statement: |
+    Оцените все объявления одной и той же ценой — медианой всех цен. Получите `naive` — эту оценку, `mae_naive` и `mape_naive` — её MAE и MAPE. Это ориентир: любая разумная оценка должна быть лучше.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')   # результат модуля 2
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    naive = ...
+    mae_naive = ...
+    mape_naive = ...
+    print(naive, round(mae_naive), round(mape_naive, 1))
+  solution: |
+    naive = df['Price'].median()
+    mae_naive = (df['Price'] - naive).abs().mean()
+    mape_naive = ((df['Price'] - naive).abs() / df['Price']).mean() * 100
+    print(naive, round(mae_naive), round(mape_naive, 1))
+  explanation: |
+    - Одна оценка `naive` вычитается из всех цен сразу — векторная операция.
+    - Такая «модель» не учитывает ни марку, ни год; её ошибка — ориентир, с которым сравнивают все следующие оценки.
+  hints:
+    - Оценка одна для всех — медиана колонки цены. Метрики — как в предыдущем задании.
+    - "`naive = df['Price'].median()`; MAE — `(df['Price'] - naive).abs().mean()`."
+    - "`mape_naive = ((df['Price'] - naive).abs() / df['Price']).mean() * 100`."
+  tests: |
+    close(var('naive', 'number', 'числом'), ref('naive'), 'Оценка должна быть медианой цен: {expected}, а у вас {actual}.')
+    close(var('mae_naive', 'number', 'числом'), ref('mae_naive'), 'MAE наивной оценки — {expected}, а у вас {actual}.')
+    close(var('mape_naive', 'number', 'числом'), ref('mape_naive'), 'MAPE наивной оценки — {expected} %, а у вас {actual}.')
+    close(alt('mae_naive'), alt_ref('mae_naive'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        naive = df['Price'].mean()
+        mae_naive = (df['Price'] - naive).abs().mean()
+        mape_naive = ((df['Price'] - naive).abs() / df['Price']).mean() * 100
+      expect: медианой цен
+    - code: |
+        naive = df['Price'].median()
+        mae_naive = (df['Price'] - naive).abs().mean()
+        mape_naive = ((df['Price'] - naive).abs() / naive).mean() * 100
+      expect: MAPE наивной оценки
+
+- id: m3-l7-t3
+  title: Оценка «средняя марки и года»
+  difficulty: main
+  introduces: [metric-mae-mape]
+  uses: [group-estimate]
+  statement: |
+    Получите `estimate` — для каждого объявления среднюю цену его группы «марка + год выпуска» (Series той же длины, что таблица), и `mae_group`, `mape_group` — метрики этой оценки.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    estimate = ...
+    mae_group = ...
+    mape_group = ...
+    print(round(mae_group), round(mape_group, 1))
+  solution: |
+    estimate = df.groupby(['Make', 'Year'])['Price'].transform('mean')
+    mae_group = (df['Price'] - estimate).abs().mean()
+    mape_group = ((df['Price'] - estimate).abs() / df['Price']).mean() * 100
+    print(round(mae_group), round(mape_group, 1))
+  explanation: |
+    - `transform('mean')` возвращает среднюю цену группы для каждой строки (урок 3.6) — это оценка каждого объявления.
+    - Ошибка каждой машины — разность её цены и оценки; дальше — те же формулы MAE и MAPE.
+  hints:
+    - Оценка нужна для каждой строки, а не одна на группу.
+    - "`df.groupby(['Make', 'Year'])['Price'].transform('mean')`; затем MAE и MAPE по разности с `df['Price']`."
+    - "`mae_group = (df['Price'] - estimate).abs().mean()`."
+  tests: |
+    import pandas as pd
+    e = var('estimate', pd.Series, 'Series той же длины, что таблица')
+    if len(e) != len(ref('df')):
+        fail('В `estimate` {0} значений, а строк {1}. Нужна оценка для каждой строки — `transform(\'mean\')`.'.format(len(e), len(ref('df'))))
+    same_frame(e, ref('estimate'), 'Оценка не совпадает со средней ценой группы «марка + год».')
+    close(var('mae_group', 'number', 'числом'), ref('mae_group'), 'MAE — {expected}, а у вас {actual}.')
+    close(var('mape_group', 'number', 'числом'), ref('mape_group'), 'MAPE — {expected} %, а у вас {actual}.')
+    close(alt('mae_group'), alt_ref('mae_group'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        estimate = df.groupby(['Make', 'Year'])['Price'].mean()
+        mae_group = 0
+        mape_group = 0
+      expect: transform
+    - code: |
+        estimate = df.groupby('Make')['Price'].transform('mean')
+        mae_group = (df['Price'] - estimate).abs().mean()
+        mape_group = ((df['Price'] - estimate).abs() / df['Price']).mean() * 100
+      expect: «марка + год»
+
+- id: m3-l7-t4
+  title: Среднее или медиана группы
+  difficulty: main
+  introduces: [metric-mae-mape]
+  uses: [group-estimate, mean-median]
+  statement: |
+    Сравните две оценки по группе «марка + год»: среднюю цену группы и медианную. Получите `mae_mean_est` и `mae_median_est` — их MAE, и `best` — `'median'` или `'mean'`, у какой оценки MAE меньше.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    est_mean = ...
+    est_median = ...
+    mae_mean_est = ...
+    mae_median_est = ...
+    best = ...
+    print(round(mae_mean_est), round(mae_median_est), best)
+  solution: |
+    est_mean = df.groupby(['Make', 'Year'])['Price'].transform('mean')
+    est_median = df.groupby(['Make', 'Year'])['Price'].transform('median')
+    mae_mean_est = (df['Price'] - est_mean).abs().mean()
+    mae_median_est = (df['Price'] - est_median).abs().mean()
+    best = 'median' if mae_median_est < mae_mean_est else 'mean'
+    print(round(mae_mean_est), round(mae_median_est), best)
+  explanation: |
+    - Две оценки отличаются только функцией в `transform`.
+    - Медиана — значение, для которого сумма модулей отклонений наименьшая, поэтому по MAE она выигрывает у среднего на тех же данных.
+    - Среднее, наоборот, минимизирует средний квадрат отклонения — к этой метрике мы вернёмся в модуле 5.
+  hints:
+    - "Две оценки: `transform('mean')` и `transform('median')` по той же группе."
+    - "MAE каждой — `(df['Price'] - оценка).abs().mean()`; затем сравнение."
+    - "`best = 'median' if mae_median_est < mae_mean_est else 'mean'`."
+  tests: |
+    close(var('mae_mean_est', 'number', 'числом'), ref('mae_mean_est'), 'MAE оценки средним — {expected}, а у вас {actual}.')
+    close(var('mae_median_est', 'number', 'числом'), ref('mae_median_est'), 'MAE оценки медианой — {expected}, а у вас {actual}.')
+    equal(var('best'), ref('best'), 'Меньше MAE у оценки {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        est_mean = df.groupby(['Make', 'Year'])['Price'].transform('mean')
+        est_median = df.groupby(['Make', 'Year'])['Price'].transform('mean')
+        mae_mean_est = (df['Price'] - est_mean).abs().mean()
+        mae_median_est = (df['Price'] - est_median).abs().mean()
+        best = 'mean'
+      expect: MAE оценки медианой
+    - code: |
+        est_mean = df.groupby(['Make', 'Year'])['Price'].transform('mean')
+        est_median = df.groupby(['Make', 'Year'])['Price'].transform('median')
+        mae_mean_est = (df['Price'] - est_mean).abs().mean()
+        mae_median_est = (df['Price'] - est_median).abs().mean()
+        best = 'mean'
+      expect: Меньше MAE
+
+- id: m3-l7-t5
+  kind: quiz
+  title: Как читать метрики
+  difficulty: main
+  introduces: [metric-mae-mape]
+  uses: []
+  statement: |
+    Проверьте, как вы понимаете метрики и их ограничения.
+  quiz:
+    - q: В каких единицах измеряется MAE оценки цены?
+      options:
+        - В евро — как и сама цена
+        - В процентах
+        - Без единиц
+      answer: 0
+      explain: MAE — средний модуль разности цен, поэтому единицы те же, что у цены.
+    - q: "Оценка ошибается на 1000 евро и для машины за 2000 евро, и для машины за 40 000. Что верно?"
+      options:
+        - Процентные ошибки одинаковы
+        - Процентная ошибка 50 % и 2,5 % — MAPE сильнее «штрафует» ошибки на дешёвых машинах
+        - MAE для них разная
+      answer: 1
+      explain: MAPE делит ошибку на цену, поэтому дешёвые машины дают большие проценты.
+    - q: При оценке по группе «марка + модель + год» MAE на тех же данных — 1507 евро. Почему этому числу нельзя доверять как качеству прогноза?
+      options:
+        - В тысячах групп всего одна машина, и её оценка — её же цена
+        - MAE всегда завышена
+        - Модель не влияет на цену
+      answer: 0
+      explain: Оценка «подсматривает» ответ; качество проверяют на объявлениях, не участвовавших в расчёте средних.
+  hints:
+    - "Вспомните формулы MAE и MAPE и раздел «Ловушка: ошибка на тех же данных»."
+    - "MAE — в евро; MAPE делит на цену; маленькие группы «угадывают» себя."
+    - "Ответы: в евро; 50 % и 2,5 %; группы из одной машины."
+
+- id: m3-l7-t6
+  title: Проверка оценки на новых объявлениях
+  difficulty: star
+  introduces: [metric-mae-mape]
+  uses: [group-estimate, pd-map]
+  statement: |
+    Разделите объявления: `train` — случайная половина (`random_state=42`), `test` — остальные. По `train` посчитайте средние цены групп «марка + год» и оцените ими машины из `test`. Получите:
+
+    - `found_share` — долю машин `test`, для которых группа нашлась;
+    - `mae_new` — MAE на этих машинах;
+    - `mae_old` — MAE той же оценки на самих машинах `train`.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+    def key(t):
+        return t['Make'] + ' ' + t['Year'].astype(str)   # ключ группы «марка + год» строкой
+  starter: |
+    train = ...
+    test = ...
+    means = train.groupby(key(train))['Price'].mean()
+    est_new = ...
+    found = est_new.notna()
+    found_share = ...
+    mae_new = ...
+    mae_old = ...
+    print(round(found_share, 3), round(mae_new), round(mae_old))
+  solution: |
+    train = df.sample(frac=0.5, random_state=42)
+    test = df.drop(train.index)
+    means = train.groupby(key(train))['Price'].mean()
+    est_new = key(test).map(means)
+    found = est_new.notna()
+    found_share = found.mean()
+    mae_new = (test.loc[found, 'Price'] - est_new[found]).abs().mean()
+    mae_old = (train['Price'] - train.groupby(key(train))['Price'].transform('mean')).abs().mean()
+    print(round(found_share, 3), round(mae_new), round(mae_old))
+  explanation: |
+    - `df.sample(frac=0.5, random_state=42)` — случайная половина; `df.drop(train.index)` — все остальные строки.
+    - `key(test).map(means)` подставляет среднюю цену группы из `train` по строковому ключу; для неизвестных групп получается `NaN`.
+    - Ошибка на новых машинах больше, чем на старых: средние посчитаны без них. Так проверяют качество любой оценки.
+  hints:
+    - "Сначала разбиение: `sample(frac=0.5, random_state=42)` и `drop(train.index)`. Средние — только по `train`."
+    - "Оценка новых машин — `key(test).map(means)`; MAE считайте только по строкам `found`; для старых — `transform('mean')` внутри `train`."
+    - "`mae_new = (test.loc[found, 'Price'] - est_new[found]).abs().mean()`."
+  tests: |
+    import pandas as pd
+    tr = var('train', pd.DataFrame, 'таблицей DataFrame')
+    te = var('test', pd.DataFrame, 'таблицей DataFrame')
+    ensure(len(tr) + len(te) == len(ref('df')) and not tr.index.isin(te.index).any(), '`train` и `test` должны не пересекаться и вместе содержать все строки: `test = df.drop(train.index)`.')
+    same_frame(tr, ref('train'), '`train` должна быть случайной половиной с `random_state=42`.')
+    fs = var('found_share', 'number', 'числом')
+    if abs(float(fs) - 1.0) < 1e-12 and float(ref('found_share')) < 1:
+        fail('Группа нашлась для всех новых машин — похоже, средние посчитаны по всей таблице, включая `test`. Новые машины не должны участвовать в расчёте: считайте `means` только по `train`.')
+    close(fs, ref('found_share'), 'Доля новых машин с найденной группой — {expected}, а у вас {actual}.')
+    close(var('mae_new', 'number', 'числом'), ref('mae_new'), 'MAE на новых машинах — {expected}, а у вас {actual}.')
+    close(var('mae_old', 'number', 'числом'), ref('mae_old'), 'MAE на машинах train — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        train = df.sample(frac=0.5, random_state=42)
+        test = df.drop(train.index)
+        means = df.groupby(key(df))['Price'].mean()
+        est_new = key(test).map(means)
+        found = est_new.notna()
+        found_share = found.mean()
+        mae_new = (test.loc[found, 'Price'] - est_new[found]).abs().mean()
+        mae_old = (train['Price'] - train.groupby(key(train))['Price'].transform('mean')).abs().mean()
+      expect: только по `train`
+    - code: |
+        train = df.sample(frac=0.5)
+        test = df.drop(train.index)
+        means = train.groupby(key(train))['Price'].mean()
+        est_new = key(test).map(means)
+        found = est_new.notna()
+        found_share = found.mean()
+        mae_new = (test.loc[found, 'Price'] - est_new[found]).abs().mean()
+        mae_old = (train['Price'] - train.groupby(key(train))['Price'].transform('mean')).abs().mean()
+      expect: random_state=42

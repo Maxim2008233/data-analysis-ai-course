@@ -1,0 +1,16 @@
+id: m2
+number: 2
+label: Модуль 2
+title: "Pandas: загрузка, очистка и подготовка данных (ETL)"
+short: Pandas ETL
+firstLessonIndex: 0
+description: >-
+  От массивов — к таблицам: загружаем все колонки объявлений, осматриваем типы, пропуски и повторы, выбираем строки
+  и колонки через loc и iloc, фильтруем по условиям, последовательно очищаем данные с журналом обработки, создаём новые
+  признаки и сохраняем подготовленную таблицу, на которой работают следующие модули.
+sources:
+  - Workshops/02_Pandas_Cars ETL.ipynb
+  - Workshops/2025/02_Введение_в_Pandas_Cars.ipynb
+  - from ODS Course/lesson1_part1_pandas_intro.ipynb
+  - MLtextbook/Глава_2_Введение_в_Pandas_Cars.ipynb
+warmupReviews: []

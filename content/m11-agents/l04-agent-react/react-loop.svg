@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="Цикл ReAct. Вопрос «Покажи расписание моих занятий на завтра» уходит модели. Модель пишет текст: Thought — нужно узнать расписание, Action — get_schedule, Action Input — завтра. Сама модель ничего не выполняет. Программа находит инструмент, проверяет вход и выполняет его; инструменты агента — get_schedule, search_course, calculate. Результат возвращается строкой Observation и дописывается в историю, после чего модель спрашивают снова. Когда данных хватает, модель пишет Final Answer — ответ пользователю. Программа ограничивает число шагов.">
+  <defs><marker id="rl-a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#64748b"/></marker></defs>
+  <text x="12" y="22" fill="currentColor" font-weight="700">Цикл ReAct: модель решает, что сделать, программа — делает</text>
+  <rect x="12" y="104" width="160" height="78" rx="8" fill="#64748b" fill-opacity="0.08" stroke="#64748b" stroke-opacity="0.6"/>
+  <text x="92" y="126" fill="currentColor" text-anchor="middle" font-weight="700">Вопрос</text>
+  <text x="92" y="146" fill="currentColor" text-anchor="middle" font-size="11">«Покажи расписание</text>
+  <text x="92" y="161" fill="currentColor" text-anchor="middle" font-size="11">моих занятий</text>
+  <text x="92" y="176" fill="currentColor" text-anchor="middle" font-size="11">на завтра»</text>
+  <path d="M174 143 L196 143" stroke="#64748b" stroke-width="1.5" marker-end="url(#rl-a)"/>
+  <rect x="200" y="48" width="236" height="120" rx="8" fill="#3d5bd9" fill-opacity="0.08" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="318" y="68" fill="currentColor" text-anchor="middle" font-weight="700">Модель</text>
+  <text x="212" y="92" fill="currentColor" font-size="11"><tspan font-weight="700">Thought:</tspan> нужно узнать расписание</text>
+  <text x="212" y="110" fill="currentColor" font-size="11"><tspan font-weight="700">Action:</tspan> get_schedule</text>
+  <text x="212" y="128" fill="currentColor" font-size="11"><tspan font-weight="700">Action Input:</tspan> завтра</text>
+  <text x="212" y="154" fill="currentColor" font-size="10.5" opacity="0.75">пишет текст, но ничего не выполняет</text>
+  <path d="M438 107 L466 107" stroke="#64748b" stroke-width="1.5" marker-end="url(#rl-a)"/>
+  <rect x="470" y="60" width="150" height="94" rx="8" fill="#c2410c" fill-opacity="0.08" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="545" y="80" fill="currentColor" text-anchor="middle" font-weight="700">Программа</text>
+  <text x="545" y="100" fill="currentColor" text-anchor="middle" font-size="11">находит инструмент,</text>
+  <text x="545" y="116" fill="currentColor" text-anchor="middle" font-size="11">проверяет вход,</text>
+  <text x="545" y="132" fill="currentColor" text-anchor="middle" font-size="11">выполняет его</text>
+  <path d="M622 107 L644 107" stroke="#64748b" stroke-width="1.5" marker-end="url(#rl-a)"/>
+  <text x="700" y="48" fill="currentColor" text-anchor="middle" font-size="11" opacity="0.8">инструменты</text>
+  <rect x="648" y="56" width="104" height="28" rx="6" fill="#0f766e" fill-opacity="0.12" stroke="#0f766e" stroke-opacity="0.7"/>
+  <text x="700" y="74" fill="currentColor" text-anchor="middle" font-size="11">get_schedule</text>
+  <rect x="648" y="93" width="104" height="28" rx="6" fill="#0f766e" fill-opacity="0.08" stroke="#0f766e" stroke-opacity="0.5"/>
+  <text x="700" y="111" fill="currentColor" text-anchor="middle" font-size="11">search_course</text>
+  <rect x="648" y="130" width="104" height="28" rx="6" fill="#0f766e" fill-opacity="0.08" stroke="#0f766e" stroke-opacity="0.5"/>
+  <text x="700" y="148" fill="currentColor" text-anchor="middle" font-size="11">calculate</text>
+  <path d="M545 156 L545 192" stroke="#64748b" stroke-width="1.5" marker-end="url(#rl-a)"/>
+  <rect x="300" y="196" width="320" height="46" rx="8" fill="#0f766e" fill-opacity="0.08" stroke="#0f766e" stroke-opacity="0.6"/>
+  <text x="312" y="215" fill="currentColor" font-size="11"><tspan font-weight="700">Observation:</tspan> 9:00 — История, ауд. 203;</text>
+  <text x="312" y="232" fill="currentColor" font-size="11">11:00 — Мировая культура, онлайн; 14:00 — …</text>
+  <path d="M298 219 L270 219 L270 172" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#rl-a)"/>
+  <text x="276" y="187" fill="currentColor" font-size="10.5" opacity="0.8">дописать в историю</text>
+  <path d="M222 170 L222 204 L150 204 L150 226" stroke="#3d5bd9" stroke-width="1.5" fill="none" marker-end="url(#rl-a)"/>
+  <text x="84" y="214" fill="currentColor" font-size="10.5" opacity="0.8" text-anchor="middle">данных хватает</text>
+  <rect x="12" y="230" width="270" height="58" rx="8" fill="#3d5bd9" fill-opacity="0.14" stroke="#3d5bd9" stroke-opacity="0.7"/>
+  <text x="24" y="250" fill="currentColor" font-size="11"><tspan font-weight="700">Final Answer:</tspan> Завтра у вас три занятия:</text>
+  <text x="24" y="266" fill="currentColor" font-size="11">9:00 — история, ауд. 203; 11:00 — мировая</text>
+  <text x="24" y="282" fill="currentColor" font-size="11">культура, онлайн; 14:00 — консультация…</text>
+  <text x="748" y="268" fill="currentColor" font-size="10.5" opacity="0.8" text-anchor="end">Цикл повторяется, пока модель не напишет</text>
+  <text x="748" y="283" fill="currentColor" font-size="10.5" opacity="0.8" text-anchor="end">Final Answer, — но не больше max_steps шагов</text>
+</svg>

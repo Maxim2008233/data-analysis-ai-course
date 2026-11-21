@@ -1,0 +1,469 @@
+- id: m8-l7-t1
+  title: Вероятность и класс
+  difficulty: warmup
+  introduces: [binary-classification]
+  uses: [activation-function]
+  statement: |
+    Обучите `logreg = LogisticRegression()` на train. Для точек validation получите:
+
+    - `proba` — вероятность класса 1 (второй столбец `predict_proba`);
+    - `pred` — класс по порогу 0,5: 1, если вероятность не меньше 0,5, иначе 0 (массив из 0 и 1);
+    - `same` — совпадает ли `pred` с `logreg.predict(X_valid)` (True или False);
+    - `accuracy` — долю верных ответов `pred` и `n_errors` — число ошибок.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.linear_model import LogisticRegression
+    moons = pd.read_csv('moons.csv')
+    X, y = moons[['x1', 'x2']], moons['label']
+    X_train, X_hold, y_train, y_hold = train_test_split(X, y, test_size=0.4, random_state=42, stratify=y)
+    X_valid, X_test, y_valid, y_test = train_test_split(X_hold, y_hold, test_size=0.5, random_state=43, stratify=y_hold)
+  starter: |
+    logreg = LogisticRegression().fit(...)
+    proba = ...
+    pred = ...
+    same = ...
+    accuracy = ...
+    n_errors = ...
+    print(proba[:3].round(3), pred[:3], same, accuracy, n_errors)
+  solution: |
+    logreg = LogisticRegression().fit(X_train, y_train)
+    proba = logreg.predict_proba(X_valid)[:, 1]
+    pred = (proba >= 0.5).astype(int)
+    same = bool(np.array_equal(pred, logreg.predict(X_valid)))
+    accuracy = (pred == y_valid).mean()
+    n_errors = int((pred != y_valid).sum())
+    print(proba[:3].round(3), pred[:3], same, accuracy, n_errors)
+  explanation: |
+    - `predict_proba` возвращает два столбца — вероятности классов 0 и 1, в каждой строке они в сумме дают 1. Вероятность класса 1 — `[:, 1]`.
+    - `predict` — это и есть порог 0,5 на вероятности: наш `pred` с ним совпадает.
+    - Доля верных ответов — 0,855: модель ошибается на 29 точках из 200. Граница логистической регрессии — прямая, и загнутые концы полумесяцев оказываются не на своей стороне.
+  hints:
+    - "Вероятность класса 1 — `logreg.predict_proba(X_valid)[:, 1]`."
+    - "Класс по порогу — `(proba >= 0.5).astype(int)`; совпадение — `np.array_equal(pred, logreg.predict(X_valid))`."
+    - "Доля верных — `(pred == y_valid).mean()`, ошибок — `(pred != y_valid).sum()`."
+  tests: |
+    import numpy as np
+    pr = np.asarray(var('proba'), dtype=float)
+    if pr.ndim == 2:
+        fail('`predict_proba` возвращает два столбца — вероятности классов 0 и 1. Вероятность класса 1 — `[:, 1]`.')
+    ensure(pr.shape == (len(ref('y_valid')),), '`proba` — по вероятности на каждую точку validation.')
+    if np.allclose(pr, 1 - ref('proba')):
+        fail('Это вероятность класса 0. Вероятность класса 1 — второй столбец: `[:, 1]`.')
+    same_array(pr, ref('proba'), '`proba` не совпадает: `logreg.predict_proba(X_valid)[:, 1]`.')
+    pd_ = np.asarray(var('pred'))
+    same_array(pd_.astype(float), np.asarray(ref('pred'), dtype=float), '`pred` — класс по порогу 0,5: `(proba >= 0.5).astype(int)`.')
+    ensure(set(np.unique(pd_).tolist()) <= {0, 1}, '`pred` — массив из 0 и 1.')
+    equal(bool(var('same')), True, '`same` — результат сравнения `pred` с `logreg.predict(X_valid)`: {expected}, а у вас {actual}.')
+    close(var('accuracy', 'number', 'числом'), ref('accuracy'), 'Доля верных ответов — {expected}, а у вас {actual}.')
+    equal(int(var('n_errors', 'number', 'числом')), int(ref('n_errors')), 'Ошибок — {expected}, а у вас {actual}.')
+    close(alt('accuracy'), alt_ref('accuracy'), HARDCODE_MSG)
+  files: [moons.csv]
+  wrong:
+    - code: |
+        logreg = LogisticRegression().fit(X_train, y_train)
+        proba = logreg.predict_proba(X_valid)[:, 0]
+        pred = (proba >= 0.5).astype(int)
+        same = bool(np.array_equal(pred, logreg.predict(X_valid)))
+        accuracy = (pred == y_valid).mean()
+        n_errors = int((pred != y_valid).sum())
+      expect: вероятность класса 0
+    - code: |
+        logreg = LogisticRegression().fit(X_train, y_train)
+        proba = logreg.predict_proba(X_valid)[:, 1]
+        pred = (proba >= 0.5).astype(int)
+        same = bool(np.array_equal(pred, logreg.predict(X_valid)))
+        accuracy = (pred == y_valid).mean()
+        n_errors = int((pred == y_valid).sum())
+      expect: Ошибок
+
+- id: m8-l7-t2
+  title: Логистическая потеря своими руками
+  difficulty: main
+  introduces: []
+  uses: [binary-classification, mlp]
+  statement: |
+    `proba_lr` и `proba_net` — вероятности класса 1 для точек validation у логистической регрессии и у сети с ReLU. Напишите функцию `logloss(y_true, p)` — логистическую потерю −среднее(y·ln p + (1 − y)·ln(1 − p)). Получите:
+
+    - `losses` — словарь `{'logreg': ..., 'net': ..., 'const': ...}`, где `'const'` — потеря прогноза 0,5 для каждой точки;
+    - `worst` — словарь `{'logreg': ..., 'net': ...}`: наибольший штраф одной точки у каждой модели — потеря на самой уверенной ошибке.
+  prelude: |
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.neural_network import MLPClassifier
+    from sklearn.exceptions import ConvergenceWarning
+    warnings.filterwarnings('ignore', category=ConvergenceWarning)
+    moons = pd.read_csv('moons.csv')
+    X, y = moons[['x1', 'x2']], moons['label']
+    X_train, X_hold, y_train, y_hold = train_test_split(X, y, test_size=0.4, random_state=42, stratify=y)
+    X_valid, X_test, y_valid, y_test = train_test_split(X_hold, y_hold, test_size=0.5, random_state=43, stratify=y_hold)
+    proba_lr = LogisticRegression().fit(X_train, y_train).predict_proba(X_valid)[:, 1]
+    net = MLPClassifier(hidden_layer_sizes=(16, 8), activation='relu', learning_rate_init=0.01,
+                        max_iter=500, random_state=42).fit(X_train, y_train)
+    proba_net = net.predict_proba(X_valid)[:, 1]
+  starter: |
+    def logloss(y_true, p):
+        y_true = np.asarray(y_true)
+        per_point = ...
+        return per_point.mean()
+
+    yv = y_valid.to_numpy()
+    losses = {'logreg': ..., 'net': ..., 'const': ...}
+    worst = {'logreg': ..., 'net': ...}
+    print({k: round(v, 4) for k, v in losses.items()})
+    print({k: round(v, 3) for k, v in worst.items()})
+  solution: |
+    def logloss(y_true, p):
+        y_true = np.asarray(y_true)
+        per_point = -(y_true * np.log(p) + (1 - y_true) * np.log(1 - p))
+        return per_point.mean()
+
+    yv = y_valid.to_numpy()
+    losses = {'logreg': logloss(yv, proba_lr), 'net': logloss(yv, proba_net),
+              'const': logloss(yv, np.full(len(yv), 0.5))}
+    worst = {'logreg': (-(yv * np.log(proba_lr) + (1 - yv) * np.log(1 - proba_lr))).max(),
+             'net': (-(yv * np.log(proba_net) + (1 - yv) * np.log(1 - proba_net))).max()}
+    print({k: round(v, 4) for k, v in losses.items()})
+    print({k: round(v, 3) for k, v in worst.items()})
+  explanation: |
+    - Прогноз 0,5 для всех точек — потеря ln 2 ≈ 0,693: это уровень «ничего не знаю». У логистической регрессии — 0,316, у сети — 0,213. Чем меньше, тем лучше.
+    - Самая уверенная ошибка логистической регрессии стоит 3,02: точку класса 0 модель отнесла к классу 1 с вероятностью 0,95.
+    - У сети средняя потеря меньше, но худшая ошибка дороже — 6,04: в одной точке сеть почти уверена в неверном классе. Логистическая потеря особенно сурово наказывает такие ошибки, поэтому полезно смотреть не только на среднее.
+  hints:
+    - "Штраф точки — `-(y_true * np.log(p) + (1 - y_true) * np.log(1 - p))`."
+    - "Константа — `np.full(len(yv), 0.5)`."
+    - "Наибольший штраф — `.max()` от массива штрафов по точкам."
+  tests: |
+    import numpy as np
+    f = var('logloss')
+    ensure(callable(f), '`logloss` должна быть функцией.')
+    yt = np.array([1, 0, 1, 0])
+    pp = np.array([0.9, 0.2, 0.6, 0.4])
+    exp = -np.mean(yt * np.log(pp) + (1 - yt) * np.log(1 - pp))
+    got = float(f(yt, pp))
+    if abs(got + exp) < 1e-9:
+        fail('Перед средним нужен минус: логарифм вероятности меньше нуля, а потеря положительная.')
+    ensure(abs(got - exp) < 1e-9, '`logloss([1, 0, 1, 0], [0.9, 0.2, 0.6, 0.4])` должна быть {0:.4f}, а у вас {1:.4f}.'.format(exp, got))
+    L = var('losses', dict, 'словарём')
+    ensure(set(L) == {'logreg', 'net', 'const'}, 'Ключи `losses` — logreg, net и const.')
+    for k in ['logreg', 'net', 'const']:
+        close(L[k], ref('losses')[k], 'Потеря «' + k + '» — {expected}, а у вас {actual}.')
+    W = var('worst', dict, 'словарём')
+    ensure(set(W) == {'logreg', 'net'}, 'Ключи `worst` — logreg и net.')
+    if abs(W['logreg'] - ref('losses')['logreg']) < 1e-9:
+        fail('`worst` — наибольший штраф одной точки (`.max()`), а не средний.')
+    close(W['logreg'], ref('worst')['logreg'], 'Худший штраф логистической регрессии — {expected}, а у вас {actual}.')
+    close(W['net'], ref('worst')['net'], 'Худший штраф сети — {expected}, а у вас {actual}.')
+    close(alt('losses')['logreg'], alt_ref('losses')['logreg'], HARDCODE_MSG)
+  files: [moons.csv]
+  wrong:
+    - code: |
+        def logloss(y_true, p):
+            y_true = np.asarray(y_true)
+            per_point = y_true * np.log(p) + (1 - y_true) * np.log(1 - p)
+            return per_point.mean()
+        yv = y_valid.to_numpy()
+        losses = {'logreg': logloss(yv, proba_lr), 'net': logloss(yv, proba_net),
+                  'const': logloss(yv, np.full(len(yv), 0.5))}
+        worst = {'logreg': 0.0, 'net': 0.0}
+      expect: нужен минус
+    - code: |
+        def logloss(y_true, p):
+            y_true = np.asarray(y_true)
+            per_point = -(y_true * np.log(p) + (1 - y_true) * np.log(1 - p))
+            return per_point.mean()
+        yv = y_valid.to_numpy()
+        losses = {'logreg': logloss(yv, proba_lr), 'net': logloss(yv, proba_net),
+                  'const': logloss(yv, np.full(len(yv), 0.5))}
+        worst = {'logreg': logloss(yv, proba_lr), 'net': logloss(yv, proba_net)}
+      expect: наибольший штраф одной точки
+
+- id: m8-l7-t3
+  title: Граница решений по сетке
+  difficulty: main
+  introduces: [decision-boundary]
+  uses: [binary-classification, mlp]
+  statement: |
+    Таблица `grid` — 22 500 точек сетки 150 × 150, покрывающей плоскость признаков. Предскажите класс в каждой точке сетки логистической регрессией `logreg` и сетью `net` с ReLU. Получите:
+
+    - `share1` — словарь `{'logreg': ..., 'net': ...}`: доля площади (точек сетки), отнесённой к классу 1;
+    - `disagree` — долю точек сетки, где модели предсказывают разные классы;
+    - `region_net` — прогноз сети на сетке в форме 150 × 150 (для рисования).
+  prelude: |
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.neural_network import MLPClassifier
+    from sklearn.exceptions import ConvergenceWarning
+    warnings.filterwarnings('ignore', category=ConvergenceWarning)
+    moons = pd.read_csv('moons.csv')
+    X, y = moons[['x1', 'x2']], moons['label']
+    X_train, X_hold, y_train, y_hold = train_test_split(X, y, test_size=0.4, random_state=42, stratify=y)
+    X_valid, X_test, y_valid, y_test = train_test_split(X_hold, y_hold, test_size=0.5, random_state=43, stratify=y_hold)
+    logreg = LogisticRegression().fit(X_train, y_train)
+    net = MLPClassifier(hidden_layer_sizes=(16, 8), activation='relu', learning_rate_init=0.01,
+                        max_iter=500, random_state=42).fit(X_train, y_train)
+    x1 = np.linspace(X_train['x1'].min() - 0.25, X_train['x1'].max() + 0.25, 150)
+    x2 = np.linspace(X_train['x2'].min() - 0.25, X_train['x2'].max() + 0.25, 150)
+    xx, yy = np.meshgrid(x1, x2)
+    grid = pd.DataFrame({'x1': xx.ravel(), 'x2': yy.ravel()})
+  starter: |
+    g_lr = ...
+    g_net = ...
+    share1 = {'logreg': ..., 'net': ...}
+    disagree = ...
+    region_net = ...
+    print({k: round(v, 4) for k, v in share1.items()}, round(disagree, 4), region_net.shape)
+  solution: |
+    g_lr = logreg.predict(grid)
+    g_net = net.predict(grid)
+    share1 = {'logreg': g_lr.mean(), 'net': g_net.mean()}
+    disagree = (g_lr != g_net).mean()
+    region_net = g_net.reshape(xx.shape)
+    print({k: round(v, 4) for k, v in share1.items()}, round(disagree, 4), region_net.shape)
+  explanation: |
+    - Обе модели отдают классу 1 примерно половину плоскости: 50 % логистическая регрессия и 49 % сеть. По одной этой доле модели не различить.
+    - Но на 27 % площади они спорят: прямая логистической регрессии и изогнутая граница сети разрезают плоскость по-разному. Спорные области — загнутые концы полумесяцев.
+    - `reshape(xx.shape)` возвращает плоский массив прогнозов в форму сетки. Эту таблицу и передают в `contourf`, чтобы закрасить области классов.
+  hints:
+    - "Прогноз на сетке — `logreg.predict(grid)` и `net.predict(grid)`."
+    - "Доля класса 1 — `.mean()` массива из 0 и 1; спорные точки — `(g_lr != g_net).mean()`."
+    - "`region_net = g_net.reshape(xx.shape)`."
+  tests: |
+    import numpy as np
+    s = var('share1', dict, 'словарём')
+    ensure(set(s) == {'logreg', 'net'}, 'Ключи `share1` — logreg и net.')
+    close(s['logreg'], ref('share1')['logreg'], 'Доля класса 1 у логистической регрессии — {expected}, а у вас {actual}.')
+    close(s['net'], ref('share1')['net'], 'Доля класса 1 у сети — {expected}, а у вас {actual}.')
+    d = var('disagree', 'number', 'числом')
+    if abs(d - (1 - ref('disagree'))) < 1e-9:
+        fail('`disagree` — доля точек, где прогнозы РАЗНЫЕ: `(g_lr != g_net).mean()`.')
+    close(d, ref('disagree'), 'Доля спорных точек — {expected}, а у вас {actual}.')
+    r = np.asarray(var('region_net'))
+    ensure(r.shape == (150, 150), '`region_net` — таблица 150 × 150: `g_net.reshape(xx.shape)`.')
+    same_array(r.astype(float), np.asarray(ref('region_net'), dtype=float), '`region_net` не совпадает с прогнозом сети на сетке.')
+    close(alt('disagree'), alt_ref('disagree'), HARDCODE_MSG)
+  files: [moons.csv]
+  wrong:
+    - code: |
+        g_lr = logreg.predict(grid)
+        g_net = net.predict(grid)
+        share1 = {'logreg': g_lr.mean(), 'net': g_net.mean()}
+        disagree = (g_lr == g_net).mean()
+        region_net = g_net.reshape(xx.shape)
+      expect: РАЗНЫЕ
+    - code: |
+        g_lr = logreg.predict(grid)
+        g_net = net.predict(grid)
+        share1 = {'logreg': g_lr.mean(), 'net': g_net.mean()}
+        disagree = (g_lr != g_net).mean()
+        region_net = g_net
+      expect: 150 × 150
+
+- id: m8-l7-t4
+  title: Сколько соседей брать
+  difficulty: main
+  introduces: []
+  uses: [knn, overfitting, binary-classification]
+  statement: |
+    Обучите `KNeighborsClassifier(n_neighbors=k)` для каждого k из `ks`. Получите `errors` — DataFrame с индексом k и колонками `'train'` и `'validation'` — доли ошибок (1 − accuracy). И `best_k` — k с наименьшей долей ошибок на validation (при равенстве — меньшее k).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.neighbors import KNeighborsClassifier
+    from sklearn.metrics import accuracy_score
+    moons = pd.read_csv('moons.csv')
+    X, y = moons[['x1', 'x2']], moons['label']
+    X_train, X_hold, y_train, y_hold = train_test_split(X, y, test_size=0.4, random_state=42, stratify=y)
+    X_valid, X_test, y_valid, y_test = train_test_split(X_hold, y_hold, test_size=0.5, random_state=43, stratify=y_hold)
+    ks = [1, 5, 15, 51, 301]
+  starter: |
+    rows = {}
+    for k in ks:
+        knn = KNeighborsClassifier(n_neighbors=k).fit(X_train, y_train)
+        rows[k] = {'train': ..., 'validation': ...}
+    errors = pd.DataFrame(rows).T
+    best_k = ...
+    print(errors.round(3))
+    print(best_k)
+  solution: |
+    rows = {}
+    for k in ks:
+        knn = KNeighborsClassifier(n_neighbors=k).fit(X_train, y_train)
+        rows[k] = {'train': 1 - accuracy_score(y_train, knn.predict(X_train)),
+                   'validation': 1 - accuracy_score(y_valid, knn.predict(X_valid))}
+    errors = pd.DataFrame(rows).T
+    best_k = errors['validation'].idxmin()
+    print(errors.round(3))
+    print(best_k)
+  explanation: |
+    - При k = 1 ошибок на train нет: каждая точка — сама себе ближайший сосед. На validation — 9,5 %, хуже, чем при больших k: модель подстроилась под шум.
+    - С ростом k ошибка на train растёт, а на validation сначала падает: 8 % при k = 15 и k = 51. Берём меньшее k = 15 — простая граница при той же ошибке.
+    - При k = 301 голосует половина train, граница почти прямая: 17 % ошибок и на train, и на validation. Это недообучение.
+  hints:
+    - "Доля ошибок — `1 - accuracy_score(y_train, knn.predict(X_train))`, то же для validation."
+    - "Таблица — `pd.DataFrame(rows).T`: строки — k."
+    - "`best_k = errors['validation'].idxmin()` — при равенстве `idxmin` возвращает первое, то есть меньшее k."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    e = var('errors', pd.DataFrame, 'таблицей DataFrame')
+    ensure([int(v) for v in e.index] == list(ref('ks')), 'Индекс `errors` — значения k из `ks`.')
+    ensure({'train', 'validation'} <= set(e.columns), 'Колонки `errors` — `train` и `validation`.')
+    r = ref('errors')
+    if np.allclose(e['validation'].to_numpy(dtype=float), 1 - r['validation'].to_numpy(dtype=float)):
+        fail('Нужна доля ошибок, а не доля верных ответов: `1 - accuracy_score(...)`.')
+    same_array(e['train'].to_numpy(dtype=float), r['train'].to_numpy(dtype=float), 'Доли ошибок на train не совпадают.')
+    same_array(e['validation'].to_numpy(dtype=float), r['validation'].to_numpy(dtype=float), 'Доли ошибок на validation не совпадают.')
+    equal(int(var('best_k', 'number', 'числом')), int(ref('best_k')), 'Лучшее k — {expected}, а у вас {actual}.')
+    same_array(alt('errors')['validation'].to_numpy(dtype=float), alt_ref('errors')['validation'].to_numpy(dtype=float), HARDCODE_MSG)
+  files: [moons.csv]
+  wrong:
+    - code: |
+        rows = {}
+        for k in ks:
+            knn = KNeighborsClassifier(n_neighbors=k).fit(X_train, y_train)
+            rows[k] = {'train': accuracy_score(y_train, knn.predict(X_train)),
+                       'validation': accuracy_score(y_valid, knn.predict(X_valid))}
+        errors = pd.DataFrame(rows).T
+        best_k = errors['validation'].idxmin()
+      expect: доля ошибок
+    - code: |
+        rows = {}
+        for k in ks:
+            knn = KNeighborsClassifier(n_neighbors=k).fit(X_train, y_train)
+            rows[k] = {'train': 1 - accuracy_score(y_train, knn.predict(X_train)),
+                       'validation': 1 - accuracy_score(y_valid, knn.predict(X_valid))}
+        errors = pd.DataFrame(rows).T
+        best_k = errors['train'].idxmin()
+      expect: Лучшее k
+
+- id: m8-l7-t5
+  title: Длина границы и переобучение
+  difficulty: star
+  introduces: []
+  uses: [decision-boundary, overfitting, knn]
+  statement: |
+    Насколько извилиста граница? Измерим её длину на сетке 150 × 150: число пар соседних клеток (по горизонтали и по вертикали) с разными классами. Напишите функцию `boundary_length(region)` для таблицы прогнозов 150 × 150.
+
+    Для моделей из словаря `models` (они уже обучены) получите `summary` — DataFrame с индексом-названием модели и колонками `'length'` (длина границы), `'train_error'` и `'valid_error'` (доли ошибок). И `longest` — модель с самой длинной границей.
+  prelude: |
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.neighbors import KNeighborsClassifier
+    from sklearn.neural_network import MLPClassifier
+    from sklearn.metrics import accuracy_score
+    from sklearn.exceptions import ConvergenceWarning
+    warnings.filterwarnings('ignore', category=ConvergenceWarning)
+    moons = pd.read_csv('moons.csv')
+    X, y = moons[['x1', 'x2']], moons['label']
+    X_train, X_hold, y_train, y_hold = train_test_split(X, y, test_size=0.4, random_state=42, stratify=y)
+    X_valid, X_test, y_valid, y_test = train_test_split(X_hold, y_hold, test_size=0.5, random_state=43, stratify=y_hold)
+    models = {'kNN, k=1': KNeighborsClassifier(n_neighbors=1), 'kNN, k=15': KNeighborsClassifier(n_neighbors=15),
+              'kNN, k=301': KNeighborsClassifier(n_neighbors=301), 'логистическая': LogisticRegression(),
+              'MLP relu': MLPClassifier(hidden_layer_sizes=(16, 8), learning_rate_init=0.01, max_iter=500, random_state=42)}
+    for m in models.values():
+        m.fit(X_train, y_train)
+    x1 = np.linspace(X_train['x1'].min() - 0.25, X_train['x1'].max() + 0.25, 150)
+    x2 = np.linspace(X_train['x2'].min() - 0.25, X_train['x2'].max() + 0.25, 150)
+    xx, yy = np.meshgrid(x1, x2)
+    grid = pd.DataFrame({'x1': xx.ravel(), 'x2': yy.ravel()})
+  starter: |
+    def boundary_length(region):
+        horizontal = ...      # соседи слева-справа с разными классами
+        vertical = ...        # соседи сверху-снизу
+        return int(horizontal + vertical)
+
+    rows = {}
+    for name, m in models.items():
+        region = m.predict(grid).reshape(xx.shape)
+        rows[name] = {'length': boundary_length(region),
+                      'train_error': ...,
+                      'valid_error': ...}
+    summary = pd.DataFrame(rows).T
+    longest = ...
+    print(summary.round(3))
+    print(longest)
+  solution: |
+    def boundary_length(region):
+        horizontal = (region[:, 1:] != region[:, :-1]).sum()
+        vertical = (region[1:, :] != region[:-1, :]).sum()
+        return int(horizontal + vertical)
+
+    rows = {}
+    for name, m in models.items():
+        region = m.predict(grid).reshape(xx.shape)
+        rows[name] = {'length': boundary_length(region),
+                      'train_error': 1 - accuracy_score(y_train, m.predict(X_train)),
+                      'valid_error': 1 - accuracy_score(y_valid, m.predict(X_valid))}
+    summary = pd.DataFrame(rows).T
+    longest = summary['length'].idxmax()
+    print(summary.round(3))
+    print(longest)
+  explanation: |
+    - Самая длинная граница — у kNN с k = 1: 639 клеток, втрое длиннее прямой логистической регрессии (208). Она огибает каждую зашумлённую точку и рисует «островки». Ошибок на train нет, а на validation 9,5 %.
+    - С ростом k граница укорачивается: 343 при k = 15 и 282 при k = 301. Слишком короткая и простая граница не повторяет изгиб полумесяцев.
+    - У сети граница длиной 287 — почти как у kNN с k = 301, но ошибок на validation всего 7 % против 17 %. Значит, важна не только длина, но и форма: сеть изгибает границу там, где изгибаются данные, и не тратит её на шум.
+  hints:
+    - "Соседи по горизонтали — сравнение столбцов со сдвигом: `region[:, 1:] != region[:, :-1]`, по вертикали — строк: `region[1:, :] != region[:-1, :]`."
+    - "Доли ошибок — `1 - accuracy_score(y_train, m.predict(X_train))` и то же для validation."
+    - "`longest = summary['length'].idxmax()`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    f = var('boundary_length')
+    ensure(callable(f), '`boundary_length` должна быть функцией.')
+    t1 = np.array([[0, 0, 1], [0, 1, 1], [0, 0, 0]])
+    got = int(f(t1))
+    if got == 2 or got == 3:
+        fail('Считайте и горизонтальные, и вертикальные пары соседей: для таблицы [[0, 0, 1], [0, 1, 1], [0, 0, 0]] длина 5 (2 по горизонтали и 3 по вертикали).')
+    ensure(got == 5, 'Для таблицы [[0, 0, 1], [0, 1, 1], [0, 0, 0]] длина границы — 5 (2 по горизонтали и 3 по вертикали), а у вас {0}.'.format(got))
+    ensure(int(f(np.zeros((4, 4), dtype=int))) == 0, 'Если класс везде один, границы нет: длина 0.')
+    s = var('summary', pd.DataFrame, 'таблицей DataFrame')
+    ensure(list(s.index) == list(ref('models')), 'Индекс `summary` — названия моделей из `models`.')
+    ensure({'length', 'train_error', 'valid_error'} <= set(s.columns), 'Колонки `summary` — `length`, `train_error` и `valid_error`.')
+    r = ref('summary')
+    same_array(s['length'].to_numpy(dtype=float), r['length'].to_numpy(dtype=float), 'Длины границ не совпадают.')
+    same_array(s['train_error'].to_numpy(dtype=float), r['train_error'].to_numpy(dtype=float), 'Доли ошибок на train не совпадают.')
+    same_array(s['valid_error'].to_numpy(dtype=float), r['valid_error'].to_numpy(dtype=float), 'Доли ошибок на validation не совпадают.')
+    equal(str(var('longest')), str(ref('longest')), 'Самая длинная граница — у «{expected}», а у вас «{actual}».')
+    same_array(alt('summary')['length'].to_numpy(dtype=float), alt_ref('summary')['length'].to_numpy(dtype=float), HARDCODE_MSG)
+  files: [moons.csv]
+  wrong:
+    - code: |
+        def boundary_length(region):
+            horizontal = (region[:, 1:] != region[:, :-1]).sum()
+            return int(horizontal)
+        rows = {}
+        for name, m in models.items():
+            region = m.predict(grid).reshape(xx.shape)
+            rows[name] = {'length': boundary_length(region),
+                          'train_error': 1 - accuracy_score(y_train, m.predict(X_train)),
+                          'valid_error': 1 - accuracy_score(y_valid, m.predict(X_valid))}
+        summary = pd.DataFrame(rows).T
+        longest = summary['length'].idxmax()
+      expect: и вертикальные
+    - code: |
+        def boundary_length(region):
+            horizontal = (region[:, 1:] != region[:, :-1]).sum()
+            vertical = (region[1:, :] != region[:-1, :]).sum()
+            return int(horizontal + vertical)
+        rows = {}
+        for name, m in models.items():
+            region = m.predict(grid).reshape(xx.shape)
+            rows[name] = {'length': boundary_length(region),
+                          'train_error': 1 - accuracy_score(y_train, m.predict(X_train)),
+                          'valid_error': 1 - accuracy_score(y_valid, m.predict(X_valid))}
+        summary = pd.DataFrame(rows).T
+        longest = summary['length'].idxmin()
+      expect: Самая длинная граница

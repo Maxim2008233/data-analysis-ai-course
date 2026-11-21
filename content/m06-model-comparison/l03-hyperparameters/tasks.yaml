@@ -1,0 +1,418 @@
+- id: m6-l3-t1
+  kind: quiz
+  title: Параметр или гиперпараметр
+  difficulty: warmup
+  introduces: [hyperparameter]
+  uses: []
+  statement: |
+    Определите, что находит `fit`, а что задаёт человек.
+  quiz:
+    - q: "`KNeighborsRegressor(n_neighbors=20)` — что такое 20?"
+      options:
+        - Гиперпараметр — его задают до обучения
+        - Параметр — его находит fit
+        - Результат прогноза
+      answer: 0
+      explain: fit не меняет число соседей; его выбирают перебором по validation.
+    - q: "`model.coef_` у обученной линейной регрессии — это"
+      options:
+        - Параметры — их нашёл fit по обучающим данным
+        - Гиперпараметры — их задал человек
+        - Метрика качества
+      answer: 0
+      explain: Коэффициенты подбираются методом наименьших квадратов при обучении.
+    - q: "`StandardScaler().fit(X_train).mean_` — это"
+      options:
+        - Найденные по train значения — как параметры, только у шага подготовки
+        - Гиперпараметр стандартизации
+        - Средние validation
+      answer: 0
+      explain: Средние вычисляет fit, поэтому их учат только на train — иначе утечка.
+  hints:
+    - Спросите себя, кто задаёт значение — человек до обучения или fit по данным.
+    - "Число соседей — человек; коэффициенты и средние scaler — fit."
+    - "Ответы: гиперпараметр; параметры; найденные по train значения."
+
+- id: m6-l3-t2
+  title: Кривая ошибки по числу соседей
+  difficulty: main
+  introduces: [validation-curve, hyperparameter]
+  uses: [knn, sk-pipeline]
+  statement: |
+    Для каждого k из списка `ks` обучите kNN в Pipeline (`'scale'` + `'model'`) и посчитайте MAE на train и на validation. Соберите `curve` — DataFrame: индекс — значения k, колонки `train` и `valid`. Затем `best_k` — k с наименьшей ошибкой на validation.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import Pipeline
+    from sklearn.neighbors import KNeighborsRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    ks = [1, 5, 20, 100]
+  starter: |
+    rows = []
+    for k in ks:
+        model = Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=k))])
+        model.fit(X_train, y_train)
+        rows.append({'train': ..., 'valid': ...})
+    curve = pd.DataFrame(rows, index=ks)
+    best_k = ...
+    print(curve.round(0))
+    print('Лучшее k:', best_k)
+  solution: |
+    rows = []
+    for k in ks:
+        model = Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=k))])
+        model.fit(X_train, y_train)
+        rows.append({'train': mean_absolute_error(y_train, model.predict(X_train)),
+                     'valid': mean_absolute_error(y_valid, model.predict(X_valid))})
+    curve = pd.DataFrame(rows, index=ks)
+    best_k = curve['valid'].idxmin()
+    print(curve.round(0))
+    print('Лучшее k:', best_k)
+  explanation: |
+    - Для каждого k — новая модель: создать, обучить, две ошибки. Список словарей превращается в таблицу, `index=ks` подписывает строки значениями k.
+    - Ошибка на train растёт вместе с k (от 396 при k = 1), ошибка на validation сначала падает, потом растёт: минимум при k = 20 (≈ 2 692).
+    - `idxmin` возвращает метку строки с минимумом — само значение k, а не его номер в списке.
+  hints:
+    - "В словарь — две MAE: по `X_train` с `y_train` и по `X_valid` с `y_valid`."
+    - "`'train': mean_absolute_error(y_train, model.predict(X_train))` — так же для validation."
+    - "`best_k = curve['valid'].idxmin()`."
+  tests: |
+    import pandas as pd
+    c = var('curve', pd.DataFrame, 'таблицей DataFrame')
+    ensure(list(c.columns) == ['train', 'valid'], 'Колонки `curve` — `train` и `valid`.')
+    ensure(list(c.index) == ref('ks'), 'Индекс `curve` — значения k из `ks`: `pd.DataFrame(rows, index=ks)`.')
+    if c['train'].astype(float).round(6).tolist() == ref('curve')['valid'].astype(float).round(6).tolist():
+        fail('Колонки перепутаны: `train` — ошибка на обучающей части, `valid` — на validation.')
+    same_frame(c.astype(float), ref('curve').astype(float), 'Ошибки не совпадают: для `train` — прогноз по `X_train`, для `valid` — по `X_valid`.')
+    b = var('best_k')
+    if b == ref('curve')['train'].idxmin() and b != ref('best_k'):
+        fail('k выбран по train — так всегда «побеждает» k = 1. Выбирайте по validation: `curve[\'valid\'].idxmin()`.')
+    equal(b, ref('best_k'), 'Лучшее k по validation — {expected}, а у вас {actual}.')
+    close(float(alt('curve')['valid'].iloc[3]), float(alt_ref('curve')['valid'].iloc[3]), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        rows = []
+        for k in ks:
+            model = Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=k))])
+            model.fit(X_train, y_train)
+            rows.append({'train': mean_absolute_error(y_train, model.predict(X_train)), 'valid': mean_absolute_error(y_valid, model.predict(X_valid))})
+        curve = pd.DataFrame(rows, index=ks)
+        best_k = curve['train'].idxmin()
+      expect: выбран по train
+    - code: |
+        rows = []
+        for k in ks:
+            model = Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=k))])
+            model.fit(X_train, y_train)
+            rows.append({'train': mean_absolute_error(y_valid, model.predict(X_valid)), 'valid': mean_absolute_error(y_train, model.predict(X_train))})
+        curve = pd.DataFrame(rows, index=ks)
+        best_k = curve['valid'].idxmin()
+      expect: перепутаны
+
+- id: m6-l3-t3
+  title: "k = 1 и k = 20: переобучение в цифрах"
+  difficulty: main
+  introduces: [validation-curve]
+  uses: [knn, overfitting]
+  statement: |
+    По таблице `curve` (уже посчитана) получите `gap_1` и `gap_20` — разрыв «ошибка validation минус ошибка train» при k = 1 и k = 20, а также `train_ratio` — во сколько раз ошибка на train при k = 20 больше, чем при k = 1.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import Pipeline
+    from sklearn.neighbors import KNeighborsRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    rows = []
+    for k in [1, 20]:
+        model = Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=k))]).fit(X_train, y_train)
+        rows.append({'train': mean_absolute_error(y_train, model.predict(X_train)),
+                     'valid': mean_absolute_error(y_valid, model.predict(X_valid))})
+    curve = pd.DataFrame(rows, index=[1, 20])
+  starter: |
+    gap_1 = ...
+    gap_20 = ...
+    train_ratio = ...
+    print(curve.round(0))
+    print(round(gap_1), round(gap_20), round(train_ratio, 1))
+  solution: |
+    gap_1 = curve.loc[1, 'valid'] - curve.loc[1, 'train']
+    gap_20 = curve.loc[20, 'valid'] - curve.loc[20, 'train']
+    train_ratio = curve.loc[20, 'train'] / curve.loc[1, 'train']
+    print(curve.round(0))
+    print(round(gap_1), round(gap_20), round(train_ratio, 1))
+  explanation: |
+    - При k = 1 разрыв огромный — около 2 900 евро: на train модель «угадывает» почти все цены, на новых машинах ошибается на 3 292. Это и есть переобучение.
+    - При k = 20 разрыв всего около 110 евро: модель усредняет 20 похожих машин и уже не повторяет шум отдельных объявлений.
+    - Ошибка на train при k = 20 в 6,5 раза больше, чем при k = 1, — а на validation модель лучше. Маленькая ошибка на train — не достоинство.
+  hints:
+    - "Значение по метке строки и колонке — `curve.loc[1, 'valid']` (индекс — значения k)."
+    - "Разрыв — ошибка validation минус ошибка train для одного k."
+    - "`train_ratio = curve.loc[20, 'train'] / curve.loc[1, 'train']`."
+  tests: |
+    g1 = var('gap_1', 'number', 'числом')
+    if abs(g1 + ref('gap_1')) < 1e-6:
+        fail('Знак наоборот: разрыв — ошибка validation минус ошибка train.')
+    close(g1, ref('gap_1'), 'Разрыв при k = 1 — {expected}, а у вас {actual}.')
+    close(var('gap_20', 'number', 'числом'), ref('gap_20'), 'Разрыв при k = 20 — {expected}, а у вас {actual}.')
+    r = var('train_ratio', 'number', 'числом')
+    if abs(r - 1 / ref('train_ratio')) < 1e-9:
+        fail('Отношение перевёрнуто: ошибка train при k = 20, делённая на ошибку при k = 1.')
+    close(r, ref('train_ratio'), 'Отношение — {expected}, а у вас {actual}.')
+    close(alt('gap_1'), alt_ref('gap_1'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        gap_1 = curve.loc[1, 'train'] - curve.loc[1, 'valid']
+        gap_20 = curve.loc[20, 'train'] - curve.loc[20, 'valid']
+        train_ratio = curve.loc[20, 'train'] / curve.loc[1, 'train']
+      expect: Знак наоборот
+    - code: |
+        gap_1 = curve.loc[1, 'valid'] - curve.loc[1, 'train']
+        gap_20 = curve.loc[20, 'valid'] - curve.loc[20, 'train']
+        train_ratio = curve.loc[1, 'train'] / curve.loc[20, 'train']
+      expect: перевёрнуто
+
+- id: m6-l3-t4
+  kind: plot
+  title: График кривой ошибки
+  difficulty: main
+  introduces: [validation-curve]
+  uses: [mpl-layers, log-axis]
+  statement: |
+    Нарисуйте кривую ошибки по таблице `curve`: две линии с точками — `train` и `valid` — от k (индекс таблицы). Ось X — логарифмическая. Подпишите линии в легенде (`label='train'` и `label='validation'`) и оси: «Число соседей k» и «MAE, евро».
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    curve = pd.DataFrame({'train': [396.0, 2063.8, 2283.4, 2466.3, 2582.3, 2672.7, 2745.2, 2829.3],
+                          'valid': [3291.8, 2858.7, 2766.6, 2706.3, 2692.4, 2717.0, 2761.0, 2856.3]},
+                         index=[1, 3, 5, 10, 20, 50, 100, 200])
+  starter: |
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ...   # линия train
+    ...   # линия validation
+    ...   # логарифмическая шкала X
+    ax.set(xlabel=..., ylabel=...)
+    ax.legend()
+    plt.show()
+  solution: |
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.plot(curve.index, curve['train'], 'o-', label='train')
+    ax.plot(curve.index, curve['valid'], 'o-', label='validation')
+    ax.set_xscale('log')
+    ax.set(xlabel='Число соседей k', ylabel='MAE, евро')
+    ax.legend()
+    plt.show()
+  explanation: |
+    - Каждая линия — отдельный вызов `ax.plot` на одних осях (урок 4.2); `label` попадает в легенду.
+    - Логарифмическая шкала (урок 4.5) растягивает маленькие k и сжимает большие — иначе точки 1, 3, 5, 10 слились бы у левого края.
+    - Видно главное: train растёт с k, validation — U-образная, минимум около k = 20; при больших k линии сближаются — недообучение.
+  hints:
+    - "Линия с точками — `ax.plot(curve.index, curve['train'], 'o-', label='train')`."
+    - "Логарифмическая ось X — `ax.set_xscale('log')`."
+    - "Подписи — `ax.set(xlabel='Число соседей k', ylabel='MAE, евро')`."
+  tests: |
+    import numpy as np
+    ax = axes()
+    lines = [l for l in ax.get_lines() if len(l.get_xdata()) == len(ref('curve'))]
+    ensure(len(lines) >= 2, 'Нарисуйте две линии по {0} точкам: `train` и `valid` от индекса `curve`.'.format(len(ref('curve'))))
+    ys = [np.asarray(l.get_ydata(), dtype=float) for l in lines]
+    tr = ref('curve')['train'].to_numpy(dtype=float)
+    va = ref('curve')['valid'].to_numpy(dtype=float)
+    ensure(any(np.allclose(v, tr) for v in ys) and any(np.allclose(v, va) for v in ys), 'Нужны две линии: ошибка `train` и ошибка `valid` из таблицы `curve`.')
+    for l in lines:
+        ensure(np.allclose(np.asarray(l.get_xdata(), dtype=float), ref('curve').index.to_numpy(dtype=float)), 'По оси X — значения k: `curve.index`.')
+    ensure(ax.get_xscale() == 'log', 'Сделайте ось X логарифмической: `ax.set_xscale(\'log\')`.')
+    labels = [t.get_text().lower() for t in (ax.get_legend().get_texts() if ax.get_legend() else [])]
+    ensure(any('train' in t for t in labels) and any('valid' in t for t in labels), 'Подпишите линии: `label=\'train\'` и `label=\'validation\'` и вызовите `ax.legend()`.')
+    ensure('k' in ax.get_xlabel().lower() and 'mae' in ax.get_ylabel().lower(), 'Подпишите оси: «Число соседей k» и «MAE, евро».')
+  wrong:
+    - code: |
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.plot(curve.index, curve['train'], 'o-', label='train')
+        ax.plot(curve.index, curve['valid'], 'o-', label='validation')
+        ax.set(xlabel='Число соседей k', ylabel='MAE, евро')
+        ax.legend()
+        plt.show()
+      expect: логарифмической
+    - code: |
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.plot(curve.index, curve['valid'], 'o-', label='validation')
+        ax.set_xscale('log')
+        ax.set(xlabel='Число соседей k', ylabel='MAE, евро')
+        ax.legend()
+        plt.show()
+      expect: две линии
+
+- id: m6-l3-t5
+  title: "Эксперимент: что будет, если выбирать по test"
+  difficulty: main
+  introduces: [hyperparameter]
+  uses: [train-valid-test, knn]
+  statement: |
+    Это эксперимент, а не рабочий приём. В таблице `curve3` — MAE kNN на validation и на test для разных k. Найдите `k_by_valid` и `k_by_test` — лучшие k по каждой части, `honest` — ошибку на test модели, выбранной по validation, и `peeked` — ошибку на test модели, выбранной по test. `optimism` — на сколько евро «подглядывание» приукрашивает итог.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import Pipeline
+    from sklearn.neighbors import KNeighborsRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    rows = []
+    for k in [5, 10, 15, 20, 30, 50]:
+        model = Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=k))]).fit(X_train, y_train)
+        rows.append({'valid': mean_absolute_error(y_valid, model.predict(X_valid)),
+                     'test': mean_absolute_error(y_test, model.predict(X_test))})
+    curve3 = pd.DataFrame(rows, index=[5, 10, 15, 20, 30, 50])
+  starter: |
+    k_by_valid = ...
+    k_by_test = ...
+    honest = ...
+    peeked = ...
+    optimism = ...
+    print(curve3.round(1))
+    print(k_by_valid, k_by_test, round(honest, 1), round(peeked, 1), round(optimism, 1))
+  solution: |
+    k_by_valid = curve3['valid'].idxmin()
+    k_by_test = curve3['test'].idxmin()
+    honest = curve3.loc[k_by_valid, 'test']
+    peeked = curve3.loc[k_by_test, 'test']
+    optimism = honest - peeked
+    print(curve3.round(1))
+    print(k_by_valid, k_by_test, round(honest, 1), round(peeked, 1), round(optimism, 1))
+  explanation: |
+    - По validation выбирается k = 20, по test — k = 15. Честная итоговая оценка — ошибка на test модели, выбранной **без** test: ≈ 2 768.
+    - «Подглядывание» даёт ≈ 2 750 — на 18 евро красивее. Здесь разница мала, потому что выбирали всего из шести вариантов; при подборе десятков настроек по test оптимизм растёт.
+    - Главное — смысл: число, полученное «подглядыванием», описывает не модель на новых данных, а удачу выбора на конкретном test.
+  hints:
+    - "Лучшее k по части — `idxmin` нужной колонки."
+    - "Ошибка на test для выбранного k — `curve3.loc[k, 'test']`."
+    - "`honest = curve3.loc[k_by_valid, 'test']`; `peeked = curve3.loc[k_by_test, 'test']`; `optimism = honest - peeked`."
+  tests: |
+    equal(var('k_by_valid'), ref('k_by_valid'), 'Лучшее k по validation — {expected}, а у вас {actual}.')
+    equal(var('k_by_test'), ref('k_by_test'), 'Лучшее k по test — {expected}, а у вас {actual}.')
+    h = var('honest', 'number', 'числом')
+    if abs(h - ref('curve3').loc[ref('k_by_valid'), 'valid']) < 1e-6:
+        fail('Это ошибка на validation. Честная итоговая оценка — ошибка выбранной модели на **test**.')
+    close(h, ref('honest'), 'Ошибка на test модели, выбранной по validation, — {expected}, а у вас {actual}.')
+    close(var('peeked', 'number', 'числом'), ref('peeked'), 'Ошибка на test модели, выбранной по test, — {expected}, а у вас {actual}.')
+    o = var('optimism', 'number', 'числом')
+    if abs(o + ref('optimism')) < 1e-6 and abs(ref('optimism')) > 1e-6:
+        fail('Знак наоборот: оптимизм — честная оценка минус «подсмотренная».')
+    close(o, ref('optimism'), 'Оптимизм — {expected} евро, а у вас {actual}.', atol=1e-6)
+    close(alt('honest'), alt_ref('honest'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        k_by_valid = curve3['valid'].idxmin()
+        k_by_test = curve3['test'].idxmin()
+        honest = curve3.loc[k_by_valid, 'valid']
+        peeked = curve3.loc[k_by_test, 'test']
+        optimism = honest - peeked
+      expect: Это ошибка на validation
+    - code: |
+        k_by_valid = curve3['valid'].idxmin()
+        k_by_test = curve3['test'].idxmin()
+        honest = curve3.loc[k_by_valid, 'test']
+        peeked = curve3.loc[k_by_test, 'test']
+        optimism = peeked - honest
+      expect: Знак наоборот
+
+- id: m6-l3-t6
+  title: "Ещё один гиперпараметр: веса соседей"
+  difficulty: star
+  introduces: [hyperparameter]
+  uses: [knn, regression-metrics]
+  statement: |
+    У `KNeighborsRegressor` есть гиперпараметр `weights`: `'uniform'` — простое среднее соседей, `'distance'` — среднее с весами 1/расстояние (ближние важнее). Переберите все сочетания `k` из `ks` и `weights` из `weightings`, соберите `grid` — DataFrame с колонками `k`, `weights`, `train`, `valid` (по строке на сочетание, в порядке циклов: сначала все k для `'uniform'`), и `best` — строку `grid` с наименьшей ошибкой на validation (как Series).
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import Pipeline
+    from sklearn.neighbors import KNeighborsRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    ks = [20, 50]
+    weightings = ['uniform', 'distance']
+  starter: |
+    rows = []
+    for w in weightings:
+        for k in ks:
+            ...
+    grid = pd.DataFrame(rows)
+    best = ...
+    print(grid.round(1))
+    print(best)
+  solution: |
+    rows = []
+    for w in weightings:
+        for k in ks:
+            model = Pipeline([('scale', StandardScaler()),
+                              ('model', KNeighborsRegressor(n_neighbors=k, weights=w))])
+            model.fit(X_train, y_train)
+            rows.append({'k': k, 'weights': w,
+                         'train': mean_absolute_error(y_train, model.predict(X_train)),
+                         'valid': mean_absolute_error(y_valid, model.predict(X_valid))})
+    grid = pd.DataFrame(rows)
+    best = grid.loc[grid['valid'].idxmin()]
+    print(grid.round(1))
+    print(best)
+  explanation: |
+    - Два гиперпараметра — два вложенных цикла; каждое сочетание — новая модель и строка таблицы.
+    - С `weights='distance'` ошибка на train почти нулевая (≈ 360): машина из train — сама себе ближайший сосед на расстоянии 0 с бесконечным весом. На validation эти варианты не лучше простого среднего — лучшим остаётся `k = 20`, `'uniform'` (≈ 2 692).
+    - Так устроен перебор по сетке (grid search): в scikit-learn есть `GridSearchCV`, который делает то же самое с кросс-валидацией (урок 6.8).
+  hints:
+    - "Внутри циклов: Pipeline с `KNeighborsRegressor(n_neighbors=k, weights=w)`, `fit`, словарь с четырьмя ключами — в `rows`."
+    - "`rows.append({'k': k, 'weights': w, 'train': ..., 'valid': ...})` — ошибки как в задании 6.3.2."
+    - "Строка с минимумом — `grid.loc[grid['valid'].idxmin()]`."
+  tests: |
+    import pandas as pd
+    g = var('grid', pd.DataFrame, 'таблицей DataFrame')
+    ensure(list(g.columns) == ['k', 'weights', 'train', 'valid'], 'Колонки `grid` — k, weights, train, valid.')
+    ensure(len(g) == 4, 'Сочетаний должно быть 4 (2 значения k × 2 способа), а у вас {0}.'.format(len(g)))
+    ensure(list(g['weights']) == list(ref('grid')['weights']) and list(g['k']) == list(ref('grid')['k']), 'Порядок строк — как в циклах: внешний по `weightings`, внутренний по `ks`.')
+    same_array(g['valid'].to_numpy(dtype=float), ref('grid')['valid'].to_numpy(dtype=float), 'Ошибки на validation не совпадают: в модель передайте и `n_neighbors=k`, и `weights=w`.')
+    same_array(g['train'].to_numpy(dtype=float), ref('grid')['train'].to_numpy(dtype=float), 'Ошибки на train не совпадают.')
+    b = var('best', pd.Series, 'Series — строкой таблицы')
+    ensure(b['k'] == ref('best')['k'] and b['weights'] == ref('best')['weights'], 'Лучшее сочетание по validation — k = {0}, weights = {1!r}.'.format(ref('best')['k'], ref('best')['weights']))
+    same_array(alt('grid')['valid'].to_numpy(dtype=float), alt_ref('grid')['valid'].to_numpy(dtype=float), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        rows = []
+        for w in weightings:
+            for k in ks:
+                model = Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=k))])
+                model.fit(X_train, y_train)
+                rows.append({'k': k, 'weights': w, 'train': mean_absolute_error(y_train, model.predict(X_train)), 'valid': mean_absolute_error(y_valid, model.predict(X_valid))})
+        grid = pd.DataFrame(rows)
+        best = grid.loc[grid['valid'].idxmin()]
+      expect: "weights=w"
+    - code: |
+        rows = []
+        for w in weightings:
+            for k in ks:
+                model = Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=k, weights=w))])
+                model.fit(X_train, y_train)
+                rows.append({'k': k, 'weights': w, 'train': mean_absolute_error(y_train, model.predict(X_train)), 'valid': mean_absolute_error(y_valid, model.predict(X_valid))})
+        grid = pd.DataFrame(rows)
+        best = grid.loc[grid['train'].idxmin()]
+      expect: Лучшее сочетание

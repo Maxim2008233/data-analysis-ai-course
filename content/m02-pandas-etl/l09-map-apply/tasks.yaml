@@ -1,0 +1,435 @@
+- id: m2-l9-t1
+  title: Понятное название трансмиссии
+  difficulty: warmup
+  introduces: [pd-map]
+  uses: [py-dicts]
+  statement: |
+    Создайте в таблице `cars` колонку `Transmission`: `'Automatic'` для `True` в колонке `AutoTransmission` и `'Manual'` для `False`. Используйте `map` со словарём. Затем `n_auto` — число объявлений с автоматической коробкой по новой колонке.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    # уроки 2.6–2.8: очистка, область анализа, переименование, Age и km_year
+    cars = raw.drop_duplicates().dropna().copy()
+    cars = cars[cars['Year'].between(1951, 2021) & cars['Distance'].between(0, 1_000_000) &
+                cars['Engine_capacity(cm3)'].between(200, 5000) & cars['Price(euro)'].between(101, 500_000) &
+                ~((cars['Year'] < 2021) & (cars['Distance'] < 1100))].copy()
+    cars['source_row_id'] = cars.index
+    cars = cars.reset_index(drop=True).rename(columns={'Engine_capacity(cm3)': 'Engine', 'Price(euro)': 'Price'})
+    cars['Age'] = 2022 - cars['Year']
+    cars['km_year'] = cars['Distance'] / cars['Age']
+  starter: |
+    cars['Transmission'] = ...
+    n_auto = ...
+    print(n_auto)
+    cars[['AutoTransmission', 'Transmission']].head()
+  solution: |
+    cars['Transmission'] = cars['AutoTransmission'].map({True: 'Automatic', False: 'Manual'})
+    n_auto = (cars['Transmission'] == 'Automatic').sum()
+    print(n_auto)
+    cars[['AutoTransmission', 'Transmission']].head()
+  explanation: |
+    - Словарь `{True: 'Automatic', False: 'Manual'}` — таблица соответствий; ключи — логические значения без кавычек.
+    - `map` заменяет каждое значение колонки по словарю.
+    - Сравнение новой колонки со строкой даёт маску, её сумма — число автоматов.
+  alternatives:
+    - |
+      names = {True: 'Automatic', False: 'Manual'}
+      cars['Transmission'] = cars['AutoTransmission'].map(names)
+      n_auto = cars['Transmission'].value_counts()['Automatic']
+  hints:
+    - Нужна замена по таблице соответствий. Какие ключи у словаря, если в колонке True и False?
+    - "`cars['AutoTransmission'].map({True: ..., False: ...})`; число — сумма маски `== 'Automatic'`."
+    - "`cars['Transmission'] = cars['AutoTransmission'].map({True: 'Automatic', False: 'Manual'})`."
+  tests: |
+    import pandas as pd
+    c = var('cars', pd.DataFrame, 'таблицей DataFrame')
+    ensure('Transmission' in c.columns, 'В `cars` нет колонки `Transmission`.')
+    if c['Transmission'].isna().all():
+        fail('Все значения Transmission — пропуски. Ключи словаря должны быть логическими `True`/`False` без кавычек, а не строками.')
+    same_frame(c['Transmission'], ref('cars')['Transmission'], 'Колонка Transmission не совпадает: True → Automatic, False → Manual.')
+    close(var('n_auto', 'number', 'числом'), ref('n_auto'), 'Автоматов — {expected}, а у вас {actual}.')
+    close(alt('n_auto'), alt_ref('n_auto'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        cars['Transmission'] = cars['AutoTransmission'].map({'True': 'Automatic', 'False': 'Manual'})
+        n_auto = (cars['Transmission'] == 'Automatic').sum()
+      expect: без кавычек
+    - code: |
+        cars['Transmission'] = cars['AutoTransmission'].map({True: 'Manual', False: 'Automatic'})
+        n_auto = (cars['Transmission'] == 'Automatic').sum()
+      expect: True → Automatic
+
+- id: m2-l9-t2
+  title: Категория годового пробега
+  difficulty: main
+  introduces: [pd-apply]
+  uses: [py-functions, pd-new-column]
+  statement: |
+    Напишите функцию `km_year_category(value)` — она возвращает пропуск `np.nan` для пропуска, `'Small'` до 10 000 включительно, `'Medium'` свыше 10 000 до 30 000 включительно и `'Large'` свыше 30 000. Примените её к колонке `km_year` и сохраните результат в колонку `km_year_cat`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    cars = raw.drop_duplicates().dropna().copy()   # уроки 2.6–2.8
+    cars = cars[cars['Year'].between(1951, 2021) & cars['Distance'].between(0, 1_000_000) &
+                cars['Engine_capacity(cm3)'].between(200, 5000) & cars['Price(euro)'].between(101, 500_000) &
+                ~((cars['Year'] < 2021) & (cars['Distance'] < 1100))].copy()
+    cars = cars.reset_index(drop=True).rename(columns={'Engine_capacity(cm3)': 'Engine', 'Price(euro)': 'Price'})
+    cars['Age'] = 2022 - cars['Year']
+    cars['km_year'] = cars['Distance'] / cars['Age']
+  starter: |
+    def km_year_category(value):
+        ...
+
+    cars['km_year_cat'] = ...
+    cars['km_year_cat'].value_counts()
+  solution: |
+    def km_year_category(value):
+        if pd.isna(value):
+            return np.nan
+        if value <= 10_000:
+            return 'Small'
+        if value <= 30_000:
+            return 'Medium'
+        return 'Large'
+
+    cars['km_year_cat'] = cars['km_year'].apply(km_year_category)
+    cars['km_year_cat'].value_counts()
+  explanation: |
+    - Ветка `pd.isna(value)` — первая: сравнения с `nan` ложны, без неё пропуск стал бы `'Large'`.
+    - Нестрогие `<=` включают границы 10 000 и 30 000 в младшую категорию.
+    - `cars['km_year'].apply(km_year_category)` вызывает функцию для каждого значения колонки.
+  hints:
+    - Сначала функция для одного числа, потом её применение ко всей колонке.
+    - "Ветки: `if pd.isna(value): return np.nan`, затем `if value <= 10_000: ...`; применение — `.apply(km_year_category)`."
+    - "`cars['km_year_cat'] = cars['km_year'].apply(km_year_category)`."
+  tests: |
+    import math
+    import numpy as np
+    import pandas as pd
+    f = var('km_year_category')
+    ensure(callable(f), '`km_year_category` должна быть функцией.')
+    r = f(np.nan)
+    if not (isinstance(r, float) and math.isnan(r)):
+        fail('Для пропуска функция вернула {0!r}, а нужно `np.nan`. Добавьте первую ветку `if pd.isna(value): return np.nan`.'.format(r))
+    for v, e in [(0, 'Small'), (10_000, 'Small'), (10_001, 'Medium'), (30_000, 'Medium'), (30_001, 'Large')]:
+        got = f(v)
+        if got != e:
+            fail('km_year_category({0}) вернула {1!r}, а нужно {2!r}. Проверьте строгость сравнения на границе.'.format(v, got, e))
+    c = var('cars', pd.DataFrame, 'таблицей DataFrame')
+    ensure('km_year_cat' in c.columns, 'В `cars` нет колонки `km_year_cat`.')
+    same_frame(c['km_year_cat'], ref('cars')['km_year_cat'], 'Колонка km_year_cat не совпадает с результатом `apply(km_year_category)`.')
+  wrong:
+    - code: |
+        def km_year_category(value):
+            if value <= 10_000:
+                return 'Small'
+            if value <= 30_000:
+                return 'Medium'
+            return 'Large'
+        cars['km_year_cat'] = cars['km_year'].apply(km_year_category)
+      expect: Для пропуска
+    - code: |
+        def km_year_category(value):
+            if pd.isna(value):
+                return np.nan
+            if value < 10_000:
+                return 'Small'
+            if value < 30_000:
+                return 'Medium'
+            return 'Large'
+        cars['km_year_cat'] = cars['km_year'].apply(km_year_category)
+      expect: km_year_category(10000)
+
+- id: m2-l9-t3
+  title: Своя возрастная категория
+  difficulty: main
+  introduces: [pd-apply]
+  uses: [py-functions]
+  statement: |
+    Создайте колонку `age_cat` по возрасту `Age`:
+
+    - `'new'` — до 5 лет включительно;
+    - `'middle'` — от 6 до 15 лет включительно;
+    - `'old'` — старше 15 лет.
+
+    Напишите функцию `age_category(age)` (с веткой для пропуска, которая возвращает `np.nan`) и примените её. Затем `age_counts` — частоты категорий.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    cars = raw.drop_duplicates().dropna().copy()   # уроки 2.6–2.8
+    cars = cars[cars['Year'].between(1951, 2021) & cars['Distance'].between(0, 1_000_000) &
+                cars['Engine_capacity(cm3)'].between(200, 5000) & cars['Price(euro)'].between(101, 500_000) &
+                ~((cars['Year'] < 2021) & (cars['Distance'] < 1100))].copy()
+    cars = cars.reset_index(drop=True).rename(columns={'Engine_capacity(cm3)': 'Engine', 'Price(euro)': 'Price'})
+    cars['Age'] = 2022 - cars['Year']
+  starter: |
+    def age_category(age):
+        ...
+
+    cars['age_cat'] = ...
+    age_counts = ...
+    age_counts
+  solution: |
+    def age_category(age):
+        if pd.isna(age):
+            return np.nan
+        if age <= 5:
+            return 'new'
+        if age <= 15:
+            return 'middle'
+        return 'old'
+
+    cars['age_cat'] = cars['Age'].apply(age_category)
+    age_counts = cars['age_cat'].value_counts()
+    age_counts
+  explanation: |
+    - Возраст — целое число, поэтому «от 6 до 15» — это «больше 5 и не больше 15»: вторая ветка срабатывает, только если первая не сработала.
+    - `apply` применяет функцию к каждому значению `Age`; `value_counts()` показывает, сколько машин в каждой категории.
+  alternatives:
+    - |
+      def age_category(age):
+          if pd.isna(age):
+              return np.nan
+          elif age > 15:
+              return 'old'
+          elif age > 5:
+              return 'middle'
+          else:
+              return 'new'
+      cars['age_cat'] = cars['Age'].apply(age_category)
+      age_counts = cars['age_cat'].value_counts()
+  hints:
+    - "Порядок веток важен: каждая следующая проверяется, только если предыдущие не сработали."
+    - "`if pd.isna(age): return np.nan`, `if age <= 5: return 'new'`, `if age <= 15: return 'middle'`, иначе `'old'`."
+    - "`cars['age_cat'] = cars['Age'].apply(age_category)`, `age_counts = cars['age_cat'].value_counts()`."
+  tests: |
+    import math
+    import numpy as np
+    import pandas as pd
+    f = var('age_category')
+    ensure(callable(f), '`age_category` должна быть функцией.')
+    r = f(np.nan)
+    if not (isinstance(r, float) and math.isnan(r)):
+        fail('Для пропуска функция вернула {0!r}, а нужно `np.nan`.'.format(r))
+    for v, e in [(1, 'new'), (5, 'new'), (6, 'middle'), (15, 'middle'), (16, 'old'), (40, 'old')]:
+        got = f(v)
+        if got != e:
+            fail('age_category({0}) вернула {1!r}, а нужно {2!r}.'.format(v, got, e))
+    c = var('cars', pd.DataFrame, 'таблицей DataFrame')
+    same_frame(c['age_cat'], ref('cars')['age_cat'], 'Колонка age_cat не совпадает.')
+    same_frame(var('age_counts', pd.Series, 'Series — результатом value_counts()'), ref('age_counts'), 'Частоты категорий не совпадают.')
+  wrong:
+    - code: |
+        def age_category(age):
+            if pd.isna(age):
+                return np.nan
+            if age < 5:
+                return 'new'
+            if age < 15:
+                return 'middle'
+            return 'old'
+        cars['age_cat'] = cars['Age'].apply(age_category)
+        age_counts = cars['age_cat'].value_counts()
+      expect: age_category(5)
+    - code: |
+        def age_category(age):
+            if pd.isna(age):
+                return np.nan
+            if age <= 15:
+                return 'middle'
+            if age <= 5:
+                return 'new'
+            return 'old'
+        cars['age_cat'] = cars['Age'].apply(age_category)
+        age_counts = cars['age_cat'].value_counts()
+      expect: age_category(1)
+
+- id: m2-l9-t4
+  title: Пометка записей через loc
+  difficulty: main
+  introduces: [pd-loc-assign]
+  uses: [pd-bool-filter]
+  statement: |
+    Создайте в `cars` колонку `check` со значением `'ok'` во всех строках, затем запишите `'high_km'` в строки, где `km_year` больше 30 000. Используйте присваивание через `loc` одной операцией. Получите `n_flagged` — число отмеченных строк.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    cars = raw.drop_duplicates().dropna().copy()   # уроки 2.6–2.8
+    cars = cars[cars['Year'].between(1951, 2021) & cars['Distance'].between(0, 1_000_000) &
+                cars['Engine_capacity(cm3)'].between(200, 5000) & cars['Price(euro)'].between(101, 500_000) &
+                ~((cars['Year'] < 2021) & (cars['Distance'] < 1100))].copy()
+    cars = cars.reset_index(drop=True).rename(columns={'Engine_capacity(cm3)': 'Engine', 'Price(euro)': 'Price'})
+    cars['Age'] = 2022 - cars['Year']
+    cars['km_year'] = cars['Distance'] / cars['Age']
+  starter: |
+    cars['check'] = ...
+    ...
+    n_flagged = ...
+    print(n_flagged)
+  solution: |
+    cars['check'] = 'ok'
+    cars.loc[cars['km_year'] > 30_000, 'check'] = 'high_km'
+    n_flagged = (cars['check'] == 'high_km').sum()
+    print(n_flagged)
+  explanation: |
+    - `cars['check'] = 'ok'` — одно значение растягивается на все строки.
+    - `cars.loc[маска, 'check'] = 'high_km'` перезаписывает только строки, где маска True, — одной операцией.
+    - Цепочка `cars[маска]['check'] = ...` записала бы значение в промежуточную копию, и `cars` не изменилась бы.
+  hints:
+    - Сначала значение по умолчанию для всех строк, затем запись по условию. Какой способ записи по условию надёжен?
+    - "`cars.loc[маска, 'имя колонки'] = значение`, маска — `cars['km_year'] > 30_000`."
+    - "`cars.loc[cars['km_year'] > 30_000, 'check'] = 'high_km'`."
+  tests: |
+    import pandas as pd
+    c = var('cars', pd.DataFrame, 'таблицей DataFrame')
+    ensure('check' in c.columns, 'В `cars` нет колонки `check`.')
+    if (c['check'] == 'high_km').sum() == 0:
+        fail('Ни одна строка не отмечена. Если вы писали `cars[маска][\'check\'] = ...`, это присваивание по цепочке — оно не меняет таблицу. Используйте `cars.loc[маска, \'check\'] = \'high_km\'`.')
+    ensure(set(c['check'].unique()) <= {'ok', 'high_km'}, 'В колонке `check` должны быть только значения \'ok\' и \'high_km\'.')
+    same_frame(c['check'], ref('cars')['check'], 'Отмечены не те строки: нужны строки с km_year строго больше 30 000.')
+    close(var('n_flagged', 'number', 'числом'), ref('n_flagged'), 'Отмеченных строк — {expected}, а у вас {actual}.')
+    close(alt('n_flagged'), alt_ref('n_flagged'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        cars['check'] = 'ok'
+        cars[cars['km_year'] > 30_000]['check'] = 'high_km'
+        n_flagged = (cars['check'] == 'high_km').sum()
+      expect: по цепочке
+    - code: |
+        cars['check'] = 'ok'
+        cars.loc[cars['km_year'] >= 3_000, 'check'] = 'high_km'
+        n_flagged = (cars['check'] == 'high_km').sum()
+      expect: не те строки
+
+- id: m2-l9-t5
+  title: Перевод с проверкой пропусков
+  difficulty: main
+  introduces: [pd-map]
+  uses: [pd-dropna]
+  statement: |
+    Переведите колонку `Fuel_type` на русский словарём `fuel_ru`, в котором есть не все типы топлива. Получите:
+
+    - `n_unmapped` — сколько значений не нашлось в словаре (стали пропусками после `map`);
+    - `fuel_ru_col` — переведённую колонку, где ненайденные значения заменены на `'другое'`.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    cars = raw.drop_duplicates().dropna().copy()   # уроки 2.6–2.7
+    cars = cars[cars['Year'].between(1951, 2021) & cars['Distance'].between(0, 1_000_000) &
+                cars['Engine_capacity(cm3)'].between(200, 5000) & cars['Price(euro)'].between(101, 500_000) &
+                ~((cars['Year'] < 2021) & (cars['Distance'] < 1100))].copy()
+    fuel_ru = {'Petrol': 'бензин', 'Diesel': 'дизель', 'Hybrid': 'гибрид'}
+  starter: |
+    mapped = ...
+    n_unmapped = ...
+    fuel_ru_col = ...
+    print(n_unmapped)
+    fuel_ru_col.value_counts()
+  solution: |
+    mapped = cars['Fuel_type'].map(fuel_ru)
+    n_unmapped = mapped.isna().sum()
+    fuel_ru_col = mapped.fillna('другое')
+    print(n_unmapped)
+    fuel_ru_col.value_counts()
+  explanation: |
+    - `map(fuel_ru)` переводит известные типы, а для отсутствующих в словаре даёт `NaN` без ошибки.
+    - `isna().sum()` — сколько значений не перевелось; эту проверку нужно делать после каждого `map`.
+    - `fillna('другое')` заменяет пропуски явной категорией (урок 2.6).
+  alternatives:
+    - |
+      mapped = cars['Fuel_type'].map(fuel_ru)
+      n_unmapped = int((~cars['Fuel_type'].isin(list(fuel_ru))).sum())
+      fuel_ru_col = mapped.fillna('другое')
+  hints:
+    - После `map` значения без ключа превращаются в пропуски. Как их посчитать и чем заменить?
+    - "`cars['Fuel_type'].map(fuel_ru)`; пропуски — `.isna().sum()`; замена — `.fillna('другое')`."
+    - "`fuel_ru_col = mapped.fillna('другое')`."
+  tests: |
+    import pandas as pd
+    n = var('n_unmapped', 'number', 'числом')
+    if n == 0:
+        fail('Получилось 0 ненайденных значений, но в словаре нет, например, \'Metan/Propan\'. Посчитайте пропуски после map: `mapped.isna().sum()`.')
+    close(n, ref('n_unmapped'), 'Не нашлось в словаре {expected} значений, а у вас {actual}.')
+    col = var('fuel_ru_col', pd.Series, 'колонкой Series')
+    if col.isna().any():
+        fail('В `fuel_ru_col` остались пропуски — замените их на \'другое\' через `fillna`.')
+    same_frame(col, ref('fuel_ru_col'), 'Переведённая колонка не совпадает.')
+    close(alt('n_unmapped'), alt_ref('n_unmapped'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        mapped = cars['Fuel_type'].map(fuel_ru)
+        n_unmapped = cars['Fuel_type'].isna().sum()
+        fuel_ru_col = mapped.fillna('другое')
+      expect: Посчитайте пропуски после map
+    - code: |
+        mapped = cars['Fuel_type'].map(fuel_ru)
+        n_unmapped = mapped.isna().sum()
+        fuel_ru_col = mapped
+      expect: остались пропуски
+
+- id: m2-l9-t6
+  title: pd.cut вместо apply
+  difficulty: star
+  introduces: [pd-apply]
+  uses: []
+  statement: |
+    Получите `cut_cat` — категории годового пробега через `pd.cut` с границами `[-np.inf, 10_000, 30_000, np.inf]` и подписями `['Small', 'Medium', 'Large']`. Затем `same` — совпадают ли категории с колонкой `km_year_cat`, полученной функцией через `apply` (сравните значения как строки: `cut_cat.astype(str)`).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    cars = raw.drop_duplicates().dropna().copy()   # уроки 2.6–2.8
+    cars = cars[cars['Year'].between(1951, 2021) & cars['Distance'].between(0, 1_000_000) &
+                cars['Engine_capacity(cm3)'].between(200, 5000) & cars['Price(euro)'].between(101, 500_000) &
+                ~((cars['Year'] < 2021) & (cars['Distance'] < 1100))].copy()
+    cars = cars.reset_index(drop=True).rename(columns={'Engine_capacity(cm3)': 'Engine', 'Price(euro)': 'Price'})
+    cars['Age'] = 2022 - cars['Year']
+    cars['km_year'] = cars['Distance'] / cars['Age']
+    def km_year_category(value):                     # задание 2.9.2
+        if pd.isna(value):
+            return np.nan
+        if value <= 10_000:
+            return 'Small'
+        if value <= 30_000:
+            return 'Medium'
+        return 'Large'
+    cars['km_year_cat'] = cars['km_year'].apply(km_year_category)
+  starter: |
+    cut_cat = ...
+    same = ...
+    print(same)
+    cut_cat.value_counts()
+  solution: |
+    cut_cat = pd.cut(cars['km_year'], bins=[-np.inf, 10_000, 30_000, np.inf], labels=['Small', 'Medium', 'Large'])
+    same = (cut_cat.astype(str) == cars['km_year_cat']).all()
+    print(same)
+    cut_cat.value_counts()
+  explanation: |
+    - `pd.cut` раскладывает значения по интервалам `(левая, правая]`: правая граница включается — как `<=` в нашей функции.
+    - `-np.inf` и `np.inf` по краям гарантируют, что любое число попадёт в какой-то интервал.
+    - Результат `pd.cut` — категориальная колонка; `.astype(str)` превращает её в строки для сравнения.
+  hints:
+    - Функции `pd.cut` нужны колонка, границы интервалов `bins` и подписи `labels` — на одну меньше, чем границ.
+    - "`pd.cut(cars['km_year'], bins=[...], labels=[...])`; сравнение — `(cut_cat.astype(str) == cars['km_year_cat']).all()`."
+    - "`cut_cat = pd.cut(cars['km_year'], bins=[-np.inf, 10_000, 30_000, np.inf], labels=['Small', 'Medium', 'Large'])`."
+  tests: |
+    import pandas as pd
+    c = var('cut_cat', pd.Series, 'колонкой Series — результатом pd.cut')
+    if len(c) != len(ref('cars')):
+        fail('В `cut_cat` {0} значений, а строк в таблице {1}.'.format(len(c), len(ref('cars'))))
+    got = c.astype(str)
+    exp = ref('cut_cat').astype(str)
+    if (got != exp).any():
+        fail('Категории не совпадают с эталоном в {0} строках. Проверьте границы `bins` и что правая граница интервала включается (по умолчанию `right=True`).'.format(int((got != exp).sum())))
+    equal(bool(var('same')), True, '`same` должно быть True — категории pd.cut совпадают с категориями функции.')
+  wrong:
+    - code: |
+        cut_cat = pd.cut(cars['km_year'], bins=[-np.inf, 10_000, 30_000, np.inf], labels=['Small', 'Medium', 'Large'], right=False)
+        same = (cut_cat.astype(str) == cars['km_year_cat']).all()
+      expect: правая граница
+    - code: |
+        cut_cat = pd.cut(cars['km_year'], bins=[0, 10_000, 30_000, 300_000], labels=['Small', 'Medium', 'Large'])
+        same = True
+      expect: Категории не совпадают

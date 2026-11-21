@@ -1,0 +1,18 @@
+id: m9
+number: 9
+label: Модуль 9
+title: "Большие языковые модели и Hugging Face"
+short: "LLM и HF"
+firstLessonIndex: 0
+description: >-
+  Как устроены языковые модели: от подсчёта n-грамм до векторов слов, механизма внимания и трансформера (BERT, GPT,
+  T5). Затем — библиотека transformers: pipeline, токенизатор (токены, id, attention mask, padding), модель и логиты.
+  В конце — картинки: CLIP помещает изображения и подписи в одно пространство и классифицирует без обучения
+  (zero-shot), а промпты и метаданные поднимают точность с 57 до 87 %. Своя маленькая модель поверх готовых
+  эмбеддингов и мини-проект. В браузере работает учебная версия transformers: настоящий токенизатор и заранее
+  посчитанные настоящими моделями результаты; всё остальное — по ссылке в Colab.
+sources:
+  - Lec/06_LLM.pptx
+  - Workshops/09_HF_intro.ipynb
+  - Workshops/basic competitions/baseLine_hw2.ipynb
+warmupReviews: [pd-value-counts, pd-groupby, vectorization]

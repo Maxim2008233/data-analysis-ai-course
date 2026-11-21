@@ -1,0 +1,348 @@
+- id: m4-l0-t1
+  title: Доли марок в процентах
+  difficulty: warmup
+  introduces: []
+  uses: [pd-value-counts]
+  statement: |
+    Получите `make_share` — долю каждого значения `Make` **в процентах** (Series, по убыванию) и `top5_total` — суммарную долю пяти самых частых значений.
+
+    `Rare` — группа редких марок из урока 2.10; здесь она считается как отдельное значение.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')   # результат модуля 2
+  starter: |
+    make_share = ...
+    top5_total = ...
+    print(make_share.head(5).round(1))
+    print(round(top5_total, 1))
+  solution: |
+    make_share = df['Make'].value_counts(normalize=True) * 100
+    top5_total = make_share.head(5).sum()
+    print(make_share.head(5).round(1))
+    print(round(top5_total, 1))
+  explanation: |
+    - `value_counts(normalize=True)` — доли от 0 до 1 по убыванию (урок 2.3); умножение на 100 переводит их в проценты.
+    - `head(5)` — пять самых частых значений, `sum()` — их суммарная доля.
+  alternatives:
+    - |
+      make_share = df['Make'].value_counts() / len(df) * 100
+      top5_total = 100 * df['Make'].value_counts().head(5).sum() / len(df)
+  hints:
+    - Доли категорий даёт `value_counts` с одним параметром; проценты — умножение на 100.
+    - "`df['Make'].value_counts(normalize=True) * 100`; пять первых — `head(5)`."
+    - "`top5_total = make_share.head(5).sum()`."
+  tests: |
+    import pandas as pd
+    s = var('make_share', pd.Series, 'Series')
+    if s.max() <= 1:
+        fail('В `make_share` доли от 0 до 1, а нужны проценты: умножьте на 100.')
+    if s.max() > 100:
+        fail('В `make_share` количества объявлений, а нужны доли в процентах: `value_counts(normalize=True) * 100`.')
+    same_frame(s, ref('make_share'), 'Доли марок в процентах не совпадают.')
+    close(var('top5_total', 'number', 'числом'), ref('top5_total'), 'Суммарная доля пяти самых частых значений — {expected} %, а у вас {actual}.')
+    close(alt('top5_total'), alt_ref('top5_total'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        make_share = df['Make'].value_counts(normalize=True)
+        top5_total = make_share.head(5).sum()
+      expect: нужны проценты
+    - code: |
+        make_share = df['Make'].value_counts(normalize=True) * 100
+        top5_total = make_share.head(5).mean()
+      expect: Суммарная доля
+
+- id: m4-l0-t2
+  title: Квартили цены и граница «1,5 IQR»
+  difficulty: warmup
+  introduces: []
+  uses: [quantiles-iqr, pd-bool-filter]
+  statement: |
+    Получите квартили цены `q1` и `q3`, верхнюю границу «нормальных» значений `upper` = Q3 + 1,5 · IQR и `n_upper` — число объявлений с ценой **выше** `upper`. Такую границу рисуют усы боксплота — к нему мы придём в уроке 4.6.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    q1, q3 = ...
+    upper = ...
+    n_upper = ...
+    print(q1, q3, upper, n_upper)
+  solution: |
+    q1, q3 = df['Price'].quantile([0.25, 0.75])
+    upper = q3 + 1.5 * (q3 - q1)
+    n_upper = int((df['Price'] > upper).sum())
+    print(q1, q3, upper, n_upper)
+  explanation: |
+    - `quantile([0.25, 0.75])` возвращает два квартиля сразу; их распаковываем в `q1, q3` (урок 1.7).
+    - IQR = Q3 − Q1; граница — Q3 плюс полтора IQR.
+    - Сравнение `df['Price'] > upper` даёт маску, её сумма — число объявлений дороже границы.
+  alternatives:
+    - |
+      q1 = df['Price'].quantile(0.25)
+      q3 = df['Price'].quantile(0.75)
+      iqr = q3 - q1
+      upper = q3 + 1.5 * iqr
+      n_upper = len(df[df['Price'] > upper])
+  hints:
+    - Квартили — квантили уровней 0,25 и 0,75; межквартильный размах — их разность.
+    - "`df['Price'].quantile([0.25, 0.75])`; граница — `q3 + 1.5 * (q3 - q1)`."
+    - "`n_upper = int((df['Price'] > upper).sum())`."
+  tests: |
+    q1 = var('q1', 'number', 'числом')
+    q3 = var('q3', 'number', 'числом')
+    if abs(q1 - ref('q3')) < 1e-9 and abs(q3 - ref('q1')) < 1e-9:
+        fail('Квартили перепутаны местами: Q1 — уровень 0,25 (меньше), Q3 — уровень 0,75.')
+    close(q1, ref('q1'), 'Q1 цены — {expected}, а у вас {actual}. Квартиль уровня 0,25: `quantile(0.25)`.')
+    close(q3, ref('q3'), 'Q3 цены — {expected}, а у вас {actual}. Квартиль уровня 0,75: `quantile(0.75)`.')
+    u = var('upper', 'number', 'числом')
+    if abs(u - 1.5 * (ref('q3') - ref('q1'))) < 1e-6:
+        fail('Граница — это Q3 плюс полтора IQR: `q3 + 1.5 * (q3 - q1)`, а у вас только полтора IQR.')
+    close(u, ref('upper'), 'Верхняя граница Q3 + 1,5·IQR — {expected}, а у вас {actual}.')
+    close(var('n_upper', 'number', 'числом'), ref('n_upper'), 'Дороже границы {expected} объявлений, а у вас {actual}.')
+    close(alt('n_upper'), alt_ref('n_upper'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        q1, q3 = df['Price'].quantile([0.25, 0.75])
+        upper = 1.5 * (q3 - q1)
+        n_upper = int((df['Price'] > upper).sum())
+      expect: Q3 плюс полтора IQR
+    - code: |
+        q1, q3 = df['Price'].quantile([0.25, 0.75])
+        upper = q3 + 1.5 * (q3 - q1)
+        n_upper = int((df['Price'] < upper).sum())
+      expect: Дороже границы
+
+- id: m4-l0-t3
+  title: Самый частый ценовой интервал
+  difficulty: warmup
+  introduces: []
+  uses: [histogram-counts, extremes-argsort]
+  statement: |
+    Разбейте цены от 0 до 50 000 евро на 40 равных интервалов функцией `np.histogram` и получите `counts`, `edges`, ширину интервала `width`, а также границы самого частого интервала `mode_left` и `mode_right`.
+
+    Гистограмма в уроке 4.5 нарисует именно эти числа столбиками.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    counts, edges = ...
+    width = ...
+    i = ...
+    mode_left, mode_right = ...
+    print(width, mode_left, mode_right, counts[i])
+  solution: |
+    counts, edges = np.histogram(df['Price'], bins=40, range=(0, 50_000))
+    width = edges[1] - edges[0]
+    i = counts.argmax()
+    mode_left, mode_right = edges[i], edges[i + 1]
+    print(width, mode_left, mode_right, counts[i])
+  explanation: |
+    - `np.histogram(..., bins=40, range=(0, 50_000))` возвращает число записей в каждом интервале и 41 границу (урок 1.7).
+    - Ширина — разность соседних границ: 50 000 / 40 = 1 250 евро.
+    - `argmax()` даёт номер интервала с наибольшим числом записей (урок 1.6); его границы — `edges[i]` и `edges[i + 1]`.
+  hints:
+    - "`np.histogram` возвращает пару: частоты и границы интервалов; диапазон задают параметром `range`."
+    - "`np.histogram(df['Price'], bins=40, range=(0, 50_000))`; номер самого частого интервала — `counts.argmax()`."
+    - "`mode_left, mode_right = edges[i], edges[i + 1]` — у интервала с номером `i` левая граница `edges[i]`."
+  tests: |
+    import numpy as np
+    c = var('counts', np.ndarray, 'массивом NumPy')
+    e = var('edges', np.ndarray, 'массивом NumPy')
+    ensure(len(c) == 40, 'Интервалов должно быть 40, а у вас {0}: `bins=40`.'.format(len(c)))
+    ensure(abs(e[0]) < 1e-9 and abs(e[-1] - 50_000) < 1e-9, 'Границы должны идти от 0 до 50 000: `range=(0, 50_000)`.')
+    same_array(c, ref('counts'), 'Частоты по интервалам не совпадают.')
+    close(var('width', 'number', 'числом'), ref('width'), 'Ширина интервала — {expected} евро, а у вас {actual}.')
+    left = var('mode_left', 'number', 'числом')
+    if abs(left - ref('mode_right')) < 1e-9:
+        fail('`mode_left` — это правая граница. У интервала с номером `i` левая граница `edges[i]`, правая — `edges[i + 1]`.')
+    close(left, ref('mode_left'), 'Самый частый интервал начинается с {expected}, а у вас {actual}.')
+    close(var('mode_right', 'number', 'числом'), ref('mode_right'), 'Самый частый интервал заканчивается на {expected}, а у вас {actual}.')
+    close(alt('counts').max(), alt_ref('counts').max(), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        counts, edges = np.histogram(df['Price'], bins=40)
+        width = edges[1] - edges[0]
+        i = counts.argmax()
+        mode_left, mode_right = edges[i], edges[i + 1]
+      expect: от 0 до 50 000
+    - code: |
+        counts, edges = np.histogram(df['Price'], bins=40, range=(0, 50_000))
+        width = edges[1] - edges[0]
+        i = counts.argmax()
+        mode_left, mode_right = edges[i + 1], edges[i + 2]
+      expect: правая граница
+
+- id: m4-l0-t4
+  title: Среднее, медиана и разброс цены по коробке передач
+  difficulty: warmup
+  introduces: []
+  uses: [pd-groupby, pd-agg, std-var]
+  statement: |
+    Получите `price_stats` — для каждого типа коробки передач среднюю цену, медиану и стандартное отклонение (колонки `mean`, `median`, `std` в этом порядке) — и `gap`: во сколько раз средняя цена автоматов больше их медианной цены.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    price_stats = ...
+    gap = ...
+    print(price_stats.round(0))
+    print(round(gap, 2))
+  solution: |
+    price_stats = df.groupby('Transmission')['Price'].agg(['mean', 'median', 'std'])
+    gap = price_stats.loc['Automatic', 'mean'] / price_stats.loc['Automatic', 'median']
+    print(price_stats.round(0))
+    print(round(gap, 2))
+  explanation: |
+    - `groupby('Transmission')['Price'].agg([...])` считает три статистики в каждой группе (урок 3.2).
+    - Строка — тип коробки, колонка — статистика: `price_stats.loc['Automatic', 'mean']`.
+    - Среднее заметно больше медианы: длинный «хвост» дорогих машин тянет среднее вверх (урок 1.6). Гистограмма покажет этот хвост.
+  hints:
+    - Группировка по коробке и несколько статистик одним вызовом `agg`.
+    - "`df.groupby('Transmission')['Price'].agg(['mean', 'median', 'std'])`."
+    - "`gap = price_stats.loc['Automatic', 'mean'] / price_stats.loc['Automatic', 'median']`."
+  tests: |
+    import pandas as pd
+    t = var('price_stats', pd.DataFrame, 'таблицей DataFrame')
+    same_frame(t, ref('price_stats'), 'Таблица статистик не совпадает: строки — типы коробки, колонки mean, median, std.')
+    g = var('gap', 'number', 'числом')
+    if abs(g - 1 / ref('gap')) < 1e-9:
+        fail('Отношение перевёрнуто: нужно среднее, делённое на медиану.')
+    close(g, ref('gap'), 'Среднее больше медианы в {expected} раза, а у вас {actual}.')
+    close(alt('gap'), alt_ref('gap'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        price_stats = df.groupby('Transmission')['Price'].agg(['mean', 'median', 'std'])
+        gap = price_stats.loc['Automatic', 'median'] / price_stats.loc['Automatic', 'mean']
+      expect: перевёрнуто
+    - code: |
+        price_stats = df.groupby('Transmission')['Price'].agg(['median', 'mean', 'std'])
+        gap = price_stats.loc['Automatic', 'mean'] / price_stats.loc['Automatic', 'median']
+      expect: Порядок колонок
+
+- id: m4-l0-t5
+  title: Логарифм цены и правило «±1σ»
+  difficulty: main
+  introduces: []
+  uses: [std-var, mean-median, pd-isin-between]
+  statement: |
+    Получите `log_price` — десятичный логарифм цены (`np.log10`), его среднее `m`, стандартное отклонение `s` и `share_1s` — долю объявлений, у которых `log_price` лежит в пределах от `m - s` до `m + s`.
+
+    Для «колокола» нормального распределения эта доля около 0,68 — в уроке 4.6 проверим, похожи ли на него логарифмы цен.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    log_price = ...
+    m, s = ...
+    share_1s = ...
+    print(round(m, 3), round(s, 3), round(share_1s, 3))
+  solution: |
+    log_price = np.log10(df['Price'])
+    m, s = log_price.mean(), log_price.std()
+    share_1s = log_price.between(m - s, m + s).mean()
+    print(round(m, 3), round(s, 3), round(share_1s, 3))
+  explanation: |
+    - `np.log10` применяется ко всей колонке сразу; цена 10 000 евро превращается в 4.
+    - Среднее и стандартное отклонение — методы Series (урок 1.7).
+    - `between(m - s, m + s)` — маска «в пределах ±1σ» (урок 2.5), её среднее — доля таких объявлений.
+  alternatives:
+    - |
+      log_price = np.log10(df['Price'])
+      m = log_price.mean()
+      s = log_price.std()
+      share_1s = ((log_price >= m - s) & (log_price <= m + s)).mean()
+  hints:
+    - Сначала логарифм всей колонки, затем две статистики, затем доля значений в диапазоне.
+    - "`np.log10(df['Price'])`; диапазон — `log_price.between(m - s, m + s)`."
+    - "`share_1s = log_price.between(m - s, m + s).mean()` — среднее маски равно доле `True`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    lp = var('log_price', pd.Series, 'Series')
+    if abs(lp.mean() - np.log(ref('df')['Price']).mean()) < 1e-6:
+        fail('Нужен десятичный логарифм `np.log10`, а не натуральный `np.log`.')
+    same_frame(lp, ref('log_price'), 'Логарифмы цен не совпадают.')
+    close(var('m', 'number', 'числом'), ref('m'), 'Среднее логарифма цены — {expected}, а у вас {actual}.')
+    close(var('s', 'number', 'числом'), ref('s'), 'Стандартное отклонение логарифма — {expected}, а у вас {actual}.', rtol=1e-3)
+    sh = var('share_1s', 'number', 'числом')
+    ensure(0 <= sh <= 1, 'Доля должна быть от 0 до 1, а у вас {0}. Возьмите среднее маски, а не сумму.'.format(sh))
+    close(sh, ref('share_1s'), 'В пределах ±1σ доля {expected}, а у вас {actual}.', rtol=1e-3)
+    close(alt('share_1s'), alt_ref('share_1s'), HARDCODE_MSG, rtol=1e-3)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        log_price = np.log(df['Price'])
+        m, s = log_price.mean(), log_price.std()
+        share_1s = log_price.between(m - s, m + s).mean()
+      expect: np.log10
+    - code: |
+        log_price = np.log10(df['Price'])
+        m, s = log_price.mean(), log_price.std()
+        share_1s = log_price.between(m - s, m + s).sum()
+      expect: от 0 до 1
+
+- id: m4-l0-t6
+  kind: plot
+  title: Медианная цена автоматов и механики по годам
+  difficulty: main
+  introduces: []
+  uses: [pd-pivot-table, pd-plot, pd-bool-filter]
+  statement: |
+    Для машин **2000 года выпуска и новее** получите `by_year` — сводную медианных цен: годы по строкам, тип коробки по колонкам — и нарисуйте её методом `plot` двумя линиями с маркерами. Добавьте заголовок и подписи осей; в подписи Y укажите единицы `евро`.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    recent = ...
+    by_year = ...
+    by_year.plot(...)
+    plt.show()
+  solution: |
+    recent = df[df['Year'] >= 2000]
+    by_year = recent.pivot_table(index='Year', columns='Transmission', values='Price', aggfunc='median')
+    by_year.plot(marker='o', figsize=(10, 3), grid=True,
+                 title='Медианная цена по году выпуска: автомат и механика',
+                 xlabel='Год выпуска', ylabel='Медианная цена, евро')
+    plt.show()
+  explanation: |
+    - Фильтр `Year >= 2000` убирает старые годы, где машин мало и медианы скачут (урок 3.3).
+    - Сводная с колонками Automatic и Manual (урок 3.4) — два ряда; `plot` рисует их двумя линиями с легендой (урок 3.8).
+  hints:
+    - Сначала отберите годы, затем сводная таблица, затем `plot` у неё — каждая колонка станет линией.
+    - "`recent.pivot_table(index='Year', columns='Transmission', values='Price', aggfunc='median')`."
+    - "`by_year.plot(marker='o', title=..., xlabel='Год выпуска', ylabel='Медианная цена, евро')`."
+  tests: |
+    import pandas as pd
+    t = var('by_year', pd.DataFrame, 'таблицей DataFrame — сводной')
+    if t.index.min() < 2000:
+        fail('В сводной есть годы раньше 2000 — отберите машины `Year >= 2000`.')
+    same_frame(t, ref('by_year'), 'Сводная медианных цен не совпадает: годы по строкам, коробка по колонкам.')
+    ax = axes()
+    labels = [l.get_label() for l in ax.get_lines()]
+    ensure({'Automatic', 'Manual'} <= set(labels), 'На графике должны быть две линии — Automatic и Manual: рисуйте всю сводную.')
+    for line in ax.get_lines():
+        if line.get_label() in ('Automatic', 'Manual'):
+            same_array(line.get_ydata(), ref('by_year')[line.get_label()].values, 'Линия {0} должна показывать медианные цены по годам.'.format(line.get_label()))
+            ensure(line.get_marker() not in (None, 'None', ''), 'Добавьте маркеры точек: `marker=\'o\'`.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок: `title=...`.')
+    ensure(ax.get_xlabel().strip() != '', 'Подпишите ось X: `xlabel=...`.')
+    ensure('евро' in ax.get_ylabel().lower(), 'В подписи оси Y укажите единицы: `ylabel=\'Медианная цена, евро\'`.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        by_year = df.pivot_table(index='Year', columns='Transmission', values='Price', aggfunc='median')
+        by_year.plot(marker='o', title='Медианная цена', xlabel='Год выпуска', ylabel='Цена, евро')
+        plt.show()
+      expect: раньше 2000
+    - code: |
+        recent = df[df['Year'] >= 2000]
+        by_year = recent.pivot_table(index='Year', columns='Transmission', values='Price', aggfunc='median')
+        by_year.plot(title='Медианная цена', xlabel='Год выпуска', ylabel='Медианная цена, евро')
+        plt.show()
+      expect: маркеры

@@ -1,0 +1,527 @@
+- id: m8-l4-t1
+  title: Лучшая константа для каждой потери
+  difficulty: warmup
+  introduces: [loss-choice]
+  uses: [loss-mse, regression-metrics]
+  statement: |
+    Переберите константы из `consts` — прогноз «одно число для всех машин». Получите:
+
+    - `mse_by_c` и `mae_by_c` — массивы MSE и MAE каждой константы на **train** (`y_train`);
+    - `best_mse_c` и `best_mae_c` — константы с наименьшей MSE и наименьшей MAE;
+    - `valid_mae` — словарь `{'mse': ..., 'mae': ...}`: MAE на validation прогноза `best_mse_c` и прогноза `best_mae_c`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    consts = np.arange(0, 30001, 100)
+  starter: |
+    mse_by_c = np.array([... for c in consts])
+    mae_by_c = np.array([... for c in consts])
+    best_mse_c = ...
+    best_mae_c = ...
+    valid_mae = {'mse': ..., 'mae': ...}
+    print(best_mse_c, round(y_train.mean()), '|', best_mae_c, y_train.median())
+    print({k: round(v) for k, v in valid_mae.items()})
+  solution: |
+    mse_by_c = np.array([np.mean((y_train - c) ** 2) for c in consts])
+    mae_by_c = np.array([np.mean(np.abs(y_train - c)) for c in consts])
+    best_mse_c = consts[np.argmin(mse_by_c)]
+    best_mae_c = consts[np.argmin(mae_by_c)]
+    valid_mae = {'mse': mean_absolute_error(y_valid, np.full(len(y_valid), best_mse_c)),
+                 'mae': mean_absolute_error(y_valid, np.full(len(y_valid), best_mae_c))}
+    print(best_mse_c, round(y_train.mean()), '|', best_mae_c, y_train.median())
+    print({k: round(v) for k, v in valid_mae.items()})
+  explanation: |
+    - Лучшая константа по MSE — 9 600, ближайшая к средней цене train (9 574). По MAE — 6 800, ровно медиана. Так устроены эти потери: MSE минимальна в среднем, MAE — в медиане.
+    - На validation по MAE константа-медиана точнее: 6 007 евро против 6 536. Если метрика задачи — MAE, учить модель на MSE значит целиться немного не туда.
+    - Цены скошены вправо: несколько дорогих машин поднимают среднее, и MSE ради них сдвигает прогноз вверх для всех.
+  hints:
+    - "MSE константы `c` на train — `np.mean((y_train - c) ** 2)`, MAE — `np.mean(np.abs(y_train - c))`."
+    - "Константа с наименьшей ошибкой — `consts[np.argmin(mse_by_c)]`."
+    - "MAE на validation прогноза-константы — `mean_absolute_error(y_valid, np.full(len(y_valid), best_mse_c))`."
+  tests: |
+    import numpy as np
+    ms = np.asarray(var('mse_by_c'), dtype=float)
+    ma = np.asarray(var('mae_by_c'), dtype=float)
+    n = len(ref('consts'))
+    ensure(ms.shape == (n,) and ma.shape == (n,), '`mse_by_c` и `mae_by_c` — по значению на каждую константу из `consts` ({0}).'.format(n))
+    if np.allclose(ma, np.array([np.mean(np.abs(ref('y_valid') - c)) for c in ref('consts')])):
+        fail('Ошибки констант считайте на train — `y_train`, validation — только для итоговой проверки.')
+    same_array(ms, ref('mse_by_c'), '`mse_by_c` не совпадает: `np.mean((y_train - c) ** 2)` для каждой константы.')
+    same_array(ma, ref('mae_by_c'), '`mae_by_c` не совпадает: `np.mean(np.abs(y_train - c))` для каждой константы.')
+    bm = var('best_mse_c', 'number', 'числом')
+    if bm == ref('consts')[int(np.argmax(ref('mse_by_c')))]:
+        fail('Нужна константа с наименьшей ошибкой: `np.argmin`, а не `np.argmax`.')
+    equal(int(bm), int(ref('best_mse_c')), 'Лучшая константа по MSE — {expected}, а у вас {actual}.')
+    equal(int(var('best_mae_c', 'number', 'числом')), int(ref('best_mae_c')), 'Лучшая константа по MAE — {expected}, а у вас {actual}.')
+    d = var('valid_mae', dict, 'словарём')
+    ensure(set(d) == {'mse', 'mae'}, 'Ключи `valid_mae` — mse и mae.')
+    close(d['mse'], ref('valid_mae')['mse'], 'MAE на validation константы по MSE — {expected}, а у вас {actual}.')
+    close(d['mae'], ref('valid_mae')['mae'], 'MAE на validation константы по MAE — {expected}, а у вас {actual}.')
+    close(alt('valid_mae')['mse'], alt_ref('valid_mae')['mse'], HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        mse_by_c = np.array([np.mean((y_train - c) ** 2) for c in consts])
+        mae_by_c = np.array([np.mean(np.abs(y_train - c)) for c in consts])
+        best_mse_c = consts[np.argmax(mse_by_c)]
+        best_mae_c = consts[np.argmax(mae_by_c)]
+        valid_mae = {'mse': mean_absolute_error(y_valid, np.full(len(y_valid), best_mse_c)),
+                     'mae': mean_absolute_error(y_valid, np.full(len(y_valid), best_mae_c))}
+      expect: np.argmin
+    - code: |
+        mse_by_c = np.array([np.mean((y_valid - c) ** 2) for c in consts])
+        mae_by_c = np.array([np.mean(np.abs(y_valid - c)) for c in consts])
+        best_mse_c = consts[np.argmin(mse_by_c)]
+        best_mae_c = consts[np.argmin(mae_by_c)]
+        valid_mae = {'mse': mean_absolute_error(y_valid, np.full(len(y_valid), best_mse_c)),
+                     'mae': mean_absolute_error(y_valid, np.full(len(y_valid), best_mae_c))}
+      expect: на train
+
+- id: m8-l4-t2
+  title: Кто тянет градиент
+  difficulty: main
+  introduces: []
+  uses: [loss-choice, backpropagation]
+  statement: |
+    Сеть `net` обучена на цене / 10 000, `pred_train` — её прогнозы для train в тех же единицах, `t_train` — ответы. Маска `top10` отмечает 10 % самых дорогих машин train. Посчитайте для каждой машины модуль ошибки выхода (урок 8.3):
+
+    - `g_mse` — для MSE: |2(ŷ − t)/n|;
+    - `g_mae` — для MAE: |sign(ŷ − t)/n|.
+
+    Получите `share_mse` и `share_mae` — какую долю суммы модулей ошибок выхода дают самые дорогие машины при каждой потере.
+  prelude: |
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.neural_network import MLPRegressor
+    from sklearn.exceptions import ConvergenceWarning
+    warnings.filterwarnings('ignore', category=ConvergenceWarning)   # 30 эпох — ожидаемо
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s = scaler.transform(X_train)
+    t_train = y_train.to_numpy() / 10000
+    net = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=30, random_state=42).fit(X_train_s, t_train)
+    pred_train = net.predict(X_train_s)
+    top10 = (y_train > y_train.quantile(0.9)).to_numpy()
+  starter: |
+    n = len(t_train)
+    g_mse = ...
+    g_mae = ...
+    share_mse = ...
+    share_mae = ...
+    print(round(share_mse, 3), round(share_mae, 3), '| доля машин:', round(top10.mean(), 3))
+  solution: |
+    n = len(t_train)
+    g_mse = np.abs(2 * (pred_train - t_train) / n)
+    g_mae = np.abs(np.sign(pred_train - t_train) / n)
+    share_mse = g_mse[top10].sum() / g_mse.sum()
+    share_mae = g_mae[top10].sum() / g_mae.sum()
+    print(round(share_mse, 3), round(share_mae, 3), '| доля машин:', round(top10.mean(), 3))
+  explanation: |
+    - При MAE каждая машина тянет с одинаковой силой 1/n, поэтому 10 % дорогих машин дают ровно 10 % «тяги».
+    - При MSE те же 10 % машин дают треть всей суммы (33 %): на дорогих машинах промахи в евро большие, а сила градиента им пропорциональна.
+    - Поэтому сеть с MSE в первую очередь исправляет дорогие машины — и точнее на них. Сеть с MAE распределяет внимание поровну и точнее на типичных машинах.
+  hints:
+    - "`g_mse = np.abs(2 * (pred_train - t_train) / n)`, `g_mae = np.abs(np.sign(pred_train - t_train) / n)`."
+    - "Сумма по дорогим машинам — `g_mse[top10].sum()`, по всем — `g_mse.sum()`."
+    - "Доля — отношение этих сумм; для MAE — то же с `g_mae`."
+  tests: |
+    import numpy as np
+    n = len(ref('t_train'))
+    gm = np.asarray(var('g_mse'), dtype=float)
+    ga = np.asarray(var('g_mae'), dtype=float)
+    ensure(gm.shape == (n,) and ga.shape == (n,), '`g_mse` и `g_mae` — по значению на каждую машину train ({0}).'.format(n))
+    if (gm < 0).any() or (ga < 0).any():
+        fail('Берите модуль ошибки выхода: `np.abs(...)`, иначе положительные и отрицательные значения взаимно сократятся.')
+    same_array(gm, ref('g_mse'), '`g_mse` не совпадает: `np.abs(2 * (pred_train - t_train) / n)`.')
+    same_array(ga, ref('g_mae'), '`g_mae` не совпадает: `np.abs(np.sign(pred_train - t_train) / n)`.')
+    sm = var('share_mse', 'number', 'числом')
+    if abs(sm - ref('top10').mean()) < 1e-9:
+        fail('`share_mse` — доля суммы `g_mse` по дорогим машинам, а не доля самих машин.')
+    close(sm, ref('share_mse'), 'Доля дорогих машин в «тяге» MSE — {expected}, а у вас {actual}.', rtol=1e-4)
+    close(var('share_mae', 'number', 'числом'), ref('share_mae'), 'Доля дорогих машин в «тяге» MAE — {expected}, а у вас {actual}.', rtol=1e-4)
+    close(alt('share_mse'), alt_ref('share_mse'), HARDCODE_MSG, rtol=1e-4)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        n = len(t_train)
+        g_mse = 2 * (pred_train - t_train) / n
+        g_mae = np.sign(pred_train - t_train) / n
+        share_mse = g_mse[top10].sum() / g_mse.sum()
+        share_mae = g_mae[top10].sum() / g_mae.sum()
+      expect: модуль
+    - code: |
+        n = len(t_train)
+        g_mse = np.abs(2 * (pred_train - t_train) / n)
+        g_mae = np.abs(np.sign(pred_train - t_train) / n)
+        share_mse = top10.mean()
+        share_mae = top10.mean()
+      expect: доля суммы
+
+- id: m8-l4-t3
+  title: Две сети — таблица метрик
+  difficulty: main
+  introduces: []
+  uses: [loss-choice, regression-metrics]
+  statement: |
+    В подготовке обучены две одинаковые сети 4 → 16 → 1 — с потерями MSE и MAE, как в уроке. `preds` — словарь их прогнозов для validation в евро. Дорогими считаем машины дороже 90 % машин train. Получите:
+
+    - `metrics` — DataFrame с индексом `['mse', 'mae']` и колонками `'MAE'`, `'RMSE'`, `'MAE_expensive'` (MAE на дорогих машинах validation);
+    - `winners` — словарь: для каждой метрики — `'mse'` или `'mae'`, у какой сети она меньше.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s, X_valid_s = scaler.transform(X_train), scaler.transform(X_valid)
+    unit = 10000
+    t_train = y_train.to_numpy() / unit
+
+    # сеть 4 → 16 → 1 из урока: обратное распространение и шаги Adam
+    def train_net(loss, epochs=30, lr=0.003, batch_size=256, seed=42):
+        rng = np.random.default_rng(seed)
+        r = np.random.default_rng(seed)
+        p = {'W1': r.normal(0, np.sqrt(2 / 4), size=(4, 16)), 'b1': np.zeros(16),
+             'w2': r.normal(0, np.sqrt(1 / 16), size=16), 'b2': 0.0}
+        m = {k: np.zeros_like(v) for k, v in p.items()}
+        v = {k: np.zeros_like(v) for k, v in p.items()}
+        step = 0
+        for epoch in range(epochs):
+            order = rng.permutation(len(X_train_s))
+            for start in range(0, len(order), batch_size):
+                idx = order[start:start + batch_size]
+                Xb, tb = X_train_s[idx], t_train[idx]
+                Z = Xb @ p['W1'] + p['b1']
+                H = np.maximum(Z, 0)
+                pred = H @ p['w2'] + p['b2']
+                e = 2 * (pred - tb) / len(tb) if loss == 'mse' else np.sign(pred - tb) / len(tb)
+                dZ = np.outer(e, p['w2']) * (Z > 0)
+                g = {'W1': Xb.T @ dZ, 'b1': dZ.sum(axis=0), 'w2': H.T @ e, 'b2': e.sum()}
+                step += 1
+                for k in p:
+                    m[k] = 0.9 * m[k] + 0.1 * g[k]
+                    v[k] = 0.999 * v[k] + 0.001 * g[k] ** 2
+                    p[k] = p[k] - lr * (m[k] / (1 - 0.9 ** step)) / (np.sqrt(v[k] / (1 - 0.999 ** step)) + 1e-8)
+        return (np.maximum(X_valid_s @ p['W1'] + p['b1'], 0) @ p['w2'] + p['b2']) * unit
+
+    preds = {loss: train_net(loss) for loss in ['mse', 'mae']}
+  starter: |
+    expensive = ...
+    rows = {}
+    for loss, pred in preds.items():
+        err = y_valid.to_numpy() - pred
+        rows[loss] = {'MAE': ..., 'RMSE': ..., 'MAE_expensive': ...}
+    metrics = pd.DataFrame(rows).T
+    winners = {col: ... for col in metrics.columns}
+    print(metrics.round(0))
+    print(winners)
+  solution: |
+    expensive = (y_valid > y_train.quantile(0.9)).to_numpy()
+    rows = {}
+    for loss, pred in preds.items():
+        err = y_valid.to_numpy() - pred
+        rows[loss] = {'MAE': np.abs(err).mean(), 'RMSE': np.sqrt((err ** 2).mean()),
+                      'MAE_expensive': np.abs(err[expensive]).mean()}
+    metrics = pd.DataFrame(rows).T
+    winners = {col: metrics[col].idxmin() for col in metrics.columns}
+    print(metrics.round(0))
+    print(winners)
+  explanation: |
+    - По MAE побеждает сеть с MAE-потерей: 2 773 против 2 940 евро. Логично: она училась уменьшать именно эту величину.
+    - По RMSE и на 662 дорогих машинах побеждает сеть с MSE: 5 559 против 5 730 и 9 305 против 9 827. RMSE, как и MSE, сильнее штрафует крупные промахи, а они — на дорогих машинах.
+    - Граница «дорогих» берётся по train (19 310 евро), а не по validation: правила групп задают до проверки. Вывод: выбор потери зависит от того, какая ошибка важнее для задачи.
+  hints:
+    - "Маска дорогих машин — `(y_valid > y_train.quantile(0.9)).to_numpy()`."
+    - "MAE — `np.abs(err).mean()`, RMSE — `np.sqrt((err ** 2).mean())`, MAE дорогих — `np.abs(err[expensive]).mean()`."
+    - "Победитель метрики — `metrics[col].idxmin()`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    mt = var('metrics', pd.DataFrame, 'таблицей DataFrame')
+    ensure(list(mt.index) == ['mse', 'mae'], 'Индекс `metrics` — `mse` и `mae` (ключи словаря `preds`).')
+    ensure({'MAE', 'RMSE', 'MAE_expensive'} <= set(mt.columns), 'Колонки `metrics` — `MAE`, `RMSE` и `MAE_expensive`.')
+    r = ref('metrics')
+    same_array(mt['MAE'].to_numpy(dtype=float), r['MAE'].to_numpy(dtype=float), 'MAE сетей не совпадает: `np.abs(err).mean()`.')
+    same_array(mt['RMSE'].to_numpy(dtype=float), r['RMSE'].to_numpy(dtype=float), 'RMSE не совпадает: `np.sqrt((err ** 2).mean())`.')
+    ex = mt['MAE_expensive'].to_numpy(dtype=float)
+    if np.allclose(ex, mt['MAE'].to_numpy(dtype=float)):
+        fail('`MAE_expensive` считают только по дорогим машинам: `np.abs(err[expensive]).mean()`.')
+    yv, lim = ref('y_valid'), ref('y_valid').quantile(0.9)
+    alt_mask = (yv > lim).to_numpy()
+    if np.allclose(ex, [np.abs((yv.to_numpy() - ref('preds')[k])[alt_mask]).mean() for k in ['mse', 'mae']]):
+        fail('Границу дорогих машин берут по train: `y_train.quantile(0.9)`, а не по validation.')
+    same_array(ex, r['MAE_expensive'].to_numpy(dtype=float), 'MAE на дорогих машинах не совпадает: маска `y_valid > y_train.quantile(0.9)`.')
+    w = var('winners', dict, 'словарём')
+    ensure(set(w) == {'MAE', 'RMSE', 'MAE_expensive'}, 'Ключи `winners` — названия метрик: MAE, RMSE, MAE_expensive.')
+    for k in ['MAE', 'RMSE', 'MAE_expensive']:
+        equal(w[k], ref('winners')[k], 'По метрике ' + k + ' меньше у сети {expected}, а у вас {actual}. Чем меньше ошибка, тем лучше.')
+    close(alt('metrics').loc['mae', 'MAE'], alt_ref('metrics').loc['mae', 'MAE'], HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        expensive = (y_valid > y_valid.quantile(0.9)).to_numpy()
+        rows = {}
+        for loss, pred in preds.items():
+            err = y_valid.to_numpy() - pred
+            rows[loss] = {'MAE': np.abs(err).mean(), 'RMSE': np.sqrt((err ** 2).mean()),
+                          'MAE_expensive': np.abs(err[expensive]).mean()}
+        metrics = pd.DataFrame(rows).T
+        winners = {col: metrics[col].idxmin() for col in metrics.columns}
+      expect: по train
+    - code: |
+        expensive = (y_valid > y_train.quantile(0.9)).to_numpy()
+        rows = {}
+        for loss, pred in preds.items():
+            err = y_valid.to_numpy() - pred
+            rows[loss] = {'MAE': np.abs(err).mean(), 'RMSE': np.sqrt((err ** 2).mean()),
+                          'MAE_expensive': np.abs(err[expensive]).mean()}
+        metrics = pd.DataFrame(rows).T
+        winners = {col: metrics[col].idxmax() for col in metrics.columns}
+      expect: Чем меньше ошибка
+
+- id: m8-l4-t4
+  title: Ошибки по ценовым группам
+  difficulty: main
+  introduces: []
+  uses: [loss-choice, regression-metrics]
+  statement: |
+    Прогнозы двух сетей — в словаре `preds`, как в прошлом задании. Разделите машины validation на три ценовые группы по границам — квантилям цены **train** 1/3 и 2/3 — с подписями `'дешёвые'`, `'средние'`, `'дорогие'`. Получите:
+
+    - `by_group` — DataFrame: индекс — группа, колонки `'mse'` и `'mae'` — MAE сети в группе;
+    - `gain` — Series: на сколько евро сеть с MAE-потерей точнее в каждой группе (`mse − mae`);
+    - `best_gain_group` — группу, где этот выигрыш наибольший.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s, X_valid_s = scaler.transform(X_train), scaler.transform(X_valid)
+    unit = 10000
+    t_train = y_train.to_numpy() / unit
+
+    # сеть 4 → 16 → 1 из урока: обратное распространение и шаги Adam
+    def train_net(loss, epochs=30, lr=0.003, batch_size=256, seed=42):
+        rng = np.random.default_rng(seed)
+        r = np.random.default_rng(seed)
+        p = {'W1': r.normal(0, np.sqrt(2 / 4), size=(4, 16)), 'b1': np.zeros(16),
+             'w2': r.normal(0, np.sqrt(1 / 16), size=16), 'b2': 0.0}
+        m = {k: np.zeros_like(v) for k, v in p.items()}
+        v = {k: np.zeros_like(v) for k, v in p.items()}
+        step = 0
+        for epoch in range(epochs):
+            order = rng.permutation(len(X_train_s))
+            for start in range(0, len(order), batch_size):
+                idx = order[start:start + batch_size]
+                Xb, tb = X_train_s[idx], t_train[idx]
+                Z = Xb @ p['W1'] + p['b1']
+                H = np.maximum(Z, 0)
+                pred = H @ p['w2'] + p['b2']
+                e = 2 * (pred - tb) / len(tb) if loss == 'mse' else np.sign(pred - tb) / len(tb)
+                dZ = np.outer(e, p['w2']) * (Z > 0)
+                g = {'W1': Xb.T @ dZ, 'b1': dZ.sum(axis=0), 'w2': H.T @ e, 'b2': e.sum()}
+                step += 1
+                for k in p:
+                    m[k] = 0.9 * m[k] + 0.1 * g[k]
+                    v[k] = 0.999 * v[k] + 0.001 * g[k] ** 2
+                    p[k] = p[k] - lr * (m[k] / (1 - 0.9 ** step)) / (np.sqrt(v[k] / (1 - 0.999 ** step)) + 1e-8)
+        return (np.maximum(X_valid_s @ p['W1'] + p['b1'], 0) @ p['w2'] + p['b2']) * unit
+
+    preds = {loss: train_net(loss) for loss in ['mse', 'mae']}
+  starter: |
+    low, high = ...
+    groups = pd.cut(y_valid, bins=[-np.inf, low, high, np.inf], labels=['дешёвые', 'средние', 'дорогие'])
+    errors = pd.DataFrame({loss: np.abs(y_valid.to_numpy() - pred) for loss, pred in preds.items()},
+                          index=y_valid.index)
+    by_group = ...
+    gain = ...
+    best_gain_group = ...
+    print(by_group.round(0))
+    print(gain.round(0), best_gain_group)
+  solution: |
+    low, high = y_train.quantile([1 / 3, 2 / 3])
+    groups = pd.cut(y_valid, bins=[-np.inf, low, high, np.inf], labels=['дешёвые', 'средние', 'дорогие'])
+    errors = pd.DataFrame({loss: np.abs(y_valid.to_numpy() - pred) for loss, pred in preds.items()},
+                          index=y_valid.index)
+    by_group = errors.groupby(groups, observed=True).mean()
+    gain = by_group['mse'] - by_group['mae']
+    best_gain_group = gain.idxmax()
+    print(by_group.round(0))
+    print(gain.round(0), best_gain_group)
+  explanation: |
+    - Границы по train — 4 600 и 9 700 евро. На дешёвых машинах сеть с MAE-потерей точнее на 574 евро (1 231 против 1 805). На средних сети равны, а на дорогих MSE точнее на 85 евро.
+    - Сеть с MSE подтягивает прогнозы к среднему, и на дешёвых машинах это особенно заметно: она систематически завышает их цену.
+    - Общая MAE — среднее по всем машинам, поэтому выигрыш 167 евро складывается в основном из дешёвой трети. Как точно разложить изменение ошибки по группам — в уроке 8.6.
+  hints:
+    - "Границы — `y_train.quantile([1 / 3, 2 / 3])`."
+    - "MAE по группам — `errors.groupby(groups, observed=True).mean()`."
+    - "`gain = by_group['mse'] - by_group['mae']`, группа с наибольшим выигрышем — `gain.idxmax()`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    bg = var('by_group', pd.DataFrame, 'таблицей DataFrame')
+    ensure([str(i) for i in bg.index] == ['дешёвые', 'средние', 'дорогие'], 'Индекс `by_group` — группы «дешёвые», «средние», «дорогие» по порядку.')
+    ensure({'mse', 'mae'} <= set(bg.columns), 'Колонки `by_group` — `mse` и `mae`.')
+    r = ref('by_group')
+    yv = ref('y_valid')
+    lo, hi = yv.quantile([1 / 3, 2 / 3])
+    gv = pd.cut(yv, bins=[-np.inf, lo, hi, np.inf], labels=['дешёвые', 'средние', 'дорогие'])
+    wrong_bg = pd.DataFrame({k: np.abs(yv.to_numpy() - p) for k, p in ref('preds').items()}, index=yv.index).groupby(gv, observed=True).mean()
+    if np.allclose(bg['mse'].to_numpy(dtype=float), wrong_bg['mse'].to_numpy(dtype=float)) and not np.allclose(wrong_bg['mse'].to_numpy(dtype=float), r['mse'].to_numpy(dtype=float)):
+        fail('Границы групп берут по train: `y_train.quantile([1 / 3, 2 / 3])`.')
+    same_array(bg['mse'].to_numpy(dtype=float), r['mse'].to_numpy(dtype=float), 'MAE сети с MSE по группам не совпадает.')
+    same_array(bg['mae'].to_numpy(dtype=float), r['mae'].to_numpy(dtype=float), 'MAE сети с MAE по группам не совпадает.')
+    gn = var('gain', pd.Series, 'Series')
+    if np.allclose(gn.to_numpy(dtype=float), -ref('gain').to_numpy(dtype=float)):
+        fail('Выигрыш сети с MAE-потерей — `mse − mae`: на сколько её ошибка меньше.')
+    same_array(gn.to_numpy(dtype=float), ref('gain').to_numpy(dtype=float), '`gain` — `by_group[\'mse\'] - by_group[\'mae\']`.')
+    equal(str(var('best_gain_group')), str(ref('best_gain_group')), 'Наибольший выигрыш — в группе {expected}, а у вас {actual}.')
+    same_array(alt('gain').to_numpy(dtype=float), alt_ref('gain').to_numpy(dtype=float), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        low, high = y_valid.quantile([1 / 3, 2 / 3])
+        groups = pd.cut(y_valid, bins=[-np.inf, low, high, np.inf], labels=['дешёвые', 'средние', 'дорогие'])
+        errors = pd.DataFrame({loss: np.abs(y_valid.to_numpy() - pred) for loss, pred in preds.items()},
+                              index=y_valid.index)
+        by_group = errors.groupby(groups, observed=True).mean()
+        gain = by_group['mse'] - by_group['mae']
+        best_gain_group = gain.idxmax()
+      expect: по train
+    - code: |
+        low, high = y_train.quantile([1 / 3, 2 / 3])
+        groups = pd.cut(y_valid, bins=[-np.inf, low, high, np.inf], labels=['дешёвые', 'средние', 'дорогие'])
+        errors = pd.DataFrame({loss: np.abs(y_valid.to_numpy() - pred) for loss, pred in preds.items()},
+                              index=y_valid.index)
+        by_group = errors.groupby(groups, observed=True).mean()
+        gain = by_group['mae'] - by_group['mse']
+        best_gain_group = gain.idxmax()
+      expect: mse − mae
+
+- id: m8-l4-t5
+  title: Логарифм цены — не панацея
+  difficulty: star
+  introduces: []
+  uses: [loss-choice, log-target, mlp]
+  statement: |
+    Ещё один способ ослабить влияние дорогих машин на квадратичную потерю — учить сеть на логарифме цены (уроки 5.9 и 7.6). Тогда промах на 10 % стоит одинаково и для дешёвой, и для дорогой машины. Проверьте, поможет ли это сети (16, 8).
+
+    Обучите `MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=30, random_state=42)` дважды: на `np.log(y_train)` (прогноз в евро — `np.exp(...)`) и на `y_train / unit`. Получите `results` — DataFrame с индексом `['log', 'raw']` и колонками:
+
+    - `'MAE'` — MAE на validation в евро;
+    - `'median_AE'` — медиана модуля ошибки;
+    - `'MAE_expensive'` — MAE на машинах дороже 90 % машин train.
+  prelude: |
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.neural_network import MLPRegressor
+    from sklearn.exceptions import ConvergenceWarning
+    warnings.filterwarnings('ignore', category=ConvergenceWarning)   # 30 эпох — ожидаемо
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s, X_valid_s = scaler.transform(X_train), scaler.transform(X_valid)
+    unit = 10000
+  starter: |
+    net_log = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=30, random_state=42).fit(...)
+    net_raw = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=30, random_state=42).fit(...)
+    preds = {'log': ..., 'raw': ...}
+    expensive = (y_valid > y_train.quantile(0.9)).to_numpy()
+    rows = {}
+    for name, pred in preds.items():
+        err = np.abs(y_valid.to_numpy() - pred)
+        rows[name] = {'MAE': ..., 'median_AE': ..., 'MAE_expensive': ...}
+    results = pd.DataFrame(rows).T
+    print(results.round(0))
+  solution: |
+    net_log = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=30, random_state=42).fit(X_train_s, np.log(y_train))
+    net_raw = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=30, random_state=42).fit(X_train_s, y_train / unit)
+    preds = {'log': np.exp(net_log.predict(X_valid_s)), 'raw': net_raw.predict(X_valid_s) * unit}
+    expensive = (y_valid > y_train.quantile(0.9)).to_numpy()
+    rows = {}
+    for name, pred in preds.items():
+        err = np.abs(y_valid.to_numpy() - pred)
+        rows[name] = {'MAE': err.mean(), 'median_AE': np.median(err), 'MAE_expensive': err[expensive].mean()}
+    results = pd.DataFrame(rows).T
+    print(results.round(0))
+  explanation: |
+    - Медианная ошибка сети на логарифме чуть меньше — 1 601 против 1 643 евро: относительные промахи помогают типичным и дешёвым машинам.
+    - Но общая MAE хуже — 3 137 против 2 826, а на дорогих машинах ошибка вырастает с 9 347 до 11 846 евро. Промах на 10 % для машины за 40 000 — это 4 000 евро, и логарифм перестаёт выделять такие промахи.
+    - Для линейной модели и бустинга в модуле 7 логарифм цены помогал, а этой сети за 30 эпох — нет. Приём, который работает для одной модели, нужно проверять на validation для другой.
+  hints:
+    - "Первая сеть учится на `np.log(y_train)`, вторая — на `y_train / unit`."
+    - "Прогноз в евро: `np.exp(net_log.predict(X_valid_s))` и `net_raw.predict(X_valid_s) * unit`."
+    - "`err.mean()`, `np.median(err)`, `err[expensive].mean()`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    rs = var('results', pd.DataFrame, 'таблицей DataFrame')
+    ensure(list(rs.index) == ['log', 'raw'], 'Индекс `results` — `log` и `raw`.')
+    ensure({'MAE', 'median_AE', 'MAE_expensive'} <= set(rs.columns), 'Колонки `results` — `MAE`, `median_AE` и `MAE_expensive`.')
+    r = ref('results')
+    mae_log = float(rs.loc['log', 'MAE'])
+    if mae_log > 8000:
+        fail('MAE сети на логарифме огромная: верните прогноз в евро — `np.exp(net_log.predict(X_valid_s))`.')
+    if float(rs.loc['raw', 'MAE']) > 9000:
+        fail('MAE второй сети огромная: прогноз умножьте на `unit`.')
+    same_array(rs['MAE'].to_numpy(dtype=float), r['MAE'].to_numpy(dtype=float), 'MAE не совпадает с ожидаемой {0}.'.format(r['MAE'].round(0).to_dict()), rtol=1e-4)
+    md = rs['median_AE'].to_numpy(dtype=float)
+    if np.allclose(md, rs['MAE'].to_numpy(dtype=float)):
+        fail('`median_AE` — медиана модуля ошибки: `np.median(err)`, а не среднее.')
+    same_array(md, r['median_AE'].to_numpy(dtype=float), 'Медиана модуля ошибки не совпадает.', rtol=1e-4)
+    same_array(rs['MAE_expensive'].to_numpy(dtype=float), r['MAE_expensive'].to_numpy(dtype=float), 'MAE на дорогих машинах не совпадает.', rtol=1e-4)
+    close(alt('results').loc['log', 'MAE'], alt_ref('results').loc['log', 'MAE'], HARDCODE_MSG, rtol=1e-4)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        net_log = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=30, random_state=42).fit(X_train_s, np.log(y_train))
+        net_raw = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=30, random_state=42).fit(X_train_s, y_train / unit)
+        preds = {'log': net_log.predict(X_valid_s), 'raw': net_raw.predict(X_valid_s) * unit}
+        expensive = (y_valid > y_train.quantile(0.9)).to_numpy()
+        rows = {}
+        for name, pred in preds.items():
+            err = np.abs(y_valid.to_numpy() - pred)
+            rows[name] = {'MAE': err.mean(), 'median_AE': np.median(err), 'MAE_expensive': err[expensive].mean()}
+        results = pd.DataFrame(rows).T
+      expect: np.exp
+    - code: |
+        net_log = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=30, random_state=42).fit(X_train_s, np.log(y_train))
+        net_raw = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=30, random_state=42).fit(X_train_s, y_train / unit)
+        preds = {'log': np.exp(net_log.predict(X_valid_s)), 'raw': net_raw.predict(X_valid_s) * unit}
+        expensive = (y_valid > y_train.quantile(0.9)).to_numpy()
+        rows = {}
+        for name, pred in preds.items():
+            err = np.abs(y_valid.to_numpy() - pred)
+            rows[name] = {'MAE': err.mean(), 'median_AE': err.mean(), 'MAE_expensive': err[expensive].mean()}
+        results = pd.DataFrame(rows).T
+      expect: медиана модуля ошибки

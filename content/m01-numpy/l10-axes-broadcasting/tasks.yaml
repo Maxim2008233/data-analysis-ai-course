@@ -1,0 +1,276 @@
+- id: m1-l10-t1
+  title: Пропуски во всех столбцах одной строкой
+  difficulty: warmup
+  introduces: [axis]
+  uses: [nan-inf]
+  statement: |
+    Получите `missing_per_column` — число пропусков в каждом из четырёх столбцов `X` — одной строкой, без цикла.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+  starter: |
+    missing_per_column = ...
+    print(dict(zip(numeric_names, missing_per_column)))
+  solution: |
+    missing_per_column = np.isnan(X).sum(axis=0)
+    print(dict(zip(numeric_names, missing_per_column)))
+  explanation: |
+    - `np.isnan(X)` — маска формы `(n, 4)`.
+    - `.sum(axis=0)` сворачивает строки: по числу `True` на каждый столбец.
+  hints:
+    - Маска пропусков — матрица; её нужно просуммировать вдоль строк.
+    - "`np.isnan(X).sum(axis=...)`: какая ось даёт результат для каждого столбца?"
+    - "`missing_per_column = np.isnan(X).sum(axis=0)`"
+  tests: |
+    import numpy as np
+    no_loops()
+    m = var('missing_per_column', 'ndarray', 'массивом NumPy')
+    if m.shape == (len(ref('X')),):
+        fail('Получилось по числу на каждую строку — это axis=1. Для столбцов нужен axis=0.')
+    ensure(m.shape == (4,), 'Нужно 4 числа — по одному на столбец, а форма %s.' % (m.shape,))
+    same_array(m, ref('missing_per_column'), 'Числа пропусков не совпадают.')
+    same_array(alt('missing_per_column'), alt_ref('missing_per_column'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        missing_per_column = np.isnan(X).sum(axis=1)
+      expect: axis=1
+    - code: |
+        missing_per_column = np.array([np.isnan(X[:, j]).sum() for j in range(4)])
+      expect: без цикла
+
+- id: m1-l10-t2
+  title: Полные строки
+  difficulty: main
+  introduces: [axis]
+  uses: [nan-inf, bool-mask]
+  statement: |
+    Получите маску `complete` — строки `X`, в которых **все четыре** значения конечны, — и `n_complete`, число таких строк. Затем `X_complete` — матрицу только из полных строк.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+  starter: |
+    complete = ...
+    n_complete = ...
+    X_complete = ...
+    print(n_complete, X_complete.shape)
+  solution: |
+    complete = np.isfinite(X).all(axis=1)
+    n_complete = complete.sum()
+    X_complete = X[complete]
+    print(n_complete, X_complete.shape)
+  explanation: |
+    - `np.isfinite(X)` — маска `(n, 4)`; `.all(axis=1)` для каждой строки проверяет, что все 4 значения конечны.
+    - Маска строк выбирает полные строки целиком: `X[complete]`.
+  hints:
+    - Нужна проверка «все значения строки конечны» сразу для всех строк.
+    - "`np.isfinite(X).all(axis=1)` — маска строк; `X[маска]` — выбор строк."
+    - "`complete = np.isfinite(X).all(axis=1)`, `X_complete = X[complete]`."
+  tests: |
+    import numpy as np
+    c = var('complete', 'ndarray', 'маской')
+    if c.shape == (4,):
+        fail('Маска длины 4 — это проверка по столбцам (axis=0). Нужна маска строк: axis=1.')
+    same_array(c, ref('complete'), 'Маска полных строк не совпадает: нужна .all(axis=1) — «все значения строки конечны».')
+    close(var('n_complete', 'number', 'числом'), ref('n_complete'), 'n_complete должно быть {expected}, а у вас {actual}.')
+    xc = var('X_complete', 'ndarray', 'массивом NumPy')
+    ensure(np.isfinite(xc).all(), 'В X_complete остались пропуски.')
+    same_array(xc, ref('X_complete'), 'X_complete должна содержать только полные строки X.')
+  wrong:
+    - code: |
+        complete = np.isfinite(X).any(axis=1)
+        n_complete = complete.sum()
+        X_complete = X[complete]
+      expect: .all(axis=1)
+    - code: |
+        complete = np.isfinite(X).all(axis=0)
+        n_complete = complete.sum()
+        X_complete = X[:, complete]
+      expect: axis=1
+
+- id: m1-l10-t3
+  title: Центрирование столбцов
+  difficulty: main
+  introduces: [broadcasting]
+  uses: [axis, vectorization]
+  statement: |
+    Для матрицы полных строк `X_complete` получите `centered` — матрицу, в которой из каждого столбца вычтено среднее этого столбца. Используйте broadcasting, без циклов. Средние столбцов `centered` должны получиться (почти) нулевыми.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    X_complete = X[np.isfinite(X).all(axis=1)]
+  starter: |
+    col_mean = ...
+    centered = ...
+    print(col_mean, centered.mean(axis=0).round(6))
+  solution: |
+    col_mean = X_complete.mean(axis=0)
+    centered = X_complete - col_mean
+    print(col_mean, centered.mean(axis=0).round(6))
+  explanation: |
+    - `X_complete.mean(axis=0)` — вектор средних формы `(4,)`.
+    - `(n, 4) − (4,)`: вектор средних применяется к каждой строке (broadcasting).
+  hints:
+    - Сначала средние по столбцам, затем вычитание вектора из матрицы.
+    - "Средние — `mean(axis=0)`; формы `(n, 4)` и `(4,)` совместимы."
+    - "`centered = X_complete - X_complete.mean(axis=0)`"
+  tests: |
+    import numpy as np
+    no_loops()
+    cm = var('col_mean', 'ndarray', 'массивом NumPy')
+    if cm.shape != (4,):
+        fail('col_mean должен содержать 4 средних — по одному на столбец (axis=0), а форма %s.' % (cm.shape,))
+    c = var('centered', 'ndarray', 'массивом NumPy')
+    ensure(c.shape == ref('X_complete').shape, 'centered должна иметь ту же форму, что X_complete: %s, а у вас %s.' % (ref('X_complete').shape, c.shape))
+    ensure(np.allclose(c.mean(axis=0), 0, atol=1e-6), 'Средние столбцов centered не нулевые: %s. Вычитайте средние по столбцам (axis=0).' % np.round(c.mean(axis=0), 3))
+    same_array(c, ref('centered'), 'centered не совпадает с ожидаемой.')
+  wrong:
+    - code: |
+        col_mean = X_complete.mean(axis=1)
+        centered = X_complete - col_mean.reshape(-1, 1)
+      expect: 4 средних
+    - code: |
+        col_mean = X_complete.mean(axis=0)
+        centered = X_complete - X_complete.mean()
+      expect: не нулевые
+
+- id: m1-l10-t4
+  kind: quiz
+  title: Совместимы ли формы
+  difficulty: main
+  introduces: []
+  uses: [broadcasting, axis]
+  statement: |
+    Определите форму результата или ошибку, не запуская код.
+  quiz:
+    - q: "`np.zeros((4, 3)) + np.ones(3)` — форма результата?"
+      options:
+        - "`(4, 3)`"
+        - "`(3, 4)`"
+        - Ошибка
+      answer: 0
+      explain: Справа 3 и 3 — равны; слева 4 и «1» — растягивается. Вектор прибавляется к каждой строке.
+    - q: "`np.zeros((4, 3)) + np.ones(4)` — форма результата?"
+      options:
+        - "`(4, 3)`"
+        - "`(4, 4)`"
+        - Ошибка
+      answer: 2
+      explain: Справа 3 и 4 — не равны и ни один не равен 1. Нужен столбец `np.ones(4).reshape(-1, 1)`.
+    - q: "`np.zeros((4, 3)).sum(axis=1)` — форма результата?"
+      options:
+        - "`(3,)`"
+        - "`(4,)`"
+        - "`(4, 1)`"
+      answer: 1
+      explain: axis=1 сворачивает столбцы — по сумме на каждую из 4 строк.
+  hints:
+    - Сравнивайте формы с конца; размеры должны совпадать или быть равны 1.
+    - "(4, 3) и (3,): последние размеры равны. (4, 3) и (4,): последние 3 и 4 — конфликт."
+    - "(4, 3); ошибка; (4,)."
+
+- id: m1-l10-t5
+  kind: bug
+  title: "Найдите ошибку: стандартизация не по той оси"
+  difficulty: main
+  introduces: []
+  uses: [axis, broadcasting]
+  statement: |
+    Код должен стандартизировать каждый **столбец** `X_complete` (среднее 0, стандартное отклонение 1), но стандартные отклонения столбцов результата далеки от 1. Исправьте код.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    X_complete = X[np.isfinite(X).all(axis=1)]
+  starter: |
+    col_mean = X_complete.mean(axis=0)
+    col_std = X_complete.std(axis=1).reshape(-1, 1)
+    Z = (X_complete - col_mean) / col_std
+    print(Z.mean(axis=0).round(3), Z.std(axis=0).round(3))
+  solution: |
+    col_mean = X_complete.mean(axis=0)
+    col_std = X_complete.std(axis=0)
+    Z = (X_complete - col_mean) / col_std
+    print(Z.mean(axis=0).round(3), Z.std(axis=0).round(3))
+  explanation: |
+    - `std(axis=1)` считает разброс внутри каждой строки (смешивая год, пробег, объём и цену) — бессмыслица.
+    - Для столбцов нужен `std(axis=0)`; reshape не требуется: форма `(4,)` совместима с `(n, 4)`.
+  hints:
+    - Какая ось даёт статистику для каждого столбца?
+    - "Стандартное отклонение столбцов — `std(axis=0)`, форма `(4,)` — reshape не нужен."
+    - "`col_std = X_complete.std(axis=0)`"
+  tests: |
+    import numpy as np
+    Z = var('Z', 'ndarray', 'массивом NumPy')
+    ensure(Z.shape == ref('X_complete').shape, 'Форма Z должна совпадать с X_complete.')
+    ensure(np.allclose(Z.std(axis=0), 1, atol=1e-6), 'Стандартные отклонения столбцов Z должны быть 1, а у вас %s.' % np.round(Z.std(axis=0), 3))
+    ensure(np.allclose(Z.mean(axis=0), 0, atol=1e-6), 'Средние столбцов Z должны быть 0.')
+  wrong:
+    - code: |
+        col_mean = X_complete.mean(axis=0)
+        col_std = X_complete.std(axis=1).reshape(-1, 1)
+        Z = (X_complete - col_mean) / col_std
+      expect: должны быть 1
+    - code: |
+        col_mean = X_complete.mean(axis=0)
+        col_std = X_complete.std()
+        Z = (X_complete - col_mean) / col_std
+      expect: должны быть 1
+
+- id: m1-l10-t6
+  title: Записи с экстремальными z-значениями
+  difficulty: star
+  introduces: []
+  uses: [axis, broadcasting, mask-combine]
+  statement: |
+    Стандартизируйте полные строки (как в теории) и получите:
+
+    - `Z` — стандартизированную матрицу;
+    - `extreme` — маску строк, где **хотя бы один** признак отклоняется от среднего больше чем на 3 стандартных отклонения (`|z| > 3`);
+    - `n_extreme` — число таких строк.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    X_complete = X[np.isfinite(X).all(axis=1)]
+  starter: |
+    Z = ...
+    extreme = ...
+    n_extreme = ...
+    print(n_extreme)
+  solution: |
+    Z = (X_complete - X_complete.mean(axis=0)) / X_complete.std(axis=0)
+    extreme = (np.abs(Z) > 3).any(axis=1)
+    n_extreme = extreme.sum()
+    print(n_extreme)
+  explanation: |
+    - Стандартизация — broadcasting вектора средних и вектора стандартных отклонений по строкам.
+    - `np.abs(Z) > 3` — маска `(n, 4)`; `.any(axis=1)` — «хотя бы один признак в строке».
+  hints:
+    - Стандартизация из теории, затем маска модулей и проверка «хоть один в строке».
+    - "`np.abs(Z) > 3` и `.any(axis=1)`."
+    - "`extreme = (np.abs(Z) > 3).any(axis=1)`, `n_extreme = extreme.sum()`."
+  tests: |
+    import numpy as np
+    Z = var('Z', 'ndarray', 'массивом NumPy')
+    same_array(Z, ref('Z'), 'Z не совпадает: стандартизируйте по столбцам (axis=0).')
+    e = var('extreme', 'ndarray', 'маской')
+    if e.shape == (4,):
+        fail('Маска длины 4 — это по столбцам. Нужна маска строк: .any(axis=1).')
+    same_array(e, ref('extreme'), 'Маска extreme не совпадает: |z| > 3 хотя бы в одном признаке строки — .any(axis=1).')
+    close(var('n_extreme', 'number', 'числом'), ref('n_extreme'), 'n_extreme должно быть {expected}, а у вас {actual}.')
+    close(alt('n_extreme'), alt_ref('n_extreme'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        Z = (X_complete - X_complete.mean(axis=0)) / X_complete.std(axis=0)
+        extreme = (np.abs(Z) > 3).all(axis=1)
+        n_extreme = extreme.sum()
+      expect: .any(axis=1)
+    - code: |
+        Z = (X_complete - X_complete.mean(axis=0)) / X_complete.std(axis=0)
+        extreme = (Z > 3).any(axis=1)
+        n_extreme = extreme.sum()
+      expect: ""
+      note: без модуля пропускаются отклонения вниз — маска не совпадает

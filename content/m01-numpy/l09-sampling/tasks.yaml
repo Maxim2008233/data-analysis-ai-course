@@ -1,0 +1,371 @@
+- id: m1-l9-t1
+  title: 50 случайных объявлений
+  difficulty: warmup
+  introduces: [rng-sample]
+  uses: [bool-mask]
+  statement: |
+    Создайте генератор `rng` с seed **7** и выберите `positions` — 50 **разных** позиций в векторе `price_values`. Затем получите `sample` — цены по этим позициям.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    price = X[:, 3]
+    price_values = price[np.isfinite(price)]   # конечные цены — урок 1.5
+  starter: |
+    rng = ...
+    positions = ...
+    sample = ...
+    print(positions[:5], sample[:5])
+  solution: |
+    rng = np.random.default_rng(7)
+    positions = rng.choice(price_values.size, size=50, replace=False)
+    sample = price_values[positions]
+    print(positions[:5], sample[:5])
+  explanation: |
+    - `np.random.default_rng(7)` — генератор с фиксированным seed: результат повторяем.
+    - `rng.choice(n, size=50, replace=False)` — 50 разных позиций из 0…n−1.
+    - Значения берём индексированием по позициям.
+  hints:
+    - Нужен генератор с seed и выбор позиций без повторений.
+    - "`np.random.default_rng(7)`, затем `rng.choice(price_values.size, size=50, replace=False)`."
+    - "`sample = price_values[positions]`"
+  tests: |
+    import numpy as np
+    pos = var('positions', 'ndarray', 'массивом NumPy')
+    ensure(pos.shape == (50,), 'Нужно 50 позиций, а форма %s.' % (pos.shape,))
+    ensure(len(np.unique(pos)) == 50, 'Позиции повторяются — нужен выбор без возвращения: replace=False.')
+    ensure(pos.min() >= 0 and pos.max() < len(ref('price_values')), 'Позиции должны быть в пределах 0…n−1, где n — длина price_values.')
+    s = var('sample', 'ndarray', 'массивом NumPy')
+    same_array(s, ref('price_values')[pos.astype(int)], 'sample должен содержать цены по выбранным позициям: price_values[positions].')
+    same_array(pos, ref('positions'), 'Позиции не совпадают с ожидаемыми для seed = 7. Проверьте seed и что генератор вызывается один раз: rng.choice(price_values.size, size=50, replace=False).')
+  wrong:
+    - code: |
+        rng = np.random.default_rng(7)
+        positions = rng.choice(price_values.size, size=50)
+        sample = price_values[positions]
+      expect: ""
+      note: с возвращением на 41 007 позициях повторы маловероятны, но позиции другие — тест сравнивает с эталоном
+    - code: |
+        rng = np.random.default_rng(7)
+        positions = np.arange(50)
+        sample = price_values[positions]
+      expect: Позиции не совпадают
+
+- id: m1-l9-t2
+  title: Первые строки против случайных
+  difficulty: main
+  introduces: [sampling-variability]
+  uses: [rng-sample, mean-median]
+  statement: |
+    Сравните медианы:
+
+    - `full_median` — всех конечных цен;
+    - `first_median` — первых 200 цен;
+    - `random_median` — 200 случайных цен (генератор с seed 42, выбор без повторений).
+
+    Затем получите `random_gap` — модуль разности `random_median` и `full_median`.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    price = X[:, 3]
+    price_values = price[np.isfinite(price)]
+  starter: |
+    rng = np.random.default_rng(42)
+    full_median = ...
+    first_median = ...
+    random_median = ...
+    random_gap = ...
+    print(full_median, first_median, random_median, random_gap)
+  solution: |
+    rng = np.random.default_rng(42)
+    full_median = np.median(price_values)
+    first_median = np.median(price_values[:200])
+    positions = rng.choice(price_values.size, size=200, replace=False)
+    random_median = np.median(price_values[positions])
+    random_gap = abs(random_median - full_median)
+    print(full_median, first_median, random_median, random_gap)
+  explanation: |
+    - Первые 200 — срез `[:200]`, случайные 200 — позиции от `rng.choice`.
+    - `abs(...)` — модуль разности: насколько медиана части отличается от медианы файла.
+  alternatives:
+    - |
+      rng = np.random.default_rng(42)
+      full_median = np.median(price_values)
+      first_median = np.median(price_values[:200])
+      random_median = np.median(rng.choice(price_values, size=200, replace=False))
+      random_gap = abs(random_median - full_median)
+  hints:
+    - "Три медианы: по всем ценам, по срезу первых 200 и по ценам на случайных позициях."
+    - "Случайные позиции: `rng.choice(price_values.size, size=200, replace=False)`; модуль — `abs(...)`."
+    - "`random_median = np.median(price_values[rng.choice(price_values.size, size=200, replace=False)])`"
+  tests: |
+    close(var('full_median', 'number', 'числом'), ref('full_median'), 'full_median должна быть {expected}, а у вас {actual}.')
+    close(var('first_median', 'number', 'числом'), ref('first_median'), 'first_median должна быть {expected} — медиана первых 200 цен, а у вас {actual}.')
+    close(var('random_median', 'number', 'числом'), ref('random_median'), 'random_median должна быть {expected} для seed 42, а у вас {actual}. Выбирайте 200 позиций без повторений одним вызовом rng.choice.')
+    g = var('random_gap', 'number', 'числом')
+    if g < 0:
+        fail('random_gap отрицательный — возьмите модуль разности: abs(...).')
+    close(g, ref('random_gap'), 'random_gap должен быть {expected}, а у вас {actual}.')
+    ensure('abs' in source(), 'Возьмите модуль разности через abs(...): если медиана части окажется ниже медианы файла, без модуля получится отрицательное число.')
+    close(alt('full_median'), alt_ref('full_median'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        rng = np.random.default_rng(42)
+        full_median = np.median(price_values)
+        first_median = np.median(price_values[:200])
+        random_median = np.median(price_values[200:400])
+        random_gap = abs(random_median - full_median)
+      expect: random_median
+    - code: |
+        rng = np.random.default_rng(42)
+        full_median = np.median(price_values)
+        first_median = np.median(price_values[:200])
+        positions = rng.choice(price_values.size, size=200, replace=False)
+        random_median = np.median(price_values[positions])
+        random_gap = random_median - full_median
+      expect: модуль
+
+- id: m1-l9-t3
+  title: Двадцать повторений опыта
+  difficulty: main
+  introduces: [sampling-variability]
+  uses: [rng-sample, mean-median]
+  statement: |
+    Повторите опыт 20 раз **одним** генератором `rng` (seed 1 уже задан): в каждом повторе выберите 100 разных позиций и посчитайте медиану цен. Получите:
+
+    - `sample_medians` — массив из 20 медиан (в порядке повторов);
+    - `spread` — размах медиан (`np.ptp`).
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    price = X[:, 3]
+    price_values = price[np.isfinite(price)]
+  starter: |
+    rng = np.random.default_rng(1)
+    medians = []
+    for experiment in range(20):
+        ...
+    sample_medians = np.array(medians)
+    spread = ...
+    print(sample_medians, spread)
+  solution: |
+    rng = np.random.default_rng(1)
+    medians = []
+    for experiment in range(20):
+        positions = rng.choice(price_values.size, size=100, replace=False)
+        medians.append(np.median(price_values[positions]))
+    sample_medians = np.array(medians)
+    spread = np.ptp(sample_medians)
+    print(sample_medians, spread)
+  explanation: |
+    - Генератор создан один раз до цикла — каждый вызов `rng.choice` даёт новые позиции.
+    - Медиана каждой части добавляется в список; в конце список превращается в массив.
+    - `np.ptp` — разность максимума и минимума (размах).
+  hints:
+    - Внутри цикла выберите позиции, посчитайте медиану и добавьте её в список.
+    - "`positions = rng.choice(price_values.size, size=100, replace=False)`; `medians.append(np.median(price_values[positions]))`."
+    - "После цикла: `spread = np.ptp(sample_medians)`."
+  tests: |
+    import numpy as np
+    sm = var('sample_medians', 'ndarray', 'массивом NumPy')
+    ensure(sm.shape == (20,), 'Нужно 20 медиан, а форма %s.' % (sm.shape,))
+    if np.ptp(sm) == 0:
+        fail('Все медианы одинаковые — похоже, генератор создаётся заново внутри цикла. Создайте rng один раз до цикла.')
+    same_array(sm, ref('sample_medians'), 'Медианы не совпадают с ожидаемыми для seed 1: в каждом повторе — один вызов rng.choice(price_values.size, size=100, replace=False).')
+    close(var('spread', 'number', 'числом'), ref('spread'), 'spread должен быть {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        medians = []
+        for experiment in range(20):
+            rng = np.random.default_rng(1)
+            positions = rng.choice(price_values.size, size=100, replace=False)
+            medians.append(np.median(price_values[positions]))
+        sample_medians = np.array(medians)
+        spread = np.ptp(sample_medians)
+      expect: внутри цикла
+    - code: |
+        rng = np.random.default_rng(1)
+        medians = []
+        for experiment in range(20):
+            positions = rng.choice(price_values.size, size=100, replace=False)
+            medians.append(np.mean(price_values[positions]))
+        sample_medians = np.array(medians)
+        spread = np.ptp(sample_medians)
+      expect: Медианы не совпадают
+
+- id: m1-l9-t4
+  kind: quiz
+  title: Что случайно в этом опыте
+  difficulty: main
+  introduces: []
+  uses: [sampling-variability, rng-sample]
+  statement: |
+    Ответьте на вопросы о выборочной изменчивости.
+  quiz:
+    - q: Что именно случайно в опыте «выбрать 100 позиций и посчитать медиану»?
+      options:
+        - Сами цены в файле
+        - Какие записи попали в часть
+        - Формула медианы
+      answer: 1
+      explain: Цены и формула фиксированы; меняется только набор выбранных записей.
+    - q: Как изменится типичное отклонение медианы части от медианы файла, если брать части по 1600 записей вместо 100?
+      options:
+        - Не изменится
+        - Уменьшится примерно в 4 раза (√16)
+        - Уменьшится в 16 раз
+        - Увеличится
+      answer: 1
+      explain: Разброс оценок убывает примерно как 1/√n; в 16 раз больше записей — примерно вчетверо меньше разброс.
+    - q: "В файл попали объявления только одного сайта. Поможет ли взять случайные 10 000 записей вместо 100, чтобы описать весь рынок страны?"
+      options:
+        - Да, большая случайная выборка всегда представительна
+        - Нет — это систематическое ограничение источника, размер выборки его не исправит
+      answer: 1
+      explain: Случайный выбор внутри файла уменьшает случайный разброс, но не исправляет то, как файл был собран.
+  hints:
+    - Отличайте случайный разброс (из-за выбора записей) от систематических особенностей источника.
+    - "Разброс оценок по случайной выборке убывает примерно как 1/√n."
+    - "Случайно — какие записи попали; вчетверо меньше; нет, систематику размер не исправит."
+
+- id: m1-l9-t5
+  kind: bug
+  title: "Найдите ошибку: изменчивость нулевая"
+  difficulty: main
+  introduces: []
+  uses: [rng-sample, sampling-variability]
+  statement: |
+    Код должен показать, что средние случайных частей различаются, но все 10 средних получились **одинаковыми**. Исправьте код (seed оставьте 5), чтобы части были разными.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    price = X[:, 3]
+    price_values = price[np.isfinite(price)]
+  starter: |
+    means = []
+    for i in range(10):
+        rng = np.random.default_rng(5)
+        positions = rng.choice(price_values.size, size=100, replace=False)
+        means.append(np.mean(price_values[positions]))
+    sample_means = np.array(means)
+    print(sample_means.round())
+  solution: |
+    means = []
+    rng = np.random.default_rng(5)
+    for i in range(10):
+        positions = rng.choice(price_values.size, size=100, replace=False)
+        means.append(np.mean(price_values[positions]))
+    sample_means = np.array(means)
+    print(sample_means.round())
+  explanation: |
+    - Генератор с seed 5 создавался заново на каждом шаге и каждый раз начинал с одного состояния — выдавал одни и те же позиции.
+    - Достаточно создать `rng` один раз до цикла.
+  hints:
+    - Почему каждый повтор выбирает одни и те же позиции? Где создаётся генератор?
+    - "Генератор с фиксированным seed, созданный заново, повторяет те же числа. Создайте его один раз."
+    - "Перенесите строку `rng = np.random.default_rng(5)` перед циклом."
+  tests: |
+    import numpy as np
+    sm = var('sample_means', 'ndarray', 'массивом NumPy')
+    ensure(sm.shape == (10,), 'Нужно 10 средних.')
+    ensure(np.ptp(sm) > 0, 'Средние всё ещё одинаковые: генератор пересоздаётся внутри цикла. Создайте rng один раз до цикла.')
+    same_array(sm, ref('sample_means'), 'Средние не совпадают с ожидаемыми для seed 5 — генератор нужно создать один раз перед циклом и не менять остальной код.')
+  wrong:
+    - code: |
+        means = []
+        for i in range(10):
+            rng = np.random.default_rng(5)
+            positions = rng.choice(price_values.size, size=100, replace=False)
+            means.append(np.mean(price_values[positions]))
+        sample_means = np.array(means)
+      expect: всё ещё одинаковые
+    - code: |
+        means = []
+        for i in range(10):
+            rng = np.random.default_rng(5 + i)
+            positions = rng.choice(price_values.size, size=100, replace=False)
+            means.append(np.mean(price_values[positions]))
+        sample_means = np.array(means)
+      expect: один раз перед циклом
+
+- id: m1-l9-t6
+  title: Размер части и точность медианы
+  difficulty: star
+  introduces: []
+  uses: [rng-sample, sampling-variability, mean-median]
+  statement: |
+    Для размеров частей `sizes = [50, 500, 5000]` (именно в этом порядке) выполните по 100 повторов **одним** генератором с seed 3: в каждом повторе — `rng.choice(price_values.size, size=size, replace=False)` и модуль отклонения медианы части от медианы файла. Получите `typical_error` — массив из трёх чисел: среднее отклонение для каждого размера.
+
+    Убедитесь, что с ростом размера части ошибка уменьшается.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    price = X[:, 3]
+    price_values = price[np.isfinite(price)]
+  starter: |
+    sizes = [50, 500, 5000]
+    rng = np.random.default_rng(3)
+    full_median = np.median(price_values)
+    errors = []
+    for size in sizes:
+        ...
+    typical_error = np.array(errors)
+    print(typical_error.round(1))
+  solution: |
+    sizes = [50, 500, 5000]
+    rng = np.random.default_rng(3)
+    full_median = np.median(price_values)
+    errors = []
+    for size in sizes:
+        deviations = []
+        for _ in range(100):
+            positions = rng.choice(price_values.size, size=size, replace=False)
+            deviations.append(abs(np.median(price_values[positions]) - full_median))
+        errors.append(np.mean(deviations))
+    typical_error = np.array(errors)
+    print(typical_error.round(1))
+  explanation: |
+    - Внешний цикл перебирает размеры, внутренний — 100 повторов опыта одним генератором.
+    - Для каждого размера сохраняем среднее модуля отклонения.
+    - Ошибка падает с ростом размера: при 100-кратном увеличении размера — примерно в 10 раз.
+  hints:
+    - "Нужны два вложенных цикла: по размерам и по повторам; отклонения собирайте во внутренний список."
+    - "Внутри: `positions = rng.choice(price_values.size, size=size, replace=False)`, отклонение `abs(np.median(price_values[positions]) - full_median)`."
+    - "После внутреннего цикла: `errors.append(np.mean(deviations))`."
+  tests: |
+    import numpy as np
+    te = var('typical_error', 'ndarray', 'массивом NumPy')
+    ensure(te.shape == (3,), 'Нужно 3 числа — по одному на размер части, а форма %s.' % (te.shape,))
+    ensure(te[0] > te[1] > te[2], 'Ошибка должна уменьшаться с ростом размера части, а у вас %s. Проверьте, что используете size внутри rng.choice.' % np.round(te, 1))
+    same_array(te, ref('typical_error'), 'Значения не совпадают с ожидаемыми для seed 3. Генератор создаётся один раз; размеры — по порядку; по 100 повторов на размер.')
+  wrong:
+    - code: |
+        sizes = [50, 500, 5000]
+        rng = np.random.default_rng(3)
+        full_median = np.median(price_values)
+        errors = []
+        for size in sizes:
+            deviations = []
+            for _ in range(100):
+                positions = rng.choice(price_values.size, size=50, replace=False)
+                deviations.append(abs(np.median(price_values[positions]) - full_median))
+            errors.append(np.mean(deviations))
+        typical_error = np.array(errors)
+      expect: уменьшаться
+    - code: |
+        sizes = [50, 500, 5000]
+        full_median = np.median(price_values)
+        errors = []
+        for size in sizes:
+            rng = np.random.default_rng(3)
+            deviations = []
+            for _ in range(100):
+                positions = rng.choice(price_values.size, size=size, replace=False)
+                deviations.append(abs(np.median(price_values[positions]) - full_median))
+            errors.append(np.mean(deviations))
+        typical_error = np.array(errors)
+      expect: Генератор создаётся один раз

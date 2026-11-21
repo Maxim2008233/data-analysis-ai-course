@@ -1,0 +1,105 @@
+# Справочник: большие языковые модели и Hugging Face (модуль 9).
+- id: language-model
+  term: Языковая модель
+  category: Языковые модели
+  aliases: [LM, LLM, большая языковая модель, вероятность следующего слова, корпус текстов, "[MASK]"]
+  summary: "Распределение вероятностей по последовательностям слов: модель оценивает, насколько вероятна фраза, предсказывает следующее слово («Кошка села на …») или пропущенное («Одеяло [MASK], простыня улетела»). Учится без ручной разметки — на корпусе текстов. Большие языковые модели (GPT, Claude, GigaChat, YandexGPT) — нейросети-трансформеры с миллиардами параметров, обученные на огромных корпусах."
+- id: n-gram
+  term: n-граммы
+  category: Языковые модели
+  aliases: [биграмма, триграмма, биграммная модель, сглаживание, сглаживание Лапласа, add-one]
+  summary: "n-грамма — n идущих подряд слов. Биграммная модель: P(w₂ | w₁) = число пар (w₁, w₂) / число вхождений w₁; вероятность фразы — произведение вероятностей её биграмм (с метками начала <s> и конца </s>). Невиданная пара даёт вероятность 0 — помогает сглаживание: (число + 1) / (число w₁ + размер словаря)."
+  syntax: |
+    p = bigrams[('средняя', 'цена')] / unigrams['средняя']
+- id: word-embedding
+  term: Эмбеддинг (векторное представление)
+  category: Языковые модели
+  aliases: [embedding, эмбеддинги, вектор слова, word2vec, векторное представление, дистрибутивная гипотеза]
+  summary: "Вектор из сотен чисел, который заменяет слово, фразу или картинку: близкие по смыслу объекты получают близкие векторы. Идея «слово определяется соседями» позволяет строить векторы по совместной встречаемости слов в текстах; современные эмбеддинги выдают нейросети (BERT, CLIP)."
+- id: cosine-similarity
+  term: Косинусное сходство
+  category: Языковые модели
+  aliases: [cosine similarity, косинус угла, скалярное произведение, нормировка вектора, L2-норма, np.linalg.norm]
+  summary: "cos(a, b) = a·b / (|a|·|b|): косинус угла между векторами, от −1 до 1. Не зависит от длины векторов, только от направления. Если векторы нормировать к длине 1 (`a / np.linalg.norm(a)`), косинус равен скалярному произведению `a @ b`, а сходство сразу со всеми — умножению на матрицу."
+  syntax: |
+    a = a / np.linalg.norm(a)
+    sims = matrix @ a          # сходство a с каждой строкой нормированной матрицы
+- id: attention
+  term: Механизм внимания
+  category: Языковые модели
+  aliases: [attention, самовнимание, self-attention, запрос, ключ, значение, query, key, value, multi-head attention, маска внимания, causal mask]
+  summary: "Способ «смотреть» на нужные слова: запрос q сравнивают с ключами k всех слов (скалярное произведение / √d), softmax даёт веса, ответ — взвешенная сумма значений v. Придуман для машинного перевода длинных фраз; в самовнимании каждое слово смотрит на все слова той же фразы. В декодировщике маска запрещает смотреть на будущие слова."
+  syntax: |
+    weights = softmax(Q @ K.T / np.sqrt(d))
+    out = weights @ V
+- id: softmax
+  term: softmax
+  category: Языковые модели
+  aliases: [софтмакс, нормированная экспонента, температура]
+  summary: "Превращает набор чисел в вероятности: exp(zᵢ) / Σ exp(z). Большие числа получают большую долю, сумма равна 1. Для устойчивости из всех z вычитают максимум — результат тот же. Используется в механизме внимания и на выходе классификатора."
+  syntax: |
+    e = np.exp(z - z.max(axis=-1, keepdims=True))
+    p = e / e.sum(axis=-1, keepdims=True)
+- id: transformer
+  term: Трансформер
+  category: Языковые модели
+  aliases: [transformer, BERT, GPT, T5, BART, кодировщик, декодировщик, encoder, decoder, Attention Is All You Need]
+  summary: "Архитектура из блоков внимания и полносвязных слоёв (Vaswani и др., «Attention Is All You Need», 2017). Только кодировщик (BERT) видит фразу целиком — для понимания: классификация, поиск ответа; учится восстанавливать пропущенные слова. Только декодировщик (GPT) видит лишь предыдущие слова — для генерации; учится предсказывать следующее слово. Кодировщик + декодировщик (T5, BART) — для перевода и пересказа."
+- id: hf-pipeline
+  term: Hugging Face и pipeline
+  category: Hugging Face
+  aliases: [Hugging Face, HF, Model Hub, transformers, pipeline, предобученная модель, sentiment-analysis, from_pretrained]
+  summary: "Hugging Face — платформа с хранилищем готовых моделей (Model Hub) и библиотекой transformers. pipeline(задача, model=...) собирает всю цепочку: токенизатор → модель → постобработка в метки и вероятности. Модель лучше указывать явно: без неё берётся модель по умолчанию."
+  syntax: |
+    from transformers import pipeline
+    clf = pipeline('sentiment-analysis', model='distilbert-base-uncased-finetuned-sst-2-english')
+    clf(['I love this course!'])      # [{'label': 'POSITIVE', 'score': 0.9998}]
+- id: tokenizer
+  term: Токенизатор
+  category: Hugging Face
+  aliases: [токен, токены, подслово, WordPiece, BPE, input_ids, словарь, vocab, "[CLS]", "[SEP]", "[UNK]", decode, AutoTokenizer]
+  summary: "Переводит текст в номера, понятные модели. Режет текст на токены — слова и куски слов из словаря модели (WordPiece отмечает продолжение слова «##»: hugging + ##face), заменяет их номерами (input_ids) и добавляет служебные токены: [CLS] в начале, [SEP] в конце. Слово, которое не собрать из словаря, становится [UNK]. Токенизатор должен быть тем же, что при обучении модели."
+  syntax: |
+    tokenizer = AutoTokenizer.from_pretrained('distilbert-base-uncased-finetuned-sst-2-english')
+    tokenizer.tokenize('I hate this huggingface')   # ['i', 'hate', 'this', 'hugging', '##face']
+    tokenizer.decode(ids)
+- id: attention-mask
+  term: Padding, truncation и attention mask
+  category: Hugging Face
+  aliases: [padding, truncation, max_length, attention_mask, "[PAD]", return_tensors]
+  summary: "В батче все последовательности должны быть одной длины: короткие дополняются токеном [PAD] (padding=True), длинные обрезаются до max_length (truncation=True). attention_mask — 1 у настоящих токенов и 0 у заполнения, модель заполнение не учитывает. return_tensors='np' возвращает массивы NumPy (в Colab — 'pt' для PyTorch)."
+  syntax: |
+    inputs = tokenizer(texts, padding=True, truncation=True, max_length=32, return_tensors='np')
+    inputs['attention_mask'].sum(axis=1)     # длина каждого текста в токенах
+- id: logits
+  term: Логиты
+  category: Hugging Face
+  aliases: [logits, id2label, AutoModelForSequenceClassification, голова модели, outputs.logits]
+  summary: "Сырые оценки модели по классам — выход последнего слоя без активации. Это не вероятности: их превращают в вероятности softmax. Номер класса с наибольшим логитом переводят в название через model.config.id2label."
+  syntax: |
+    outputs = model(**inputs)
+    probs = softmax(outputs.logits)
+    labels = [model.config.id2label[i] for i in probs.argmax(axis=1)]
+- id: zero-shot
+  term: Zero-shot классификация
+  category: Hugging Face
+  aliases: [zero-shot, классификация без обучения, zero-shot-image-classification, candidate_labels, hypothesis_template]
+  summary: "Классификация по классам, на которых модель не обучали: достаточно их названий. Для картинок модель CLIP сравнивает эмбеддинг изображения с эмбеддингами подписей-кандидатов и выбирает самую похожую; сходства × 100 → softmax дают вероятности."
+  syntax: |
+    clf = pipeline('zero-shot-image-classification', model='openai/clip-vit-base-patch32')
+    clf(image, candidate_labels=['cat', 'dog'])
+- id: clip
+  term: CLIP
+  category: Hugging Face
+  aliases: [мультимодальная модель, Contrastive Language-Image Pre-training, ViT, image encoder, text encoder, logit_scale]
+  summary: "Модель OpenAI (2021), обученная на сотнях миллионов пар «картинка — подпись»: кодировщик изображений и кодировщик текста переводят их в общее пространство из 512 чисел так, что подходящие пары оказываются близко. Основа zero-shot классификации и поиска картинок по тексту."
+- id: prompt-template
+  term: Промпт для zero-shot
+  category: Hugging Face
+  aliases: [промпт, шаблон подписи, a photo of a, ансамбль промптов, prompt engineering, промпт-инжиниринг, перевод меток]
+  summary: "Подпись, с которой сравнивают картинку. Точность zero-shot сильно зависит от формулировки: понятное модели (обычно английское) название, шаблон «a photo of a {}», уточнение «a type of food», усреднение эмбеддингов нескольких шаблонов и сужение списка кандидатов по известным метаданным (группа, язык)."
+- id: transfer-learning
+  term: Перенос обучения
+  category: Hugging Face
+  aliases: [transfer learning, fine-tuning, дообучение, Trainer, linear probe, few-shot, эмбеддинги как признаки]
+  summary: "Использование готовой обученной модели для своей задачи: дообучить её на своих размеченных данных (fine-tuning, в transformers — Trainer) или взять её эмбеддинги как признаки и обучить поверх лёгкую модель, например логистическую регрессию. Нужно в разы меньше данных и вычислений, чем обучение с нуля."

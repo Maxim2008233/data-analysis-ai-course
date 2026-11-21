@@ -1,0 +1,294 @@
+- id: m1-l4-t1
+  title: Объём двигателя в литрах
+  difficulty: warmup
+  introduces: [vectorization]
+  uses: [np-slicing]
+  statement: |
+    Получите вектор `engine_litres` — объём двигателя в литрах для всех записей (1 л = 1000 см³). Решите **без цикла** — одной операцией над вектором `engine`.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]   # векторы признаков — урок 1.3
+  starter: |
+    engine_litres = ...
+    print(engine_litres[:5])
+  solution: |
+    engine_litres = engine / 1000
+    print(engine_litres[:5])
+  explanation: |
+    - Деление массива на число применяется к каждому элементу: 1800 см³ → 1.8 л.
+    - Пропуски (`nan`) остаются пропусками — с ними разберёмся в уроке 1.5.
+  hints:
+    - Как в NumPy применить одно действие сразу ко всем элементам вектора?
+    - "Арифметика массива с числом работает поэлементно: `engine / число`."
+    - "`engine_litres = engine / 1000`"
+  tests: |
+    import numpy as np
+    no_loops()
+    v = var('engine_litres', 'ndarray', 'массивом NumPy')
+    ensure(v.shape == ref('engine_litres').shape, 'Форма %s, а должна совпадать с engine: %s.' % (v.shape, ref('engine_litres').shape))
+    if np.allclose(v, ref('engine_litres') * 1e6, equal_nan=True):
+        fail('Значения в миллион раз больше нужного — вы умножили вместо деления.')
+    same_array(v, ref('engine_litres'), 'Значения не совпадают: в 1 литре 1000 см³, поэтому делите на 1000.')
+  wrong:
+    - code: |
+        engine_litres = engine * 1000
+      expect: умножили вместо деления
+    - code: |
+        engine_litres = np.array([v / 1000 for v in engine])
+      expect: без цикла
+
+- id: m1-l4-t2
+  title: Пробег в милях и в тысячах километров
+  difficulty: main
+  introduces: [vectorization]
+  uses: []
+  statement: |
+    Получите два вектора без циклов:
+
+    - `distance_miles` — пробег в милях (1 миля = 1.609 км);
+    - `distance_thousands` — пробег в тысячах километров.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]
+  starter: |
+    distance_miles = ...
+    distance_thousands = ...
+    print(distance_miles[:3], distance_thousands[:3])
+  solution: |
+    distance_miles = distance / 1.609
+    distance_thousands = distance / 1000
+    print(distance_miles[:3], distance_thousands[:3])
+  explanation: |
+    - В одной миле 1.609 км, значит, число миль = километры / 1.609.
+    - Тысячи километров — деление на 1000. Оба результата — новые векторы той же длины.
+  hints:
+    - Сколько миль в одном километре — больше или меньше единицы? Значит, делить или умножать?
+    - "Миль меньше, чем километров: делим на 1.609. Тысячи км — делим на 1000."
+    - "`distance_miles = distance / 1.609`, `distance_thousands = distance / 1000`."
+  tests: |
+    import numpy as np
+    no_loops()
+    m = var('distance_miles', 'ndarray', 'массивом NumPy')
+    t = var('distance_thousands', 'ndarray', 'массивом NumPy')
+    if np.allclose(m, ref('distance_miles') * 1.609 ** 2):
+        fail('Мили получились больше километров — вы умножили на 1.609. Миль меньше: делите.')
+    same_array(m, ref('distance_miles'), 'distance_miles: значения не совпадают. Миля = 1.609 км, так что делите пробег на 1.609.')
+    same_array(t, ref('distance_thousands'), 'distance_thousands: значения не совпадают — разделите пробег на 1000.')
+    same_array(alt('distance_miles'), alt_ref('distance_miles'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        distance_miles = distance * 1.609
+        distance_thousands = distance / 1000
+      expect: вы умножили
+    - code: |
+        distance_miles = distance / 1.609
+        distance_thousands = distance * 1000
+      expect: distance_thousands
+
+- id: m1-l4-t3
+  title: Возраст и пробег за год
+  difficulty: main
+  introduces: [vectorization]
+  uses: [np-indexing]
+  statement: |
+    Считаем, что данные собраны в 2021 году (самый поздний год в файле). Получите без циклов:
+
+    - `age` — возраст автомобиля в годах: `2021 − год выпуска`;
+    - `km_per_year` — условный среднегодовой пробег: пробег, делённый на `(age + 1)` (единица защищает от деления на ноль у машин 2021 года).
+
+    Затем найдите `km_per_year_100` — значение для записи номер 100.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]
+  starter: |
+    age = ...
+    km_per_year = ...
+    km_per_year_100 = ...
+    print(age[:5], km_per_year[:5], km_per_year_100)
+  solution: |
+    age = 2021 - year
+    km_per_year = distance / (age + 1)
+    km_per_year_100 = km_per_year[100]
+    print(age[:5], km_per_year[:5], km_per_year_100)
+  explanation: |
+    - `2021 - year` — число минус массив: для каждой записи свой возраст.
+    - `distance / (age + 1)` — два массива одной формы делятся попарно: пробег записи *i* на её возраст + 1.
+    - `km_per_year[100]` — элемент вектора с номером 100.
+  hints:
+    - Оба вектора получаются одной арифметической операцией над целыми векторами.
+    - "Число и массив: `2021 - year`; два массива одной формы: `distance / (age + 1)` — скобки обязательны."
+    - "`age = 2021 - year`, `km_per_year = distance / (age + 1)`, `km_per_year_100 = km_per_year[100]`."
+  tests: |
+    import numpy as np
+    no_loops()
+    a = var('age', 'ndarray', 'массивом NumPy')
+    if np.allclose(a, -ref('age')):
+        fail('Возраст получился отрицательным — вычитайте год выпуска из 2021, а не наоборот.')
+    same_array(a, ref('age'), 'age не совпадает: возраст = 2021 − год выпуска.')
+    k = var('km_per_year', 'ndarray', 'массивом NumPy')
+    with np.errstate(divide='ignore', invalid='ignore'):
+        no_plus_one = ref('distance') / ref('age')
+    if k.shape == no_plus_one.shape and np.allclose(k, no_plus_one, equal_nan=True):
+        fail('Похоже, вы делите на age без «+ 1»: у машин 2021 года получится деление на ноль.')
+    same_array(k, ref('km_per_year'), 'km_per_year не совпадает: пробег делите на (age + 1) — в скобках, иначе сначала выполнится деление.')
+    close(var('km_per_year_100', 'number', 'числом'), ref('km_per_year_100'), 'km_per_year_100 должно быть {expected}, а у вас {actual}.')
+    close(alt('km_per_year_100'), alt_ref('km_per_year_100'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        age = year - 2021
+        km_per_year = distance / (age + 1)
+        km_per_year_100 = km_per_year[100]
+      expect: отрицательным
+    - code: |
+        age = 2021 - year
+        km_per_year = distance / age + 1
+        km_per_year_100 = km_per_year[100]
+      expect: в скобках
+
+- id: m1-l4-t4
+  kind: predict
+  title: Список или массив?
+  difficulty: main
+  introduces: []
+  uses: [vectorization, view-copy]
+  statement: |
+    Предскажите результат, не запуская код. Если сомневаетесь — проверьте в примерах теории.
+  quiz:
+    - q: Что выведет этот код?
+      code: |
+        prices = [5000, 8000, 10000]
+        print(prices + [100])
+      options:
+        - "`[5100, 8100, 10100]`"
+        - "`[5000, 8000, 10000, 100]`"
+        - Ошибку
+      answer: 1
+      explain: Для списков `+` — склейка. Поэлементное сложение — у массивов NumPy.
+    - q: Что выведет этот код?
+      code: |
+        a = np.array([5000., 8000., 10000.])
+        b = a[:2]
+        b[0] = 1
+        print(a)
+      options:
+        - "`[ 5000.  8000. 10000.]`"
+        - "`[    1.  8000. 10000.]`"
+        - "`[1. 8000.]`"
+      answer: 1
+      explain: "`b` — срез, окно в те же ячейки: изменение `b[0]` меняет `a[0]`."
+    - q: Что выведет этот код?
+      code: |
+        a = np.array([5000., 8000., 10000.])
+        b = a[:2].copy()
+        b[0] = 1
+        print(a)
+      options:
+        - "`[ 5000.  8000. 10000.]`"
+        - "`[    1.  8000. 10000.]`"
+      answer: 0
+      explain: После `.copy()` у `b` свои ячейки — исходный массив не меняется.
+  hints:
+    - Вспомните, что делают `+` и `*` у списков, и чем срез отличается от копии.
+    - "У списка `+` — склейка. Срез массива — view (общие ячейки), `.copy()` — независимая копия."
+    - "Склейка; без copy изменится `a[0]`; с copy — `a` не изменится."
+
+- id: m1-l4-t5
+  kind: bug
+  title: "Найдите ошибку: исходные цены испортились"
+  difficulty: main
+  introduces: [view-copy]
+  uses: [np-slicing]
+  statement: |
+    Аналитик хотел получить вектор `price_rounded` — цены, округлённые до сотен евро, — и **не трогать** исходную матрицу `X`. Но после его кода цены в `X` тоже оказались округлены. Исправьте код так, чтобы `price_rounded` содержал округлённые цены, а `X` остался прежним.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+  starter: |
+    price_rounded = X[:, 3]
+    price_rounded[:] = np.round(price_rounded, -2)   # округлить до сотен
+    print(price_rounded[:5])
+    print(X[:5, 3])
+  solution: |
+    price_rounded = X[:, 3].copy()
+    price_rounded[:] = np.round(price_rounded, -2)   # округлить до сотен
+    print(price_rounded[:5])
+    print(X[:5, 3])
+  explanation: |
+    - `X[:, 3]` — срез, то есть окно в столбец `X`. Присваивание `price_rounded[:] = ...` записывает значения прямо в `X`.
+    - `.copy()` создаёт независимый вектор — теперь меняется только он.
+    - Другой правильный вариант — сразу получить новый массив: `price_rounded = np.round(X[:, 3], -2)`.
+  alternatives:
+    - |
+      price_rounded = np.round(X[:, 3], -2)
+  hints:
+    - Почему изменение `price_rounded` повлияло на `X`? Вспомните, что такое срез.
+    - "Срез — окно в те же данные (view). Нужна независимая копия — метод `.copy()`."
+    - "`price_rounded = X[:, 3].copy()` — остальное оставьте как есть."
+  tests: |
+    import numpy as np
+    pr = var('price_rounded', 'ndarray', 'массивом NumPy')
+    same_array(pr, ref('price_rounded'), 'price_rounded должен содержать цены, округлённые до сотен: np.round(цены, -2).')
+    from course import load_numeric
+    original, _ = load_numeric()
+    if not np.allclose(student['X'], original, equal_nan=True):
+        fail('Исходная матрица X изменилась — цены в ней тоже округлены. Срез X[:, 3] смотрит в те же ячейки; сделайте копию через .copy().')
+  wrong:
+    - code: |
+        price_rounded = X[:, 3]
+        price_rounded[:] = np.round(price_rounded, -2)
+      expect: Исходная матрица X изменилась
+    - code: |
+        price_rounded = X[:, 3].copy()
+      expect: округлённые до сотен
+
+- id: m1-l4-t6
+  title: Классы объёма двигателя
+  difficulty: star
+  introduces: []
+  uses: [vectorization]
+  statement: |
+    Для группировки удобно округлять объём двигателя **вниз** до шага 500 см³: 1800 → 1500, 1499 → 1000, 2000 → 2000. Получите вектор `engine_class` для всех записей одной векторной операцией (без циклов). Пропуски должны остаться пропусками (`nan`).
+
+    Подсказка о синтаксисе: целочисленное деление `//` тоже работает поэлементно.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]
+  starter: |
+    engine_class = ...
+    print(engine[:6])
+    print(engine_class[:6])
+  solution: |
+    engine_class = engine // 500 * 500
+    print(engine[:6])
+    print(engine_class[:6])
+  explanation: |
+    - `engine // 500` — сколько целых «шагов по 500» помещается в объёме: 1800 // 500 = 3.
+    - `* 500` возвращает к см³: 3 × 500 = 1500.
+    - Для `nan` результат тоже `nan` — пропуск не превращается в число.
+  hints:
+    - Как узнать, сколько целых шагов по 500 помещается в числе, и вернуться обратно к см³?
+    - "Целочисленное деление `a // 500` отбрасывает остаток; умножьте результат на 500."
+    - "`engine_class = engine // 500 * 500`"
+  tests: |
+    import numpy as np
+    no_loops()
+    ec = var('engine_class', 'ndarray', 'массивом NumPy')
+    ensure(ec.shape == ref('engine_class').shape, 'Форма должна совпадать с engine.')
+    ensure(np.isnan(ec[np.isnan(ref('engine'))]).all(), 'Пропуски должны остаться nan.')
+    same_array(ec, ref('engine_class'), 'Значения не совпадают: округляйте вниз до шага 500 (1800 → 1500, 2000 → 2000).')
+  wrong:
+    - code: |
+        engine_class = np.round(engine / 500) * 500
+      expect: округляйте вниз
+    - code: |
+        engine_class = engine // 500
+      expect: Значения не совпадают

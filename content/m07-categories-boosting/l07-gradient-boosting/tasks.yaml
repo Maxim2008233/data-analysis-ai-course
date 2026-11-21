@@ -1,0 +1,510 @@
+- id: m7-l7-t1
+  title: Первый шаг бустинга
+  difficulty: warmup
+  introduces: [gradient-boosting]
+  uses: [decision-tree]
+  statement: |
+    Начальный прогноз бустинга — средняя цена train `start`. Посчитайте `residual` — остатки train: цена минус начальный прогноз. Обучите `tree` — `DecisionTreeRegressor(max_depth=3, random_state=42)` предсказывать остатки по признакам `Z_train`.
+
+    Получите `mae_start` — MAE на validation прогноза `start` для всех машин, и `mae_step` — словарь `{1: ..., 0.1: ...}`: MAE на validation прогноза `start + eta * tree.predict(Z_valid)` при `eta = 1` и `eta = 0.1`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OrdinalEncoder
+    from sklearn.compose import ColumnTransformer
+    from sklearn.tree import DecisionTreeRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    enc = ColumnTransformer([('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), cat_cols)],
+                            remainder='passthrough', verbose_feature_names_out=False)
+    enc.set_output(transform='pandas')
+    Z_train = enc.fit_transform(X_train)
+    Z_valid = enc.transform(X_valid)
+    start = y_train.mean()
+  starter: |
+    residual = ...
+    tree = DecisionTreeRegressor(max_depth=3, random_state=42).fit(...)
+    mae_start = ...
+    mae_step = {}
+    for eta in [1, 0.1]:
+        mae_step[eta] = ...
+    print(round(mae_start), {k: round(v) for k, v in mae_step.items()})
+  solution: |
+    residual = y_train - start
+    tree = DecisionTreeRegressor(max_depth=3, random_state=42).fit(Z_train, residual)
+    mae_start = mean_absolute_error(y_valid, np.full(len(y_valid), start))
+    mae_step = {}
+    for eta in [1, 0.1]:
+        mae_step[eta] = mean_absolute_error(y_valid, start + eta * tree.predict(Z_valid))
+    print(round(mae_start), {k: round(v) for k, v in mae_step.items()})
+  explanation: |
+    - Средняя цена ошибается на 6 527 евро. Дерево глубины 3, обученное на остатках, с полным шагом (`eta = 1`) снижает ошибку до 3 524 — это то же самое, что одно дерево, обученное на ценах.
+    - С шагом 0,1 ошибка после первого дерева — 6 061: мы взяли лишь десятую часть поправки. Остальное доделают следующие деревья, каждое на своих остатках.
+    - Зачем маленький шаг, если большой сразу лучше? Полный шаг слишком доверяет одному грубому дереву. Маленькие шаги позволяют следующим деревьям мягко исправлять ошибки, и в итоге модель точнее.
+  hints:
+    - "Остатки — `y_train - start`."
+    - "Дерево учится на остатках: `.fit(Z_train, residual)`."
+    - "MAE прогноза-константы — `mean_absolute_error(y_valid, np.full(len(y_valid), start))`; прогноз после шага — `start + eta * tree.predict(Z_valid)`."
+  tests: |
+    import numpy as np
+    r = np.asarray(var('residual'), dtype=float)
+    rr = np.asarray(ref('residual'), dtype=float)
+    ensure(r.shape == rr.shape, '`residual` — по остатку на каждую машину train.')
+    if np.allclose(r, -rr):
+        fail('Остаток — цена минус прогноз: `y_train - start`, а не наоборот.')
+    same_array(r, rr, '`residual` не совпадает: `y_train - start`.')
+    t = var('tree')
+    ensure(t.get_depth() <= 3, 'Дерево — глубины 3: `max_depth=3`.')
+    same_array(t.predict(ref('Z_valid').iloc[:200]), ref('tree').predict(ref('Z_valid').iloc[:200]), 'Дерево обучают на остатках: `.fit(Z_train, residual)`, а не на ценах.')
+    close(var('mae_start', 'number', 'числом'), ref('mae_start'), 'MAE начального прогноза — {expected}, а у вас {actual}.')
+    d = var('mae_step', dict, 'словарём')
+    ensure(set(d) == {1, 0.1}, 'Ключи `mae_step` — 1 и 0.1.')
+    close(d[1], ref('mae_step')[1], 'MAE при eta = 1 — {expected}, а у вас {actual}.')
+    close(d[0.1], ref('mae_step')[0.1], 'MAE при eta = 0.1 — {expected}, а у вас {actual}: прогноз `start + 0.1 * tree.predict(Z_valid)`.')
+    close(alt('mae_step')[0.1], alt_ref('mae_step')[0.1], HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        residual = start - y_train
+        tree = DecisionTreeRegressor(max_depth=3, random_state=42).fit(Z_train, residual)
+        mae_start = mean_absolute_error(y_valid, np.full(len(y_valid), start))
+        mae_step = {}
+        for eta in [1, 0.1]:
+            mae_step[eta] = mean_absolute_error(y_valid, start + eta * tree.predict(Z_valid))
+      expect: цена минус прогноз
+    - code: |
+        residual = y_train - start
+        tree = DecisionTreeRegressor(max_depth=3, random_state=42).fit(Z_train, y_train)
+        mae_start = mean_absolute_error(y_valid, np.full(len(y_valid), start))
+        mae_step = {}
+        for eta in [1, 0.1]:
+            mae_step[eta] = mean_absolute_error(y_valid, start + eta * tree.predict(Z_valid))
+      expect: обучают на остатках
+
+- id: m7-l7-t2
+  title: Бустинг своими руками
+  difficulty: main
+  introduces: [gradient-boosting]
+  uses: [decision-tree]
+  statement: |
+    Напишите цикл бустинга на `n_steps` деревьях глубины 3 со скоростью обучения `eta`. Начальный прогноз для train и validation — средняя цена train. На каждом шаге обучите `DecisionTreeRegressor(max_depth=3, random_state=42)` на остатках train и добавьте его прогноз, умноженный на `eta`, к прогнозам train и validation. `history` — список MAE на validation после каждого шага.
+
+    Затем обучите `GradientBoostingRegressor(n_estimators=n_steps, learning_rate=eta, max_depth=3, random_state=42)` и получите `sk_history` — его MAE на validation после каждого дерева (`staged_predict(Z_valid)`). `max_gap` — наибольшее по модулю расхождение двух историй.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OrdinalEncoder
+    from sklearn.compose import ColumnTransformer
+    from sklearn.tree import DecisionTreeRegressor
+    from sklearn.ensemble import GradientBoostingRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    enc = ColumnTransformer([('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), cat_cols)],
+                            remainder='passthrough', verbose_feature_names_out=False)
+    enc.set_output(transform='pandas')
+    Z_train = enc.fit_transform(X_train)
+    Z_valid = enc.transform(X_valid)
+    n_steps, eta = 30, 0.1
+  starter: |
+    pred_train = np.full(len(y_train), y_train.mean())
+    pred_valid = np.full(len(y_valid), y_train.mean())
+    history = []
+    for step in range(n_steps):
+        residual = ...
+        tree = ...
+        pred_train += ...
+        pred_valid += ...
+        history.append(...)
+
+    gbr = GradientBoostingRegressor(n_estimators=n_steps, learning_rate=eta, max_depth=3, random_state=42).fit(Z_train, y_train)
+    sk_history = [... for p in gbr.staged_predict(Z_valid)]
+    max_gap = ...
+    print(round(history[0]), round(history[-1]), max_gap)
+  solution: |
+    pred_train = np.full(len(y_train), y_train.mean())
+    pred_valid = np.full(len(y_valid), y_train.mean())
+    history = []
+    for step in range(n_steps):
+        residual = y_train.to_numpy() - pred_train
+        tree = DecisionTreeRegressor(max_depth=3, random_state=42).fit(Z_train, residual)
+        pred_train += eta * tree.predict(Z_train)
+        pred_valid += eta * tree.predict(Z_valid)
+        history.append(mean_absolute_error(y_valid, pred_valid))
+
+    gbr = GradientBoostingRegressor(n_estimators=n_steps, learning_rate=eta, max_depth=3, random_state=42).fit(Z_train, y_train)
+    sk_history = [mean_absolute_error(y_valid, p) for p in gbr.staged_predict(Z_valid)]
+    max_gap = np.max(np.abs(np.array(history) - np.array(sk_history)))
+    print(round(history[0]), round(history[-1]), max_gap)
+  explanation: |
+    - После первого дерева MAE 6 061, после тридцатого — 2 756. Истории совпадают до последнего знака: `GradientBoostingRegressor` с квадратичной ошибкой делает ровно этот цикл.
+    - Главная деталь — остатки считают от **текущего** прогноза train. Если забыть обновлять `pred_train`, каждое дерево будет учиться на одних и тех же остатках, и модель «перелетит» цель.
+    - Прогнозы validation обновляют теми же деревьями: модель — это начальное значение плюс сумма всех поправок.
+  hints:
+    - "Остатки — `y_train.to_numpy() - pred_train`; дерево — `DecisionTreeRegressor(max_depth=3, random_state=42).fit(Z_train, residual)`."
+    - "Обновление — `pred_train += eta * tree.predict(Z_train)` и так же для validation."
+    - "`sk_history = [mean_absolute_error(y_valid, p) for p in gbr.staged_predict(Z_valid)]`; `max_gap = np.max(np.abs(np.array(history) - np.array(sk_history)))`."
+  tests: |
+    import numpy as np
+    h = [float(v) for v in var('history', list, 'списком')]
+    rh = [float(v) for v in ref('history')]
+    ensure(len(h) == len(rh), 'В `history` — по MAE после каждого из {0} шагов, а у вас {1}.'.format(len(rh), len(h)))
+    if abs(h[0] - rh[0]) > 1:
+        fail('Уже после первого дерева MAE {0:.0f} вместо {1:.0f}: прогноз дерева добавляют с множителем `eta`, а дерево учат на остатках.'.format(h[0], rh[0]))
+    if not np.allclose(h, rh, rtol=1e-6):
+        fail('Первый шаг верный, а дальше история расходится. После каждого шага обновляйте и прогноз train: остатки считают от текущего прогноза.')
+    sh = [float(v) for v in var('sk_history', list, 'списком')]
+    same_array(sh, ref('sk_history'), '`sk_history` не совпадает: MAE после каждого дерева `gbr.staged_predict(Z_valid)`.', rtol=1e-6)
+    close(var('max_gap', 'number', 'числом'), ref('max_gap'), '`max_gap` — {expected}, а у вас {actual}.', atol=1e-6)
+    close(alt('history')[-1], alt_ref('history')[-1], HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        pred_train = np.full(len(y_train), y_train.mean())
+        pred_valid = np.full(len(y_valid), y_train.mean())
+        history = []
+        for step in range(n_steps):
+            residual = y_train.to_numpy() - pred_train
+            tree = DecisionTreeRegressor(max_depth=3, random_state=42).fit(Z_train, residual)
+            pred_train += tree.predict(Z_train)
+            pred_valid += tree.predict(Z_valid)
+            history.append(mean_absolute_error(y_valid, pred_valid))
+        gbr = GradientBoostingRegressor(n_estimators=n_steps, learning_rate=eta, max_depth=3, random_state=42).fit(Z_train, y_train)
+        sk_history = [mean_absolute_error(y_valid, p) for p in gbr.staged_predict(Z_valid)]
+        max_gap = np.max(np.abs(np.array(history) - np.array(sk_history)))
+      expect: с множителем `eta`
+    - code: |
+        pred_train = np.full(len(y_train), y_train.mean())
+        pred_valid = np.full(len(y_valid), y_train.mean())
+        history = []
+        for step in range(n_steps):
+            residual = y_train.to_numpy() - pred_train
+            tree = DecisionTreeRegressor(max_depth=3, random_state=42).fit(Z_train, residual)
+            pred_valid += eta * tree.predict(Z_valid)
+            history.append(mean_absolute_error(y_valid, pred_valid))
+        gbr = GradientBoostingRegressor(n_estimators=n_steps, learning_rate=eta, max_depth=3, random_state=42).fit(Z_train, y_train)
+        sk_history = [mean_absolute_error(y_valid, p) for p in gbr.staged_predict(Z_valid)]
+        max_gap = np.max(np.abs(np.array(history) - np.array(sk_history)))
+      expect: обновляйте и прогноз train
+
+- id: m7-l7-t3
+  title: Скорость обучения и число деревьев
+  difficulty: main
+  introduces: [learning-rate]
+  uses: [hyperparameter, validation-curve]
+  statement: |
+    Для каждого `lr` из `rates` обучите `HistGradientBoostingRegressor(max_iter=300, learning_rate=lr, early_stopping=False, random_state=42)` на train. По `staged_predict(Z_valid)` посчитайте MAE на validation после каждого дерева.
+
+    Соберите `summary` — DataFrame с индексом `rates` и колонками `'лучшее число деревьев'` (считая с 1), `'лучшая MAE'` и `'MAE на 300'`. `overfit` — на сколько евро MAE на 300 деревьях хуже лучшей при `lr = 0.3`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OrdinalEncoder
+    from sklearn.compose import ColumnTransformer
+    from sklearn.ensemble import HistGradientBoostingRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    enc = ColumnTransformer([('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), cat_cols)],
+                            remainder='passthrough', verbose_feature_names_out=False)
+    enc.set_output(transform='pandas')
+    Z_train = enc.fit_transform(X_train)
+    Z_valid = enc.transform(X_valid)
+    rates = [0.3, 0.1]
+  starter: |
+    rows = {}
+    for lr in rates:
+        hgb = HistGradientBoostingRegressor(max_iter=300, learning_rate=lr, early_stopping=False, random_state=42)
+        hgb.fit(Z_train, y_train)
+        curve = np.array([... for p in hgb.staged_predict(Z_valid)])
+        rows[lr] = {'лучшее число деревьев': ..., 'лучшая MAE': ..., 'MAE на 300': ...}
+    summary = pd.DataFrame(rows).T
+    overfit = ...
+    print(summary.round(0))
+    print(round(overfit, 1))
+  solution: |
+    rows = {}
+    for lr in rates:
+        hgb = HistGradientBoostingRegressor(max_iter=300, learning_rate=lr, early_stopping=False, random_state=42)
+        hgb.fit(Z_train, y_train)
+        curve = np.array([mean_absolute_error(y_valid, p) for p in hgb.staged_predict(Z_valid)])
+        rows[lr] = {'лучшее число деревьев': curve.argmin() + 1, 'лучшая MAE': curve.min(), 'MAE на 300': curve[-1]}
+    summary = pd.DataFrame(rows).T
+    overfit = summary.loc[0.3, 'MAE на 300'] - summary.loc[0.3, 'лучшая MAE']
+    print(summary.round(0))
+    print(round(overfit, 1))
+  explanation: |
+    - С шагом 0,3 лучший результат — 2 133 евро уже на 45 деревьях, а к 300 модель переобучается: 2 223, на 90 евро хуже.
+    - С шагом 0,1 лучший результат — 2 040 на 264 деревьях, и к 300 ошибка почти не растёт. Меньший шаг дольше учится, зато точнее и спокойнее.
+    - Число деревьев и скорость обучения подбирают вместе. «Лучшее число деревьев» здесь найдено по validation — значит, это тоже выбор гиперпараметра, и честную оценку даст только test.
+  hints:
+    - "Кривая — `np.array([mean_absolute_error(y_valid, p) for p in hgb.staged_predict(Z_valid)])`."
+    - "Номер лучшего дерева — `curve.argmin() + 1` (нумерация с единицы); лучшая MAE — `curve.min()`; на 300 — `curve[-1]`."
+    - "`overfit = summary.loc[0.3, 'MAE на 300'] - summary.loc[0.3, 'лучшая MAE']`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    s = var('summary', pd.DataFrame, 'таблицей DataFrame')
+    rs = ref('summary')
+    ensure([float(v) for v in s.index] == [float(v) for v in rs.index], 'Индекс `summary` — значения из `rates`.')
+    ensure(list(s.columns) == list(rs.columns), 'Колонки `summary` — {0}.'.format(list(rs.columns)))
+    best = s['лучшее число деревьев'].to_numpy(dtype=float)
+    rbest = rs['лучшее число деревьев'].to_numpy(dtype=float)
+    if np.array_equal(best + 1, rbest):
+        fail('Число деревьев считают с единицы: позиция минимума в списке — на одно меньше, `curve.argmin() + 1`.')
+    same_array(best, rbest, 'Лучшее число деревьев не совпадает: позиция минимума кривой плюс 1.')
+    same_array(s['лучшая MAE'].to_numpy(dtype=float), rs['лучшая MAE'].to_numpy(dtype=float), 'Лучшая MAE не совпадает: минимум кривой.', rtol=1e-6)
+    same_array(s['MAE на 300'].to_numpy(dtype=float), rs['MAE на 300'].to_numpy(dtype=float), 'MAE на 300 деревьях — последнее значение кривой: `curve[-1]`.', rtol=1e-6)
+    close(var('overfit', 'number', 'числом'), ref('overfit'), '`overfit` — {expected}, а у вас {actual}: MAE на 300 минус лучшая MAE при lr = 0.3.', rtol=1e-5)
+    same_array(alt('summary')['лучшая MAE'].to_numpy(dtype=float), alt_ref('summary')['лучшая MAE'].to_numpy(dtype=float), HARDCODE_MSG, rtol=1e-6)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        rows = {}
+        for lr in rates:
+            hgb = HistGradientBoostingRegressor(max_iter=300, learning_rate=lr, early_stopping=False, random_state=42)
+            hgb.fit(Z_train, y_train)
+            curve = np.array([mean_absolute_error(y_valid, p) for p in hgb.staged_predict(Z_valid)])
+            rows[lr] = {'лучшее число деревьев': curve.argmin(), 'лучшая MAE': curve.min(), 'MAE на 300': curve[-1]}
+        summary = pd.DataFrame(rows).T
+        overfit = summary.loc[0.3, 'MAE на 300'] - summary.loc[0.3, 'лучшая MAE']
+      expect: считают с единицы
+    - code: |
+        rows = {}
+        for lr in rates:
+            hgb = HistGradientBoostingRegressor(max_iter=300, learning_rate=lr, early_stopping=False, random_state=42)
+            hgb.fit(Z_train, y_train)
+            curve = np.array([mean_absolute_error(y_valid, p) for p in hgb.staged_predict(Z_valid)])
+            rows[lr] = {'лучшее число деревьев': curve.argmin() + 1, 'лучшая MAE': curve.min(), 'MAE на 300': curve.mean()}
+        summary = pd.DataFrame(rows).T
+        overfit = summary.loc[0.3, 'MAE на 300'] - summary.loc[0.3, 'лучшая MAE']
+      expect: "`curve[-1]`"
+
+- id: m7-l7-t4
+  title: "LightGBM: категории без кодирования"
+  difficulty: main
+  introduces: [gradient-boosting]
+  uses: [ordinal-encoding]
+  statement: |
+    Напишите функцию `as_category(table)`. Она возвращает копию таблицы, в которой четыре колонки `cat_cols` имеют тип `category` с категориями из **train** — `sorted(X_train[c].unique())`, а значения, которых в train нет, становятся пропусками.
+
+    Обучите `LGBMRegressor(n_estimators=100, learning_rate=0.1, random_state=42, verbosity=-1, n_jobs=1)` на `as_category(X_train)` и получите `mae_native` — MAE на validation. Такую же модель обучите на порядковых кодах `Z_train` — это `mae_codes`. `n_missing` — у скольких машин validation после `as_category` пропуск в `Model`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OrdinalEncoder
+    from sklearn.compose import ColumnTransformer
+    from sklearn.metrics import mean_absolute_error
+    from lightgbm import LGBMRegressor
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    enc = ColumnTransformer([('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), cat_cols)],
+                            remainder='passthrough', verbose_feature_names_out=False)
+    enc.set_output(transform='pandas')
+    Z_train = enc.fit_transform(X_train)
+    Z_valid = enc.transform(X_valid)
+  starter: |
+    def as_category(table):
+        out = table.copy()
+        for c in cat_cols:
+            cats = ...
+            out[c] = pd.Categorical(..., categories=cats)
+        return out
+
+    C_train, C_valid = as_category(X_train), as_category(X_valid)
+    native = LGBMRegressor(n_estimators=100, learning_rate=0.1, random_state=42, verbosity=-1, n_jobs=1).fit(C_train, y_train)
+    mae_native = ...
+    codes = LGBMRegressor(n_estimators=100, learning_rate=0.1, random_state=42, verbosity=-1, n_jobs=1).fit(..., y_train)
+    mae_codes = ...
+    n_missing = ...
+    print(round(mae_native), round(mae_codes), n_missing)
+  solution: |
+    def as_category(table):
+        out = table.copy()
+        for c in cat_cols:
+            cats = sorted(X_train[c].unique())
+            out[c] = pd.Categorical(out[c].where(out[c].isin(cats)), categories=cats)
+        return out
+
+    C_train, C_valid = as_category(X_train), as_category(X_valid)
+    native = LGBMRegressor(n_estimators=100, learning_rate=0.1, random_state=42, verbosity=-1, n_jobs=1).fit(C_train, y_train)
+    mae_native = mean_absolute_error(y_valid, native.predict(C_valid))
+    codes = LGBMRegressor(n_estimators=100, learning_rate=0.1, random_state=42, verbosity=-1, n_jobs=1).fit(Z_train, y_train)
+    mae_codes = mean_absolute_error(y_valid, codes.predict(Z_valid))
+    n_missing = C_valid['Model'].isna().sum()
+    print(round(mae_native), round(mae_codes), n_missing)
+  explanation: |
+    - С категориями как есть LightGBM ошибается на 1 936 евро, с порядковыми кодами — на 2 101. Он сам упорядочивает модели машин по средней поправке, а не по алфавиту, и находит удачные группы в каждом разбиении.
+    - 46 машин validation — моделей, которых в train нет. Они становятся пропусками и идут по ветке, которую LightGBM выучил для пропусков.
+    - Категории берём только из train: это тот же «словарь», что у кодировщиков в Pipeline. `pd.Categorical(..., categories=cats)` сам превращает значения не из списка в пропуски; `where(isin(...))` делает это явно.
+  hints:
+    - "Категории колонки — `sorted(X_train[c].unique())`."
+    - "Новая колонка — `pd.Categorical(out[c].where(out[c].isin(cats)), categories=cats)`."
+    - "Пропуски — `C_valid['Model'].isna().sum()`; модель на кодах учится на `Z_train` и прогнозирует по `Z_valid`."
+  tests: |
+    import pandas as pd
+    f = var('as_category')
+    ensure(callable(f), '`as_category` должна быть функцией.')
+    cv = f(ref('X_valid'))
+    for c in ref('cat_cols'):
+        ensure(isinstance(cv[c].dtype, pd.CategoricalDtype), 'Колонка `{0}` после `as_category` должна иметь тип `category`.'.format(c))
+        ensure(list(cv[c].cat.categories) == sorted(ref('X_train')[c].unique()), 'Категории колонки `{0}` — только из train: `sorted(X_train[c].unique())`.'.format(c))
+    ensure(int(cv['Model'].isna().sum()) == int(ref('n_missing')), 'Незнакомые модели должны стать пропусками.')
+    equal(int(var('n_missing', 'number', 'числом')), int(ref('n_missing')), 'Пропусков в `Model` у validation — {expected}, а у вас {actual}.')
+    close(var('mae_native', 'number', 'числом'), ref('mae_native'), 'MAE LightGBM с категориями — {expected}, а у вас {actual}.', rtol=1e-5)
+    close(var('mae_codes', 'number', 'числом'), ref('mae_codes'), 'MAE LightGBM на порядковых кодах — {expected}, а у вас {actual}: модель учится на `Z_train`, прогноз — по `Z_valid`.', rtol=1e-5)
+    close(alt('mae_native'), alt_ref('mae_native'), HARDCODE_MSG, rtol=1e-5)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def as_category(table):
+            out = table.copy()
+            for c in cat_cols:
+                cats = sorted(table[c].unique())
+                out[c] = pd.Categorical(out[c].where(out[c].isin(cats)), categories=cats)
+            return out
+        C_train, C_valid = as_category(X_train), as_category(X_valid)
+        native = LGBMRegressor(n_estimators=100, learning_rate=0.1, random_state=42, verbosity=-1, n_jobs=1).fit(C_train, y_train)
+        mae_native = mean_absolute_error(y_valid, native.predict(C_valid))
+        codes = LGBMRegressor(n_estimators=100, learning_rate=0.1, random_state=42, verbosity=-1, n_jobs=1).fit(Z_train, y_train)
+        mae_codes = mean_absolute_error(y_valid, codes.predict(Z_valid))
+        n_missing = C_valid['Model'].isna().sum()
+      expect: только из train
+    - code: |
+        def as_category(table):
+            out = table.copy()
+            for c in cat_cols:
+                cats = sorted(X_train[c].unique())
+                out[c] = pd.Categorical(out[c].where(out[c].isin(cats)), categories=cats)
+            return out
+        C_train, C_valid = as_category(X_train), as_category(X_valid)
+        native = LGBMRegressor(n_estimators=100, learning_rate=0.1, random_state=42, verbosity=-1, n_jobs=1).fit(C_train, y_train)
+        mae_native = mean_absolute_error(y_valid, native.predict(C_valid))
+        mae_codes = mae_native
+        n_missing = C_valid['Model'].isna().sum()
+      expect: порядковых кодах
+
+- id: m7-l7-t5
+  title: Бустинг под метрику MAE
+  difficulty: star
+  introduces: [gradient-boosting]
+  uses: [regression-metrics]
+  statement: |
+    Мы сравниваем модели по MAE, а бустинг по умолчанию минимизирует квадратичную ошибку. Но бустинг может учиться под другую функцию ошибки: деревья тогда учатся на её антиградиенте. Для абсолютной ошибки это просто знак остатка.
+
+    Обучите два `HistGradientBoostingRegressor(max_iter=300, learning_rate=0.1, early_stopping=False, random_state=42)` — с `loss='squared_error'` и с `loss='absolute_error'`. Соберите `losses` — DataFrame с индексом `['squared_error', 'absolute_error']` и колонками `'MAE'`, `'RMSE'` и `'медиана ошибки'` (медиана разности «прогноз − цена» на validation). `gain` — на сколько евро MAE у `absolute_error` меньше.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OrdinalEncoder
+    from sklearn.compose import ColumnTransformer
+    from sklearn.ensemble import HistGradientBoostingRegressor
+    from sklearn.metrics import mean_absolute_error, root_mean_squared_error
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    enc = ColumnTransformer([('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), cat_cols)],
+                            remainder='passthrough', verbose_feature_names_out=False)
+    enc.set_output(transform='pandas')
+    Z_train = enc.fit_transform(X_train)
+    Z_valid = enc.transform(X_valid)
+  starter: |
+    rows = {}
+    for loss in ['squared_error', 'absolute_error']:
+        hgb = HistGradientBoostingRegressor(loss=loss, max_iter=300, learning_rate=0.1, early_stopping=False, random_state=42)
+        pred = hgb.fit(Z_train, y_train).predict(Z_valid)
+        rows[loss] = {'MAE': ..., 'RMSE': ..., 'медиана ошибки': ...}
+    losses = pd.DataFrame(rows).T
+    gain = ...
+    print(losses.round(1))
+    print(round(gain, 1))
+  solution: |
+    rows = {}
+    for loss in ['squared_error', 'absolute_error']:
+        hgb = HistGradientBoostingRegressor(loss=loss, max_iter=300, learning_rate=0.1, early_stopping=False, random_state=42)
+        pred = hgb.fit(Z_train, y_train).predict(Z_valid)
+        rows[loss] = {'MAE': mean_absolute_error(y_valid, pred),
+                      'RMSE': root_mean_squared_error(y_valid, pred),
+                      'медиана ошибки': np.median(pred - y_valid)}
+    losses = pd.DataFrame(rows).T
+    gain = losses.loc['squared_error', 'MAE'] - losses.loc['absolute_error', 'MAE']
+    print(losses.round(1))
+    print(round(gain, 1))
+  explanation: |
+    - С `absolute_error` MAE 1 883 против 2 049 — на 166 евро меньше, а RMSE почти та же (4 507 и 4 509). Модель, которая учится под нужную метрику, по этой метрике и лучше.
+    - Медиана ошибки у `absolute_error` ≈ 0: такая модель прогнозирует медиану цены похожих машин, а не среднее. Цены с длинным правым хвостом тянут среднее вверх, поэтому квадратичная модель в типичном случае немного завышает (медиана ошибки +92).
+    - Деревья для абсолютной ошибки учатся на **знаке** остатка: «прогноз мал» или «прогноз велик». Поэтому дорогие машины с огромными остатками не перетягивают модель на себя.
+  hints:
+    - "RMSE — `root_mean_squared_error(y_valid, pred)`; медиана ошибки — `np.median(pred - y_valid)`."
+    - "Индекс таблицы получится из ключей словаря `rows`: `pd.DataFrame(rows).T`."
+    - "`gain = losses.loc['squared_error', 'MAE'] - losses.loc['absolute_error', 'MAE']`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    t = var('losses', pd.DataFrame, 'таблицей DataFrame')
+    rt = ref('losses')
+    ensure(list(t.index) == ['squared_error', 'absolute_error'], 'Индекс `losses` — `[\'squared_error\', \'absolute_error\']`.')
+    ensure(list(t.columns) == ['MAE', 'RMSE', 'медиана ошибки'], 'Колонки `losses` — `[\'MAE\', \'RMSE\', \'медиана ошибки\']`.')
+    same_array(t['MAE'].to_numpy(dtype=float), rt['MAE'].to_numpy(dtype=float), 'MAE не совпадают.', rtol=1e-6)
+    same_array(t['RMSE'].to_numpy(dtype=float), rt['RMSE'].to_numpy(dtype=float), 'RMSE не совпадают: `root_mean_squared_error(y_valid, pred)`.', rtol=1e-6)
+    med = t['медиана ошибки'].to_numpy(dtype=float)
+    rmed = rt['медиана ошибки'].to_numpy(dtype=float)
+    if np.allclose(med, -rmed, atol=1e-6) and not np.allclose(med, rmed, atol=1e-6):
+        fail('Ошибка — это прогноз минус цена: `np.median(pred - y_valid)`, а у вас знак наоборот.')
+    same_array(med, rmed, 'Медиана ошибки не совпадает: `np.median(pred - y_valid)`.', atol=1e-6)
+    close(var('gain', 'number', 'числом'), ref('gain'), '`gain` — {expected}, а у вас {actual}: MAE squared_error минус MAE absolute_error.', rtol=1e-5)
+    close(alt('gain'), alt_ref('gain'), HARDCODE_MSG, rtol=1e-5)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        rows = {}
+        for loss in ['squared_error', 'absolute_error']:
+            hgb = HistGradientBoostingRegressor(loss=loss, max_iter=300, learning_rate=0.1, early_stopping=False, random_state=42)
+            pred = hgb.fit(Z_train, y_train).predict(Z_valid)
+            rows[loss] = {'MAE': mean_absolute_error(y_valid, pred),
+                          'RMSE': root_mean_squared_error(y_valid, pred),
+                          'медиана ошибки': np.median(y_valid - pred)}
+        losses = pd.DataFrame(rows).T
+        gain = losses.loc['squared_error', 'MAE'] - losses.loc['absolute_error', 'MAE']
+      expect: прогноз минус цена
+    - code: |
+        rows = {}
+        for loss in ['squared_error', 'absolute_error']:
+            hgb = HistGradientBoostingRegressor(loss=loss, max_iter=300, learning_rate=0.1, early_stopping=False, random_state=42)
+            pred = hgb.fit(Z_train, y_train).predict(Z_valid)
+            rows[loss] = {'MAE': mean_absolute_error(y_valid, pred),
+                          'RMSE': root_mean_squared_error(y_valid, pred),
+                          'медиана ошибки': np.median(pred - y_valid)}
+        losses = pd.DataFrame(rows).T
+        gain = losses.loc['absolute_error', 'MAE'] - losses.loc['squared_error', 'MAE']
+      expect: "`gain`"

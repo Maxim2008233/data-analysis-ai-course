@@ -1,0 +1,323 @@
+- id: m2-l2-t1
+  title: Тип колонки и непустые значения
+  difficulty: warmup
+  introduces: [pd-info-dtypes]
+  uses: [pd-dataframe]
+  statement: |
+    Получите:
+
+    - `year_dtype` — тип колонки `Year` в виде строки (оберните `dtype` в `str(...)`);
+    - `n_missing_make` — число пропусков в колонке `Make`: число строк таблицы минус число непустых значений колонки (метод `.count()`).
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')   # загрузка — урок 2.1
+    df = raw.copy()
+  starter: |
+    year_dtype = ...
+    n_missing_make = ...
+    print(year_dtype, n_missing_make)
+  solution: |
+    year_dtype = str(df['Year'].dtype)
+    n_missing_make = len(df) - df['Make'].count()
+    print(year_dtype, n_missing_make)
+  explanation: |
+    - `df['Year'].dtype` — тип колонки; `str(...)` превращает его в строку `'int64'`.
+    - `df['Make'].count()` — число **непустых** значений (то же, что Non-Null Count в `info()`).
+    - Строк всего `len(df)`; разница — число пропусков.
+  alternatives:
+    - |
+      year_dtype = str(df.dtypes['Year'])
+      n_missing_make = df.shape[0] - df.count()['Make']
+  hints:
+    - Где хранится тип колонки? Какой метод считает непустые значения?
+    - "Тип — атрибут `.dtype` у колонки (без скобок); непустые — метод `.count()`; строк — `len(df)`."
+    - "`year_dtype = str(df['Year'].dtype)`, `n_missing_make = len(df) - df['Make'].count()`."
+  tests: |
+    equal(var('year_dtype', str, 'строкой — оберните тип в `str(...)`'), ref('year_dtype'), 'Тип колонки Year — {expected}, а у вас {actual}.')
+    n = var('n_missing_make', 'number', 'числом')
+    if n == ref('df')['Make'].count():
+        fail('Получилось число непустых значений, а нужно число пропусков: вычтите его из числа строк `len(df)`.')
+    close(n, ref('n_missing_make'), 'Пропусков в Make должно быть {expected}, а у вас {actual}.')
+    close(alt('n_missing_make'), alt_ref('n_missing_make'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        year_dtype = df['Year'].dtype
+        n_missing_make = len(df) - df['Make'].count()
+      expect: строкой
+    - code: |
+        year_dtype = str(df['Year'].dtype)
+        n_missing_make = df['Make'].count()
+      expect: число непустых
+    - code: |
+        year_dtype = str(df['Year'].dtype)
+        n_missing_make = 205
+      expect: вписан вручную
+
+- id: m2-l2-t2
+  title: Пять самых дорогих объявлений
+  difficulty: main
+  introduces: [pd-sort-values]
+  uses: [pd-dataframe]
+  statement: |
+    Получите `top5` — таблицу из пяти самых дорогих объявлений (все колонки), от самого дорогого к более дешёвым. Исходную таблицу `df` не меняйте.
+
+    Посмотрите на результат: какие цены похожи на ошибку, а какая — на редкий настоящий автомобиль?
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+  starter: |
+    top5 = ...
+    top5
+  solution: |
+    top5 = df.sort_values('Price(euro)', ascending=False).head(5)
+    top5
+  explanation: |
+    - `sort_values('Price(euro)', ascending=False)` — новая таблица, упорядоченная по цене по убыванию; `df` не меняется.
+    - `.head(5)` — первые пять строк отсортированной таблицы, то есть самые дорогие объявления.
+  alternatives:
+    - |
+      top5 = df.nlargest(5, 'Price(euro)')
+  hints:
+    - Отсортируйте таблицу по цене так, чтобы дорогие оказались сверху, и возьмите первые строки.
+    - "`df.sort_values('Price(euro)', ascending=False)` — по убыванию; первые строки — `.head(5)`."
+    - "`top5 = df.sort_values('Price(euro)', ascending=False).head(5)`."
+  tests: |
+    import pandas as pd
+    t = var('top5', pd.DataFrame, 'таблицей DataFrame')
+    d = ref('df')
+    if len(t) != 5:
+        fail('В `top5` {0} строк, а нужно 5 — возьмите первые строки через `.head(5)`.'.format(len(t)))
+    if set(t.index) == set(d.sort_values('Price(euro)').head(5).index):
+        fail('Это самые дешёвые объявления: по умолчанию сортировка идёт по возрастанию. Добавьте `ascending=False`.')
+    ensure(list(t.columns) == list(d.columns), 'В `top5` должны остаться все колонки таблицы.')
+    ensure(set(t.index) == set(ref('top5').index), 'В `top5` должны попасть пять объявлений с наибольшей ценой — проверьте колонку сортировки `Price(euro)`.')
+    ensure(t['Price(euro)'].is_monotonic_decreasing, 'Строки должны идти от самой дорогой к более дешёвым.')
+    ensure(var('df').index.equals(d.index), 'Таблица `df` изменилась. Сортировка нужна только для `top5`: не присваивайте результат в `df`.')
+    ensure(set(alt('top5').index) == set(alt_ref('top5').index), 'На другой части данных `top5` должна получиться другой. Не выбирайте строки вручную — отсортируйте таблицу.')
+  wrong:
+    - code: |
+        top5 = df.sort_values('Price(euro)').head(5)
+      expect: ascending=False
+    - code: |
+        top5 = df.sort_values('Price(euro)', ascending=False)
+      expect: нужно 5
+    - code: |
+        df = df.sort_values('Price(euro)', ascending=False)
+        top5 = df.head(5)
+      expect: изменилась
+
+- id: m2-l2-t3
+  title: Самые новые и самые дешёвые
+  difficulty: main
+  introduces: [pd-sort-values]
+  uses: []
+  statement: |
+    Получите `newest_cheap` — первые 5 строк таблицы, отсортированной **сначала по году выпуска (новые сверху)**, а внутри одного года — **по цене (дешёвые сверху)**.
+
+    Правдоподобны ли машины 2021 года за несколько сотен евро? Посмотрите на их пробег и объём двигателя.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+  starter: |
+    newest_cheap = ...
+    newest_cheap
+  solution: |
+    newest_cheap = df.sort_values(['Year', 'Price(euro)'], ascending=[False, True]).head(5)
+    newest_cheap
+  explanation: |
+    - Список `['Year', 'Price(euro)']` задаёт порядок ключей: сначала год, при равном годе — цена.
+    - Список `ascending=[False, True]` задаёт направление для каждого ключа: год по убыванию, цена по возрастанию.
+  hints:
+    - Можно сортировать сразу по нескольким колонкам. Как задать разное направление для каждой?
+    - "`sort_values` принимает списки: `by=[колонка1, колонка2]` и `ascending=[для первой, для второй]`."
+    - "`df.sort_values(['Year', 'Price(euro)'], ascending=[False, True]).head(5)`."
+  tests: |
+    import pandas as pd
+    t = var('newest_cheap', pd.DataFrame, 'таблицей DataFrame')
+    if len(t) != 5:
+        fail('В `newest_cheap` {0} строк, а нужно 5.'.format(len(t)))
+    if (t['Year'] < ref('df')['Year'].max()).any():
+        fail('Сверху должны оказаться самые новые машины: год сортируется по убыванию (`ascending=False` для Year).')
+    if not t['Price(euro)'].is_monotonic_increasing:
+        fail('Внутри одного года цены должны идти по возрастанию: для цены нужен `ascending=True`.')
+    same_frame(t, ref('newest_cheap'), 'Порядок строк не совпадает с сортировкой «год по убыванию, затем цена по возрастанию».')
+    same_frame(alt('newest_cheap'), alt_ref('newest_cheap'), 'На другой части данных результат должен получиться другим. Отсортируйте таблицу, а не выбирайте строки вручную.')
+  wrong:
+    - code: |
+        newest_cheap = df.sort_values(['Year', 'Price(euro)'], ascending=False).head(5)
+      expect: по возрастанию
+    - code: |
+        newest_cheap = df.sort_values(['Year', 'Price(euro)']).head(5)
+      expect: самые новые
+
+- id: m2-l2-t4
+  title: Среднее против медианы пробега
+  difficulty: main
+  introduces: [pd-info-dtypes]
+  uses: [mean-median]
+  statement: |
+    Получите `mean_distance` и `median_distance` — среднее и медиану колонки `Distance`, а также `ratio` — во сколько раз среднее больше медианы. Сравните с выводом `describe()`.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+  starter: |
+    mean_distance = ...
+    median_distance = ...
+    ratio = ...
+    print(round(mean_distance), median_distance, round(ratio, 2))
+  solution: |
+    mean_distance = df['Distance'].mean()
+    median_distance = df['Distance'].median()
+    ratio = mean_distance / median_distance
+    print(round(mean_distance), median_distance, round(ratio, 2))
+  explanation: |
+    - У колонки-Series есть методы `mean()` и `median()` — те же статистики, что `np.mean` и `np.median` в модуле 1.
+    - Отношение больше 1 означает, что очень большие пробеги тянут среднее вверх; медиана к ним устойчива.
+  alternatives:
+    - |
+      summary = df.describe()
+      mean_distance = summary['Distance']['mean']
+      median_distance = summary['Distance']['50%']
+      ratio = mean_distance / median_distance
+  hints:
+    - Какие методы колонки дают среднее и медиану?
+    - "`df['Distance'].mean()` и `df['Distance'].median()`; отношение — деление одного на другое."
+    - "`ratio = mean_distance / median_distance`."
+  tests: |
+    close(var('mean_distance', 'number', 'числом'), ref('mean_distance'), 'Средний пробег должен быть {expected}, а у вас {actual}.')
+    close(var('median_distance', 'number', 'числом'), ref('median_distance'), 'Медиана пробега должна быть {expected}, а у вас {actual}.')
+    r = var('ratio', 'number', 'числом')
+    if r < 1:
+        fail('Отношение меньше 1 — похоже, вы разделили медиану на среднее. Нужно `mean_distance / median_distance`.')
+    close(r, ref('ratio'), 'Отношение должно быть {expected}, а у вас {actual}.')
+    close(alt('ratio'), alt_ref('ratio'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        mean_distance = df['Distance'].mean()
+        median_distance = df['Distance'].median()
+        ratio = median_distance / mean_distance
+      expect: разделили медиану
+    - code: |
+        mean_distance = df['Distance'].mean()
+        median_distance = df['Distance'].mean()
+        ratio = 1.0
+      expect: Медиана пробега
+
+- id: m2-l2-t5
+  title: Сводка по текстовым колонкам
+  difficulty: main
+  introduces: [pd-info-dtypes]
+  uses: [pd-dataframe]
+  statement: |
+    Получите `text_summary` — сводку `describe` по нечисловым колонкам, а из неё:
+
+    - `n_styles` — число разных типов кузова (строка `'unique'` колонки `Style`);
+    - `top_style` — самый частый тип кузова (строка `'top'`).
+
+    К значению сводки можно обратиться как к значению Series по метке: `text_summary['Style']['unique']`.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+  starter: |
+    text_summary = ...
+    n_styles = ...
+    top_style = ...
+    print(n_styles, top_style)
+    text_summary
+  solution: |
+    text_summary = df.describe(exclude='number')
+    n_styles = text_summary['Style']['unique']
+    top_style = text_summary['Style']['top']
+    print(n_styles, top_style)
+    text_summary
+  explanation: |
+    - `describe(exclude='number')` — сводка по всем колонкам, кроме числовых: count, unique, top, freq.
+    - `text_summary['Style']` — колонка сводки (Series), `['unique']` — её значение по метке строки.
+  hints:
+    - Какой параметр `describe` исключает числовые колонки?
+    - "`df.describe(exclude='number')`; значение по метке — `сводка['Style']['top']`."
+    - "`n_styles = text_summary['Style']['unique']`, `top_style = text_summary['Style']['top']`."
+  tests: |
+    import pandas as pd
+    s = var('text_summary', pd.DataFrame, 'таблицей DataFrame (результат describe)')
+    ensure('Style' in s.columns and 'unique' in s.index, 'В сводке нет колонки Style или строки unique. Используйте `df.describe(exclude=\'number\')` — обычный `describe()` считает только числа.')
+    equal(int(var('n_styles', 'number', 'числом')), int(ref('n_styles')), 'Разных типов кузова — {expected}, а у вас {actual}.')
+    equal(var('top_style'), ref('top_style'), 'Самый частый кузов — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        text_summary = df.describe()
+        n_styles = 12
+        top_style = 'Sedan'
+      expect: exclude
+    - code: |
+        text_summary = df.describe(exclude='number')
+        n_styles = text_summary['Style']['count']
+        top_style = text_summary['Style']['top']
+      expect: Разных типов кузова
+
+- id: m2-l2-t6
+  title: Пробег больше миллиона километров
+  difficulty: star
+  introduces: [pd-sort-values]
+  uses: [bool-mask]
+  statement: |
+    Получите:
+
+    - `top_distance` — пять объявлений с наибольшим пробегом (все колонки, по убыванию пробега);
+    - `n_over_million` — сколько объявлений с пробегом **больше** 1 000 000 км;
+    - `share_over_million` — их долю среди всех объявлений.
+
+    Правдоподобен ли пробег 100 000 000 км? А чуть больше миллиона — у автомобиля, которому 25 лет?
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+  starter: |
+    top_distance = ...
+    n_over_million = ...
+    share_over_million = ...
+    print(n_over_million, round(share_over_million, 4))
+    top_distance
+  solution: |
+    top_distance = df.sort_values('Distance', ascending=False).head(5)
+    n_over_million = (df['Distance'] > 1_000_000).sum()
+    share_over_million = (df['Distance'] > 1_000_000).mean()
+    print(n_over_million, round(share_over_million, 4))
+    top_distance
+  explanation: |
+    - Сортировка по `Distance` по убыванию и `head(5)` — пять наибольших пробегов.
+    - `df['Distance'] > 1_000_000` — маска; `.sum()` — количество, `.mean()` — доля (урок 1.5).
+  alternatives:
+    - |
+      top_distance = df.nlargest(5, 'Distance')
+      over = df['Distance'] > 1_000_000
+      n_over_million = int(over.sum())
+      share_over_million = n_over_million / len(df)
+  hints:
+    - Для первой переменной нужна сортировка, для двух других — маска из сравнения колонки с числом.
+    - "`df.sort_values('Distance', ascending=False).head(5)`; маска `df['Distance'] > 1_000_000` и её `.sum()` / `.mean()`."
+    - "`n_over_million = (df['Distance'] > 1_000_000).sum()`, `share_over_million = (df['Distance'] > 1_000_000).mean()`."
+  tests: |
+    import pandas as pd
+    t = var('top_distance', pd.DataFrame, 'таблицей DataFrame')
+    if len(t) != 5:
+        fail('В `top_distance` {0} строк, а нужно 5.'.format(len(t)))
+    ensure(t['Distance'].is_monotonic_decreasing and t['Distance'].min() >= ref('top_distance')['Distance'].min(), 'В `top_distance` должны быть пять наибольших пробегов по убыванию: `ascending=False`.')
+    close(var('n_over_million', 'number', 'числом'), ref('n_over_million'), 'Пробег больше миллиона — у {expected} объявлений, а у вас {actual}. Условие строгое: `> 1_000_000`.')
+    close(var('share_over_million', 'number', 'числом'), ref('share_over_million'), 'Доля должна быть {expected}, а у вас {actual}.')
+    close(alt('n_over_million'), alt_ref('n_over_million'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        top_distance = df.sort_values('Distance').head(5)
+        n_over_million = (df['Distance'] > 1_000_000).sum()
+        share_over_million = (df['Distance'] > 1_000_000).mean()
+      expect: ascending=False
+    - code: |
+        top_distance = df.sort_values('Distance', ascending=False).head(5)
+        n_over_million = (df['Distance'] > 1_000_000).sum()
+        share_over_million = n_over_million
+      expect: Доля должна быть

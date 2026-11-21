@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 300" font-family="Inter, Arial, sans-serif" font-size="13" role="img" aria-label="Три способа выбрать часть матрицы: элемент X[2, 1], строки X[1:3, :] и столбец X[:, 3]">
+  <g font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor">
+    <!-- заголовки столбцов -->
+    <text x="92" y="30" fill-opacity="0.7">0 Year</text>
+    <text x="172" y="30" fill-opacity="0.7">1 Distance</text>
+    <text x="262" y="30" fill-opacity="0.7">2 Engine</text>
+    <text x="342" y="30" fill-opacity="0.7">3 Price</text>
+    <!-- номера строк -->
+    <text x="56" y="62" fill-opacity="0.7">0</text>
+    <text x="56" y="96" fill-opacity="0.7">1</text>
+    <text x="56" y="130" fill-opacity="0.7">2</text>
+    <text x="56" y="164" fill-opacity="0.7">3</text>
+    <text x="56" y="198" fill-opacity="0.7">…</text>
+    <!-- выделения -->
+    <rect x="80" y="78" width="320" height="68" rx="6" fill="#3d5bd9" fill-opacity="0.13"/>
+    <rect x="330" y="40" width="70" height="170" rx="6" fill="none" stroke="#c0362c" stroke-width="2" stroke-dasharray="5 3"/>
+    <rect x="160" y="113" width="90" height="28" rx="5" fill="none" stroke="#1f8a4c" stroke-width="2.4"/>
+    <!-- сетка значений -->
+    <text x="92" y="62">2011.</text><text x="172" y="62">195000.</text><text x="262" y="62">1800.</text><text x="342" y="62">7750.</text>
+    <text x="92" y="96">2014.</text><text x="172" y="96">135000.</text><text x="262" y="96">1500.</text><text x="342" y="96">8550.</text>
+    <text x="92" y="130">1998.</text><text x="190" y="130">1.</text><text x="262" y="130">1400.</text><text x="342" y="130">2200.</text>
+    <text x="92" y="164">2012.</text><text x="172" y="164">110000.</text><text x="262" y="164">1500.</text><text x="342" y="164">6550.</text>
+    <text x="110" y="198" fill-opacity="0.6">…</text><text x="200" y="198" fill-opacity="0.6">…</text><text x="285" y="198" fill-opacity="0.6">…</text><text x="360" y="198" fill-opacity="0.6">…</text>
+  </g>
+  <!-- легенда -->
+  <rect x="440" y="48" width="18" height="14" rx="3" fill="none" stroke="#1f8a4c" stroke-width="2.4"/>
+  <text x="468" y="60" fill="currentColor"><tspan font-family="JetBrains Mono, monospace">X[2, 1]</tspan> → 1.0</text>
+  <text x="468" y="78" fill="currentColor" fill-opacity="0.7">строка 2, столбец 1: пробег 3-й записи</text>
+  <rect x="440" y="104" width="18" height="14" rx="3" fill="#3d5bd9" fill-opacity="0.25"/>
+  <text x="468" y="116" fill="currentColor"><tspan font-family="JetBrains Mono, monospace">X[1:3, :]</tspan> → строки 1 и 2</text>
+  <text x="468" y="134" fill="currentColor" fill-opacity="0.7">stop = 3 не входит; форма (2, 4)</text>
+  <rect x="440" y="160" width="18" height="14" rx="3" fill="none" stroke="#c0362c" stroke-width="2" stroke-dasharray="5 3"/>
+  <text x="468" y="172" fill="currentColor"><tspan font-family="JetBrains Mono, monospace">X[:, 3]</tspan> → все цены</text>
+  <text x="468" y="190" fill="currentColor" fill-opacity="0.7">«:» — все строки; вектор формы (41007,)</text>
+  <text x="40" y="250" fill="currentColor" fill-opacity="0.85">Сначала номер строки (ось 0), потом номер столбца (ось 1). Нумерация с нуля.</text>
+  <text x="40" y="272" fill="currentColor" fill-opacity="0.85">X[3] без второго индекса — это строка 3 (одна запись), а не столбец 3.</text>
+</svg>

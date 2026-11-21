@@ -1,0 +1,519 @@
+- id: m8-l5-t1
+  title: Лучшая эпоха по кривым
+  difficulty: warmup
+  introduces: [early-stopping]
+  uses: [overfitting]
+  statement: |
+    В подготовке сеть (64, 32) училась 120 эпох на 128 машинах, и после каждой эпохи записана MAE в евро: на этих 128 машинах (колонка `'train'`) и на 1 000 машинах validation (колонка `'validation'`). Таблица `curves`, индекс — номер эпохи с 1. Получите:
+
+    - `best_epoch` и `best_mae` — эпоху с наименьшей ошибкой на validation и саму ошибку;
+    - `train_epoch` — эпоху, которую выбрали бы по train, и `mae_if_train` — ошибку на validation в эту эпоху;
+    - `gap_end` — разрыв validation − train после последней эпохи.
+  prelude: |
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.neural_network import MLPRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_valid_s = scaler.transform(X_valid)
+    unit = 10000
+    small = X_train.sample(n=128, random_state=42).index
+    X_small, y_small = scaler.transform(X_train.loc[small]), y_train.loc[small]
+    X_check, y_check = X_valid_s[:1000], y_valid.iloc[:1000]      # 1 000 машин validation — чтобы считалось быстро
+    net = MLPRegressor(hidden_layer_sizes=(64, 32), learning_rate_init=0.003, batch_size=32, random_state=42)
+    rows = []
+    for epoch in range(1, 121):
+        net.partial_fit(X_small, y_small / unit)
+        rows.append({'train': mean_absolute_error(y_small, net.predict(X_small) * unit),
+                     'validation': mean_absolute_error(y_check, net.predict(X_check) * unit)})
+    curves = pd.DataFrame(rows, index=pd.RangeIndex(1, 121, name='эпоха'))
+  starter: |
+    best_epoch = ...
+    best_mae = ...
+    train_epoch = ...
+    mae_if_train = ...
+    gap_end = ...
+    print(best_epoch, round(best_mae), '|', train_epoch, round(mae_if_train), '|', round(gap_end))
+  solution: |
+    best_epoch = curves['validation'].idxmin()
+    best_mae = curves['validation'].min()
+    train_epoch = curves['train'].idxmin()
+    mae_if_train = curves.loc[train_epoch, 'validation']
+    gap_end = curves['validation'].iloc[-1] - curves['train'].iloc[-1]
+    print(best_epoch, round(best_mae), '|', train_epoch, round(mae_if_train), '|', round(gap_end))
+  explanation: |
+    - Минимум на validation — 45-я эпоха, 2 727 евро на этих 1 000 машинах. Это та же 45-я эпоха, что в уроке на всей validation.
+    - По train лучшей кажется последняя, 120-я эпоха: ошибка на train падает почти всё время. Но на validation там 2 980 — на 253 евро хуже.
+    - К концу разрыв между validation и train — 831 евро: сеть запоминает 128 обучающих машин. Растущий разрыв и рост ошибки на validation — признаки переобучения.
+  hints:
+    - "Номер эпохи с наименьшим значением — `curves['validation'].idxmin()`."
+    - "По train — `curves['train'].idxmin()`, ошибка на validation в эту эпоху — `curves.loc[train_epoch, 'validation']`."
+    - "Последняя строка — `.iloc[-1]`."
+  tests: |
+    be = var('best_epoch', 'number', 'числом')
+    if int(be) == int(ref('curves')['validation'].to_numpy().argmin()):
+        fail('`best_epoch` — номер эпохи из индекса `curves` (с 1): `curves[\'validation\'].idxmin()`.')
+    equal(int(be), int(ref('best_epoch')), 'Лучшая эпоха по validation — {expected}, а у вас {actual}.')
+    close(var('best_mae', 'number', 'числом'), ref('best_mae'), 'Наименьшая ошибка на validation — {expected}, а у вас {actual}.')
+    te = int(var('train_epoch', 'number', 'числом'))
+    equal(te, int(ref('train_epoch')), 'По train выбрали бы эпоху {expected}, а у вас {actual}.')
+    close(var('mae_if_train', 'number', 'числом'), ref('mae_if_train'), 'Ошибка на validation в эпоху, выбранную по train, — {expected}, а у вас {actual}.')
+    g = var('gap_end', 'number', 'числом')
+    if abs(g + ref('gap_end')) < 1e-6:
+        fail('Разрыв — validation минус train.')
+    close(g, ref('gap_end'), 'Разрыв после последней эпохи — {expected}, а у вас {actual}.')
+    close(alt('best_mae'), alt_ref('best_mae'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        best_epoch = curves['validation'].idxmin()
+        best_mae = curves['validation'].min()
+        train_epoch = curves['train'].idxmin()
+        mae_if_train = curves.loc[train_epoch, 'validation']
+        gap_end = curves['train'].iloc[-1] - curves['validation'].iloc[-1]
+      expect: validation минус train
+    - code: |
+        best_epoch = int(np.argmin(curves['validation']))
+        best_mae = curves['validation'].min()
+        train_epoch = curves['train'].idxmin()
+        mae_if_train = curves.loc[train_epoch, 'validation']
+        gap_end = curves['validation'].iloc[-1] - curves['train'].iloc[-1]
+      expect: с 1
+
+- id: m8-l5-t2
+  title: Правило остановки с порогом улучшения
+  difficulty: main
+  introduces: []
+  uses: [early-stopping, py-functions]
+  statement: |
+    Напишите функцию `stop_epoch(curve, patience, min_delta=0.0)`. `curve` — список ошибок на validation по эпохам (эпохи с 1). Улучшением считается снижение ошибки **больше чем на** `min_delta` относительно лучшего значения. Если `patience` эпох подряд улучшения нет, обучение останавливается. Функция возвращает пару `(эпоха остановки, лучшая эпоха)`; если остановки не было — `(len(curve), лучшая эпоха)`.
+
+    Примените её к кривой `valid_curve` из подготовки (та же сеть, что в прошлом задании): `stops` — словарь `{(patience, min_delta): результат}` для пар из списка `settings`.
+  prelude: |
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.neural_network import MLPRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_valid_s = scaler.transform(X_valid)
+    unit = 10000
+    small = X_train.sample(n=128, random_state=42).index
+    X_small, y_small = scaler.transform(X_train.loc[small]), y_train.loc[small]
+    X_check, y_check = X_valid_s[:1000], y_valid.iloc[:1000]
+    net = MLPRegressor(hidden_layer_sizes=(64, 32), learning_rate_init=0.003, batch_size=32, random_state=42)
+    valid_curve = []
+    for epoch in range(1, 121):
+        net.partial_fit(X_small, y_small / unit)
+        valid_curve.append(mean_absolute_error(y_check, net.predict(X_check) * unit))
+    settings = [(3, 0.0), (5, 0.0), (5, 20.0), (40, 0.0)]
+  starter: |
+    def stop_epoch(curve, patience, min_delta=0.0):
+        best_epoch, best_value = 1, curve[0]
+        for epoch, value in enumerate(curve, start=1):
+            if ...:
+                best_epoch, best_value = epoch, value
+            elif ...:
+                return epoch, best_epoch
+        return len(curve), best_epoch
+
+    stops = {(p, d): stop_epoch(valid_curve, p, d) for p, d in settings}
+    print(stops)
+  solution: |
+    def stop_epoch(curve, patience, min_delta=0.0):
+        best_epoch, best_value = 1, curve[0]
+        for epoch, value in enumerate(curve, start=1):
+            if value < best_value - min_delta:
+                best_epoch, best_value = epoch, value
+            elif epoch - best_epoch >= patience:
+                return epoch, best_epoch
+        return len(curve), best_epoch
+
+    stops = {(p, d): stop_epoch(valid_curve, p, d) for p, d in settings}
+    print(stops)
+  explanation: |
+    - С `patience=3` обучение обрывается на 8-й эпохе: в начале кривая на несколько эпох пошла вверх, и лучшей осталась 5-я — сеть недообучена.
+    - С `patience=5` — остановка на 50-й, лучшая 45-я; с `patience=40` — на 85-й, лучшая та же: терпение дороже по времени, но надёжнее.
+    - `min_delta=20` не считает улучшением снижение меньше чем на 20 евро. Тогда последним «настоящим» улучшением становится 37-я эпоха, и при `patience=5` обучение останавливается уже на 42-й. Порог защищает от бесконечного ожидания крошечных улучшений, но может остановить раньше оптимума. В scikit-learn его роль играет `tol`.
+  hints:
+    - "Улучшение — `value < best_value - min_delta`."
+    - "Остановка — когда с лучшей эпохи прошло `patience` эпох: `epoch - best_epoch >= patience`."
+    - "Если цикл закончился без остановки, функция возвращает `(len(curve), best_epoch)` — это уже есть в заготовке."
+  tests: |
+    f = var('stop_epoch')
+    ensure(callable(f), '`stop_epoch` должна быть функцией.')
+    c1 = [10.0, 9.0, 8.0, 8.5, 8.6, 8.7, 7.0, 7.5]
+    got = tuple(f(c1, 3))
+    ensure(got == (6, 3), 'Для кривой {0} при patience=3 ожидается (6, 3): лучшая 3-я эпоха, затем 3 эпохи без улучшения. У вас {1}.'.format(c1, got))
+    c2 = [5.0, 4.0, 3.0, 2.0]
+    ensure(tuple(f(c2, 2)) == (4, 4), 'Если ошибка падает до конца, остановки нет: функция возвращает `(len(curve), лучшая эпоха)` — для {0} это (4, 4), а у вас {1}.'.format(c2, tuple(f(c2, 2))))
+    c3 = [10.0, 9.99, 9.98, 9.97, 9.0]
+    g3 = tuple(f(c3, 3, 0.05))
+    if g3 == (5, 5):
+        fail('Снижение на 0.01 меньше `min_delta=0.05` и не считается улучшением: условие `value < best_value - min_delta`.')
+    ensure(g3 == (4, 1), 'Для {0} при patience=3 и min_delta=0.05 ожидается (4, 1), а у вас {1}.'.format(c3, g3))
+    s = var('stops', dict, 'словарём')
+    ensure(set(s) == set(ref('settings')), 'Ключи `stops` — пары `(patience, min_delta)` из `settings`.')
+    for k in ref('settings'):
+        ensure(tuple(s[k]) == tuple(ref('stops')[k]), 'Для patience={0}, min_delta={1} на кривой из подготовки ожидается {2}, а у вас {3}.'.format(k[0], k[1], tuple(ref('stops')[k]), tuple(s[k])))
+    equal(tuple(alt('stops')[(5, 20.0)]), tuple(alt_ref('stops')[(5, 20.0)]), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def stop_epoch(curve, patience, min_delta=0.0):
+            best_epoch, best_value = 1, curve[0]
+            for epoch, value in enumerate(curve, start=1):
+                if value < best_value:
+                    best_epoch, best_value = epoch, value
+                elif epoch - best_epoch >= patience:
+                    return epoch, best_epoch
+            return len(curve), best_epoch
+        stops = {(p, d): stop_epoch(valid_curve, p, d) for p, d in settings}
+      expect: min_delta
+    - code: |
+        def stop_epoch(curve, patience, min_delta=0.0):
+            best_epoch, best_value = 1, curve[0]
+            for epoch, value in enumerate(curve, start=1):
+                if value < best_value - min_delta:
+                    best_epoch, best_value = epoch, value
+                elif epoch - best_epoch > patience:
+                    return epoch, best_epoch
+            return len(curve), best_epoch
+        stops = {(p, d): stop_epoch(valid_curve, p, d) for p, d in settings}
+      expect: patience=3
+
+- id: m8-l5-t3
+  title: Остановка с восстановлением лучших весов
+  difficulty: main
+  introduces: []
+  uses: [early-stopping, epoch-batch]
+  statement: |
+    Обучите сеть `net` по одной эпохе (`partial_fit`) не больше 200 эпох с ранней остановкой: после каждой эпохи считайте MAE в евро на 1 000 машинах `X_check`, `y_check`. Если она стала меньше лучшей — запомните копию сети `copy.deepcopy(net)` в `best_net`, номер эпохи в `best_epoch` и обнулите счётчик; иначе увеличьте счётчик. Остановитесь, когда счётчик дойдёт до `patience = 15`. Номер последней пройденной эпохи — `stopped_epoch`.
+
+    Затем на **всей** validation посчитайте `mae_best` — MAE восстановленной сети `best_net` и `mae_last` — MAE сети `net` последней эпохи.
+  prelude: |
+    import copy
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.neural_network import MLPRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_valid_s = scaler.transform(X_valid)
+    unit = 10000
+    small = X_train.sample(n=128, random_state=42).index
+    X_small, y_small = scaler.transform(X_train.loc[small]), y_train.loc[small]
+    X_check, y_check = X_valid_s[:1000], y_valid.iloc[:1000]
+    net = MLPRegressor(hidden_layer_sizes=(64, 32), learning_rate_init=0.003, batch_size=32, random_state=42)
+    patience = 15
+  starter: |
+    best_mae, best_epoch, best_net, wait = np.inf, 0, None, 0
+    for epoch in range(1, 201):
+        net.partial_fit(X_small, y_small / unit)
+        mae = ...
+        if ...:
+            best_mae, best_epoch, best_net, wait = ...
+        else:
+            wait += 1
+            if ...:
+                break
+    stopped_epoch = epoch
+    mae_best = ...
+    mae_last = ...
+    print(stopped_epoch, best_epoch, round(mae_best), round(mae_last))
+  solution: |
+    best_mae, best_epoch, best_net, wait = np.inf, 0, None, 0
+    for epoch in range(1, 201):
+        net.partial_fit(X_small, y_small / unit)
+        mae = mean_absolute_error(y_check, net.predict(X_check) * unit)
+        if mae < best_mae:
+            best_mae, best_epoch, best_net, wait = mae, epoch, copy.deepcopy(net), 0
+        else:
+            wait += 1
+            if wait >= patience:
+                break
+    stopped_epoch = epoch
+    mae_best = mean_absolute_error(y_valid, best_net.predict(X_valid_s) * unit)
+    mae_last = mean_absolute_error(y_valid, net.predict(X_valid_s) * unit)
+    print(stopped_epoch, best_epoch, round(mae_best), round(mae_last))
+  explanation: |
+    - Лучшая эпоха — 45-я, остановка — на 60-й: 15 эпох без улучшения. Обучение заняло 60 эпох вместо 200.
+    - Восстановленная сеть ошибается на всей validation на 3 083 евро, сеть 60-й эпохи — на 3 118. Без копии мы остались бы с худшей сетью.
+    - `copy.deepcopy(net)` копирует сеть целиком. Простое присваивание `best_net = net` сохранило бы ссылку на тот же объект, и дальнейшее обучение меняло бы «лучшую» сеть вместе с текущей.
+  hints:
+    - "Ошибка эпохи — `mean_absolute_error(y_check, net.predict(X_check) * unit)`."
+    - "Новая лучшая: `best_mae, best_epoch, best_net, wait = mae, epoch, copy.deepcopy(net), 0`; остановка — `wait >= patience`."
+    - "На всей validation: `mean_absolute_error(y_valid, best_net.predict(X_valid_s) * unit)` и то же для `net`."
+  tests: |
+    import numpy as np
+    se = int(var('stopped_epoch', 'number', 'числом'))
+    be = int(var('best_epoch', 'number', 'числом'))
+    bn = var('best_net')
+    ensure(hasattr(bn, 'predict'), '`best_net` — копия сети лучшей эпохи: `copy.deepcopy(net)`.')
+    ensure(bn is not var('net'), '`best_net` указывает на тот же объект, что и `net`: сохраните копию — `copy.deepcopy(net)`, иначе дальнейшее обучение изменит и её.')
+    equal(be, int(ref('best_epoch')), 'Лучшая эпоха — {expected}, а у вас {actual}.')
+    if se == int(ref('stopped_epoch')) + 1:
+        fail('Остановка — как только счётчик эпох без улучшения дошёл до `patience`: `wait >= patience`.')
+    equal(se, int(ref('stopped_epoch')), 'Обучение должно остановиться на эпохе {expected}, а у вас {actual}.')
+    mb = var('mae_best', 'number', 'числом')
+    if abs(mb - ref('best_mae')) < 1e-6:
+        fail('`mae_best` считают на всей validation (`X_valid_s`, `y_valid`), а не на 1 000 машинах для остановки.')
+    close(mb, ref('mae_best'), 'MAE восстановленной сети на всей validation — {expected}, а у вас {actual}.', rtol=1e-5)
+    close(var('mae_last', 'number', 'числом'), ref('mae_last'), 'MAE сети последней эпохи — {expected}, а у вас {actual}.', rtol=1e-5)
+    close(alt('mae_best'), alt_ref('mae_best'), HARDCODE_MSG, rtol=1e-5)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        best_mae, best_epoch, best_net, wait = np.inf, 0, None, 0
+        for epoch in range(1, 201):
+            net.partial_fit(X_small, y_small / unit)
+            mae = mean_absolute_error(y_check, net.predict(X_check) * unit)
+            if mae < best_mae:
+                best_mae, best_epoch, best_net, wait = mae, epoch, net, 0
+            else:
+                wait += 1
+                if wait >= patience:
+                    break
+        stopped_epoch = epoch
+        mae_best = mean_absolute_error(y_valid, best_net.predict(X_valid_s) * unit)
+        mae_last = mean_absolute_error(y_valid, net.predict(X_valid_s) * unit)
+      expect: copy.deepcopy
+    - code: |
+        best_mae, best_epoch, best_net, wait = np.inf, 0, None, 0
+        for epoch in range(1, 201):
+            net.partial_fit(X_small, y_small / unit)
+            mae = mean_absolute_error(y_check, net.predict(X_check) * unit)
+            if mae < best_mae:
+                best_mae, best_epoch, best_net, wait = mae, epoch, copy.deepcopy(net), 0
+            else:
+                wait += 1
+                if wait >= patience:
+                    break
+        stopped_epoch = epoch
+        mae_best = best_mae
+        mae_last = mean_absolute_error(y_valid, net.predict(X_valid_s) * unit)
+      expect: на всей validation
+
+- id: m8-l5-t4
+  title: early_stopping в MLPRegressor
+  difficulty: main
+  introduces: []
+  uses: [early-stopping, mlp]
+  statement: |
+    Обучите на полном train `MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=300, early_stopping=True, n_iter_no_change=5, random_state=42)` (цена / 10 000). Получите:
+
+    - `n_epochs` — сколько эпох прошла сеть;
+    - `best_epoch` — эпоху с лучшим качеством на отложенной части train (по `validation_scores_`, эпохи с 1);
+    - `best_r2` — это лучшее качество (R²);
+    - `n_holdout` — сколько машин train сеть отложила для проверки (`validation_fraction` по умолчанию 0.1; округлите);
+    - `mae` — MAE на нашей validation в евро.
+  prelude: |
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.neural_network import MLPRegressor
+    from sklearn.metrics import mean_absolute_error
+    from sklearn.exceptions import ConvergenceWarning
+    warnings.filterwarnings('ignore', category=ConvergenceWarning)
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s, X_valid_s = scaler.transform(X_train), scaler.transform(X_valid)
+    unit = 10000
+  starter: |
+    net = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=300, early_stopping=True,
+                       n_iter_no_change=5, random_state=42).fit(...)
+    n_epochs = ...
+    best_epoch = ...
+    best_r2 = ...
+    n_holdout = ...
+    mae = ...
+    print(n_epochs, best_epoch, round(best_r2, 4), n_holdout, round(mae))
+  solution: |
+    net = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=300, early_stopping=True,
+                       n_iter_no_change=5, random_state=42).fit(X_train_s, y_train / unit)
+    n_epochs = net.n_iter_
+    best_epoch = int(np.argmax(net.validation_scores_)) + 1
+    best_r2 = net.best_validation_score_
+    n_holdout = round(0.1 * len(X_train_s))
+    mae = mean_absolute_error(y_valid, net.predict(X_valid_s) * unit)
+    print(n_epochs, best_epoch, round(best_r2, 4), n_holdout, round(mae))
+  explanation: |
+    - Сеть прошла 61 эпоху: лучшая — 55-я, после неё 5 эпох подряд R² не улучшался хотя бы на `tol`. В конце веса 55-й эпохи вернулись на место.
+    - Для проверки сеть отложила 1 924 машины train (10 %) — нашу validation она не видела, поэтому MAE на ней (2 798 евро) — честная оценка выбранной сети.
+    - С `n_iter_no_change=10` (урок) сеть терпела дольше: 92 эпохи, лучшая 81-я, 2 780 евро. Меньшее терпение экономит время, но может остановить раньше оптимума.
+  hints:
+    - "Эпохи — `net.n_iter_`, качество по эпохам — `net.validation_scores_`."
+    - "Лучшая эпоха — `int(np.argmax(net.validation_scores_)) + 1` (R² чем больше, тем лучше), лучшее значение — `net.best_validation_score_`."
+    - "Отложено `round(0.1 * len(X_train_s))` машин; MAE — `mean_absolute_error(y_valid, net.predict(X_valid_s) * unit)`."
+  tests: |
+    import numpy as np
+    equal(int(var('n_epochs', 'number', 'числом')), int(ref('n_epochs')), 'Сеть прошла {expected} эпох, а у вас {actual}: `net.n_iter_`.')
+    be = int(var('best_epoch', 'number', 'числом'))
+    if be == int(np.argmin(ref('net').validation_scores_)) + 1:
+        fail('R² — чем больше, тем лучше: лучшая эпоха — `np.argmax(net.validation_scores_) + 1`.')
+    if be == int(ref('best_epoch')) - 1:
+        fail('Эпохи считаем с 1: `int(np.argmax(net.validation_scores_)) + 1`.')
+    equal(be, int(ref('best_epoch')), 'Лучшая эпоха — {expected}, а у вас {actual}.')
+    close(var('best_r2', 'number', 'числом'), ref('best_r2'), 'Лучший R² — {expected}, а у вас {actual}.', rtol=1e-5)
+    equal(int(var('n_holdout', 'number', 'числом')), int(ref('n_holdout')), 'Отложено {expected} машин, а у вас {actual}.')
+    close(var('mae', 'number', 'числом'), ref('mae'), 'MAE на validation — {expected}, а у вас {actual}.', rtol=1e-4)
+    close(alt('mae'), alt_ref('mae'), HARDCODE_MSG, rtol=1e-4)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        net = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=300, early_stopping=True,
+                           n_iter_no_change=5, random_state=42).fit(X_train_s, y_train / unit)
+        n_epochs = net.n_iter_
+        best_epoch = int(np.argmin(net.validation_scores_)) + 1
+        best_r2 = net.best_validation_score_
+        n_holdout = round(0.1 * len(X_train_s))
+        mae = mean_absolute_error(y_valid, net.predict(X_valid_s) * unit)
+      expect: np.argmax
+    - code: |
+        net = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=300, early_stopping=True,
+                           n_iter_no_change=5, random_state=42).fit(X_train_s, y_train / unit)
+        n_epochs = net.n_iter_
+        best_epoch = int(np.argmax(net.validation_scores_)) + 1
+        best_r2 = net.best_validation_score_
+        n_holdout = round(0.1 * len(X_train_s))
+        mae = mean_absolute_error(y_valid, net.predict(X_valid_s))
+      expect: MAE на validation
+
+- id: m8-l5-t5
+  title: Подбор штрафа alpha
+  difficulty: star
+  introduces: []
+  uses: [early-stopping, regularization, overfitting]
+  statement: |
+    Обучите широкую сеть на 128 машинах с разными штрафами из `alphas`: `MLPRegressor(hidden_layer_sizes=(64, 32), learning_rate_init=0.003, batch_size=32, max_iter=200, n_iter_no_change=200, alpha=alpha, random_state=42)`. Получите `results` — DataFrame с индексом-значением `alpha` и колонками:
+
+    - `'train'` и `'validation'` — MAE в евро на 128 машинах и на всей validation;
+    - `'gap'` — validation − train;
+    - `'weights_sq'` — сумма квадратов всех весов сети (`coefs_`).
+
+    И `best_alpha` — штраф с наименьшей MAE на validation.
+  prelude: |
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.neural_network import MLPRegressor
+    from sklearn.metrics import mean_absolute_error
+    from sklearn.exceptions import ConvergenceWarning
+    warnings.filterwarnings('ignore', category=ConvergenceWarning)
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_valid_s = scaler.transform(X_valid)
+    unit = 10000
+    small = X_train.sample(n=128, random_state=42).index
+    X_small, y_small = scaler.transform(X_train.loc[small]), y_train.loc[small]
+    alphas = [0.0001, 0.1, 1.0, 3.0]
+  starter: |
+    rows = {}
+    for alpha in alphas:
+        m = MLPRegressor(hidden_layer_sizes=(64, 32), learning_rate_init=0.003, batch_size=32, max_iter=200,
+                         n_iter_no_change=200, alpha=alpha, random_state=42).fit(...)
+        train_mae = ...
+        valid_mae = ...
+        rows[alpha] = {'train': train_mae, 'validation': valid_mae, 'gap': ..., 'weights_sq': ...}
+    results = pd.DataFrame(rows).T
+    best_alpha = ...
+    print(results.round(1))
+    print(best_alpha)
+  solution: |
+    rows = {}
+    for alpha in alphas:
+        m = MLPRegressor(hidden_layer_sizes=(64, 32), learning_rate_init=0.003, batch_size=32, max_iter=200,
+                         n_iter_no_change=200, alpha=alpha, random_state=42).fit(X_small, y_small / unit)
+        train_mae = mean_absolute_error(y_small, m.predict(X_small) * unit)
+        valid_mae = mean_absolute_error(y_valid, m.predict(X_valid_s) * unit)
+        rows[alpha] = {'train': train_mae, 'validation': valid_mae, 'gap': valid_mae - train_mae,
+                       'weights_sq': sum((W ** 2).sum() for W in m.coefs_)}
+    results = pd.DataFrame(rows).T
+    best_alpha = results['validation'].idxmin()
+    print(results.round(1))
+    print(best_alpha)
+  explanation: |
+    - С почти нулевым штрафом (0.0001, значение по умолчанию) сеть переобучается: 1 640 евро на train, 3 628 на validation, разрыв почти 2 000. Сумма квадратов весов — 119.
+    - С ростом штрафа веса уменьшаются (33 при alpha = 0.1, 7 при alpha = 1), ошибка на train растёт, а разрыв исчезает. Лучший штраф — 1.0: 3 129 евро на validation, почти как у ранней остановки (3 083).
+    - При alpha = 3 сеть уже недообучена: и train (3 763), и validation (3 442) хуже. Штраф, как и число эпох, — гиперпараметр, и выбирают его по validation.
+  hints:
+    - "Учите на 128 машинах: `.fit(X_small, y_small / unit)`; MAE — на них же и на `X_valid_s`, `y_valid`."
+    - "Сумма квадратов весов — `sum((W ** 2).sum() for W in m.coefs_)`."
+    - "`best_alpha = results['validation'].idxmin()`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    rs = var('results', pd.DataFrame, 'таблицей DataFrame')
+    ensure([float(a) for a in rs.index] == [float(a) for a in ref('alphas')], 'Индекс `results` — значения `alpha` из `alphas`.')
+    ensure({'train', 'validation', 'gap', 'weights_sq'} <= set(rs.columns), 'Колонки `results` — `train`, `validation`, `gap` и `weights_sq`.')
+    r = ref('results')
+    same_array(rs['train'].to_numpy(dtype=float), r['train'].to_numpy(dtype=float), 'MAE на 128 обучающих машинах не совпадает.', rtol=1e-4)
+    same_array(rs['validation'].to_numpy(dtype=float), r['validation'].to_numpy(dtype=float), 'MAE на validation не совпадает: считайте на всей validation в евро.', rtol=1e-4)
+    gp = rs['gap'].to_numpy(dtype=float)
+    if np.allclose(gp, -r['gap'].to_numpy(dtype=float), rtol=1e-4):
+        fail('`gap` — validation минус train.')
+    same_array(gp, r['gap'].to_numpy(dtype=float), '`gap` — validation − train.', rtol=1e-4)
+    ws = rs['weights_sq'].to_numpy(dtype=float)
+    same_array(ws, r['weights_sq'].to_numpy(dtype=float), '`weights_sq` — `sum((W ** 2).sum() for W in m.coefs_)`.', rtol=1e-4)
+    equal(float(var('best_alpha', 'number', 'числом')), float(ref('best_alpha')), 'Лучший штраф — {expected}, а у вас {actual}.')
+    close(alt('results')['validation'].iloc[0], alt_ref('results')['validation'].iloc[0], HARDCODE_MSG, rtol=1e-4)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        rows = {}
+        for alpha in alphas:
+            m = MLPRegressor(hidden_layer_sizes=(64, 32), learning_rate_init=0.003, batch_size=32, max_iter=200,
+                             n_iter_no_change=200, alpha=alpha, random_state=42).fit(X_small, y_small / unit)
+            train_mae = mean_absolute_error(y_small, m.predict(X_small) * unit)
+            valid_mae = mean_absolute_error(y_valid, m.predict(X_valid_s) * unit)
+            rows[alpha] = {'train': train_mae, 'validation': valid_mae, 'gap': train_mae - valid_mae,
+                           'weights_sq': sum((W ** 2).sum() for W in m.coefs_)}
+        results = pd.DataFrame(rows).T
+        best_alpha = results['validation'].idxmin()
+      expect: validation минус train
+    - code: |
+        rows = {}
+        for alpha in alphas:
+            m = MLPRegressor(hidden_layer_sizes=(64, 32), learning_rate_init=0.003, batch_size=32, max_iter=200,
+                             n_iter_no_change=200, alpha=alpha, random_state=42).fit(X_small, y_small / unit)
+            train_mae = mean_absolute_error(y_small, m.predict(X_small) * unit)
+            valid_mae = mean_absolute_error(y_valid, m.predict(X_valid_s) * unit)
+            rows[alpha] = {'train': train_mae, 'validation': valid_mae, 'gap': valid_mae - train_mae,
+                           'weights_sq': sum((W ** 2).sum() for W in m.coefs_)}
+        results = pd.DataFrame(rows).T
+        best_alpha = results['train'].idxmin()
+      expect: Лучший штраф

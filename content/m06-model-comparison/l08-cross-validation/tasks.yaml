@@ -1,0 +1,443 @@
+- id: m6-l8-t1
+  title: Блоки KFold
+  difficulty: warmup
+  introduces: [k-fold-cv]
+  uses: []
+  statement: |
+    Создайте `cv` — `KFold` на 3 блока с перемешиванием (`random_state=42`). Пройдите по `cv.split(X_train)` и соберите `sizes` — список пар (размер обучения, размер проверки) для каждого шага и `checked` — все позиции проверочных блоков, склеенные в один массив. Затем `each_once` — `True`, если каждая позиция обучающей части встречается в `checked` ровно один раз.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split, KFold
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    cv = ...
+    sizes = []
+    parts = []
+    for fit_pos, check_pos in cv.split(X_train):
+        sizes.append(...)
+        parts.append(check_pos)
+    checked = np.concatenate(parts)
+    each_once = ...
+    print(sizes, each_once)
+  solution: |
+    cv = KFold(n_splits=3, shuffle=True, random_state=42)
+    sizes = []
+    parts = []
+    for fit_pos, check_pos in cv.split(X_train):
+        sizes.append((len(fit_pos), len(check_pos)))
+        parts.append(check_pos)
+    checked = np.concatenate(parts)
+    each_once = bool(np.array_equal(np.sort(checked), np.arange(len(X_train))))
+    print(sizes, each_once)
+  explanation: |
+    - Каждый шаг: обучение на 12 826 машинах, проверка на 6 413 — вместе все 19 239.
+    - Отсортированные проверочные позиции совпадают с 0, 1, …, n − 1: каждая машина ровно один раз была в проверке и дважды — в обучении.
+    - Это свойство и отличает CV от трёх случайных разбиений: там одни машины могли бы попасть в проверку несколько раз, а другие — ни разу.
+  hints:
+    - "`KFold(n_splits=3, shuffle=True, random_state=42)`; размеры — `len(fit_pos)` и `len(check_pos)`."
+    - "Каждая позиция ровно один раз — значит, отсортированный `checked` равен `np.arange(len(X_train))`."
+    - "`each_once = bool(np.array_equal(np.sort(checked), np.arange(len(X_train))))`."
+  tests: |
+    import numpy as np
+    from sklearn.model_selection import KFold
+    c = var('cv', KFold, 'объектом KFold')
+    ensure(c.n_splits == 3, 'Блоков должно быть 3: `n_splits=3`.')
+    ensure(c.shuffle and c.random_state == 42, 'Включите перемешивание: `shuffle=True, random_state=42`.')
+    s = [tuple(int(v) for v in pair) for pair in var('sizes', list, 'списком')]
+    equal(s, [tuple(p) for p in ref('sizes')], 'Размеры (обучение, проверка) по шагам — {expected}, а у вас {actual}.')
+    same_array(np.sort(np.asarray(var('checked'))), np.sort(ref('checked')), 'В `checked` должны быть все проверочные позиции трёх шагов.')
+    equal(bool(var('each_once')), True, 'Каждая позиция встречается в проверке ровно один раз — `each_once` должно быть True.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        cv = KFold(n_splits=3)
+        sizes = []
+        parts = []
+        for fit_pos, check_pos in cv.split(X_train):
+            sizes.append((len(fit_pos), len(check_pos)))
+            parts.append(check_pos)
+        checked = np.concatenate(parts)
+        each_once = bool(np.array_equal(np.sort(checked), np.arange(len(X_train))))
+      expect: перемешивание
+    - code: |
+        cv = KFold(n_splits=3, shuffle=True, random_state=42)
+        sizes = []
+        parts = []
+        for fit_pos, check_pos in cv.split(X_train):
+            sizes.append((len(check_pos), len(fit_pos)))
+            parts.append(check_pos)
+        checked = np.concatenate(parts)
+        each_once = bool(np.array_equal(np.sort(checked), np.arange(len(X_train))))
+      expect: "Размеры (обучение, проверка)"
+
+- id: m6-l8-t2
+  title: Кросс-валидация циклом
+  difficulty: main
+  introduces: [k-fold-cv]
+  uses: [sk-pipeline, knn]
+  statement: |
+    Проведите кросс-валидацию Pipeline `knn` вручную: для каждого шага `cv.split(X_train)` возьмите **новую** копию модели (`clone(knn)`), обучите её на обучающих позициях и посчитайте MAE на проверочных. Получите `fold_mae` — массив трёх ошибок, `cv_mean` и `cv_std`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split, KFold
+    from sklearn.base import clone
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import Pipeline
+    from sklearn.neighbors import KNeighborsRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    knn = Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=20))])
+    cv = KFold(n_splits=3, shuffle=True, random_state=42)
+  starter: |
+    errors = []
+    for fit_pos, check_pos in cv.split(X_train):
+        model = clone(knn)
+        ...
+        errors.append(...)
+    fold_mae = np.array(errors)
+    cv_mean = ...
+    cv_std = ...
+    print(fold_mae.round(1), round(cv_mean, 1), round(cv_std, 1))
+  solution: |
+    errors = []
+    for fit_pos, check_pos in cv.split(X_train):
+        model = clone(knn)
+        model.fit(X_train.iloc[fit_pos], y_train.iloc[fit_pos])
+        errors.append(mean_absolute_error(y_train.iloc[check_pos], model.predict(X_train.iloc[check_pos])))
+    fold_mae = np.array(errors)
+    cv_mean = fold_mae.mean()
+    cv_std = fold_mae.std()
+    print(fold_mae.round(1), round(cv_mean, 1), round(cv_std, 1))
+  explanation: |
+    - Позиции из `cv.split` — номера по порядку, поэтому строки берём через `iloc` (и для `X_train`, и для `y_train`).
+    - `clone` даёт необученную копию с теми же гиперпараметрами: каждый шаг начинается «с чистого листа», и внутри Pipeline scaler заново учится только на обучающих блоках.
+    - Получилось 2 757 ± 24 евро — ровно как у `cross_validate` в уроке.
+  hints:
+    - "Обучение — `model.fit(X_train.iloc[fit_pos], y_train.iloc[fit_pos])`."
+    - "Ошибка — MAE между `y_train.iloc[check_pos]` и прогнозом для `X_train.iloc[check_pos]`."
+    - "`cv_mean = fold_mae.mean()`; `cv_std = fold_mae.std()`."
+  tests: |
+    import numpy as np
+    f = np.asarray(var('fold_mae'), dtype=float)
+    ensure(f.shape == (3,), '`fold_mae` — три ошибки, по одной на шаг.')
+    same_array(f, ref('fold_mae'), 'Ошибки по блокам не совпадают: обучайте копию на `iloc[fit_pos]`, проверяйте на `iloc[check_pos]`.')
+    close(var('cv_mean', 'number', 'числом'), ref('cv_mean'), 'Средняя MAE — {expected}, а у вас {actual}.')
+    close(var('cv_std', 'number', 'числом'), ref('cv_std'), 'Разброс — {expected}, а у вас {actual}.')
+    close(alt('cv_mean'), alt_ref('cv_mean'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        errors = []
+        for fit_pos, check_pos in cv.split(X_train):
+            model = clone(knn)
+            model.fit(X_train.iloc[fit_pos], y_train.iloc[fit_pos])
+            errors.append(mean_absolute_error(y_train.iloc[fit_pos], model.predict(X_train.iloc[fit_pos])))
+        fold_mae = np.array(errors)
+        cv_mean = fold_mae.mean()
+        cv_std = fold_mae.std()
+      expect: Ошибки по блокам
+    - code: |
+        errors = []
+        for fit_pos, check_pos in cv.split(X_train):
+            model = clone(knn)
+            model.fit(X_train.iloc[fit_pos], y_train.iloc[fit_pos])
+            errors.append(mean_absolute_error(y_train.iloc[check_pos], model.predict(X_train.iloc[check_pos])))
+        fold_mae = np.array(errors)
+        cv_mean = fold_mae.mean()
+        cv_std = fold_mae.max() - fold_mae.min()
+      expect: Разброс
+
+- id: m6-l8-t3
+  title: cross_validate и знак метрики
+  difficulty: main
+  introduces: [cross-validate]
+  uses: [sk-pipeline]
+  statement: |
+    Запустите `cross_validate` для Pipeline `knn` с блоками `cv`, метрикой `'neg_mean_absolute_error'` и ошибками на обучающих блоках (`return_train_score=True`). Получите `res`, `fold_mae` — MAE на проверочных блоках (положительные числа), `cv_mean` и `train_mean` — среднюю MAE на обучающих блоках.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split, KFold
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import Pipeline
+    from sklearn.neighbors import KNeighborsRegressor
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    knn = Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=20))])
+    cv = KFold(n_splits=3, shuffle=True, random_state=42)
+  starter: |
+    from sklearn.model_selection import cross_validate
+
+    res = ...
+    fold_mae = ...
+    cv_mean = ...
+    train_mean = ...
+    print(sorted(res))
+    print(fold_mae.round(1), round(cv_mean, 1), round(train_mean, 1))
+  solution: |
+    from sklearn.model_selection import cross_validate
+
+    res = cross_validate(knn, X_train, y_train, cv=cv, scoring='neg_mean_absolute_error', return_train_score=True)
+    fold_mae = -res['test_score']
+    cv_mean = fold_mae.mean()
+    train_mean = -res['train_score'].mean()
+    print(sorted(res))
+    print(fold_mae.round(1), round(cv_mean, 1), round(train_mean, 1))
+  explanation: |
+    - `res` — словарь массивов: `fit_time`, `score_time`, `test_score`, `train_score`. Значения score отрицательные: в scikit-learn «больше — лучше», поэтому ошибка возвращается со знаком минус.
+    - MAE на проверочных блоках — 2 757 в среднем, на обучающих — ≈ 2 605: разрыв ≈ 150 евро, переобучение умеренное.
+    - `test_score` — это блоки CV внутри `X_train`, отложенный test не участвовал.
+  hints:
+    - "`cross_validate(knn, X_train, y_train, cv=cv, scoring='neg_mean_absolute_error', return_train_score=True)`."
+    - "MAE — со сменой знака: `-res['test_score']`."
+    - "`train_mean = -res['train_score'].mean()`."
+  tests: |
+    import numpy as np
+    r = var('res', dict, 'словарём — результатом cross_validate')
+    ensure('train_score' in r, 'Нужны и ошибки на обучающих блоках: `return_train_score=True`.')
+    f = np.asarray(var('fold_mae'), dtype=float)
+    if (f < 0).all():
+        fail('MAE получилась отрицательной: scikit-learn возвращает ошибку со знаком минус — поменяйте знак: `-res[\'test_score\']`.')
+    same_array(f, ref('fold_mae'), 'MAE по блокам не совпадают: метрика `neg_mean_absolute_error`, блоки `cv`.')
+    close(var('cv_mean', 'number', 'числом'), ref('cv_mean'), 'Средняя MAE на проверочных блоках — {expected}, а у вас {actual}.')
+    close(var('train_mean', 'number', 'числом'), ref('train_mean'), 'Средняя MAE на обучающих блоках — {expected}, а у вас {actual}.')
+    close(alt('cv_mean'), alt_ref('cv_mean'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        from sklearn.model_selection import cross_validate
+        res = cross_validate(knn, X_train, y_train, cv=cv, scoring='neg_mean_absolute_error', return_train_score=True)
+        fold_mae = res['test_score']
+        cv_mean = fold_mae.mean()
+        train_mean = res['train_score'].mean()
+      expect: со знаком минус
+    - code: |
+        from sklearn.model_selection import cross_validate
+        res = cross_validate(knn, X_train, y_train, cv=cv, scoring='neg_mean_absolute_error')
+        fold_mae = -res['test_score']
+        cv_mean = fold_mae.mean()
+        train_mean = 0.0
+      expect: "return_train_score=True"
+
+- id: m6-l8-t4
+  title: Сравнить кандидатов кросс-валидацией
+  difficulty: main
+  introduces: [cross-validate]
+  uses: [model-comparison]
+  statement: |
+    Сравните три модели из `candidates` кросс-валидацией на `X_train` (блоки `cv`, метрика MAE). Соберите `cv_table` — DataFrame с индексом-именем модели и колонками `cv_mae` (среднее) и `cv_std` (разброс), отсортированный по `cv_mae`. Затем `best` — лучшая модель и `margin` — на сколько евро вторая модель хуже лучшей.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split, KFold, cross_validate
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import Pipeline
+    from sklearn.linear_model import LinearRegression
+    from sklearn.neighbors import KNeighborsRegressor
+    from sklearn.tree import DecisionTreeRegressor
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    cv = KFold(n_splits=3, shuffle=True, random_state=42)
+    candidates = {
+        'Линейная': Pipeline([('scale', StandardScaler()), ('model', LinearRegression())]),
+        'kNN, k=20': Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=20))]),
+        'Дерево, глубина 7': DecisionTreeRegressor(max_depth=7, random_state=42),
+    }
+  starter: |
+    rows = []
+    for name, model in candidates.items():
+        mae = ...
+        rows.append({'model': name, 'cv_mae': ..., 'cv_std': ...})
+    cv_table = pd.DataFrame(rows).set_index('model').sort_values('cv_mae')
+    best = ...
+    margin = ...
+    print(cv_table.round(1))
+    print(best, round(margin, 1))
+  solution: |
+    rows = []
+    for name, model in candidates.items():
+        mae = -cross_validate(model, X_train, y_train, cv=cv, scoring='neg_mean_absolute_error')['test_score']
+        rows.append({'model': name, 'cv_mae': mae.mean(), 'cv_std': mae.std()})
+    cv_table = pd.DataFrame(rows).set_index('model').sort_values('cv_mae')
+    best = cv_table.index[0]
+    margin = cv_table['cv_mae'].iloc[1] - cv_table['cv_mae'].iloc[0]
+    print(cv_table.round(1))
+    print(best, round(margin, 1))
+  explanation: |
+    - Лучший из трёх — kNN (2 757 ± 24), дерево глубины 7 хуже на ≈ 56 евро (2 814 ± 78).
+    - Отрыв больше разброса kNN, но меньше разброса дерева: дерево сильно зависит от того, какие машины попали в блоки. Сравнивать средние полезно вместе с разбросом.
+    - В уроке к этим кандидатам добавлен лес — он лучше всех (2 693 ± 14).
+  hints:
+    - "MAE по блокам — `-cross_validate(model, X_train, y_train, cv=cv, scoring='neg_mean_absolute_error')['test_score']`."
+    - "Среднее и разброс — `mae.mean()` и `mae.std()`."
+    - "`margin = cv_table['cv_mae'].iloc[1] - cv_table['cv_mae'].iloc[0]`."
+  tests: |
+    import pandas as pd
+    t = var('cv_table', pd.DataFrame, 'таблицей DataFrame')
+    ensure(list(t.columns) == ['cv_mae', 'cv_std'], 'Колонки `cv_table` — cv_mae и cv_std.')
+    if (t['cv_mae'] < 0).all():
+        fail('Средние отрицательные — поменяйте знак `test_score`.')
+    ensure(list(t.index) == list(ref('cv_table').index), 'Порядок моделей — по возрастанию `cv_mae`.')
+    same_frame(t.astype(float), ref('cv_table').astype(float), 'Средние или разбросы не совпадают: для каждой модели — `cross_validate` с `cv` и `neg_mean_absolute_error`.')
+    equal(var('best', str, 'строкой'), ref('best'), 'Лучшая модель по CV — «{expected}», а у вас «{actual}».')
+    close(var('margin', 'number', 'числом'), ref('margin'), 'Отрыв лучшей модели — {expected}, а у вас {actual}.')
+    close(float(alt('cv_table')['cv_mae'].iloc[0]), float(alt_ref('cv_table')['cv_mae'].iloc[0]), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        rows = []
+        for name, model in candidates.items():
+            mae = cross_validate(model, X_train, y_train, cv=cv, scoring='neg_mean_absolute_error')['test_score']
+            rows.append({'model': name, 'cv_mae': mae.mean(), 'cv_std': mae.std()})
+        cv_table = pd.DataFrame(rows).set_index('model').sort_values('cv_mae')
+        best = cv_table.index[0]
+        margin = cv_table['cv_mae'].iloc[1] - cv_table['cv_mae'].iloc[0]
+      expect: поменяйте знак
+    - code: |
+        rows = []
+        for name, model in candidates.items():
+            mae = -cross_validate(model, X_train, y_train, cv=3, scoring='neg_mean_absolute_error')['test_score']
+            rows.append({'model': name, 'cv_mae': mae.mean(), 'cv_std': mae.std()})
+        cv_table = pd.DataFrame(rows).set_index('model').sort_values('cv_mae')
+        best = cv_table.index[0]
+        margin = cv_table['cv_mae'].iloc[1] - cv_table['cv_mae'].iloc[0]
+      expect: Средние или разбросы
+
+- id: m6-l8-t5
+  kind: quiz
+  title: Кросс-валидация без ловушек
+  difficulty: main
+  introduces: [k-fold-cv, cross-validate]
+  uses: []
+  statement: |
+    Ответьте на вопросы о кросс-валидации.
+  quiz:
+    - q: Студент масштабировал весь X_train, а потом запустил cross_validate на готовом массиве. Что не так?
+      options:
+        - Scaler «видел» проверочные блоки — это утечка; масштабирование должно быть внутри Pipeline
+        - Ничего — так даже быстрее
+        - cross_validate не работает с масштабированными данными
+      answer: 0
+      explain: Подготовка должна учиться только на обучающих блоках каждого шага; Pipeline делает это сам.
+    - q: "У двух моделей CV: 2 757 ± 24 и 2 761 ± 30. Какой вывод?"
+      options:
+        - Модели практически равны — разница меньше разброса по блокам
+        - Первая модель надёжно лучше
+        - Нужно выбрать по test
+      answer: 0
+      explain: Разница в 4 евро на фоне разброса 24–30 — на уровне случайности; выбирают по другим соображениям (скорость, простота).
+    - q: Зачем KFold(shuffle=True)?
+      options:
+        - Чтобы блоки не зависели от порядка строк в файле
+        - Чтобы каждая строка попала в проверку несколько раз
+        - Чтобы ускорить обучение
+      answer: 0
+      explain: Если строки упорядочены (по цене, дате, марке), блоки подряд будут непохожими.
+  hints:
+    - Вспомните, где должна учиться подготовка, как сравнивать с учётом разброса и зачем перемешивание.
+    - "Подготовка — внутри Pipeline; разница меньше разброса — равенство; shuffle — против упорядоченности файла."
+    - "Ответы: утечка; практически равны; блоки не зависят от порядка."
+
+- id: m6-l8-t6
+  title: Подобрать k кросс-валидацией и проверить на test
+  difficulty: star
+  introduces: [cross-validate]
+  uses: [hyperparameter, knn]
+  statement: |
+    Теперь train и validation объединены (`X_temp`, `y_temp`) — выбор k сделаем кросс-валидацией на 5 блоках (`cv5`). Для каждого k из `ks` посчитайте среднюю CV-MAE kNN в Pipeline и соберите `k_cv` — Series «k → средняя MAE». Найдите `best_k`, обучите Pipeline с ним на **всех** `X_temp`, `y_temp` и один раз посчитайте `test_mae`.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split, KFold, cross_val_score
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import Pipeline
+    from sklearn.neighbors import KNeighborsRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    cv5 = KFold(n_splits=5, shuffle=True, random_state=42)
+    ks = [5, 10, 20, 50]
+  starter: |
+    def knn_pipe(k):
+        return Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=k))])
+
+    result = {}
+    for k in ks:
+        scores = cross_val_score(..., X_temp, y_temp, cv=cv5, scoring='neg_mean_absolute_error')
+        result[k] = ...
+    k_cv = pd.Series(result)
+    best_k = ...
+    final = knn_pipe(best_k).fit(..., ...)
+    test_mae = ...
+    print(k_cv.round(1))
+    print(best_k, round(test_mae, 1))
+  solution: |
+    def knn_pipe(k):
+        return Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=k))])
+
+    result = {}
+    for k in ks:
+        scores = cross_val_score(knn_pipe(k), X_temp, y_temp, cv=cv5, scoring='neg_mean_absolute_error')
+        result[k] = -scores.mean()
+    k_cv = pd.Series(result)
+    best_k = k_cv.idxmin()
+    final = knn_pipe(best_k).fit(X_temp, y_temp)
+    test_mae = mean_absolute_error(y_test, final.predict(X_test))
+    print(k_cv.round(1))
+    print(best_k, round(test_mae, 1))
+  explanation: |
+    - С кросс-валидацией отдельная validation не нужна: каждая из 25 653 машин побывала и в обучении, и в проверке. Лучшее k — 20 (≈ 2 704; у k = 50 — ≈ 2 717).
+    - Финальная модель учится на всех данных, кроме test, — их больше, чем в любом шаге CV.
+    - Test открыт один раз: MAE ≈ 2 739 — честная итоговая оценка kNN (обученный только на train kNN давал на test ≈ 2 768: больше данных — точнее). Ровно так в scikit-learn работает `GridSearchCV` с последующим `refit`.
+  hints:
+    - "В `cross_val_score` передайте новую модель: `knn_pipe(k)`; средняя MAE — `-scores.mean()`."
+    - "Лучшее k — `k_cv.idxmin()`."
+    - "Финальная модель учится на `X_temp`, `y_temp`; ошибка — по `X_test`, `y_test`."
+  tests: |
+    import pandas as pd
+    s = var('k_cv', pd.Series, 'Series')
+    ensure(list(s.index) == ref('ks'), 'Индекс `k_cv` — значения k из `ks`.')
+    if (s < 0).all():
+        fail('Средние отрицательные — поменяйте знак: `-scores.mean()`.')
+    same_array(s.to_numpy(dtype=float), ref('k_cv').to_numpy(dtype=float), 'Средние CV-MAE не совпадают: `cross_val_score(knn_pipe(k), X_temp, y_temp, cv=cv5, ...)`.')
+    equal(var('best_k'), ref('best_k'), 'Лучшее k по CV — {expected}, а у вас {actual}.')
+    t = var('test_mae', 'number', 'числом')
+    close(t, ref('test_mae'), 'MAE на test — {expected}, а у вас {actual}. Финальная модель учится на всех `X_temp`, `y_temp`.')
+    close(alt('test_mae'), alt_ref('test_mae'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def knn_pipe(k):
+            return Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=k))])
+        result = {}
+        for k in ks:
+            scores = cross_val_score(knn_pipe(k), X_temp, y_temp, cv=cv5, scoring='neg_mean_absolute_error')
+            result[k] = scores.mean()
+        k_cv = pd.Series(result)
+        best_k = k_cv.idxmin()
+        final = knn_pipe(best_k).fit(X_temp, y_temp)
+        test_mae = mean_absolute_error(y_test, final.predict(X_test))
+      expect: поменяйте знак
+    - code: |
+        def knn_pipe(k):
+            return Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=k))])
+        result = {}
+        for k in ks:
+            scores = cross_val_score(knn_pipe(k), X_temp, y_temp, cv=cv5, scoring='neg_mean_absolute_error')
+            result[k] = -scores.mean()
+        k_cv = pd.Series(result)
+        best_k = k_cv.idxmin()
+        final = knn_pipe(best_k).fit(X_temp.iloc[:1000], y_temp.iloc[:1000])
+        test_mae = mean_absolute_error(y_test, final.predict(X_test))
+      expect: всех `X_temp`

@@ -1,0 +1,333 @@
+- id: m3-l1-t1
+  title: Числовые и категориальные колонки
+  difficulty: warmup
+  introduces: [feature-types]
+  uses: [pd-to-csv]
+  statement: |
+    Не перечисляя колонки вручную, получите два списка названий: `num_cols` — числовые колонки таблицы `df`, `cat_cols` — все остальные. Используйте `select_dtypes`.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')   # результат модуля 2
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']]
+  starter: |
+    num_cols = ...
+    cat_cols = ...
+    print(num_cols)
+    print(cat_cols)
+  solution: |
+    num_cols = df.select_dtypes(include='number').columns.tolist()
+    cat_cols = df.select_dtypes(exclude='number').columns.tolist()
+    print(num_cols)
+    print(cat_cols)
+  explanation: |
+    - `select_dtypes(include='number')` оставляет числовые колонки, `exclude='number'` — все остальные (урок 2.11).
+    - `.columns.tolist()` превращает названия колонок в обычный список.
+  hints:
+    - Какой метод выбирает колонки по типу данных?
+    - "`df.select_dtypes(include='number')` и `df.select_dtypes(exclude='number')`; названия — `.columns.tolist()`."
+    - "`num_cols = df.select_dtypes(include='number').columns.tolist()`."
+  tests: |
+    n = var('num_cols', list, 'списком названий')
+    c = var('cat_cols', list, 'списком названий')
+    equal(n, ref('num_cols'), 'Числовые колонки — {expected}, а у вас {actual}.')
+    equal(c, ref('cat_cols'), 'Категориальные колонки — {expected}, а у вас {actual}.')
+    ensure(calls('select_dtypes'), 'Выберите колонки методом `select_dtypes`, а не списком вручную — так код подойдёт к любой таблице.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        num_cols = ['Year', 'Distance', 'Engine', 'Price', 'km_year']
+        cat_cols = ['Make', 'Model', 'Style', 'Fuel_type', 'Transmission']
+      expect: select_dtypes
+    - code: |
+        num_cols = df.select_dtypes(include='number').columns.tolist()
+        cat_cols = df.columns.tolist()
+      expect: Категориальные колонки
+
+- id: m3-l1-t2
+  title: Первичная проверка таблицы
+  difficulty: main
+  introduces: [eda-questions]
+  uses: [pd-isna-duplicated, pd-drop-duplicates]
+  statement: |
+    Повторите первичную проверку. Получите:
+
+    - `n_missing` — общее число пустых ячеек;
+    - `n_dups` — число точных повторов строк;
+    - `checked` — таблицу без точных повторов.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']]
+  starter: |
+    n_missing = ...
+    n_dups = ...
+    checked = ...
+    print(n_missing, n_dups, checked.shape)
+  solution: |
+    n_missing = df.isna().sum().sum()
+    n_dups = df.duplicated().sum()
+    checked = df.drop_duplicates()
+    print(n_missing, n_dups, checked.shape)
+  explanation: |
+    - `df.isna().sum().sum()` — пропуски по колонкам, сложенные в одно число (урок 2.3).
+    - `df.duplicated().sum()` — лишние копии; после выбора части колонок их нужно проверять заново.
+    - `drop_duplicates()` оставляет первое вхождение каждой строки (урок 2.6).
+  hints:
+    - "Те же три проверки, что в модуле 2: пропуски, повторы, удаление повторов."
+    - "`df.isna().sum().sum()`; `df.duplicated().sum()`; `df.drop_duplicates()`."
+    - "`checked = df.drop_duplicates()`."
+  tests: |
+    import pandas as pd
+    close(var('n_missing', 'number', 'числом'), ref('n_missing'), 'Пустых ячеек — {expected}, а у вас {actual}.')
+    close(var('n_dups', 'number', 'числом'), ref('n_dups'), 'Точных повторов — {expected}, а у вас {actual}.')
+    c = var('checked', pd.DataFrame, 'таблицей DataFrame')
+    ensure(not c.duplicated().any(), 'В `checked` остались повторы — удалите их `drop_duplicates()`.')
+    same_frame(c, ref('checked'), 'Таблица `checked` не совпадает с нужной.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        n_missing = df.isna().sum().sum()
+        n_dups = df.duplicated(keep=False).sum()
+        checked = df.drop_duplicates()
+      expect: Точных повторов
+    - code: |
+        n_missing = df.isna().sum().sum()
+        n_dups = df.duplicated().sum()
+        checked = df
+      expect: остались повторы
+
+- id: m3-l1-t3
+  title: Хвосты распределения цены
+  difficulty: main
+  introduces: [eda-questions]
+  uses: [quantiles-iqr, bool-mask]
+  statement: |
+    Получите `p01` и `p99` — 1-й и 99-й перцентили цены, и `n_above_p99` — сколько объявлений дороже 99-го перцентиля. Затем посмотрите на `expensive` — эти объявления, отсортированные по убыванию цены: какие из них похожи на настоящие дорогие машины?
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    p01, p99 = ...
+    n_above_p99 = ...
+    expensive = ...
+    print(p01, p99, n_above_p99)
+    expensive.head()
+  solution: |
+    p01, p99 = df['Price'].quantile([0.01, 0.99])
+    n_above_p99 = (df['Price'] > p99).sum()
+    expensive = df[df['Price'] > p99].sort_values('Price', ascending=False)
+    print(p01, p99, n_above_p99)
+    expensive.head()
+  explanation: |
+    - `quantile([0.01, 0.99])` возвращает два перцентиля; их удобно разложить в две переменные.
+    - Маска `df['Price'] > p99` — объявления в верхнем 1 %; сумма маски — их число.
+    - Перцентиль — описание выборки, а не правило удаления: среди этих машин есть и настоящие дорогие (Mercedes G Class 2020).
+  alternatives:
+    - |
+      import numpy as np
+      p01 = np.quantile(df['Price'], 0.01)
+      p99 = np.quantile(df['Price'], 0.99)
+      n_above_p99 = int((df['Price'] > p99).sum())
+      expensive = df.loc[df['Price'] > p99].sort_values('Price', ascending=False)
+  hints:
+    - Перцентили — это квантили уровня 0.01 и 0.99.
+    - "`df['Price'].quantile([0.01, 0.99])`; маска `df['Price'] > p99`; сортировка по убыванию цены."
+    - "`expensive = df[df['Price'] > p99].sort_values('Price', ascending=False)`."
+  tests: |
+    import pandas as pd
+    close(var('p01', 'number', 'числом'), ref('p01'), '1-й перцентиль — {expected}, а у вас {actual}.')
+    close(var('p99', 'number', 'числом'), ref('p99'), '99-й перцентиль — {expected}, а у вас {actual}.')
+    close(var('n_above_p99', 'number', 'числом'), ref('n_above_p99'), 'Дороже 99-го перцентиля — {expected} объявлений, а у вас {actual}. Условие строгое: `>`.')
+    e = var('expensive', pd.DataFrame, 'таблицей DataFrame')
+    ensure(len(e) == len(ref('expensive')) and e['Price'].is_monotonic_decreasing, '`expensive` — объявления дороже p99 по убыванию цены.')
+    close(alt('p99'), alt_ref('p99'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        p01, p99 = df['Price'].quantile([0.01, 0.99])
+        n_above_p99 = (df['Price'] >= p01).sum()
+        expensive = df[df['Price'] > p99].sort_values('Price', ascending=False)
+      expect: Дороже 99-го перцентиля
+    - code: |
+        p01, p99 = df['Price'].quantile([1, 99])
+        n_above_p99 = 0
+        expensive = df.head()
+      expect: от 0 до 1
+
+- id: m3-l1-t4
+  title: Категории в цифрах
+  difficulty: main
+  introduces: [feature-types]
+  uses: [pd-info-dtypes]
+  statement: |
+    Получите `cat_summary` — сводку `describe` по категориальным колонкам, а из неё:
+
+    - `n_models` — число разных моделей;
+    - `top_fuel` — самый частый тип топлива;
+    - `top_fuel_share` — его долю среди всех объявлений (частота `freq`, делённая на `count`).
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    cat_columns = ['Make', 'Model', 'Style', 'Fuel_type', 'Transmission']
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year'] + cat_columns].drop_duplicates()
+  starter: |
+    cat_summary = ...
+    n_models = ...
+    top_fuel = ...
+    top_fuel_share = ...
+    print(n_models, top_fuel, round(top_fuel_share, 3))
+    cat_summary
+  solution: |
+    cat_summary = df[cat_columns].describe()
+    n_models = cat_summary['Model']['unique']
+    top_fuel = cat_summary['Fuel_type']['top']
+    top_fuel_share = cat_summary['Fuel_type']['freq'] / cat_summary['Fuel_type']['count']
+    print(n_models, top_fuel, round(top_fuel_share, 3))
+    cat_summary
+  explanation: |
+    - Для текстовых колонок `describe()` возвращает count, unique, top, freq (урок 2.2).
+    - Значение сводки берут по метке колонки и строки: `cat_summary['Model']['unique']`.
+    - Доля самой частой категории — её частота, делённая на число непустых значений.
+  alternatives:
+    - |
+      cat_summary = df[cat_columns].describe()
+      n_models = df['Model'].nunique()
+      top_fuel = df['Fuel_type'].value_counts().index[0]
+      top_fuel_share = df['Fuel_type'].value_counts(normalize=True).iloc[0]
+  hints:
+    - Сводку по тексту даёт тот же `describe`, если выбрать только категориальные колонки.
+    - "`df[cat_columns].describe()`; значения — `cat_summary['Fuel_type']['top']`, `['freq']`, `['count']`."
+    - "`top_fuel_share = cat_summary['Fuel_type']['freq'] / cat_summary['Fuel_type']['count']`."
+  tests: |
+    import pandas as pd
+    s = var('cat_summary', pd.DataFrame, 'таблицей DataFrame — результатом describe')
+    ensure('unique' in s.index and 'Model' in s.columns, 'В сводке нет строки unique или колонки Model. Возьмите `df[cat_columns].describe()`.')
+    equal(int(var('n_models', 'number', 'числом')), int(ref('n_models')), 'Разных моделей — {expected}, а у вас {actual}.')
+    equal(var('top_fuel'), ref('top_fuel'), 'Самое частое топливо — {expected}, а у вас {actual}.')
+    close(var('top_fuel_share', 'number', 'числом'), ref('top_fuel_share'), 'Доля самого частого топлива — {expected}, а у вас {actual}.')
+    close(alt('top_fuel_share'), alt_ref('top_fuel_share'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        cat_summary = df[cat_columns].describe()
+        n_models = cat_summary['Model']['count']
+        top_fuel = cat_summary['Fuel_type']['top']
+        top_fuel_share = cat_summary['Fuel_type']['freq'] / cat_summary['Fuel_type']['count']
+      expect: Разных моделей
+    - code: |
+        cat_summary = df.describe()
+        n_models = 789
+        top_fuel = 'Diesel'
+        top_fuel_share = 0.47
+      expect: describe
+
+- id: m3-l1-t5
+  kind: quiz
+  title: Как формулировать выводы разведочного анализа
+  difficulty: main
+  introduces: [eda-questions]
+  uses: []
+  statement: |
+    Выберите корректные формулировки для отчёта по разведочному анализу объявлений.
+  quiz:
+    - q: Какая формулировка корректна?
+      options:
+        - Седаны — самый популярный у покупателей кузов
+        - Седаны — самый частый кузов среди объявлений выборки (30 %)
+        - Седаны продаются быстрее остальных
+      answer: 1
+      explain: В данных объявления без дат и сделок — можно говорить только о представленности.
+    - q: Медианная цена — 6 700 евро, средняя — 9 561. Что из этого следует?
+      options:
+        - Половина объявлений дешевле 6 700 евро; дорогие машины тянут среднее вверх
+        - Типичная машина стоит 9 561 евро
+        - В данных ошибка
+      answer: 0
+      explain: Медиана делит упорядоченные цены пополам; среднее чувствительно к большим значениям.
+    - q: Как описать колонку «тип топлива»?
+      options:
+        - Средним типом топлива
+        - Частотами категорий и долей самой частой
+        - Стандартным отклонением
+      answer: 1
+      explain: Топливо — категориальный признак, среднее и разброс для него не определены.
+    - q: Объявление стоит 490 000 евро — выше 99-го перцентиля. Что делать в разведочном анализе?
+      options:
+        - Удалить как выброс
+        - Отметить и проверить по другим признакам (марка, год, пробег)
+        - Заменить медианой
+      answer: 1
+      explain: Крайнее значение — повод проверить запись. Решение об удалении обосновывают отдельно.
+  hints:
+    - Вспомните, что записано в данных (объявления, цены предложения) и чем числовой признак отличается от категориального.
+    - "Число записей — представленность; медиана — середина упорядоченных цен; категории — частоты; крайние значения — проверка."
+    - "Ответы: самый частый среди объявлений; половина дешевле медианы; частоты; проверить."
+
+- id: m3-l1-t6
+  title: Год выпуска как категория
+  difficulty: star
+  introduces: [feature-types]
+  uses: [pd-value-counts]
+  statement: |
+    Рассмотрите год выпуска как категорию. Получите:
+
+    - `n_years` — число разных годов выпуска;
+    - `top_year` — самый частый год;
+    - `top_year_share` — долю объявлений этого года;
+    - `n_rare_years` — сколько годов встречается **меньше 10 раз**.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    year_counts = ...
+    n_years = ...
+    top_year = ...
+    top_year_share = ...
+    n_rare_years = ...
+    print(n_years, top_year, round(top_year_share, 4), n_rare_years)
+  solution: |
+    year_counts = df['Year'].value_counts()
+    n_years = df['Year'].nunique()
+    top_year = year_counts.index[0]
+    top_year_share = year_counts.iloc[0] / len(df)
+    n_rare_years = (year_counts < 10).sum()
+    print(n_years, top_year, round(top_year_share, 4), n_rare_years)
+  explanation: |
+    - `value_counts()` — частоты годов по убыванию: первая метка — самый частый год, первое значение — его частота.
+    - `.iloc[0]` берёт первое значение по позиции, `.index[0]` — первую метку.
+    - Маска `year_counts < 10` по частотам отбирает редкие годы — по ним статистики ненадёжны.
+  alternatives:
+    - |
+      shares = df['Year'].value_counts(normalize=True)
+      n_years = len(shares)
+      top_year = shares.idxmax()
+      top_year_share = shares.max()
+      n_rare_years = int((df['Year'].value_counts() < 10).sum())
+  hints:
+    - Частоты годов дадут ответы сразу на все вопросы.
+    - "`year_counts = df['Year'].value_counts()`; самый частый — `year_counts.index[0]`; редкие — маска `year_counts < 10`."
+    - "`top_year_share = year_counts.iloc[0] / len(df)`, `n_rare_years = (year_counts < 10).sum()`."
+  tests: |
+    equal(int(var('n_years', 'number', 'числом')), int(ref('n_years')), 'Разных годов — {expected}, а у вас {actual}.')
+    equal(int(var('top_year', 'number', 'числом')), int(ref('top_year')), 'Самый частый год — {expected}, а у вас {actual}.')
+    close(var('top_year_share', 'number', 'числом'), ref('top_year_share'), 'Доля самого частого года — {expected}, а у вас {actual}.')
+    close(var('n_rare_years', 'number', 'числом'), ref('n_rare_years'), 'Годов с частотой меньше 10 — {expected}, а у вас {actual}.')
+    close(alt('top_year_share'), alt_ref('top_year_share'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        year_counts = df['Year'].value_counts()
+        n_years = df['Year'].nunique()
+        top_year = year_counts.iloc[0]
+        top_year_share = year_counts.iloc[0] / len(df)
+        n_rare_years = (year_counts < 10).sum()
+      expect: Самый частый год
+    - code: |
+        year_counts = df['Year'].value_counts()
+        n_years = df['Year'].nunique()
+        top_year = year_counts.index[0]
+        top_year_share = year_counts.iloc[0] / len(df)
+        n_rare_years = (year_counts <= 10).sum()
+      expect: меньше 10

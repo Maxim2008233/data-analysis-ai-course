@@ -1,0 +1,395 @@
+- id: m9-l5-t1
+  title: Куски слов
+  difficulty: warmup
+  introduces: [tokenizer]
+  uses: [hf-pipeline]
+  statement: |
+    Загрузите `tokenizer` модели `'distilbert-base-uncased-finetuned-sst-2-english'`. Напишите функцию `count_pieces(word)` — на сколько токенов токенизатор режет слово. Получите:
+
+    - `pieces` — словарь: слово из `words` → его число токенов;
+    - `whole` — список слов из `words`, которые остались одним токеном (в порядке списка).
+  prelude: |
+    from transformers import AutoTokenizer
+    words = ['learning', 'tokenizer', 'regression', 'gradient', 'boosting', 'overfitting', 'kaggle', 'pipeline', 'embedding']
+  starter: |
+    tokenizer = AutoTokenizer.from_pretrained(...)
+
+    def count_pieces(word):
+        return ...
+
+    pieces = {w: count_pieces(w) for w in words}
+    whole = ...
+    print(pieces)
+    print(whole)
+  solution: |
+    tokenizer = AutoTokenizer.from_pretrained('distilbert-base-uncased-finetuned-sst-2-english')
+
+    def count_pieces(word):
+        return len(tokenizer.tokenize(word))
+
+    pieces = {w: count_pieces(w) for w in words}
+    whole = [w for w in words if pieces[w] == 1]
+    print(pieces)
+    print(whole)
+  explanation: |
+    - `tokenizer.tokenize(слово)` возвращает куски без служебных токенов, их число — `len(...)`.
+    - Целиком в словаре «learning», «regression», «gradient» и «pipeline». «tokenizer» режется на «token ##izer», «boosting» — на «boost ##ing», а «overfitting» и «embedding» — на три куска каждое.
+    - Если считать длину `tokenizer(word)['input_ids']`, получится на 2 больше: туда входят [CLS] и [SEP].
+  hints:
+    - "`AutoTokenizer.from_pretrained('distilbert-base-uncased-finetuned-sst-2-english')`."
+    - "Число кусков — `len(tokenizer.tokenize(word))`."
+    - "Слова из одного токена — `[w for w in words if pieces[w] == 1]`."
+  tests: |
+    f = var('count_pieces')
+    ensure(callable(f), '`count_pieces` должна быть функцией.')
+    tk = ref('tokenizer')
+    for w in ['huggingface', 'transformers', 'unbelievably', 'data']:
+        got = int(f(w))
+        exp = len(tk.tokenize(w))
+        if got == exp + 2:
+            fail('Не считайте служебные [CLS] и [SEP]: число кусков — `len(tokenizer.tokenize(word))`.')
+        equal(got, exp, 'Слово «' + w + '» режется на {expected} токена(ов), а `count_pieces` дала {actual}.')
+    equal({k: int(v) for k, v in var('pieces', dict, 'словарём').items()}, ref('pieces'), '`pieces` — число токенов для каждого слова: {expected}, а у вас {actual}.')
+    equal(list(var('whole', list, 'списком')), list(ref('whole')), 'Одним токеном остались {expected}, а у вас {actual}.')
+  files: [distilbert_vocab.txt]
+  wrong:
+    - code: |
+        tokenizer = AutoTokenizer.from_pretrained('distilbert-base-uncased-finetuned-sst-2-english')
+        def count_pieces(word):
+            return len(tokenizer(word)['input_ids'])
+        pieces = {w: count_pieces(w) for w in words}
+        whole = [w for w in words if pieces[w] == 1]
+      expect: служебные
+    - code: |
+        tokenizer = AutoTokenizer.from_pretrained('distilbert-base-uncased-finetuned-sst-2-english')
+        def count_pieces(word):
+            return len(tokenizer.tokenize(word))
+        pieces = {w: count_pieces(w) for w in words}
+        whole = [w for w in words if pieces[w] > 1]
+      expect: Одним токеном
+
+- id: m9-l5-t2
+  title: Сколько токенов на слово
+  difficulty: main
+  introduces: []
+  uses: [tokenizer, pd-groupby]
+  statement: |
+    Для каждого отзыва из `reviews` посчитайте число токенов. Получите:
+
+    - столбец `reviews['n_tokens']` — сколько токенов в отзыве (без [CLS] и [SEP]);
+    - `per_word` — Series: число токенов на одно слово для каждого языка `lang` (все токены языка, делённые на все его слова);
+    - `ratio` — во сколько раз на русское слово приходится больше токенов, чем на английское;
+    - `longest` — текст отзыва с наибольшим числом токенов.
+  prelude: |
+    import pandas as pd
+    from transformers import AutoTokenizer
+    tokenizer = AutoTokenizer.from_pretrained('distilbert-base-uncased-finetuned-sst-2-english')
+    reviews = pd.read_csv('reviews.csv')
+    reviews['n_words'] = reviews['text'].str.split().str.len()
+  starter: |
+    reviews['n_tokens'] = ...
+    per_word = ...
+    ratio = ...
+    longest = ...
+    print(per_word.round(2))
+    print(round(ratio, 2), longest)
+  solution: |
+    reviews['n_tokens'] = [len(tokenizer.tokenize(t)) for t in reviews['text']]
+    by_lang = reviews.groupby('lang')
+    per_word = by_lang['n_tokens'].sum() / by_lang['n_words'].sum()
+    ratio = per_word['ru'] / per_word['en']
+    longest = reviews.loc[reviews['n_tokens'].idxmax(), 'text']
+    print(per_word.round(2))
+    print(round(ratio, 2), longest)
+  explanation: |
+    - На английское слово приходится 1,2 токена, на русское — 6,5, в 5,4 раза больше. Русские слова английский словарь режет почти на отдельные буквы.
+    - Самый длинный отзыв по числу токенов — русский «Прекрасный отель, обязательно вернёмся.»: 36 токенов на четыре слова.
+    - Среднее отношений по отзывам дало бы другое число: короткие отзывы весили бы столько же, сколько длинные. Поэтому делят сумму токенов на сумму слов.
+  hints:
+    - "`[len(tokenizer.tokenize(t)) for t in reviews['text']]`."
+    - "Суммы по языку — `reviews.groupby('lang')['n_tokens'].sum()` и то же для `n_words`; их отношение — `per_word`."
+    - "Номер строки с наибольшим числом токенов — `reviews['n_tokens'].idxmax()`."
+  tests: |
+    import pandas as pd
+    rv = var('reviews', pd.DataFrame, 'таблицей')
+    ensure('n_tokens' in rv.columns, 'Добавьте в `reviews` столбец `n_tokens`.')
+    nt = rv['n_tokens'].to_numpy(dtype=float)
+    exp_nt = ref('reviews')['n_tokens'].to_numpy(dtype=float)
+    if nt.shape == exp_nt.shape and (nt - exp_nt == 2).all():
+        fail('Не считайте [CLS] и [SEP]: токены отзыва — `len(tokenizer.tokenize(текст))`.')
+    same_array(nt, exp_nt, '`n_tokens` — число токенов в каждом отзыве.')
+    pw = var('per_word', pd.Series, 'Series')
+    rr = ref('reviews')
+    mean_ratio = (rr['n_tokens'] / rr['n_words']).groupby(rr['lang']).mean()
+    if pw.reindex(mean_ratio.index).to_numpy(dtype=float).round(9).tolist() == mean_ratio.to_numpy(dtype=float).round(9).tolist():
+        fail('Это среднее отношений по отзывам. Разделите сумму токенов языка на сумму его слов.')
+    same_array(pw.reindex(ref('per_word').index).to_numpy(dtype=float), ref('per_word').to_numpy(dtype=float), '`per_word` — токенов на слово для каждого языка.')
+    close(var('ratio', 'number', 'числом'), ref('ratio'), 'Отношение «русский / английский» — {expected}, а у вас {actual}.')
+    equal(var('longest', str, 'строкой'), ref('longest'), 'Больше всего токенов в отзыве {expected}, а у вас {actual}.')
+    close(alt('ratio'), alt_ref('ratio'), HARDCODE_MSG)
+  files: [reviews.csv, distilbert_vocab.txt]
+  wrong:
+    - code: |
+        reviews['n_tokens'] = [len(tokenizer(t)['input_ids']) for t in reviews['text']]
+        by_lang = reviews.groupby('lang')
+        per_word = by_lang['n_tokens'].sum() / by_lang['n_words'].sum()
+        ratio = per_word['ru'] / per_word['en']
+        longest = reviews.loc[reviews['n_tokens'].idxmax(), 'text']
+      expect: "[CLS] и [SEP]"
+    - code: |
+        reviews['n_tokens'] = [len(tokenizer.tokenize(t)) for t in reviews['text']]
+        per_word = (reviews['n_tokens'] / reviews['n_words']).groupby(reviews['lang']).mean()
+        ratio = per_word['ru'] / per_word['en']
+        longest = reviews.loc[reviews['n_tokens'].idxmax(), 'text']
+      expect: среднее отношений
+
+- id: m9-l5-t3
+  title: Что теряет токенизатор
+  difficulty: main
+  introduces: []
+  uses: [tokenizer]
+  statement: |
+    Проверьте, какие сведения о тексте пропадают при токенизации. Получите:
+
+    - `unk_counts` — список: сколько токенов [UNK] в каждом тексте из `texts`;
+    - `lost` — список текстов, в которых есть хотя бы один [UNK];
+    - `same_accent` — одинаковы ли `input_ids` у `'Best café in town'` и `'Best cafe in town'` (`True` или `False`);
+    - `same_case` — одинаковы ли `input_ids` у `'GREAT MOVIE'` и `'great movie'`.
+  prelude: |
+    from transformers import AutoTokenizer
+    tokenizer = AutoTokenizer.from_pretrained('distilbert-base-uncased-finetuned-sst-2-english')
+    texts = ['Great pizza 🍕', 'I love it 😍😍', 'Ok 👍', 'Best café in town', 'Terrible!!!']
+  starter: |
+    unk_counts = ...
+    lost = ...
+    same_accent = ...
+    same_case = ...
+    print(unk_counts, lost)
+    print(same_accent, same_case)
+  solution: |
+    unk_counts = [tokenizer.tokenize(t).count('[UNK]') for t in texts]
+    lost = [t for t, n in zip(texts, unk_counts) if n > 0]
+    same_accent = tokenizer('Best café in town')['input_ids'] == tokenizer('Best cafe in town')['input_ids']
+    same_case = tokenizer('GREAT MOVIE')['input_ids'] == tokenizer('great movie')['input_ids']
+    print(unk_counts, lost)
+    print(same_accent, same_case)
+  explanation: |
+    - Каждый эмодзи превращается в [UNK], а «😍😍» без пробела — в один общий [UNK]. Для модели тональности это потеря: смайлик часто и есть главный сигнал.
+    - «café» и «cafe», «GREAT MOVIE» и «great movie» дают одинаковые номера: модель uncased стирает и диакритику, и регистр. «GREAT!!!» и «great» для неё почти одно и то же, и громкость отзыва пропадает.
+    - Восклицательные знаки при этом сохраняются: «Terrible!!!» — это «terrible» и три токена «!».
+  hints:
+    - "Число [UNK] в тексте — `tokenizer.tokenize(t).count('[UNK]')`."
+    - "Тексты с потерями — `[t for t, n in zip(texts, unk_counts) if n > 0]`."
+    - "Списки номеров сравнивают через `==`: `tokenizer(a)['input_ids'] == tokenizer(b)['input_ids']`."
+  tests: |
+    uc = [int(x) for x in var('unk_counts', list, 'списком')]
+    equal(uc, [int(x) for x in ref('unk_counts')], 'Число [UNK] в текстах — {expected}, а у вас {actual}.')
+    equal(list(var('lost', list, 'списком')), list(ref('lost')), 'Тексты с [UNK] — {expected}, а у вас {actual}.')
+    for name in ['same_accent', 'same_case']:
+        v = var(name)
+        ensure(isinstance(v, bool), '`' + name + '` — `True` или `False`: сравните два списка номеров через `==`.')
+        equal(v, ref(name), '`' + name + '` должно быть {expected}, а у вас {actual}.')
+  files: [distilbert_vocab.txt]
+  wrong:
+    - code: |
+        unk_counts = [int('[UNK]' in tokenizer.tokenize(t)) for t in texts]
+        lost = [t for t, n in zip(texts, unk_counts) if n > 0]
+        same_accent = tokenizer('Best café in town')['input_ids'] == tokenizer('Best cafe in town')['input_ids']
+        same_case = False
+      expect: same_case
+    - code: |
+        unk_counts = [tokenizer.tokenize(t).count('[UNK]') for t in texts]
+        lost = [t for t, n in zip(texts, unk_counts) if n == 0]
+        same_accent = tokenizer('Best café in town')['input_ids'] == tokenizer('Best cafe in town')['input_ids']
+        same_case = tokenizer('GREAT MOVIE')['input_ids'] == tokenizer('great movie')['input_ids']
+      expect: Тексты с [UNK]
+
+- id: m9-l5-t4
+  title: Батч и маска
+  difficulty: main
+  introduces: [attention-mask]
+  uses: [tokenizer]
+  statement: |
+    Соберите все отзывы в один батч: `batch = tokenizer(list(reviews['text']), padding=True, return_tensors='np')`. Получите:
+
+    - `shape` — форму таблицы `input_ids` (кортеж);
+    - `pad_share` — долю клеток таблицы, занятых заполнением [PAD] (по маске);
+    - `lengths` — массив настоящих длин отзывов в токенах (по маске, вместе с [CLS] и [SEP]);
+    - `n_cut` — сколько отзывов обрежет `truncation=True, max_length=16`, то есть сколько настоящих длин больше 16.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from transformers import AutoTokenizer
+    tokenizer = AutoTokenizer.from_pretrained('distilbert-base-uncased-finetuned-sst-2-english')
+    reviews = pd.read_csv('reviews.csv')
+  starter: |
+    batch = tokenizer(list(reviews['text']), padding=True, return_tensors='np')
+    shape = ...
+    pad_share = ...
+    lengths = ...
+    n_cut = ...
+    print(shape, round(pad_share, 3), lengths[:5], n_cut)
+  solution: |
+    batch = tokenizer(list(reviews['text']), padding=True, return_tensors='np')
+    shape = batch['input_ids'].shape
+    pad_share = 1 - batch['attention_mask'].mean()
+    lengths = batch['attention_mask'].sum(axis=1)
+    n_cut = int((lengths > 16).sum())
+    print(shape, round(pad_share, 3), lengths[:5], n_cut)
+  explanation: |
+    - Таблица — 88 × 38: длина самого длинного отзыва 38 токенов, и все остальные дополнены до неё. 64 % клеток — заполнение. Модель тратит на них вычисления, а маска лишь не даёт на них смотреть.
+    - Длинные строки дали русские отзывы. Если собрать в батч только английские, таблица будет 80 × 20, а заполнение — 40 %. Поэтому на практике тексты похожей длины собирают в батч вместе.
+    - С `max_length=16` обрежется 10 отзывов, из них 8 русских. От «Прекрасный отель, обязательно вернёмся.» останется «прекрасныи отел» — модель не увидит главного.
+  hints:
+    - "Форма — `batch['input_ids'].shape`; маска — `batch['attention_mask']`."
+    - "Доля заполнения — `1 - batch['attention_mask'].mean()`; настоящие длины — сумма маски по строкам, `axis=1`."
+    - "Обрезанные — `(lengths > 16).sum()`."
+  tests: |
+    import numpy as np
+    sh = tuple(int(x) for x in var('shape'))
+    equal(sh, tuple(int(x) for x in ref('shape')), 'Форма таблицы — {expected}, а у вас {actual}.')
+    ps = var('pad_share', 'number', 'числом')
+    if abs(ps - float(ref('batch')['attention_mask'].mean())) < 1e-9:
+        fail('Это доля настоящих токенов. Доля заполнения — 1 минус среднее маски.')
+    close(ps, ref('pad_share'), 'Доля заполнения — {expected}, а у вас {actual}.')
+    ln = np.asarray(var('lengths'), dtype=float)
+    if ln.shape == (sh[1],):
+        fail('Суммируйте маску по строкам (`axis=1`): длина нужна для каждого отзыва.')
+    same_array(ln, np.asarray(ref('lengths'), dtype=float), '`lengths` — сумма маски по каждой строке.')
+    equal(int(var('n_cut', 'number', 'числом')), int(ref('n_cut')), 'Обрежется {expected} отзывов, а у вас {actual}.')
+    close(alt('pad_share'), alt_ref('pad_share'), HARDCODE_MSG)
+  files: [reviews.csv, distilbert_vocab.txt]
+  wrong:
+    - code: |
+        batch = tokenizer(list(reviews['text']), padding=True, return_tensors='np')
+        shape = batch['input_ids'].shape
+        pad_share = batch['attention_mask'].mean()
+        lengths = batch['attention_mask'].sum(axis=1)
+        n_cut = int((lengths > 16).sum())
+      expect: 1 минус
+    - code: |
+        batch = tokenizer(list(reviews['text']), padding=True, return_tensors='np')
+        shape = batch['input_ids'].shape
+        pad_share = 1 - batch['attention_mask'].mean()
+        lengths = batch['attention_mask'].sum(axis=0)
+        n_cut = int((lengths > 16).sum())
+      expect: axis=1
+
+- id: m9-l5-t5
+  title: Свой WordPiece
+  difficulty: star
+  introduces: []
+  uses: [tokenizer]
+  statement: |
+    Повторите алгоритм WordPiece для одного слова. `vocab` — множество всех токенов словаря DistilBERT. Напишите функцию `wordpiece(word)`, которая режет слово (строчные латинские буквы) так:
+
+    1. С текущей позиции найдите самый длинный кусок, который есть в словаре. Куски не в начале слова ищутся со знаком «##»: `'##face'`.
+    2. Добавьте кусок к ответу и продолжите с места, где он закончился.
+    3. Если на какой-то позиции не нашлось ни одного куска, всё слово становится `['[UNK]']`.
+
+    Получите `examples` — словарь: слово из `words` → результат `wordpiece`.
+  prelude: |
+    from transformers import AutoTokenizer
+    tokenizer = AutoTokenizer.from_pretrained('distilbert-base-uncased-finetuned-sst-2-english')
+    with open('distilbert_vocab.txt', encoding='utf-8') as fh:
+        vocab = set(fh.read().split('\n'))
+    words = ['huggingface', 'tokenization', 'unbelievably', 'regularization', 'backpropagation', 'hyperparameter']
+  starter: |
+    def wordpiece(word):
+        tokens, start = [], 0
+        while start < len(word):
+            end = len(word)
+            piece = None
+            while start < end:
+                sub = ...
+                if sub in vocab:
+                    piece = sub
+                    break
+                end -= 1
+            if piece is None:
+                return ['[UNK]']
+            tokens.append(piece)
+            start = ...
+        return tokens
+
+    examples = {w: wordpiece(w) for w in words}
+    print(examples)
+  solution: |
+    def wordpiece(word):
+        tokens, start = [], 0
+        while start < len(word):
+            end = len(word)
+            piece = None
+            while start < end:
+                sub = word[start:end] if start == 0 else '##' + word[start:end]
+                if sub in vocab:
+                    piece = sub
+                    break
+                end -= 1
+            if piece is None:
+                return ['[UNK]']
+            tokens.append(piece)
+            start = end
+        return tokens
+
+    examples = {w: wordpiece(w) for w in words}
+    print(examples)
+  explanation: |
+    - Внутренний цикл укорачивает кусок с конца, пока он не найдётся в словаре: так получается самый длинный подходящий кусок. Внешний цикл продолжает с позиции `end`, где кусок закончился.
+    - «huggingface» → «hugging ##face», «backpropagation» → «back ##pro ##pa ##gation», «hyperparameter» → «hyper ##para ##meter». Ответы совпадают с настоящим токенизатором.
+    - Жадность не всегда даёт «смысловые» куски: «unbelievably» — «un ##bel ##ie ##va ##bly», а не «un ##believ ##ably». WordPiece не знает морфологии, он лишь берёт самые длинные куски из словаря.
+  hints:
+    - "Кусок с позиции `start` до `end`: в начале слова — `word[start:end]`, дальше — `'##' + word[start:end]`."
+    - "После найденного куска продолжайте с `start = end`."
+    - "`sub = word[start:end] if start == 0 else '##' + word[start:end]`."
+  tests: |
+    f = var('wordpiece')
+    ensure(callable(f), '`wordpiece` должна быть функцией.')
+    tk = ref('tokenizer')
+    for w in ['huggingface', 'transformers', 'distilbert', 'pyodide', 'qwertyuiop', 'antidisestablishmentarianism', 'overfitting', 'lightgbm']:
+        got = list(f(w))
+        exp = tk.tokenize(w)
+        if len(got) > 1 and all(not g.startswith('##') for g in got[1:]) and any(e.startswith('##') for e in exp):
+            fail('Куски не в начале слова ищутся со знаком «##»: `\'##\' + word[start:end]`.')
+        equal(got, exp, 'Слово «' + w + '»: настоящий токенизатор даёт {expected}, а `wordpiece` — {actual}.')
+    equal({k: list(v) for k, v in var('examples', dict, 'словарём').items()}, ref('examples'), '`examples` — результаты `wordpiece` для слов из `words`.')
+  files: [distilbert_vocab.txt]
+  wrong:
+    - code: |
+        def wordpiece(word):
+            tokens, start = [], 0
+            while start < len(word):
+                end = len(word)
+                piece = None
+                while start < end:
+                    sub = word[start:end]
+                    if sub in vocab:
+                        piece = sub
+                        break
+                    end -= 1
+                if piece is None:
+                    return ['[UNK]']
+                tokens.append(piece)
+                start = end
+            return tokens
+        examples = {w: wordpiece(w) for w in words}
+      expect: "«##»"
+    - code: |
+        def wordpiece(word):
+            tokens, start = [], 0
+            while start < len(word):
+                end = start + 1
+                piece = None
+                while end <= len(word):
+                    sub = word[start:end] if start == 0 else '##' + word[start:end]
+                    if sub in vocab:
+                        piece = sub
+                        break
+                    end += 1
+                if piece is None:
+                    return ['[UNK]']
+                tokens.append(piece)
+                start = end
+            return tokens
+        examples = {w: wordpiece(w) for w in words}
+      expect: настоящий токенизатор

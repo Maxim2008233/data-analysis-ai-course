@@ -1,0 +1,677 @@
+- id: m12-l5-t1
+  title: Тоновый набор
+  difficulty: warmup
+  introduces: [spectrogram]
+  uses: [digital-audio]
+  statement: |
+    Кнопочный телефон при наборе издаёт тон: каждая кнопка — сумма двух синусоид, частоты её строки и частоты её столбца на клавиатуре. По этим двум частотам станция понимает, какую кнопку нажали. Это тональный набор, DTMF.
+
+    Напишите функцию `top_freqs(signal, rate, k=2)`: `k` самых сильных частот сигнала в герцах, по возрастанию частоты. Затем расшифруйте `code` — какие кнопки нажаты в записи `presses`. Каждый элемент `presses` — 0,1 секунды звука одной кнопки с шумом, 8000 отсчётов в секунду. Функция `decode(f_low, f_high)` уже есть: по двум частотам она находит кнопку.
+  prelude: |
+    import numpy as np
+    RATE = 8000
+    ROWS = [697, 770, 852, 941]          # частоты строк клавиатуры, Гц
+    COLS = [1209, 1336, 1477]            # частоты столбцов, Гц
+    KEYS = ['123', '456', '789', '*0#']
+
+    def decode(f_low, f_high):
+        """Кнопка по двум частотам: ближайшая строка и ближайший столбец."""
+        r = int(np.argmin([abs(f_low - v) for v in ROWS]))
+        c = int(np.argmin([abs(f_high - v) for v in COLS]))
+        return KEYS[r][c]
+
+    _rng = np.random.default_rng(5)
+    _t = np.arange(int(RATE * 0.1)) / RATE
+    presses = [np.sin(2 * np.pi * ROWS[r] * _t) + np.sin(2 * np.pi * COLS[c] * _t) + 0.3 * _rng.normal(size=len(_t))
+               for r, c in [(2, 0), (0, 2), (2, 2), (0, 1), (3, 2)]]
+  starter: |
+    def top_freqs(signal, rate, k=2):
+        spec = np.abs(np.fft.rfft(signal))
+        freqs = np.fft.rfftfreq(len(signal), d=...)
+        strongest = np.argsort(spec)[::-1][:k]
+        return sorted(...)
+
+    code = ''.join(decode(*top_freqs(p, RATE)) for p in presses)
+    print(code)
+  solution: |
+    def top_freqs(signal, rate, k=2):
+        spec = np.abs(np.fft.rfft(signal))
+        freqs = np.fft.rfftfreq(len(signal), d=1 / rate)
+        strongest = np.argsort(spec)[::-1][:k]
+        return sorted(freqs[strongest])
+
+    code = ''.join(decode(*top_freqs(p, RATE)) for p in presses)
+    print(code)
+  explanation: |
+    - `np.fft.rfft` раскладывает сигнал на частоты, `np.abs` даёт амплитуды. `rfftfreq(len(signal), d=1 / rate)` подписывает частоты в герцах: `d` — время между отсчётами.
+    - `np.argsort(spec)[::-1][:k]` — номера `k` самых сильных частот, `sorted` упорядочивает сами частоты по возрастанию. Первой идёт частота строки, второй — столбца, как и ждёт `decode`.
+    - Кусок длиной 0,1 секунды даёт шаг по частоте 10 Гц. Соседние частоты клавиатуры отличаются на 70 Гц и больше, поэтому даже с шумом кнопки различаются уверенно. Набран код `7392#`.
+  hints:
+    - "Шаг между отсчётами — `d=1 / rate`: тогда `rfftfreq` подпишет частоты в герцах."
+    - "`strongest` — номера самых сильных частот; сами частоты — `freqs[strongest]`."
+    - "Ответ — `sorted(freqs[strongest])`: частоты по возрастанию."
+  tests: |
+    import numpy as np
+    f = var('top_freqs')
+    ensure(callable(f), '`top_freqs` должна быть функцией.')
+    r = 1000
+    t = np.arange(r) / r
+    sig = 0.8 * np.sin(2 * np.pi * 50 * t) + 0.5 * np.sin(2 * np.pi * 120 * t) + 1.0 * np.sin(2 * np.pi * 300 * t)
+    got = [float(v) for v in f(sig, r, 2)]
+    if got == [300.0, 50.0]:
+        fail('Частоты верные, но их нужно вернуть по возрастанию: [50, 300].')
+    if got and max(got) < 1:
+        fail('Частоты получились в долях от частоты дискретизации. Передайте в rfftfreq шаг d=1/rate — тогда частоты будут в герцах.')
+    if any(v < 0 for v in got):
+        fail('Отрицательные частоты — признак np.fft.fft. Для вещественного сигнала нужны np.fft.rfft и np.fft.rfftfreq.')
+    equal(got, [50.0, 300.0], 'Для суммы 50, 120 и 300 Гц с амплитудами 0.8, 0.5 и 1 две самые сильные частоты — {expected}, а у вас {actual}.')
+    equal([float(v) for v in f(sig, r, 3)], [50.0, 120.0, 300.0], 'При k=3 нужны все три частоты по возрастанию: {expected}, а у вас {actual}.')
+    equal(var('code', str, 'строкой'), ref('code'), 'Набран код {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        def top_freqs(signal, rate, k=2):
+            spec = np.abs(np.fft.rfft(signal))
+            freqs = np.fft.rfftfreq(len(signal), d=1 / rate)
+            return list(freqs[np.argsort(spec)[::-1][:k]])
+        code = ''.join(decode(*top_freqs(p, RATE)) for p in presses)
+      expect: по возрастанию
+    - code: |
+        def top_freqs(signal, rate, k=2):
+            spec = np.abs(np.fft.rfft(signal))
+            freqs = np.fft.rfftfreq(len(signal))
+            return sorted(freqs[np.argsort(spec)[::-1][:k]])
+        code = ''.join(decode(*top_freqs(p, RATE)) for p in presses)
+      expect: в долях
+
+- id: m12-l5-t2
+  title: Спектрограмма без циклов
+  difficulty: main
+  introduces: []
+  uses: [spectrogram, broadcasting]
+  statement: |
+    Напишите функцию `spectrogram(x, frame, hop)` без циклов. Кадры длиной `frame` начинаются в отсчётах 0, `hop`, 2·`hop`, … — пока кадр целиком помещается в запись. Каждый кадр умножьте на окно Ханна `np.hanning(frame)` и возьмите амплитуды спектра `np.abs(np.fft.rfft(…, axis=1))`. Результат — таблица: строка — кадр, столбец — частота.
+
+    Для записи `x` (48 000 отсчётов в секунду) с кадром 1024 и шагом 480 найдите:
+
+    - `S` — спектрограмму;
+    - `loud` — логическую маску кадров речи: энергия кадра (сумма квадратов амплитуд строки) не меньше 1 % от самой большой;
+    - `cutoff_99` — частоту, ниже которой лежат 99 % энергии речи. Сложите квадраты амплитуд по кадрам речи для каждой частоты, накопите долю (`np.cumsum`) и возьмите первую частоту, на которой доля достигла 0,99.
+  prelude: |
+    import wave
+    import numpy as np
+    with wave.open('recording.wav') as w:
+        rate, n = w.getframerate(), w.getnframes()
+        x = np.frombuffer(w.readframes(n), dtype=np.int16).astype(np.float64) / 32768
+  starter: |
+    def spectrogram(x, frame, hop):
+        starts = np.arange(0, len(x) - frame + 1, hop)
+        frames = x[...]                  # номера отсчётов: столбец начал + строка сдвигов 0…frame−1
+        return np.abs(np.fft.rfft(..., axis=1))
+
+    S = spectrogram(x, 1024, 480)
+    freqs = np.fft.rfftfreq(1024, d=1 / rate)
+    energy = (S ** 2).sum(axis=1)
+    loud = ...
+    speech = (S[loud] ** 2).sum(axis=0)
+    cum = np.cumsum(speech) / speech.sum()
+    cutoff_99 = ...
+    print(S.shape, loud.sum(), cutoff_99)
+  solution: |
+    def spectrogram(x, frame, hop):
+        starts = np.arange(0, len(x) - frame + 1, hop)
+        frames = x[starts[:, None] + np.arange(frame)]
+        return np.abs(np.fft.rfft(frames * np.hanning(frame), axis=1))
+
+    S = spectrogram(x, 1024, 480)
+    freqs = np.fft.rfftfreq(1024, d=1 / rate)
+    energy = (S ** 2).sum(axis=1)
+    loud = energy >= 0.01 * energy.max()
+    speech = (S[loud] ** 2).sum(axis=0)
+    cum = np.cumsum(speech) / speech.sum()
+    cutoff_99 = freqs[np.searchsorted(cum, 0.99)]
+    print(S.shape, loud.sum(), cutoff_99)
+  explanation: |
+    - `starts[:, None] + np.arange(frame)` — broadcasting столбца начал кадров и строки сдвигов. Получается таблица номеров отсчётов, а `x[...]` по ней — таблица кадров.
+    - Умножение на `np.hanning(frame)` применяется к каждой строке сразу: окно длины `frame` растягивается на все кадры. `axis=1` — спектр каждой строки.
+    - Речь занимает 95 кадров из 340. `np.searchsorted(cum, 0.99)` — первый номер, где накопленная доля достигла 0,99.
+    - 99 % энергии речи лежат ниже 2531 Гц, а 99,99 % — ниже 4000 Гц. Почти вся энергия — у гласных на низких частотах, а у согласных её мало, зато она высоко. Поэтому телефону хватает полосы до 3400 Гц, чтобы понимать речь, а для распознавания берут запись до 8000 Гц, чтобы согласные не терялись.
+  hints:
+    - "Номера отсчётов кадров — `starts[:, None] + np.arange(frame)`: столбец начал плюс строка сдвигов."
+    - "Окно — `frames * np.hanning(frame)`; маска речи — `energy >= 0.01 * energy.max()`."
+    - "Первая частота, где доля достигла 0,99, — `freqs[np.searchsorted(cum, 0.99)]`."
+  tests: |
+    import numpy as np
+    f = var('spectrogram')
+    ensure(callable(f), '`spectrogram` должна быть функцией.')
+    no_loops('Соберите кадры без цикла: номера отсчётов кадров — столбец начал плюс строка сдвигов (broadcasting).')
+    r = 8000
+    t = np.arange(2000) / r
+    sig = np.sin(2 * np.pi * 1000 * t)
+    got = np.asarray(f(sig, 256, 128))
+    ensure(got.ndim == 2, 'Спектрограмма — таблица: строка — кадр, столбец — частота.')
+    if got.shape == (129, 14):
+        fail('Таблица перевёрнута: строки должны быть кадрами, столбцы — частотами.')
+    ensure(got.shape == (14, 129), 'При 2000 отсчётах, кадре 256 и шаге 128 получается 14 кадров по 129 частот, а у вас форма {0}.'.format(got.shape))
+    frames = np.stack([sig[i:i + 256] for i in range(0, 2000 - 256 + 1, 128)])
+    if np.allclose(got, np.abs(np.fft.rfft(frames, axis=1))):
+        fail('Кадры не умножены на окно Ханна. Умножьте таблицу кадров на np.hanning(frame) перед rfft.')
+    same_array(got, np.abs(np.fft.rfft(frames * np.hanning(256), axis=1)), 'Спектрограмма тестового тона 1000 Гц не совпадает с ожидаемой.')
+    equal(int(np.argmax(got[5])), 32, 'Самая сильная частота кадра — 1000 Гц, это столбец 32, а у вас {actual}.')
+    same_array(np.asarray(var('loud')), ref('loud'), 'Маска кадров речи не совпадает с ожидаемой.')
+    close(var('cutoff_99', 'number', 'числом'), ref('cutoff_99'), '99 % энергии речи лежат ниже {expected} Гц, а у вас {actual}.')
+  files: [recording.wav]
+  wrong:
+    - code: |
+        def spectrogram(x, frame, hop):
+            starts = np.arange(0, len(x) - frame + 1, hop)
+            frames = x[starts[:, None] + np.arange(frame)]
+            return np.abs(np.fft.rfft(frames, axis=1))
+        S = spectrogram(x, 1024, 480)
+        freqs = np.fft.rfftfreq(1024, d=1 / rate)
+        energy = (S ** 2).sum(axis=1)
+        loud = energy >= 0.01 * energy.max()
+        speech = (S[loud] ** 2).sum(axis=0)
+        cum = np.cumsum(speech) / speech.sum()
+        cutoff_99 = freqs[np.searchsorted(cum, 0.99)]
+      expect: окно Ханна
+    - code: |
+        def spectrogram(x, frame, hop):
+            frames = np.array([x[s:s + frame] for s in range(0, len(x) - frame + 1, hop)])
+            return np.abs(np.fft.rfft(frames * np.hanning(frame), axis=1))
+        S = spectrogram(x, 1024, 480)
+        freqs = np.fft.rfftfreq(1024, d=1 / rate)
+        energy = (S ** 2).sum(axis=1)
+        loud = energy >= 0.01 * energy.max()
+        speech = (S[loud] ** 2).sum(axis=0)
+        cum = np.cumsum(speech) / speech.sum()
+        cutoff_99 = freqs[np.searchsorted(cum, 0.99)]
+      expect: без цикла
+
+- id: m12-l5-t3
+  title: Доля ошибочных слов
+  difficulty: main
+  introduces: [speech-recognition-models]
+  uses: [edit-distance]
+  statement: |
+    Напишите функцию `wer(reference, hypothesis)` — долю ошибочных слов распознавания:
+
+    1. оба текста превратить в списки слов: нижний регистр, только буквы и цифры (`re.findall(r'[a-zа-яё0-9]+', текст.lower())`);
+    2. число ошибок — расстояние Левенштейна между списками слов. Функция `levenshtein` из урока 12.4 уже есть, и она работает не только со строками, но и со списками;
+    3. WER — число ошибок, делённое на число слов эталона.
+
+    Вот восемь вопросов к помощнику курса (`said`) и то, как их мог бы распознать голосовой бот (`heard`). Получите:
+
+    - `wers` — WER каждой фразы, список;
+    - `total_wer` — WER всего набора: сумма ошибок, делённая на сумму слов эталонов;
+    - `worst` — эталонную фразу с наибольшим WER.
+  prelude: |
+    import re
+
+    def levenshtein(a, b):
+        prev = list(range(len(b) + 1))
+        for i in range(1, len(a) + 1):
+            cur = [i] + [0] * len(b)
+            for j in range(1, len(b) + 1):
+                cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] != b[j - 1]))
+            prev = cur
+        return prev[-1]
+
+    said = ['Что такое случайный лес?', 'Как работает GigaChat?', 'Почему модель переобучилась?',
+            'Зачем нужна ранняя остановка?', 'Как подключить LangChain?', 'Что такое матрица ошибок?',
+            'Сколько эпох обучать нейросеть?', 'Как посчитать IoU двух рамок?']
+    heard = ['что такое случайный вес', 'как работает гига чат', 'почему модели пере обучилась',
+             'зачем нужна ранняя установка', 'как подключить лэнг чейн', 'что такое матрица ошибок',
+             'сколько эпох обучать нейросеть', 'как посчитать и о у двух рамок']
+  starter: |
+    def to_words(text):
+        return re.findall(r'[a-zа-яё0-9]+', text.lower())
+
+    def wer(reference, hypothesis):
+        ref_words, hyp_words = to_words(reference), to_words(hypothesis)
+        return ...
+
+    wers = [wer(s, h) for s, h in zip(said, heard)]
+    total_wer = ...
+    worst = said[wers.index(max(wers))]
+    print([round(w, 2) for w in wers], round(total_wer, 3), worst)
+  solution: |
+    def to_words(text):
+        return re.findall(r'[a-zа-яё0-9]+', text.lower())
+
+    def wer(reference, hypothesis):
+        ref_words, hyp_words = to_words(reference), to_words(hypothesis)
+        return levenshtein(ref_words, hyp_words) / len(ref_words)
+
+    wers = [wer(s, h) for s, h in zip(said, heard)]
+    total_wer = sum(levenshtein(to_words(s), to_words(h)) for s, h in zip(said, heard)) / sum(len(to_words(s)) for s in said)
+    worst = said[wers.index(max(wers))]
+    print([round(w, 2) for w in wers], round(total_wer, 3), worst)
+  explanation: |
+    - `levenshtein` сравнивает элементы по `!=` и берёт длины через `len`. Ей всё равно, буквы это или слова: на списках слов она считает замены, вставки и удаления слов.
+    - Нормализация обязательна. Без неё «Что» и «что», «лес?» и «лес» считались бы разными словами, и каждая заглавная буква стала бы ошибкой.
+    - Хуже всех распознана фраза «Почему модель переобучилась?»: WER 1,0 — три ошибки на три слова. Замена «модель» → «модели» и разбиение «переобучилась» на два слова. WER бывает и больше 1, если распознаватель вставил много лишних слов.
+    - WER всего набора — 12 ошибок на 30 слов, 0,4. Среднее WER фраз (0,43) больше: короткие фразы с ошибками в нём весят столько же, сколько длинные. Названия на латинице — GigaChat, LangChain, IoU — частая беда распознавания: их нет в словаре распознавателя.
+  hints:
+    - "Число ошибок — `levenshtein(ref_words, hyp_words)`: функция работает и со списками слов."
+    - "WER фразы — ошибки, делённые на `len(ref_words)`."
+    - "`total_wer` — `sum` ошибок по всем парам, делённая на `sum` длин эталонов, а не среднее `wers`."
+  tests: |
+    f = var('wer')
+    ensure(callable(f), '`wer` должна быть функцией.')
+    if f('Привет, мир!', 'привет мир') > 0:
+        fail('Регистр и знаки препинания — не ошибки распознавания. Сначала превратите оба текста в списки слов в нижнем регистре.')
+    got = f('Что такое случайный лес?', 'что такое случайный вес')
+    if abs(got - 1 / 23) < 1e-9 or abs(got - 1 / 24) < 1e-9:
+        fail('Похоже, ошибки посчитаны по буквам. WER считают по словам: «лес» → «вес» — одна ошибка на 4 слова.')
+    close(got, 0.25, 'Одна замена слова на 4 слова эталона — WER 0.25, а у вас {actual}.')
+    close(f('Как работает GigaChat?', 'как работает гига чат'), 2 / 3, 'Замена и вставка на 3 слова эталона — WER {expected}, а у вас {actual}.')
+    close(f('да', 'да да да'), 2.0, 'Две лишние вставки на одно слово эталона — WER 2: WER бывает больше 1. А у вас {actual}.')
+    w = var('wers', list, 'списком')
+    ensure(len(w) == 8, 'В `wers` должно быть 8 чисел — по одному на фразу.')
+    import numpy as np
+    same_array(np.asarray(w, dtype=float), np.asarray(ref('wers'), dtype=float), 'WER фраз не совпадают с ожидаемыми.')
+    tw = var('total_wer', 'number', 'числом')
+    if abs(tw - float(np.mean(ref('wers')))) < 1e-9:
+        fail('Это среднее WER фраз. WER набора — сумма ошибок, делённая на сумму слов эталонов.')
+    close(tw, ref('total_wer'), 'WER всего набора — {expected}, а у вас {actual}.')
+    equal(var('worst', str, 'строкой'), ref('worst'), 'Хуже всех распознана фраза {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        def wer(reference, hypothesis):
+            ref_words, hyp_words = reference.split(), hypothesis.split()
+            return levenshtein(ref_words, hyp_words) / len(ref_words)
+        wers = [wer(s, h) for s, h in zip(said, heard)]
+        total_wer = sum(levenshtein(s.split(), h.split()) for s, h in zip(said, heard)) / sum(len(s.split()) for s in said)
+        worst = said[wers.index(max(wers))]
+      expect: Регистр и знаки препинания
+    - code: |
+        def to_words(text):
+            return re.findall(r'[a-zа-яё0-9]+', text.lower())
+        def wer(reference, hypothesis):
+            ref_words, hyp_words = to_words(reference), to_words(hypothesis)
+            return levenshtein(ref_words, hyp_words) / len(ref_words)
+        wers = [wer(s, h) for s, h in zip(said, heard)]
+        total_wer = sum(wers) / len(wers)
+        worst = said[wers.index(max(wers))]
+      expect: среднее WER фраз
+
+- id: m12-l5-t4
+  title: Языковая модель исправляет распознавание
+  difficulty: main
+  introduces: []
+  uses: [speech-recognition-models, n-gram]
+  statement: |
+    Акустическая модель предложила для пяти фраз по две гипотезы. У каждой — оценка, логарифм вероятности по звуку (`utterances`). Языковая модель на парах слов из текстов курса уже обучена: счётчики слов `uni`, пар `bi` и размер словаря `V`.
+
+    1. Напишите функцию `lm_logprob(words, uni, bi, V)` — логарифм вероятности фразы. Это сумма по соседним парам слов `(u, v)` величин `log((bi[(u, v)] + 1) / (uni[u] + V))`.
+    2. Напишите функцию `rescore(hyps, weight=1.0)`: текст гипотезы с наибольшей суммой «акустическая оценка + `weight` × `lm_logprob`». Слова гипотезы — `текст.split()`.
+    3. Получите `best_acoustic` — тексты лучших гипотез по одной акустике, `best_rescored` — после пересчёта с языковой моделью, и WER обоих наборов относительно `references`: `wer_acoustic` и `wer_rescored`. Функция `total_wer(refs, hyps)` уже есть.
+  prelude: |
+    import json
+    import math
+    import re
+    from collections import Counter
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    sentences = []
+    for d in docs:
+        for s in re.split(r'[.!?\n]+', d['section'] + '. ' + d['text']):
+            words = re.findall(r'[а-яё]+', s.lower())
+            if words:
+                sentences.append(words)
+    uni = Counter(w for s in sentences for w in s)
+    bi = Counter(p for s in sentences for p in zip(s, s[1:]))
+    V = len(uni)
+
+    def total_wer(refs, hyps):
+        def edits(a, b):
+            prev = list(range(len(b) + 1))
+            for i in range(1, len(a) + 1):
+                cur = [i] + [0] * len(b)
+                for j in range(1, len(b) + 1):
+                    cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] != b[j - 1]))
+                prev = cur
+            return prev[-1]
+        return sum(edits(r.split(), h.split()) for r, h in zip(refs, hyps)) / sum(len(r.split()) for r in refs)
+
+    utterances = [[('что такое случайный вес', -10.2), ('что такое случайный лес', -10.9)],
+                  [('как работает градиентный бусинг', -12.0), ('как работает градиентный бустинг', -12.5)],
+                  [('что такое языковая модуль', -11.1), ('что такое языковая модель', -11.4)],
+                  [('зачем нужна ранняя установка', -9.8), ('зачем нужна ранняя остановка', -10.6)],
+                  [('задаём случайный вес нейрона', -8.0), ('задаём случайный лес нейрона', -11.5)]]
+    references = ['что такое случайный лес', 'как работает градиентный бустинг', 'что такое языковая модель',
+                  'зачем нужна ранняя остановка', 'задаём случайный вес нейрона']
+  starter: |
+    def lm_logprob(words, uni, bi, V):
+        return sum(... for u, v in zip(words, words[1:]))
+
+    def rescore(hyps, weight=1.0):
+        return max(hyps, key=lambda h: ...)[0]
+
+    best_acoustic = [max(hyps, key=lambda h: h[1])[0] for hyps in utterances]
+    best_rescored = [rescore(hyps) for hyps in utterances]
+    wer_acoustic = total_wer(references, best_acoustic)
+    wer_rescored = ...
+    print(best_rescored, wer_acoustic, wer_rescored)
+  solution: |
+    def lm_logprob(words, uni, bi, V):
+        return sum(math.log((bi[(u, v)] + 1) / (uni[u] + V)) for u, v in zip(words, words[1:]))
+
+    def rescore(hyps, weight=1.0):
+        return max(hyps, key=lambda h: h[1] + weight * lm_logprob(h[0].split(), uni, bi, V))[0]
+
+    best_acoustic = [max(hyps, key=lambda h: h[1])[0] for hyps in utterances]
+    best_rescored = [rescore(hyps) for hyps in utterances]
+    wer_acoustic = total_wer(references, best_acoustic)
+    wer_rescored = total_wer(references, best_rescored)
+    print(best_rescored, wer_acoustic, wer_rescored)
+  explanation: |
+    - `zip(words, words[1:])` — соседние пары слов. `+1` в числителе и `+ V` в знаменателе — сглаживание: незнакомая пара получает маленькую, но не нулевую вероятность, и `log` не падает на нуле.
+    - `max(hyps, key=…)` выбирает гипотезу с наибольшей суммой оценок, `[0]` берёт её текст. При `weight=0` решает одна акустика.
+    - Одна акустика ошиблась в четырёх фразах из пяти: «вес», «бусинг», «модуль», «установка». WER 0,2 — 4 ошибки на 20 слов. Языковая модель исправила все четыре: она знает по текстам курса «случайный лес», «градиентный бустинг», «языковую модель» и «раннюю остановку». WER стал 0.
+    - В пятой фразе человек сказал «случайный вес нейрона». Языковая модель тянет к «лесу», но акустика здесь уверена (−8 против −11,5) и побеждает. Именно поэтому оценки складывают, а не доверяют одной языковой модели.
+  hints:
+    - "Слагаемое для пары — `math.log((bi[(u, v)] + 1) / (uni[u] + V))`."
+    - "Оценка гипотезы `h` — `h[1] + weight * lm_logprob(h[0].split(), uni, bi, V)`."
+    - "`wer_rescored` — `total_wer(references, best_rescored)`."
+  tests: |
+    import math
+    from collections import Counter
+    f = var('lm_logprob')
+    ensure(callable(f), '`lm_logprob` должна быть функцией.')
+    u = Counter({'a': 2, 'b': 1})
+    b = Counter({('a', 'b'): 1})
+    close(f(['a', 'b'], u, b, 3), math.log(2 / 5), 'Для пары (a, b): (1 + 1) / (2 + 3), логарифм — {expected}, а у вас {actual}.')
+    close(f(['b', 'a'], u, b, 3), math.log(1 / 4), 'Для незнакомой пары (b, a): (0 + 1) / (1 + 3), логарифм — {expected}, а у вас {actual}.')
+    close(f(['a'], u, b, 3), 0.0, 'У фразы из одного слова нет пар — сумма 0, а у вас {actual}.')
+    close(f(['a', 'b', 'a'], u, b, 3), math.log(2 / 5) + math.log(1 / 4), 'Логарифм фразы — сумма по всем соседним парам: {expected}, а у вас {actual}.')
+    g = var('rescore')
+    ensure(callable(g), '`rescore` должна быть функцией.')
+    hy = [('случайный вес', -1.0), ('случайный лес', -1.5)]
+    equal(g(hy, 0.0), 'случайный вес', 'При weight=0 решает одна акустика — «случайный вес», а у вас {actual}.')
+    equal(g(hy), 'случайный лес', 'С языковой моделью «случайный лес» правдоподобнее, а у вас {actual}.')
+    equal(g([('случайный вес', -1.0), ('случайный лес', -5.0)]), 'случайный вес', 'Если акустика уверена (−1 против −5), языковая модель не должна её перебить, а у вас {actual}.')
+    equal(var('best_acoustic', list, 'списком'), ref('best_acoustic'), 'Лучшие по акустике гипотезы — {expected}, а у вас {actual}.')
+    equal(var('best_rescored', list, 'списком'), ref('best_rescored'), 'После пересчёта — {expected}, а у вас {actual}.')
+    close(var('wer_acoustic', 'number', 'числом'), ref('wer_acoustic'), 'WER по одной акустике — {expected}, а у вас {actual}.')
+    close(var('wer_rescored', 'number', 'числом'), ref('wer_rescored'), 'WER после пересчёта — {expected}, а у вас {actual}.')
+  files: [course_docs.json]
+  wrong:
+    - code: |
+        def lm_logprob(words, uni, bi, V):
+            return sum(math.log((bi[(u, v)] + 1) / (uni[u] + 1)) for u, v in zip(words, words[1:]))
+        def rescore(hyps, weight=1.0):
+            return max(hyps, key=lambda h: h[1] + weight * lm_logprob(h[0].split(), uni, bi, V))[0]
+        best_acoustic = [max(hyps, key=lambda h: h[1])[0] for hyps in utterances]
+        best_rescored = [rescore(hyps) for hyps in utterances]
+        wer_acoustic = total_wer(references, best_acoustic)
+        wer_rescored = total_wer(references, best_rescored)
+      expect: Для пары (a, b)
+    - code: |
+        def lm_logprob(words, uni, bi, V):
+            return sum(math.log((bi[(u, v)] + 1) / (uni[u] + V)) for u, v in zip(words, words[1:]))
+        def rescore(hyps, weight=1.0):
+            return max(hyps, key=lambda h: lm_logprob(h[0].split(), uni, bi, V))[0]
+        best_acoustic = [max(hyps, key=lambda h: h[1])[0] for hyps in utterances]
+        best_rescored = [rescore(hyps) for hyps in utterances]
+        wer_acoustic = total_wer(references, best_acoustic)
+        wer_rescored = total_wer(references, best_rescored)
+      expect: решает одна акустика
+
+- id: m12-l5-t5
+  title: Числа словами в нужной форме
+  difficulty: main
+  introduces: [speech-synthesis]
+  uses: [named-entities]
+  statement: |
+    Напишите функцию `plural(k, one, few, many)` — форму слова после числа `k`: «один процент», «два процента», «пять процентов». Правило русского языка:
+
+    - последняя цифра 1, а две последние — не 11: форма `one`;
+    - последняя цифра 2, 3 или 4, а две последние — не 12, 13, 14: форма `few`;
+    - иначе — `many`.
+
+    Затем напишите функцию `normalize(text)`. Она заменяет каждое «число %» (пробела перед знаком может и не быть) на число словами и слово «процент» в нужной форме. Каждое «число Гц» — на число словами и слово «герц» (герц, герца, герц). Числа — от 0 до 999, функция `say_number` из урока уже есть. Получите `spoken` — подготовленные к синтезу фразы `phrases`.
+  prelude: |
+    import re
+    ONES = ['ноль', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять', 'десять',
+            'одиннадцать', 'двенадцать', 'тринадцать', 'четырнадцать', 'пятнадцать', 'шестнадцать',
+            'семнадцать', 'восемнадцать', 'девятнадцать']
+    TENS = ['', '', 'двадцать', 'тридцать', 'сорок', 'пятьдесят', 'шестьдесят', 'семьдесят', 'восемьдесят', 'девяносто']
+    HUNDREDS = ['', 'сто', 'двести', 'триста', 'четыреста', 'пятьсот', 'шестьсот', 'семьсот', 'восемьсот', 'девятьсот']
+
+    def say_number(k):
+        """Число от 0 до 999 словами."""
+        if k == 0:
+            return 'ноль'
+        h, rest = divmod(k, 100)
+        parts = [HUNDREDS[h]] if h else []
+        if rest >= 20:
+            parts.append(TENS[rest // 10])
+            if rest % 10:
+                parts.append(ONES[rest % 10])
+        elif rest:
+            parts.append(ONES[rest])
+        return ' '.join(parts)
+
+    phrases = ['Классификатор угадал 74 % разделов, ориентир — 11 %.',
+               'Нота ля — 440 Гц, октавой выше — 880 Гц.',
+               'Скидка 21 % действует до пятницы.',
+               'Ошибок стало 3%, а было 12 %.',
+               'Частота 22 Гц почти не слышна.']
+  starter: |
+    def plural(k, one, few, many):
+        if k % 10 == 1 and k % 100 != 11:
+            return one
+        if ...:
+            return few
+        return many
+
+    def normalize(text):
+        text = re.sub(r'(\d+) ?%', lambda m: say_number(int(m.group(1))) + ' ' + plural(int(m.group(1)), 'процент', 'процента', 'процентов'), text)
+        text = re.sub(..., text)
+        return text
+
+    spoken = [normalize(p) for p in phrases]
+    print(spoken)
+  solution: |
+    def plural(k, one, few, many):
+        if k % 10 == 1 and k % 100 != 11:
+            return one
+        if 2 <= k % 10 <= 4 and not 12 <= k % 100 <= 14:
+            return few
+        return many
+
+    def normalize(text):
+        text = re.sub(r'(\d+) ?%', lambda m: say_number(int(m.group(1))) + ' ' + plural(int(m.group(1)), 'процент', 'процента', 'процентов'), text)
+        text = re.sub(r'(\d+) ?Гц', lambda m: say_number(int(m.group(1))) + ' ' + plural(int(m.group(1)), 'герц', 'герца', 'герц'), text)
+        return text
+
+    spoken = [normalize(p) for p in phrases]
+    print(spoken)
+  explanation: |
+    - `k % 10` — последняя цифра, `k % 100` — две последние. Числа от 11 до 14 — исключение: «одиннадцать процентов», хотя последняя цифра 1.
+    - `re.sub` с функцией вызывает её для каждого совпадения. `m.group(1)` — число из скобок шаблона, ` ?` разрешает пробел перед знаком, но не требует его.
+    - Такие правила — первый этап синтеза. Дальше начинаются трудности: после предлогов нужен другой падеж («от 20 Гц» — «от двадцати герц»), а годы читают порядковыми числами («в 2026 году» — «в две тысячи двадцать шестом году»). Настоящие нормализаторы учитывают и это, а иногда поручают подготовку текста языковой модели.
+  hints:
+    - "Вторая ветка: `2 <= k % 10 <= 4 and not 12 <= k % 100 <= 14`."
+    - "Для герц — тот же шаблон с `Гц` вместо `%`: `r'(\\d+) ?Гц'`."
+    - "Формы для герц — `plural(…, 'герц', 'герца', 'герц')`."
+  tests: |
+    f = var('plural')
+    ensure(callable(f), '`plural` должна быть функцией.')
+    forms = ('процент', 'процента', 'процентов')
+    if f(11, *forms) == 'процент' or f(12, *forms) == 'процента':
+        fail('11 — «одиннадцать процентов», 12 — «двенадцать процентов»: числа от 11 до 14 — исключение. Проверяйте две последние цифры, `k % 100`.')
+    for k, w in [(1, 'процент'), (2, 'процента'), (4, 'процента'), (5, 'процентов'), (11, 'процентов'), (12, 'процентов'), (14, 'процентов'),
+                 (20, 'процентов'), (21, 'процент'), (22, 'процента'), (25, 'процентов'), (101, 'процент'), (111, 'процентов'), (112, 'процентов'), (0, 'процентов')]:
+        equal(f(k, *forms), w, f'После числа {k} — «{w}», а у вас {{actual}}.')
+    g = var('normalize')
+    ensure(callable(g), '`normalize` должна быть функцией.')
+    equal(g('Угадал 74 % разделов, ориентир — 11 %.'), 'Угадал семьдесят четыре процента разделов, ориентир — одиннадцать процентов.', 'Ожидалось {expected}, а у вас {actual}.')
+    equal(g('Было 3%, стало 21 %.'), 'Было три процента, стало двадцать один процент.', 'Пробела перед % может и не быть. Ожидалось {expected}, а у вас {actual}.')
+    equal(g('Тон 22 Гц и 440 Гц.'), 'Тон двадцать два герца и четыреста сорок герц.', 'Ожидалось {expected}, а у вас {actual}.')
+    equal(g('Без чисел.'), 'Без чисел.', 'Текст без чисел не меняется, а у вас {actual}.')
+    equal(var('spoken', list, 'списком'), ref('spoken'), 'Подготовленные фразы — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        def plural(k, one, few, many):
+            if k % 10 == 1:
+                return one
+            if 2 <= k % 10 <= 4:
+                return few
+            return many
+        def normalize(text):
+            text = re.sub(r'(\d+) ?%', lambda m: say_number(int(m.group(1))) + ' ' + plural(int(m.group(1)), 'процент', 'процента', 'процентов'), text)
+            text = re.sub(r'(\d+) ?Гц', lambda m: say_number(int(m.group(1))) + ' ' + plural(int(m.group(1)), 'герц', 'герца', 'герц'), text)
+            return text
+        spoken = [normalize(p) for p in phrases]
+      expect: исключение
+    - code: |
+        def plural(k, one, few, many):
+            if k % 10 == 1 and k % 100 != 11:
+                return one
+            if 2 <= k % 10 <= 4 and not 12 <= k % 100 <= 14:
+                return few
+            return many
+        def normalize(text):
+            text = re.sub(r'(\d+) %', lambda m: say_number(int(m.group(1))) + ' ' + plural(int(m.group(1)), 'процент', 'процента', 'процентов'), text)
+            text = re.sub(r'(\d+) Гц', lambda m: say_number(int(m.group(1))) + ' ' + plural(int(m.group(1)), 'герц', 'герца', 'герц'), text)
+            return text
+        spoken = [normalize(p) for p in phrases]
+      expect: Пробела перед % может и не быть
+
+- id: m12-l5-t6
+  title: Тысячи
+  difficulty: star
+  introduces: []
+  uses: [speech-synthesis]
+  statement: |
+    Расширьте озвучивание чисел до 999 999. Напишите функцию `say_big(k)`:
+
+    - для `k < 1000` — `say_number(k)`;
+    - иначе — число тысяч словами, слово «тысяча» в нужной форме и остаток словами, если он не ноль.
+
+    Слово «тысяча» женского рода: «две тысячи», «двадцать одна тысяча», «двести две тысячи», но «одиннадцать тысяч». Ровно одну тысячу читают просто «тысяча»: 1956 — «тысяча девятьсот пятьдесят шесть». Функции `say_number` и `plural` уже есть. Получите `years` — числа из списка `YEARS` словами.
+  prelude: |
+    ONES = ['ноль', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять', 'десять',
+            'одиннадцать', 'двенадцать', 'тринадцать', 'четырнадцать', 'пятнадцать', 'шестнадцать',
+            'семнадцать', 'восемнадцать', 'девятнадцать']
+    TENS = ['', '', 'двадцать', 'тридцать', 'сорок', 'пятьдесят', 'шестьдесят', 'семьдесят', 'восемьдесят', 'девяносто']
+    HUNDREDS = ['', 'сто', 'двести', 'триста', 'четыреста', 'пятьсот', 'шестьсот', 'семьсот', 'восемьсот', 'девятьсот']
+
+    def say_number(k):
+        """Число от 0 до 999 словами."""
+        if k == 0:
+            return 'ноль'
+        h, rest = divmod(k, 100)
+        parts = [HUNDREDS[h]] if h else []
+        if rest >= 20:
+            parts.append(TENS[rest // 10])
+            if rest % 10:
+                parts.append(ONES[rest % 10])
+        elif rest:
+            parts.append(ONES[rest])
+        return ' '.join(parts)
+
+    def plural(k, one, few, many):
+        if k % 10 == 1 and k % 100 != 11:
+            return one
+        if 2 <= k % 10 <= 4 and not 12 <= k % 100 <= 14:
+            return few
+        return many
+
+    YEARS = [1956, 2012, 2026, 2001]
+  starter: |
+    def say_big(k):
+        if k < 1000:
+            return say_number(k)
+        th, rest = divmod(k, 1000)
+        words = say_number(th).split()
+        if words[-1] == 'один':
+            words[-1] = ...
+        elif words[-1] == 'два':
+            words[-1] = ...
+        if th == 1:
+            words = []
+        words.append(plural(th, ...))
+        if rest:
+            words.append(...)
+        return ' '.join(words)
+
+    years = [say_big(y) for y in YEARS]
+    print(years)
+  solution: |
+    def say_big(k):
+        if k < 1000:
+            return say_number(k)
+        th, rest = divmod(k, 1000)
+        words = say_number(th).split()
+        if words[-1] == 'один':
+            words[-1] = 'одна'
+        elif words[-1] == 'два':
+            words[-1] = 'две'
+        if th == 1:
+            words = []
+        words.append(plural(th, 'тысяча', 'тысячи', 'тысяч'))
+        if rest:
+            words.append(say_number(rest))
+        return ' '.join(words)
+
+    years = [say_big(y) for y in YEARS]
+    print(years)
+  explanation: |
+    - `divmod(k, 1000)` делит число на тысячи и остаток. Тысячи читаются тем же `say_number` — это число от 1 до 999.
+    - Слово «тысяча» женского рода, поэтому последнее слово «один» становится «одна», «два» — «две». «Одиннадцать» и «двенадцать» — отдельные слова, их правило не трогает.
+    - Форма «тысяча / тысячи / тысяч» — тот же `plural`, что для процентов: «двадцать одна тысяча», «две тысячи», «одиннадцать тысяч».
+    - 2026 — «две тысячи двадцать шесть». Это количественное число. В тексте «в 2026 году» год читают порядковым числом в нужном падеже: «в две тысячи двадцать шестом году». Для этого нормализатору нужны и грамматика, и контекст.
+  hints:
+    - "Женский род: последнее слово `'один'` → `'одна'`, `'два'` → `'две'`."
+    - "Форма слова — `plural(th, 'тысяча', 'тысячи', 'тысяч')`; ровно одна тысяча — просто «тысяча»."
+    - "Остаток, если он не ноль, — `say_number(rest)`."
+  tests: |
+    f = var('say_big')
+    ensure(callable(f), '`say_big` должна быть функцией.')
+    if f(2000).startswith('два'):
+        fail('«Тысяча» — женского рода: «две тысячи», а не «два тысячи».')
+    if f(2000) == 'две тысяча' or f(5000) == 'пять тысяча':
+        fail('Форма слова «тысяча» зависит от числа: «две тысячи», «пять тысяч» — используйте plural.')
+    if f(1956).startswith('одна'):
+        fail('Ровно одну тысячу читают просто «тысяча»: 1956 — «тысяча девятьсот пятьдесят шесть».')
+    if f(3000).endswith('ноль'):
+        fail('Нулевой остаток не произносят: 3000 — «три тысячи».')
+    for k, w in [(0, 'ноль'), (7, 'семь'), (1000, 'тысяча'), (1001, 'тысяча один'), (2026, 'две тысячи двадцать шесть'),
+                 (5000, 'пять тысяч'), (11000, 'одиннадцать тысяч'), (21000, 'двадцать одна тысяча'), (202000, 'двести две тысячи'),
+                 (100500, 'сто тысяч пятьсот'), (999999, 'девятьсот девяносто девять тысяч девятьсот девяносто девять')]:
+        equal(f(k), w, f'{k} — «{w}», а у вас {{actual}}.')
+    equal(var('years', list, 'списком'), ref('years'), 'Годы словами — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        def say_big(k):
+            if k < 1000:
+                return say_number(k)
+            th, rest = divmod(k, 1000)
+            words = [] if th == 1 else say_number(th).split()
+            words.append(plural(th, 'тысяча', 'тысячи', 'тысяч'))
+            if rest:
+                words.append(say_number(rest))
+            return ' '.join(words)
+        years = [say_big(y) for y in YEARS]
+      expect: женского рода
+    - code: |
+        def say_big(k):
+            if k < 1000:
+                return say_number(k)
+            th, rest = divmod(k, 1000)
+            words = say_number(th).split()
+            if words[-1] == 'один':
+                words[-1] = 'одна'
+            elif words[-1] == 'два':
+                words[-1] = 'две'
+            if th == 1:
+                words = []
+            words.append('тысяча')
+            if rest:
+                words.append(say_number(rest))
+            return ' '.join(words)
+        years = [say_big(y) for y in YEARS]
+      expect: используйте plural

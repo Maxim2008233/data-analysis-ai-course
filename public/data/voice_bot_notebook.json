@@ -1,0 +1,176 @@
+{
+ "source": "Workshops/2025/08_Голосовой_бот_Colab.ipynb",
+ "records": [
+  {
+   "kind": "stt",
+   "cell": 31,
+   "note": "Распознавание записи recording.wav функцией stt.",
+   "response": {
+    "result": [
+     "Тестовая проверка записи."
+    ],
+    "emotions": [
+     {
+      "negative": 0.00015711258,
+      "neutral": 0.9997843,
+      "positive": 5.866122e-05
+     }
+    ],
+    "person_identity": {
+     "age": "age_none",
+     "gender": "gender_none",
+     "age_score": 0,
+     "gender_score": 0
+    },
+    "status": 200
+   }
+  },
+  {
+   "kind": "stt",
+   "cell": 46,
+   "note": "Первый вопрос голосового чата AudioChat.process_audio.",
+   "response": {
+    "result": [
+     "Проверим."
+    ],
+    "emotions": [
+     {
+      "negative": 0.0037818472,
+      "neutral": 0.992875,
+      "positive": 0.003343143
+     }
+    ],
+    "person_identity": {
+     "age": "age_none",
+     "gender": "gender_none",
+     "age_score": 0,
+     "gender_score": 0
+    },
+    "status": 200
+   }
+  },
+  {
+   "kind": "stt",
+   "cell": 48,
+   "note": "Второй вопрос голосового чата.",
+   "response": {
+    "result": [
+     "Просто удивительно."
+    ],
+    "emotions": [
+     {
+      "negative": 0.089146264,
+      "neutral": 0.9104774,
+      "positive": 0.00037625863
+     }
+    ],
+    "person_identity": {
+     "age": "age_none",
+     "gender": "gender_none",
+     "age_score": 0,
+     "gender_score": 0
+    },
+    "status": 200
+   }
+  },
+  {
+   "kind": "stt",
+   "cell": 62,
+   "note": "Распознавание в голосовом чате на Gradio.",
+   "response": {
+    "result": [
+     "Самое последнее, что я здесь делал, это полностью голосовой чат на radio, но он работает только в колабе. Ну, по крайней мере, у меня вот здесь у меня potm 3 9 греди не запускается.",
+     ""
+    ],
+    "emotions": [
+     {
+      "negative": 7.150919e-05,
+      "neutral": 0.99989057,
+      "positive": 3.7914007e-05
+     },
+     {
+      "negative": 0,
+      "neutral": 1,
+      "positive": 0
+     }
+    ],
+    "person_identity": {
+     "age": "age_none",
+     "gender": "gender_none",
+     "age_score": 0,
+     "gender_score": 0
+    },
+    "status": 200
+   }
+  },
+  {
+   "kind": "gigachat",
+   "id": "voice-chat-1",
+   "cell": 52,
+   "model": "GigaChat",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Проверим."
+    }
+   ],
+   "response": "Пиши — проверю.",
+   "finish_reason": null,
+   "note": "Ответ на распознанный первый вопрос голосового чата («Проверим.»)."
+  },
+  {
+   "kind": "gigachat",
+   "id": "voice-chat-2",
+   "cell": 52,
+   "model": "GigaChat",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Проверим."
+    },
+    {
+     "role": "assistant",
+     "content": "Пиши — проверю."
+    },
+    {
+     "role": "user",
+     "content": "Просто удивительно."
+    }
+   ],
+   "response": "Нормально удивлён? Или есть конкретная причина удивления? Расскажи подробнее.",
+   "finish_reason": null,
+   "note": "Ответ на второй вопрос голосового чата: модель видит всю историю."
+  },
+  {
+   "kind": "gigachat",
+   "id": "voice-chat-3",
+   "cell": 52,
+   "model": "GigaChat",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Проверим."
+    },
+    {
+     "role": "assistant",
+     "content": "Пиши — проверю."
+    },
+    {
+     "role": "user",
+     "content": "Просто удивительно."
+    },
+    {
+     "role": "assistant",
+     "content": "Нормально удивлён? Или есть конкретная причина удивления? Расскажи подробнее."
+    },
+    {
+     "role": "user",
+     "content": "привет, как дела"
+    }
+   ],
+   "response": "Привет! Всё отлично, спасибо. Готов поговорить, помочь разобраться с вопросом или просто поболтать. Как твои дела?",
+   "finish_reason": null,
+   "note": "Текстовый вопрос conversation_predict('привет, как дела') в том же чате."
+  }
+ ]
+}

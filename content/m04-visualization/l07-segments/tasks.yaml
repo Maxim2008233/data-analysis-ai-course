@@ -1,0 +1,376 @@
+- id: m4-l7-t1
+  kind: plot
+  title: "Год выпуска: автоматы и механика стопкой"
+  difficulty: warmup
+  introduces: [conditional-dist]
+  uses: [sns-basics]
+  statement: |
+    Нарисуйте гистограмму года выпуска с **30** интервалами, раскрашенную по типу коробки (`hue='Transmission'`), группы — друг на друге (`multiple='stack'`). Добавьте заголовок и подписи осей.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    fig, ax = plt.subplots(figsize=(10, 3.5))
+    sns.histplot(...)
+    ax.set(title=..., xlabel=..., ylabel=...)
+    plt.show()
+  solution: |
+    fig, ax = plt.subplots(figsize=(10, 3.5))
+    sns.histplot(data=df, x='Year', hue='Transmission', multiple='stack', bins=30, ax=ax)
+    ax.set(title='Год выпуска: автоматы и механика', xlabel='Год выпуска', ylabel='Число объявлений')
+    plt.show()
+  explanation: |
+    - `hue='Transmission'` — цвет по коробке и легенда; `multiple='stack'` ставит столбики групп друг на друга.
+    - Высота каждой стопки — все объявления этого интервала годов; видно, что среди новых машин автоматов больше.
+  hints:
+    - Цвет по категории задаёт `hue`, способ сложить группы — `multiple`.
+    - "`sns.histplot(data=df, x='Year', hue='Transmission', multiple='stack', bins=30, ax=ax)`."
+    - "`ax.set(title='Год выпуска: автоматы и механика', xlabel='Год выпуска', ylabel='Число объявлений')`."
+  tests: |
+    import numpy as np
+    ax = axes()
+    bars = [p for p in ax.patches if type(p).__name__ == 'Rectangle']
+    leg = ax.get_legend()
+    ensure(leg is not None and {'Automatic', 'Manual'} <= set(t.get_text() for t in leg.get_texts()), 'Раскрасьте гистограмму по коробке передач: `hue=\'Transmission\'`.')
+    ensure(len(bars) == 60, 'Должно быть 60 столбиков — 30 интервалов для каждой из двух групп, а у вас {0}. Проверьте `bins=30`.'.format(len(bars)))
+    tops = {}
+    bottoms = []
+    for b in bars:
+        x = round(b.get_x(), 6)
+        tops[x] = max(tops.get(x, 0), b.get_y() + b.get_height())
+        bottoms.append(b.get_y())
+    ensure(max(bottoms) > 0, 'Группы должны стоять друг на друге: `multiple=\'stack\'`.')
+    exp = np.histogram(ref('df')['Year'], bins=30)[0]
+    same_array([tops[k] for k in sorted(tops)], exp, 'Высота каждой стопки должна быть числом всех объявлений интервала.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+    ensure(ax.get_xlabel().strip() != '' and ax.get_ylabel().strip() != '', 'Подпишите обе оси.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        fig, ax = plt.subplots()
+        sns.histplot(data=df, x='Year', hue='Transmission', bins=30, ax=ax)
+        ax.set(title='Год', xlabel='Год выпуска', ylabel='Число')
+        plt.show()
+      expect: друг на друге
+    - code: |
+        fig, ax = plt.subplots()
+        sns.histplot(data=df, x='Year', bins=30, ax=ax)
+        ax.set(title='Год', xlabel='Год выпуска', ylabel='Число')
+        plt.show()
+      expect: hue
+
+- id: m4-l7-t2
+  kind: plot
+  title: "Цена по типу топлива: порядок по медиане"
+  difficulty: main
+  introduces: [conditional-dist]
+  uses: [boxplot-rule, pd-groupby, pd-sort-values]
+  statement: |
+    Получите `order` — типы топлива по **убыванию** медианной цены — и нарисуйте боксплоты цены по типу топлива в этом порядке (`sns.boxplot(..., order=order)`), без точек за усами (`showfliers=False`). Добавьте заголовок и подписи осей.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    order = ...
+    fig, ax = plt.subplots(figsize=(10, 3.5))
+    sns.boxplot(...)
+    ax.set(title=..., xlabel=..., ylabel=...)
+    plt.show()
+  solution: |
+    order = df.groupby('Fuel_type')['Price'].median().sort_values(ascending=False).index
+    fig, ax = plt.subplots(figsize=(10, 3.5))
+    sns.boxplot(data=df, x='Fuel_type', y='Price', order=order, showfliers=False, ax=ax)
+    ax.set(title='Цена по типу топлива (крайние точки скрыты)', xlabel='Тип топлива', ylabel='Цена, евро')
+    plt.show()
+  explanation: |
+    - Медианы по группам и сортировка по убыванию (уроки 3.2 и 2.2); `index` — названия групп в нужном порядке.
+    - `order=` задаёт порядок ящиков слева направо, `showfliers=False` прячет точки за усами (квартили считаются по всем записям).
+    - Подключаемые гибриды и гибриды дороже остальных, машины на газе (`Metan/Propan`) — дешевле всех; электромобилей всего 31 — их медиана ненадёжна.
+  hints:
+    - Порядок — это индекс медиан по группам, отсортированных по убыванию.
+    - "`df.groupby('Fuel_type')['Price'].median().sort_values(ascending=False).index`."
+    - "`sns.boxplot(data=df, x='Fuel_type', y='Price', order=order, showfliers=False, ax=ax)`."
+  tests: |
+    import numpy as np
+    exp_order = list(ref('order'))
+    got = [str(x) for x in var('order', None, 'списком названий')]
+    if got == exp_order[::-1]:
+        fail('Порядок перевёрнут: нужны типы топлива по **убыванию** медианной цены — `sort_values(ascending=False)`.')
+    ensure(got == exp_order, 'Порядок типов топлива должен быть {0}, а у вас {1}.'.format(exp_order, got))
+    ax = axes()
+    labels = [t.get_text() for t in ax.get_xticklabels()]
+    ensure(labels == exp_order, 'Ящики должны идти в порядке `order` — передайте его в `sns.boxplot(..., order=order)`.')
+    boxes = [p for p in ax.patches if type(p).__name__ == 'PathPatch']
+    ensure(len(boxes) == len(exp_order), 'Должно быть {0} ящиков — по одному на тип топлива.'.format(len(exp_order)))
+    fliers = [l for l in ax.get_lines() if l.get_marker() not in (None, 'None', '') and len(l.get_xdata()) > 0]
+    ensure(len(fliers) == 0, 'Спрячьте точки за усами: `showfliers=False`.')
+    med = ref('df').groupby('Fuel_type')['Price'].median()
+    hl = [l.get_ydata()[0] for l in ax.get_lines() if len(l.get_ydata()) == 2 and l.get_ydata()[0] == l.get_ydata()[1]]
+    ensure(all(any(np.isclose(m, h) for h in hl) for m in med.values), 'Боксплоты должны показывать цену (`y=\'Price\'`) по типу топлива (`x=\'Fuel_type\'`).')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        order = df.groupby('Fuel_type')['Price'].median().sort_values().index
+        fig, ax = plt.subplots()
+        sns.boxplot(data=df, x='Fuel_type', y='Price', order=order, showfliers=False, ax=ax)
+        ax.set(title='Топливо', xlabel='Тип топлива', ylabel='Цена, евро')
+        plt.show()
+      expect: перевёрнут
+    - code: |
+        order = df.groupby('Fuel_type')['Price'].median().sort_values(ascending=False).index
+        fig, ax = plt.subplots()
+        sns.boxplot(data=df, x='Fuel_type', y='Price', order=order, ax=ax)
+        ax.set(title='Топливо', xlabel='Тип топлива', ylabel='Цена, евро')
+        plt.show()
+      expect: showfliers
+
+- id: m4-l7-t3
+  kind: quiz
+  title: Выводы по условным распределениям
+  difficulty: main
+  introduces: [conditional-dist, facet-grid]
+  uses: []
+  statement: |
+    Сделайте выводы по графикам урока.
+  quiz:
+    - q: "Боксплоты цены по кузовам: медиана у пикапов самая высокая, но пикапов всего 124. Как подписать вывод?"
+      options:
+        - Пикапы — самые дорогие машины на рынке
+        - У пикапов в выборке самая высокая медиана, но группа мала — оценка ненадёжна
+        - Пикапы нужно удалить из данных
+      answer: 1
+      explain: У малых групп статистики сильнее зависят от случайных записей (урок 3.3).
+    - q: "На `multiple='fill'` доля автоматов падает с ростом пробега. Что это значит?"
+      options:
+        - Автоматы ломаются на больших пробегах
+        - Среди машин с большим пробегом автоматов меньше — возможно, потому что это более старые машины; причину график не доказывает
+        - Механика дороже автомата
+      answer: 1
+      explain: Условное распределение показывает связь, а не причину; у групп есть и другие различия — например, возраст.
+    - q: "Зачем у панелей `catplot` общая шкала Y?"
+      options:
+        - Чтобы одинаковая высота ящика на разных панелях означала одинаковую цену
+        - Чтобы панели занимали меньше места
+        - Без неё catplot не работает
+      answer: 0
+      explain: При разных шкалах сравнение панелей «на глаз» вводит в заблуждение.
+  hints:
+    - Вспомните про размер групп (урок 3.3), связь и причину (урок 4.1) и сравнимость панелей.
+    - "Малая группа — ненадёжная медиана; связь ≠ причина; общая шкала — честное сравнение."
+    - "Ответы: группа мала; связь, а не причина; одинаковая высота — одинаковая цена."
+
+- id: m4-l7-t4
+  kind: plot
+  title: "Тепловая карта: кузова внутри марок"
+  difficulty: main
+  introduces: [heatmap-shares]
+  uses: [pd-crosstab, count-vs-share, pd-value-counts]
+  statement: |
+    Для шести самых частых марок **без** группы `Rare` получите `shares` — долю каждого типа кузова **внутри марки** (марки по строкам, кузова по колонкам) — и нарисуйте её тепловой картой с подписями в процентах (`annot=True, fmt='.0%'`). В заголовке укажите, что доли считаются внутри марки.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    top6 = ...
+    brands = df[df['Make'].isin(top6)]
+    shares = ...
+    fig, ax = plt.subplots(figsize=(12, 3.5))
+    sns.heatmap(...)
+    ax.set(title=...)
+    plt.show()
+  solution: |
+    top6 = df.loc[df['Make'] != 'Rare', 'Make'].value_counts().head(6).index
+    brands = df[df['Make'].isin(top6)]
+    shares = pd.crosstab(brands['Make'], brands['Style'], normalize='index')
+    fig, ax = plt.subplots(figsize=(12, 3.5))
+    sns.heatmap(shares, annot=True, fmt='.0%', cmap='Blues', ax=ax)
+    ax.set(title='Доля типов кузова внутри марки', xlabel='Тип кузова', ylabel='Марка')
+    plt.show()
+  explanation: |
+    - Сначала убираем `Rare`, затем берём шесть самых частых марок и их объявления (урок 2.5).
+    - `crosstab(..., normalize='index')` — доли кузовов внутри каждой марки, сумма строки равна 1 (урок 3.5).
+    - Тепловая карта сразу показывает сегменты: у BMW и Mercedes больше половины объявлений — седаны, у Renault и Opel — универсалы, у Toyota — хэтчбеки.
+  hints:
+    - "Отберите марки без `Rare`, затем таблица сочетаний с долями по строкам."
+    - "`top6 = df.loc[df['Make'] != 'Rare', 'Make'].value_counts().head(6).index`; `pd.crosstab(brands['Make'], brands['Style'], normalize='index')`."
+    - "`sns.heatmap(shares, annot=True, fmt='.0%', cmap='Blues', ax=ax)`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    sh = var('shares', pd.DataFrame, 'таблицей DataFrame')
+    ensure('Rare' not in [str(x) for x in sh.index], 'Уберите группу `Rare`: это не марка, а редкие марки вместе.')
+    ensure(len(sh) == 6, 'В таблице должно быть шесть марок, а строк {0}.'.format(len(sh)))
+    sums = sh.sum(axis=1)
+    if (sums > 1.5).any():
+        fail('В таблице количества, а нужны доли внутри марки: `normalize=\'index\'`.')
+    ensure(((sums - 1).abs() < 1e-6).all(), 'Сумма каждой строки должна быть 1: доли внутри марки — `normalize=\'index\'`.')
+    same_frame(sh, ref('shares'), 'Таблица долей не совпадает.', check_like=True)
+    ax = axes()
+    meshes = [c for c in ax.collections if type(c).__name__ == 'QuadMesh']
+    ensure(len(meshes) >= 1, 'Нарисуйте тепловую карту: `sns.heatmap(shares, ...)`.')
+    arr = np.asarray(meshes[0].get_array()).reshape(sh.shape)
+    same_array(arr, sh.values, 'Цвета тепловой карты должны показывать доли из `shares`.')
+    texts = [t.get_text() for t in ax.texts]
+    ensure(len(texts) >= sh.size and all('%' in t for t in texts[:sh.size]), 'Подпишите ячейки процентами: `annot=True, fmt=\'.0%\'`.')
+    ensure('внутри' in ax.get_title().lower(), 'Укажите в заголовке, что доли считаются внутри марки.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        top6 = df['Make'].value_counts().head(6).index
+        brands = df[df['Make'].isin(top6)]
+        shares = pd.crosstab(brands['Make'], brands['Style'], normalize='index')
+        fig, ax = plt.subplots()
+        sns.heatmap(shares, annot=True, fmt='.0%', ax=ax)
+        ax.set(title='Доля кузовов внутри марки')
+        plt.show()
+      expect: Rare
+    - code: |
+        top6 = df.loc[df['Make'] != 'Rare', 'Make'].value_counts().head(6).index
+        brands = df[df['Make'].isin(top6)]
+        shares = pd.crosstab(brands['Make'], brands['Style'], normalize='index')
+        fig, ax = plt.subplots()
+        sns.heatmap(shares, ax=ax)
+        ax.set(title='Доля кузовов внутри марки')
+        plt.show()
+      expect: процентами
+
+- id: m4-l7-t5
+  kind: plot
+  title: "Панели по маркам: автомат и механика"
+  difficulty: main
+  introduces: [facet-grid]
+  uses: [sns-basics, boxplot-rule, pd-isin-between]
+  statement: |
+    Для четырёх самых частых марок **без** `Rare` (`top4`) нарисуйте функцией `sns.catplot` панели — по одной на марку (`col='Make'`, порядок `col_order=list(top4)`), — а на каждой боксплоты цены для автомата и механики (`x='Transmission'`, `y='Price'`, `kind='box'`, `showfliers=False`). Подпишите панели только названиями марок: `g.set_titles('{col_name}')`.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    top4 = ...
+    g = sns.catplot(...)
+    g.set_titles('{col_name}')
+    g.set_axis_labels('Коробка передач', 'Цена, евро')
+    plt.show()
+  solution: |
+    top4 = df.loc[df['Make'] != 'Rare', 'Make'].value_counts().head(4).index
+    g = sns.catplot(data=df[df['Make'].isin(top4)], x='Transmission', y='Price', col='Make',
+                    col_order=list(top4), kind='box', showfliers=False, height=3, aspect=0.9)
+    g.set_titles('{col_name}')
+    g.set_axis_labels('Коробка передач', 'Цена, евро')
+    plt.show()
+  explanation: |
+    - `isin(top4)` оставляет объявления четырёх марок (урок 2.5); `catplot` сам строит рисунок с панелями.
+    - `col='Make'` — панель на марку, `col_order` — порядок панелей, `kind='box'` — боксплоты на каждой.
+    - У всех четырёх марок автоматы дороже механики, а шкала общая — видно, что у BMW и Mercedes разница намного больше, чем у Toyota и Volkswagen.
+  hints:
+    - "Отберите объявления четырёх марок и передайте их в `sns.catplot` с `col='Make'`."
+    - "`sns.catplot(data=..., x='Transmission', y='Price', col='Make', col_order=list(top4), kind='box', showfliers=False)`."
+    - "`top4 = df.loc[df['Make'] != 'Rare', 'Make'].value_counts().head(4).index`."
+  tests: |
+    fig = figures()[-1]
+    axs = plot_axes(fig)
+    top4 = [str(x) for x in ref('top4')]
+    ensure(len(axs) == 4, 'Панелей должно быть 4 — по одной на марку (`col=\'Make\'`), а у вас {0}.'.format(len(axs)))
+    titles = [a.get_title() for a in axs]
+    if 'Rare' in ' '.join(titles):
+        fail('Среди панелей есть `Rare` — исключите эту группу.')
+    ensure(titles == top4, 'Панели должны называться марками в порядке частоты: {0}, а у вас {1}. Проверьте `col_order` и `g.set_titles(\'{{col_name}}\')`.'.format(top4, titles))
+    for a in axs:
+        boxes = [p for p in a.patches if type(p).__name__ == 'PathPatch']
+        ensure(len(boxes) == 2, 'На каждой панели должно быть два ящика — автомат и механика (`x=\'Transmission\'`, `kind=\'box\'`).')
+    ensure(axs[0].get_shared_y_axes().joined(axs[0], axs[1]), 'У панелей должна быть общая шкала Y.')
+    fliers = [l for a in axs for l in a.get_lines() if l.get_marker() not in (None, 'None', '') and len(l.get_xdata()) > 0]
+    ensure(len(fliers) == 0, 'Спрячьте точки за усами: `showfliers=False`.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        top4 = df['Make'].value_counts().head(4).index
+        g = sns.catplot(data=df[df['Make'].isin(top4)], x='Transmission', y='Price', col='Make', col_order=list(top4), kind='box', showfliers=False)
+        g.set_titles('{col_name}')
+        plt.show()
+      expect: Rare
+    - code: |
+        top4 = df.loc[df['Make'] != 'Rare', 'Make'].value_counts().head(4).index
+        g = sns.catplot(data=df[df['Make'].isin(top4)], x='Transmission', y='Price', col='Make', col_order=list(top4), kind='box', showfliers=False)
+        plt.show()
+      expect: set_titles
+
+- id: m4-l7-t6
+  title: Сколько «выбросов» в каждой группе пробега
+  difficulty: star
+  introduces: [conditional-dist]
+  uses: [boxplot-rule, pd-multiindex, pd-map]
+  statement: |
+    Посчитайте правило «1,5·IQR» **отдельно для каждой группы** `km_year_cat`:
+
+    - `bounds` — таблица с квартилями цены в группах (уровни `0.25` и `0.75` по колонкам) и колонкой `high` = Q3 + 1,5·IQR;
+    - `row_high` — граница своей группы для каждой строки `df` (Series длины `len(df)`, через `map`);
+    - `outlier_share` — доля объявлений **дороже** границы своей группы в процентах, по группам в порядке `['Small', 'Medium', 'Large']`.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    bounds = ...
+    bounds['high'] = ...
+    row_high = ...
+    is_out = df['Price'] > row_high
+    outlier_share = ...
+    print(bounds.round(0))
+    print(outlier_share.round(1))
+  solution: |
+    bounds = df.groupby('km_year_cat')['Price'].quantile([0.25, 0.75]).unstack()
+    bounds['high'] = bounds[0.75] + 1.5 * (bounds[0.75] - bounds[0.25])
+    row_high = df['km_year_cat'].map(bounds['high'])
+    is_out = df['Price'] > row_high
+    outlier_share = (100 * is_out.groupby(df['km_year_cat']).mean()).reindex(['Small', 'Medium', 'Large'])
+    print(bounds.round(0))
+    print(outlier_share.round(1))
+  explanation: |
+    - `groupby(...).quantile([0.25, 0.75]).unstack()` — квартили каждой группы, уровни в колонках (урок 3.4).
+    - `map(bounds['high'])` подставляет каждой строке границу её группы — как словарь «группа → граница» (урок 2.9).
+    - Маску «дороже своей границы» усредняем по группам (среднее маски — доля) и ставим группы в нужном порядке `reindex`.
+    - Больше всего «выбросов» в `Small` — около 9 %, и это в основном новые машины: для малого пробега дорогая машина — норма. Одна граница цены для всех групп здесь не годится.
+  hints:
+    - "Квартили по группам: `groupby('km_year_cat')['Price'].quantile([0.25, 0.75]).unstack()`; граница — из колонок `0.75` и `0.25`."
+    - "`row_high = df['km_year_cat'].map(bounds['high'])`; доля по группам — `is_out.groupby(df['km_year_cat']).mean()`."
+    - "`outlier_share = (100 * is_out.groupby(df['km_year_cat']).mean()).reindex(['Small', 'Medium', 'Large'])`."
+  tests: |
+    import pandas as pd
+    b = var('bounds', pd.DataFrame, 'таблицей DataFrame')
+    ensure('high' in b.columns, 'Добавьте в `bounds` колонку `high` = Q3 + 1,5·IQR.')
+    same_frame(b[['high']], ref('bounds')[['high']], 'Границы групп `high` не совпадают: Q3 + 1,5·(Q3 − Q1) отдельно для каждой группы.', check_like=True)
+    rh = var('row_high', pd.Series, 'Series — границей для каждой строки')
+    ensure(len(rh) == len(ref('df')), '`row_high` должна быть той же длины, что и таблица: подставьте границу группы каждой строке через `map`.')
+    same_frame(rh, ref('row_high'), 'Границы по строкам не совпадают.')
+    s = var('outlier_share', pd.Series, 'Series')
+    if s.max() <= 1:
+        fail('Доли от 0 до 1, а нужны проценты: умножьте на 100.')
+    ensure([str(x) for x in s.index] == ['Small', 'Medium', 'Large'], 'Группы должны идти в порядке Small, Medium, Large: `reindex([...])`.')
+    same_frame(s, ref('outlier_share'), 'Доли «выбросов» по группам не совпадают.')
+    same_frame(alt('outlier_share'), alt_ref('outlier_share'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        bounds = df.groupby('km_year_cat')['Price'].quantile([0.25, 0.75]).unstack()
+        bounds['high'] = bounds[0.75] + 1.5 * (bounds[0.75] - bounds[0.25])
+        q1, q3 = df['Price'].quantile([0.25, 0.75])
+        row_high = df['km_year_cat'].map(bounds['high'])
+        is_out = df['Price'] > q3 + 1.5 * (q3 - q1)
+        outlier_share = (100 * is_out.groupby(df['km_year_cat']).mean()).reindex(['Small', 'Medium', 'Large'])
+      expect: Доли «выбросов»
+    - code: |
+        bounds = df.groupby('km_year_cat')['Price'].quantile([0.25, 0.75]).unstack()
+        bounds['high'] = bounds[0.75] + 1.5 * (bounds[0.75] - bounds[0.25])
+        row_high = df['km_year_cat'].map(bounds['high'])
+        is_out = df['Price'] > row_high
+        outlier_share = 100 * is_out.groupby(df['km_year_cat']).mean()
+      expect: порядке Small

@@ -1,0 +1,294 @@
+# Справочник: Pandas (модуль 2) и понятия подготовки данных.
+- id: pd-read-csv
+  term: pd.read_csv
+  category: Pandas
+  aliases: [чтение csv, загрузка таблицы, read_csv, usecols]
+  summary: "Читает CSV-файл в `DataFrame`: первая строка — названия колонок, типы определяются по значениям. `usecols=[...]` — прочитать только нужные колонки, `sep=';'` — другой разделитель. Пустые ячейки становятся пропусками (`NaN`)."
+  syntax: |
+    pd.read_csv(путь, sep=',', usecols=None)
+  example: |
+    raw = pd.read_csv('cars.csv')
+    small = pd.read_csv('cars.csv', usecols=['Make', 'Year', 'Price(euro)'])
+- id: pd-copy
+  term: copy (копия таблицы)
+  category: Pandas
+  aliases: [raw, исходник, копия, .copy()]
+  summary: "`df.copy()` создаёт независимую копию таблицы. Исходные данные держат в `raw` и не меняют, а обработку делают на копии — так всегда можно сравнить результат с исходником. Копию делают и для части таблицы, которую собираются менять: `part = df[маска].copy()`."
+  example: |
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+- id: pd-dataframe
+  term: DataFrame
+  category: Pandas
+  aliases: [таблица, датафрейм, shape, columns, index]
+  summary: "Двумерная таблица: строки с метками (индекс `df.index`) и колонки с именами (`df.columns`). `df.shape` — (число строк, число колонок), `df.size` — число ячеек, `len(df)` — число строк. Можно создать из словаря списков."
+  example: |
+    df.shape, df.columns.tolist()
+    t = pd.DataFrame({'make': ['VW', 'BMW'], 'price': [10, 30]})
+- id: pd-series
+  term: Series
+  category: Pandas
+  aliases: [колонка, столбец, ряд]
+  summary: "Одна колонка значений со своим индексом. Колонку таблицы берут по имени: `df['Price(euro)']`. Series ведёт себя как массив NumPy (арифметика, сравнения, `mean`, `median`), а к значению можно обратиться по метке, как в словаре: `s['VW']`."
+  example: |
+    price = df['Price(euro)']
+    price.median(), (price > 10_000).mean()
+    s = pd.Series([400, 300], index=['Andrew', 'Bob'])
+    s['Bob']   # 300
+- id: pd-head-tail-sample
+  term: head, tail, sample
+  category: Pandas
+  aliases: [первые строки, последние строки, случайные строки, random_state]
+  summary: "`df.head(n)` — первые n строк (по умолчанию 5), `df.tail(n)` — последние, `df.sample(n, random_state=42)` — случайные; `random_state` делает выбор повторяемым."
+  example: |
+    df.head(3)
+    df.sample(3, random_state=42)
+- id: pd-info
+  term: info
+  category: Pandas
+  aliases: [non-null, непустые значения, обзор таблицы]
+  summary: "`df.info()` печатает число строк, по каждой колонке — число **непустых** значений и тип, а также память. Если непустых меньше, чем строк, в колонке есть пропуски. `df.count()` возвращает те же числа непустых значений в виде Series."
+  example: |
+    df.info()
+    len(df) - df['Make'].count()   # пропусков в Make
+- id: pd-dtypes
+  term: dtypes (типы колонок)
+  category: Pandas
+  aliases: [тип колонки, str, object, int64, float64, bool]
+  summary: "`df.dtypes` — тип каждой колонки: `int64` (целые), `float64` (дробные, а также целые с пропусками), `bool` (True/False), текст — `str` в pandas 3 и `object` в pandas 2. Тип одной колонки — `df['Year'].dtype`."
+  example: |
+    df.dtypes
+    str(df['Year'].dtype)   # 'int64'
+- id: pd-describe
+  term: describe
+  category: Pandas
+  aliases: [сводная статистика, describe, count mean std]
+  summary: "`df.describe()` — для числовых колонок: count (непустые), mean, std, min, 25 %, 50 % (медиана), 75 %, max. `df.describe(exclude='number')` — для текстовых и логических: count, unique (разных значений), top (самое частое), freq (его частота)."
+  example: |
+    df.describe().round(1)
+    df.describe(exclude='number')
+- id: pd-sort-values
+  term: sort_values
+  category: Pandas
+  aliases: [сортировка, по убыванию, ascending, nlargest]
+  summary: "Возвращает отсортированную копию таблицы, исходная не меняется. `ascending=False` — по убыванию. Несколько ключей: `by=['Year', 'Price(euro)']`, `ascending=[False, True]`. Для «n самых больших» есть `df.nlargest(n, 'колонка')`."
+  syntax: |
+    df.sort_values(by, ascending=True)
+  example: |
+    df.sort_values('Price(euro)', ascending=False).head(5)
+- id: pd-isna
+  term: isna, notna
+  category: Pandas
+  aliases: [пропуски, isnull, NaN, пропущенные значения]
+  summary: "`df.isna()` — таблица True/False (True — пропуск); `.sum()` считает пропуски по колонкам, `.mean()` — их долю. `s.notna()` — обратная маска. Для одного значения — `pd.isna(value)`."
+  example: |
+    df.isna().sum()
+    df['Engine_capacity(cm3)'].isna().mean()
+- id: pd-duplicated
+  term: duplicated
+  category: Pandas
+  aliases: [дубликаты, повторы, повторные строки, keep]
+  summary: "`df.duplicated()` — маска строк, которые полностью повторяют более раннюю строку (первое вхождение не отмечается). `keep=False` отмечает все копии, включая первую."
+  example: |
+    df.duplicated().sum()                 # повторов
+    df[df.duplicated(keep=False)]         # все строки из групп повторов
+- id: pd-value-counts
+  term: value_counts
+  category: Pandas
+  aliases: [частоты, частота категорий, normalize, dropna]
+  summary: "`s.value_counts()` — сколько раз встречается каждое значение, по убыванию. По умолчанию пропуски не считаются: `dropna=False` их учитывает. `normalize=True` возвращает доли."
+  example: |
+    df['Fuel_type'].value_counts(dropna=False)
+    df['Make'].value_counts(normalize=True).head(5)
+- id: pd-nunique
+  term: nunique, unique
+  category: Pandas
+  aliases: [число уникальных, уникальные значения]
+  summary: "`s.nunique()` — число разных значений (без пропусков), `s.unique()` — сами значения в порядке появления."
+  example: |
+    df['Make'].nunique()   # 87
+- id: pd-double-brackets
+  term: Выбор колонок списком df[[...]]
+  category: Pandas
+  aliases: [двойные скобки, несколько колонок, выбор колонок]
+  summary: "`df['Make']` возвращает Series, а `df[['Make']]` — DataFrame из одной колонки: внутренние скобки — это список имён. Колонки идут в порядке списка."
+  example: |
+    df[['Make', 'Model', 'Price(euro)']].head(3)
+- id: pd-loc
+  term: loc
+  category: Pandas
+  aliases: [выбор по меткам, loc, срез по меткам]
+  summary: "`df.loc[строки, колонки]` выбирает по **меткам** индекса и **именам** колонок. Срез меток включает правую границу: `df.loc[0:5]` — 6 строк. `df.loc[0]` — строка как Series, `df.loc[[0]]` — как DataFrame. Можно передать маску: `df.loc[маска, ['Make']]`."
+  example: |
+    df.loc[0:5, ['Make', 'Year', 'Price(euro)']]
+    df.loc[df['Year'] < 1970, 'Price(euro)']
+- id: pd-iloc
+  term: iloc
+  category: Pandas
+  aliases: [выбор по позициям, iloc, номер строки]
+  summary: "`df.iloc[строки, колонки]` выбирает по **позициям** (с нуля), как срезы NumPy: правая граница не включается, `-1` — последняя строка."
+  example: |
+    df.iloc[0:5, 0:3]   # позиции 0..4 и колонки 0..2
+    df.iloc[-1]         # последняя строка
+- id: pd-label-position
+  term: Метка ≠ позиция
+  category: Pandas
+  aliases: [индекс после фильтрации, KeyError loc]
+  summary: "Метка — имя строки в индексе, позиция — её номер по порядку. Сразу после чтения они совпадают, но после фильтрации индекс хранит старые метки. При метках 10, 20, 30: `loc[20]` и `iloc[1]` — одна строка, `loc[1]` — `KeyError`."
+  example: |
+    t = df.head(3).copy()
+    t.index = [10, 20, 30]
+    t.loc[20], t.iloc[1]
+- id: pd-boolean-filter
+  term: Фильтр по условию (маска)
+  category: Pandas
+  aliases: [фильтрация, логическая индексация, условие, маска pandas]
+  summary: "Сравнение колонки даёт Series из True/False; `df[маска]` оставляет строки с True. Условия объединяют `&` (и), `|` (или), `~` (не); каждое сравнение — в скобках. Слова `and`/`or` с масками не работают."
+  example: |
+    df[(df['Make'] == 'Toyota') & (df['Year'] == 2012)]
+- id: pd-query
+  term: query
+  category: Pandas
+  aliases: [запрос, фильтр строкой]
+  summary: "`df.query(\"Year == 2012 and Make == 'Toyota'\")` — тот же фильтр, записанный строкой-выражением. Внутри строки можно писать `and`/`or`. Это собственный язык выражений pandas, а не SQL; имена колонок со скобками в нём неудобны."
+  example: |
+    df.query("Make == 'Toyota' and Year == 2012")
+- id: pd-isin
+  term: isin
+  category: Pandas
+  aliases: [значение из списка, одно из]
+  summary: "`s.isin(['Toyota', 'BMW'])` — маска «значение входит в список». Короче, чем цепочка условий через `|`."
+  example: |
+    df[df['Make'].isin(['Toyota', 'BMW'])]
+- id: pd-between
+  term: between
+  category: Pandas
+  aliases: [диапазон, вне диапазона, границы]
+  summary: "`s.between(a, b)` — маска «a ≤ значение ≤ b» (концы включены). Пропуск не входит ни в какой диапазон, поэтому `~s.between(a, b)` отметит и пропуски — отделяйте их через `s.notna()`."
+  example: |
+    df['Engine_capacity(cm3)'].between(200, 5000)
+- id: pd-drop-duplicates
+  term: drop_duplicates
+  category: Pandas
+  aliases: [удалить дубликаты, удалить повторы]
+  summary: "Возвращает таблицу без полностью повторяющихся строк, оставляя первое вхождение (`keep='first'`). `subset=[...]` — сравнивать только выбранные колонки. Индекс сохраняет исходные метки."
+  example: |
+    df = df.drop_duplicates().copy()
+- id: pd-dropna
+  term: dropna
+  category: Pandas
+  aliases: [удалить пропуски, неполные записи, any(axis=1)]
+  summary: "Удаляет строки с пропусками. `subset=['колонка']` — проверять только выбранные колонки. Строки хотя бы с одним пропуском находит маска `df.isna().any(axis=1)`."
+  example: |
+    incomplete = df[df.isna().any(axis=1)]
+    df = df.dropna().copy()
+- id: pd-fillna
+  term: fillna
+  category: Pandas
+  aliases: [заполнить пропуски, заполнение, SimpleImputer, импутация]
+  summary: "`s.fillna(значение)` заменяет пропуски. Внутри Pipeline то же делает `SimpleImputer(strategy='median')` (или `'most_frequent'` для категорий): значение для заполнения считается на `fit`, по обучающей части. Заполнять можно только входные признаки и с обоснованием (медиана похожих записей, явная категория 'Unknown'); целевую переменную придуманным значением не заполняют."
+  example: |
+    df['Fuel_type'].fillna('Unknown')
+- id: processing-log
+  term: Журнал обработки
+  category: Pandas
+  aliases: [processing_log, лог очистки, воронка]
+  summary: "Таблица «этап → строк до → строк после → убрано». Ведётся списком словарей и превращается в таблицу `pd.DataFrame(processing_log)`. Показывает, какой этап сильнее всего сократил данные."
+  example: |
+    processing_log = []
+    n_before = len(df)
+    df = df.drop_duplicates()
+    processing_log.append({'Этап': 'Повторы', 'До': n_before, 'После': len(df)})
+- id: analysis-scope
+  term: Учебная область анализа
+  category: Pandas
+  aliases: [границы отбора, in_scope, фильтр здравого смысла]
+  summary: "Явно заданные границы, внутри которых проводится анализ (годы 1951–2021, пробег до 1 млн км, объём 200–5000 см³, цена 101–500 000 евро). Границы — константы в одном месте, исключённые записи сохраняются и изучаются. Это рамка анализа, а не доказательство ошибки."
+- id: pd-reset-index
+  term: reset_index
+  category: Pandas
+  aliases: [перенумеровать строки, новый индекс, source_row_id]
+  summary: "`df.reset_index(drop=True)` заменяет метки на 0, 1, 2, … Без `drop=True` старый индекс станет колонкой `index`. Перед перенумерацией исходные метки стоит сохранить: `df['source_row_id'] = df.index`."
+  example: |
+    df['source_row_id'] = df.index
+    df = df.reset_index(drop=True)
+- id: pd-rename
+  term: rename
+  category: Pandas
+  aliases: [переименовать колонки]
+  summary: "`df.rename(columns={'старое': 'новое'})` возвращает таблицу с новыми именами колонок; значения не меняются."
+  example: |
+    df = df.rename(columns={'Engine_capacity(cm3)': 'Engine', 'Price(euro)': 'Price'})
+- id: pd-drop
+  term: drop
+  category: Pandas
+  aliases: [удалить колонку, удалить строки по меткам]
+  summary: "`df.drop(columns=[...])` удаляет колонки, `df.drop(index=[...])` — строки по меткам. Возвращает новую таблицу."
+  example: |
+    no_id = df.drop(columns=['source_row_id'])
+- id: pd-new-column
+  term: Новая колонка (признак)
+  category: Pandas
+  aliases: [создать столбец, вычисляемый признак, Age, km_year]
+  summary: "Присваивание `df['имя'] = выражение` создаёт колонку или заменяет существующую. Арифметика колонок поэлементная, как в NumPy: значение считается для каждой строки сразу."
+  example: |
+    df['Age'] = 2022 - df['Year']
+    df['km_year'] = df['Distance'] / df['Age']
+- id: pd-map
+  term: map
+  category: Pandas
+  aliases: [замена по словарю, перекодировать]
+  summary: "`s.map(словарь)` заменяет каждое значение по словарю. Значение, которого нет среди ключей, превращается в пропуск — проверяйте `isna().sum()` после замены."
+  example: |
+    df['AutoTransmission'].map({True: 'Automatic', False: 'Manual'})
+- id: pd-apply
+  term: apply
+  category: Pandas
+  aliases: [применить функцию, своя функция]
+  summary: "`s.apply(функция)` вызывает функцию для каждого значения колонки и собирает результаты в новую Series. Подходит для правил с условиями; для простой арифметики быстрее и понятнее обычная операция над колонкой."
+  example: |
+    df['km_year'].apply(km_year_category)
+- id: pd-loc-assign
+  term: Присваивание через loc
+  category: Pandas
+  aliases: [изменить значения, записать по условию, loc присваивание]
+  summary: "`df.loc[маска, 'колонка'] = значение` записывает значение в строки, где маска True, — одной операцией. Если колонки нет, она создаётся (в остальных строках — пропуск)."
+  example: |
+    df.loc[df['km_year'] > 30_000, 'check'] = 'Высокий условный пробег'
+- id: chained-assignment
+  term: Присваивание по цепочке
+  category: Pandas
+  aliases: [ChainedAssignmentError, SettingWithCopyWarning, Copy-on-Write]
+  summary: "Запись вида `df[маска]['колонка'] = значение` меняет промежуточную копию, а не `df`. В pandas 3 (Copy-on-Write) исходная таблица никогда не меняется и выводится предупреждение `ChainedAssignmentError`. Правильно: `df.loc[маска, 'колонка'] = значение`."
+- id: rare-category
+  term: Редкая категория (Rare)
+  category: Pandas
+  aliases: [Rare, редкие марки, объединение категорий, дисбаланс категорий]
+  summary: "Категории с очень малой долей объединяют в одну (`Rare`), чтобы упростить представление. Исходное значение сохраняют в отдельной колонке. Объединение скрывает различия редких категорий и не гарантирует улучшения модели; для модели список редких определяют только по обучающей части."
+  example: |
+    share = df['Make'].value_counts(normalize=True)
+    rare = share[share <= 0.01].index
+- id: pd-to-csv
+  term: to_csv
+  category: Pandas
+  aliases: [сохранить таблицу, записать csv, index=False, Unnamed]
+  summary: "`df.to_csv('файл.csv', index=False)` сохраняет таблицу в CSV. Без `index=False` индекс запишется лишней колонкой, которая при чтении превратится в `Unnamed: 0`. После сохранения файл читают обратно и проверяют."
+  example: |
+    processed.to_csv('cars_processed.csv', index=False)
+- id: pd-select-dtypes
+  term: select_dtypes
+  category: Pandas
+  aliases: [только числовые колонки, выбрать по типу]
+  summary: "`df.select_dtypes(include='number')` оставляет числовые колонки, `exclude='number'` — все остальные."
+  example: |
+    df.select_dtypes(include='number').columns.tolist()
+- id: target-variable
+  term: Целевая переменная (y)
+  category: Машинное обучение
+  aliases: [таргет, target, ответ, y, целевой признак]
+  summary: "То, что модель должна предсказывать: в нашем курсе — цена `Price`. Если цель — число, задача называется регрессией, если категория (например, тип трансмиссии) — классификацией. Целевую переменную нельзя заполнять придуманными значениями и нельзя класть во входные признаки."
+- id: input-features
+  term: Входные признаки (X)
+  category: Машинное обучение
+  aliases: [признаки модели, X, features, матрица признаков]
+  summary: "Характеристики объекта, по которым модель делает предсказание (марка, год, пробег, …). В X не включают цель, технические номера строк и колонки, которые дублируют другие или появились после наступления события."

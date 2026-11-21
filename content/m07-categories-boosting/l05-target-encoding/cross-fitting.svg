@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 338" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="Перекрёстное кодирование в TargetEncoder. Обучающая часть делится на пять блоков. На каждом шаге строки одного блока получают коды — средние цены категорий, посчитанные по остальным четырём блокам, поэтому цена машины не попадает в её собственный код. Validation, test и новые машины кодируются средними по всему train">
+  <text x="12" y="24" fill="currentColor" font-weight="700">fit_transform(X_train, y_train): строки каждого блока кодируют по остальным четырём</text>
+  <text x="12" y="64" fill="currentColor">шаг 1</text>
+  <rect x="76" y="44" width="92" height="30" rx="5" fill="#c2410c" fill-opacity="0.22" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="122" y="64" fill="currentColor" text-anchor="middle" font-weight="700">кодируем</text>
+  <rect x="172" y="44" width="92" height="30" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="218" y="64" fill="currentColor" text-anchor="middle">средние</text>
+  <rect x="268" y="44" width="92" height="30" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="314" y="64" fill="currentColor" text-anchor="middle">средние</text>
+  <rect x="364" y="44" width="92" height="30" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="410" y="64" fill="currentColor" text-anchor="middle">средние</text>
+  <rect x="460" y="44" width="92" height="30" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="506" y="64" fill="currentColor" text-anchor="middle">средние</text>
+  <text x="572" y="64" fill="currentColor">коды блока 1</text>
+  <text x="12" y="102" fill="currentColor">шаг 2</text>
+  <rect x="76" y="82" width="92" height="30" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="122" y="102" fill="currentColor" text-anchor="middle">средние</text>
+  <rect x="172" y="82" width="92" height="30" rx="5" fill="#c2410c" fill-opacity="0.22" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="218" y="102" fill="currentColor" text-anchor="middle" font-weight="700">кодируем</text>
+  <rect x="268" y="82" width="92" height="30" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="314" y="102" fill="currentColor" text-anchor="middle">средние</text>
+  <rect x="364" y="82" width="92" height="30" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="410" y="102" fill="currentColor" text-anchor="middle">средние</text>
+  <rect x="460" y="82" width="92" height="30" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="506" y="102" fill="currentColor" text-anchor="middle">средние</text>
+  <text x="572" y="102" fill="currentColor">коды блока 2</text>
+  <text x="12" y="140" fill="currentColor">шаг 3</text>
+  <rect x="76" y="120" width="92" height="30" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="122" y="140" fill="currentColor" text-anchor="middle">средние</text>
+  <rect x="172" y="120" width="92" height="30" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="218" y="140" fill="currentColor" text-anchor="middle">средние</text>
+  <rect x="268" y="120" width="92" height="30" rx="5" fill="#c2410c" fill-opacity="0.22" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="314" y="140" fill="currentColor" text-anchor="middle" font-weight="700">кодируем</text>
+  <rect x="364" y="120" width="92" height="30" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="410" y="140" fill="currentColor" text-anchor="middle">средние</text>
+  <rect x="460" y="120" width="92" height="30" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="506" y="140" fill="currentColor" text-anchor="middle">средние</text>
+  <text x="572" y="140" fill="currentColor">коды блока 3</text>
+  <text x="12" y="178" fill="currentColor">шаг 4</text>
+  <rect x="76" y="158" width="92" height="30" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="122" y="178" fill="currentColor" text-anchor="middle">средние</text>
+  <rect x="172" y="158" width="92" height="30" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="218" y="178" fill="currentColor" text-anchor="middle">средние</text>
+  <rect x="268" y="158" width="92" height="30" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="314" y="178" fill="currentColor" text-anchor="middle">средние</text>
+  <rect x="364" y="158" width="92" height="30" rx="5" fill="#c2410c" fill-opacity="0.22" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="410" y="178" fill="currentColor" text-anchor="middle" font-weight="700">кодируем</text>
+  <rect x="460" y="158" width="92" height="30" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="506" y="178" fill="currentColor" text-anchor="middle">средние</text>
+  <text x="572" y="178" fill="currentColor">коды блока 4</text>
+  <text x="12" y="216" fill="currentColor">шаг 5</text>
+  <rect x="76" y="196" width="92" height="30" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="122" y="216" fill="currentColor" text-anchor="middle">средние</text>
+  <rect x="172" y="196" width="92" height="30" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="218" y="216" fill="currentColor" text-anchor="middle">средние</text>
+  <rect x="268" y="196" width="92" height="30" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="314" y="216" fill="currentColor" text-anchor="middle">средние</text>
+  <rect x="364" y="196" width="92" height="30" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="410" y="216" fill="currentColor" text-anchor="middle">средние</text>
+  <rect x="460" y="196" width="92" height="30" rx="5" fill="#c2410c" fill-opacity="0.22" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="506" y="216" fill="currentColor" text-anchor="middle" font-weight="700">кодируем</text>
+  <text x="572" y="216" fill="currentColor">коды блока 5</text>
+  <line x1="12" y1="238" x2="748" y2="238" stroke="currentColor" stroke-opacity="0.25"/>
+  <text x="12" y="266" fill="currentColor">transform</text>
+  <rect x="76" y="246" width="476" height="30" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="314" y="266" fill="currentColor" text-anchor="middle">средние по всему train (все пять блоков)</text>
+  <text x="572" y="259" fill="currentColor">коды validation, test</text>
+  <text x="572" y="274" fill="currentColor">и новых машин</text>
+  <text x="12" y="306" fill="currentColor" fill-opacity="0.85">Цена машины не входит в её собственный код. Единственная в train Kia Clarus (100 000 евро)</text>
+  <text x="12" y="326" fill="currentColor" fill-opacity="0.85">при обучении получает код 9 534 — общее среднее других блоков, где Clarus нет.</text>
+</svg>

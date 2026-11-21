@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 270" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="Схема кривой ошибки от сложности модели. Ошибка на обучающей части с ростом сложности только уменьшается. Ошибка на validation сначала уменьшается, затем растёт. Слева зона недообучения — обе ошибки велики, справа зона переобучения — ошибка train мала, а validation растёт. Лучшее значение гиперпараметра — минимум ошибки на validation">
+  <defs>
+    <marker id="vc-a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor" fill-opacity="0.7"/></marker>
+  </defs>
+  <rect x="52" y="24" width="120" height="196" fill="#3d5bd9" fill-opacity="0.05"/>
+  <rect x="330" y="24" width="96" height="196" fill="#c2410c" fill-opacity="0.06"/>
+  <text x="112" y="40" fill="#3d5bd9" font-weight="700" text-anchor="middle">недообучение</text>
+  <text x="378" y="40" fill="#c2410c" font-weight="700" text-anchor="middle">переобучение</text>
+  <line x1="50" y1="220" x2="432" y2="220" stroke="currentColor" stroke-opacity="0.7" marker-end="url(#vc-a)"/>
+  <line x1="50" y1="220" x2="50" y2="18" stroke="currentColor" stroke-opacity="0.7" marker-end="url(#vc-a)"/>
+  <text x="34" y="122" fill="currentColor" text-anchor="middle" transform="rotate(-90 34 122)">ошибка (MAE)</text>
+  <text x="240" y="240" fill="currentColor" text-anchor="middle">сложность модели →</text>
+  <text x="240" y="258" fill="currentColor" fill-opacity="0.75" font-size="11" text-anchor="middle">kNN: k уменьшается · дерево: глубина растёт</text>
+  <path d="M58 62 C150 122 250 172 420 206" fill="none" stroke="#3d5bd9" stroke-width="2.5"/>
+  <path d="M58 54 C140 122 200 142 250 142 C300 142 360 124 420 82" fill="none" stroke="#c2410c" stroke-width="2.5"/>
+  <line x1="250" y1="142" x2="250" y2="220" stroke="currentColor" stroke-opacity="0.55" stroke-dasharray="4 4"/>
+  <circle cx="250" cy="142" r="5" fill="#c2410c"/>
+  <text x="256" y="134" fill="currentColor" font-size="11">минимум на validation</text>
+  <line x1="410" y1="88" x2="410" y2="202" stroke="currentColor" stroke-opacity="0.55"/>
+  <line x1="405" y1="88" x2="415" y2="88" stroke="currentColor" stroke-opacity="0.55"/>
+  <line x1="405" y1="202" x2="415" y2="202" stroke="currentColor" stroke-opacity="0.55"/>
+  <text x="402" y="150" fill="currentColor" font-size="11" text-anchor="end">разрыв</text>
+  <text x="96" y="78" fill="#c2410c" font-size="11">validation</text>
+  <text x="140" y="140" fill="#3d5bd9" font-size="11">train</text>
+
+  <line x1="452" y1="16" x2="452" y2="256" stroke="currentColor" stroke-opacity="0.2"/>
+  <text x="470" y="40" fill="currentColor" font-weight="700">Как читать кривую</text>
+  <text x="470" y="64" fill="currentColor"><tspan fill="#3d5bd9" font-weight="700">train</tspan> с ростом сложности только падает:</text>
+  <text x="470" y="80" fill="currentColor">по ней всегда «лучше» самая сложная модель.</text>
+  <text x="470" y="104" fill="currentColor"><tspan fill="#c2410c" font-weight="700">validation</tspan> сначала падает, потом растёт —</text>
+  <text x="470" y="120" fill="currentColor">модель начинает запоминать шум train.</text>
+  <text x="470" y="144" fill="currentColor">Слева обе ошибки велики и близки —</text>
+  <text x="470" y="160" fill="currentColor">модель слишком проста.</text>
+  <text x="470" y="184" fill="currentColor">Справа большой разрыв train и validation.</text>
+  <text x="470" y="208" fill="currentColor" font-weight="700">Выбираем минимум validation;</text>
+  <text x="470" y="224" fill="currentColor">если дно плоское, подойдёт любое</text>
+  <text x="470" y="240" fill="currentColor">значение с него — разница случайна.</text>
+</svg>

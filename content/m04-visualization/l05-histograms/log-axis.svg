@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 214" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="Линейная и логарифмическая оси цен. На линейной оси цены 100, 1 000 и 10 000 евро сжаты у нуля, а 100 000 далеко справа. На логарифмической оси каждый следующий порядок — в 10 раз больше — занимает одинаковый отрезок">
+  <text x="16" y="24" fill="currentColor" font-weight="700">Линейная ось: равные отрезки — равные разности</text>
+  <line x1="40" y1="62" x2="720" y2="62" stroke="currentColor" stroke-opacity="0.7"/>
+  <g stroke="currentColor" stroke-opacity="0.7">
+    <line x1="40" y1="56" x2="40" y2="68"/><line x1="176" y1="56" x2="176" y2="68"/><line x1="312" y1="56" x2="312" y2="68"/>
+    <line x1="448" y1="56" x2="448" y2="68"/><line x1="584" y1="56" x2="584" y2="68"/><line x1="720" y1="56" x2="720" y2="68"/>
+  </g>
+  <g fill="currentColor" font-size="11" text-anchor="middle" fill-opacity="0.8">
+    <text x="40" y="84">0</text><text x="176" y="84">20 000</text><text x="312" y="84">40 000</text>
+    <text x="448" y="84">60 000</text><text x="584" y="84">80 000</text><text x="720" y="84">100 000</text>
+  </g>
+  <g fill="#c2410c"><circle cx="40.7" cy="62" r="4"/><circle cx="46.8" cy="62" r="4"/><circle cx="108" cy="62" r="4"/></g>
+  <circle cx="720" cy="62" r="4" fill="#3d5bd9"/>
+  <text x="60" y="46" fill="#c2410c" font-size="11.5">100, 1 000 и 10 000 € сжаты у нуля</text>
+  <text x="16" y="124" fill="currentColor" font-weight="700">Логарифмическая ось: равные отрезки — равные отношения (×10)</text>
+  <line x1="40" y1="162" x2="720" y2="162" stroke="currentColor" stroke-opacity="0.7"/>
+  <g stroke="currentColor" stroke-opacity="0.7">
+    <line x1="40" y1="156" x2="40" y2="168"/><line x1="267" y1="156" x2="267" y2="168"/><line x1="493" y1="156" x2="493" y2="168"/><line x1="720" y1="156" x2="720" y2="168"/>
+  </g>
+  <g fill="currentColor" font-size="11" text-anchor="middle" fill-opacity="0.8">
+    <text x="40" y="184">100</text><text x="267" y="184">1 000</text><text x="493" y="184">10 000</text><text x="720" y="184">100 000</text>
+  </g>
+  <g fill="#c2410c"><circle cx="40" cy="162" r="4"/><circle cx="267" cy="162" r="4"/><circle cx="493" cy="162" r="4"/></g>
+  <circle cx="720" cy="162" r="4" fill="#3d5bd9"/>
+  <g fill="currentColor" font-size="11" text-anchor="middle" fill-opacity="0.75">
+    <text x="153" y="152">× 10</text><text x="380" y="152">× 10</text><text x="607" y="152">× 10</text>
+  </g>
+  <text x="16" y="206" fill="currentColor" fill-opacity="0.8" font-size="11.5">Шкала меняет только вид: значения те же, выбросы остаются выбросами. Ноль и отрицательные числа на логарифмической оси не показать.</text>
+</svg>

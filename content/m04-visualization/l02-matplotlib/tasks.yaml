@@ -1,0 +1,455 @@
+- id: m4-l2-t1
+  kind: plot
+  title: Медианная цена по годам средствами Matplotlib
+  difficulty: warmup
+  introduces: [mpl-fig-ax]
+  uses: [pd-groupby]
+  statement: |
+    Получите `median_by_year` — медианную цену по году выпуска — и нарисуйте её методом `ax.plot` линией с маркерами на осях из `plt.subplots`. Добавьте заголовок и подписи осей; в подписи Y укажите единицы `евро`.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    median_by_year = ...
+    fig, ax = plt.subplots(figsize=(10, 3))
+    ax.plot(...)
+    ax.set(title=..., xlabel=..., ylabel=...)
+    plt.show()
+  solution: |
+    median_by_year = df.groupby('Year')['Price'].median()
+    fig, ax = plt.subplots(figsize=(10, 3))
+    ax.plot(median_by_year.index, median_by_year.values, 'o-')
+    ax.set(title='Медианная цена по году выпуска', xlabel='Год выпуска', ylabel='Медианная цена, евро')
+    plt.show()
+  explanation: |
+    - Группировка по году даёт Series: индекс — годы, значения — медианы (урок 3.2).
+    - `ax.plot(x, y, 'o-')`: X — годы (`index`), Y — медианы (`values`), `'o-'` — маркеры и линия.
+    - `ax.set(...)` задаёт заголовок и подписи осей одним вызовом.
+  alternatives:
+    - |
+      median_by_year = df.groupby('Year')['Price'].median()
+      fig, ax = plt.subplots()
+      ax.plot(median_by_year.index, median_by_year.values, marker='o')
+      ax.set_title('Медианная цена по году выпуска')
+      ax.set_xlabel('Год выпуска')
+      ax.set_ylabel('Цена, евро')
+      plt.show()
+  hints:
+    - Сначала группировка, затем `ax.plot` с двумя аргументами — X и Y.
+    - "`df.groupby('Year')['Price'].median()`; `ax.plot(median_by_year.index, median_by_year.values, 'o-')`."
+    - "`ax.set(title='Медианная цена по году выпуска', xlabel='Год выпуска', ylabel='Медианная цена, евро')`."
+  tests: |
+    ax = axes()
+    lines = ax.get_lines()
+    ensure(len(lines) >= 1, 'На графике нет линии — нарисуйте её методом `ax.plot(...)`.')
+    exp = ref('median_by_year')
+    line = lines[0]
+    ensure(len(line.get_ydata()) == len(exp), 'На линии {0} точек, а лет выпуска {1}.'.format(len(line.get_ydata()), len(exp)))
+    if list(line.get_xdata()) == list(range(len(exp))):
+        fail('По оси X номера точек 0, 1, 2…, а должны быть годы: передайте `median_by_year.index` первым аргументом.')
+    same_array(line.get_xdata(), exp.index.values, 'По оси X должны быть годы выпуска.')
+    same_array(line.get_ydata(), exp.values, 'Значения линии должны быть медианными ценами по годам.')
+    ensure(line.get_marker() not in (None, 'None', ''), 'Добавьте маркеры точек: формат `\'o-\'` или `marker=\'o\'`.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок: `ax.set(title=...)`.')
+    ensure(ax.get_xlabel().strip() != '', 'Подпишите ось X: `xlabel=...`.')
+    ensure('евро' in ax.get_ylabel().lower(), 'В подписи оси Y укажите единицы: например, `ylabel=\'Медианная цена, евро\'`.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        median_by_year = df.groupby('Year')['Price'].median()
+        fig, ax = plt.subplots()
+        ax.plot(median_by_year.values, 'o-')
+        ax.set(title='Медианная цена', xlabel='Год выпуска', ylabel='Цена, евро')
+        plt.show()
+      expect: номера точек
+    - code: |
+        median_by_year = df.groupby('Year')['Price'].median()
+        fig, ax = plt.subplots()
+        ax.plot(median_by_year.index, median_by_year.values)
+        ax.set(title='Медианная цена', xlabel='Год выпуска', ylabel='Цена, евро')
+        plt.show()
+      expect: маркеры
+
+- id: m4-l2-t2
+  kind: plot
+  title: Подписи через каждые два года
+  difficulty: main
+  introduces: [mpl-fig-ax]
+  uses: [pd-groupby, pd-bool-filter]
+  statement: |
+    Нарисуйте `toyota_by_year` — среднюю цену **Toyota 2000 года выпуска и новее** по годам — линией с маркерами. Подписанные деления оси X поставьте через каждые **два** года, начиная с первого года (`ax.set_xticks`), а подписи поверните на 45° (`ax.tick_params`). Добавьте заголовок и подписи осей.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    toyota_by_year = ...
+    start, end = int(toyota_by_year.index.min()), int(toyota_by_year.index.max())
+    fig, ax = plt.subplots(figsize=(10, 3))
+    ax.plot(toyota_by_year.index, toyota_by_year.values, 'o-')
+    ax.set_xticks(...)
+    ax.tick_params(...)
+    ax.set(title=..., xlabel=..., ylabel=...)
+    plt.show()
+  solution: |
+    toyota = df[(df['Make'] == 'Toyota') & (df['Year'] >= 2000)]
+    toyota_by_year = toyota.groupby('Year')['Price'].mean()
+    start, end = int(toyota_by_year.index.min()), int(toyota_by_year.index.max())
+    fig, ax = plt.subplots(figsize=(10, 3))
+    ax.plot(toyota_by_year.index, toyota_by_year.values, 'o-')
+    ax.set_xticks(range(start, end + 1, 2))
+    ax.tick_params(axis='x', rotation=45)
+    ax.set(title='Средняя цена Toyota по году выпуска', xlabel='Год выпуска', ylabel='Средняя цена, евро')
+    plt.show()
+  explanation: |
+    - Два условия в скобках через `&` (урок 2.5), затем группировка по году.
+    - `range(start, end + 1, 2)` — положения подписанных делений: первый год, через два года, до последнего включительно.
+    - `tick_params(axis='x', rotation=45)` поворачивает подписи оси X.
+  hints:
+    - Отберите Toyota с годом не меньше 2000, сгруппируйте; положения делений — `range` с шагом 2.
+    - "`ax.set_xticks(range(start, end + 1, 2))`; поворот — `ax.tick_params(axis='x', rotation=45)`."
+    - "`toyota = df[(df['Make'] == 'Toyota') & (df['Year'] >= 2000)]`; `toyota_by_year = toyota.groupby('Year')['Price'].mean()`."
+  tests: |
+    import pandas as pd
+    s = var('toyota_by_year', pd.Series, 'Series')
+    if s.index.min() < 2000:
+        fail('В `toyota_by_year` есть годы раньше 2000 — добавьте условие `df[\'Year\'] >= 2000`.')
+    same_frame(s, ref('toyota_by_year'), 'Средние цены Toyota по годам не совпадают.')
+    ax = axes()
+    ensure(len(ax.get_lines()) >= 1, 'На графике нет линии.')
+    same_array(ax.get_lines()[0].get_ydata(), ref('toyota_by_year').values, 'Линия должна показывать средние цены Toyota по годам.')
+    start, end = int(ref('toyota_by_year').index.min()), int(ref('toyota_by_year').index.max())
+    ticks = [int(round(t)) for t in ax.get_xticks()]
+    exp_ticks = list(range(start, end + 1, 2))
+    if ticks == list(range(start, end + 1)):
+        fail('Деления стоят на каждом году, а нужны через два: шаг `2` в `range`.')
+    ensure(ticks == exp_ticks, 'Подписанные деления должны быть {0}, а у вас {1}.'.format(exp_ticks, ticks))
+    labels = ax.get_xticklabels()
+    ensure(len(labels) > 0 and abs(labels[0].get_rotation() - 45) < 1e-6, 'Поверните подписи оси X на 45°: `ax.tick_params(axis=\'x\', rotation=45)`.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+    ensure(ax.get_xlabel().strip() != '' and ax.get_ylabel().strip() != '', 'Подпишите обе оси.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        toyota = df[(df['Make'] == 'Toyota') & (df['Year'] >= 2000)]
+        toyota_by_year = toyota.groupby('Year')['Price'].mean()
+        start, end = int(toyota_by_year.index.min()), int(toyota_by_year.index.max())
+        fig, ax = plt.subplots()
+        ax.plot(toyota_by_year.index, toyota_by_year.values, 'o-')
+        ax.set_xticks(range(start, end + 1))
+        ax.tick_params(axis='x', rotation=45)
+        ax.set(title='Toyota', xlabel='Год выпуска', ylabel='Цена, евро')
+        plt.show()
+      expect: через два
+    - code: |
+        toyota = df[(df['Make'] == 'Toyota') & (df['Year'] >= 2000)]
+        toyota_by_year = toyota.groupby('Year')['Price'].mean()
+        start, end = int(toyota_by_year.index.min()), int(toyota_by_year.index.max())
+        fig, ax = plt.subplots()
+        ax.plot(toyota_by_year.index, toyota_by_year.values, 'o-')
+        ax.set_xticks(range(start, end + 1, 2))
+        ax.set(title='Toyota', xlabel='Год выпуска', ylabel='Цена, евро')
+        plt.show()
+      expect: 45°
+    - code: |
+        toyota_by_year = df[df['Make'] == 'Toyota'].groupby('Year')['Price'].mean()
+        start, end = int(toyota_by_year.index.min()), int(toyota_by_year.index.max())
+        fig, ax = plt.subplots()
+        ax.plot(toyota_by_year.index, toyota_by_year.values, 'o-')
+        ax.set_xticks(range(start, end + 1, 2))
+        ax.tick_params(axis='x', rotation=45)
+        ax.set(title='Toyota', xlabel='Год выпуска', ylabel='Цена, евро')
+        plt.show()
+      expect: раньше 2000
+
+- id: m4-l2-t3
+  kind: plot
+  title: "Два слоя: отдельные машины и медиана"
+  difficulty: main
+  introduces: [mpl-layers]
+  uses: [pd-groupby, pd-bool-filter]
+  statement: |
+    Для машин **BMW** нарисуйте на одних осях два слоя: облако отдельных машин (`ax.scatter` — год и цена, серые полупрозрачные точки, `alpha` не больше 0,3) и поверх — линию медианной цены по годам `bmw_median`. Подпишите оба слоя (`label=`) и добавьте легенду, заголовок и подписи осей.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    bmw = ...
+    bmw_median = ...
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.scatter(...)
+    ax.plot(...)
+    ax.set(title=..., xlabel=..., ylabel=...)
+    ax.legend()
+    plt.show()
+  solution: |
+    bmw = df[df['Make'] == 'BMW']
+    bmw_median = bmw.groupby('Year')['Price'].median()
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.scatter(bmw['Year'], bmw['Price'], s=8, alpha=0.15, color='gray', label='Отдельные автомобили')
+    ax.plot(bmw_median.index, bmw_median.values, 'o-', color='tab:blue', label='Медианная цена')
+    ax.set(title='BMW: цены отдельных машин и медиана по году выпуска', xlabel='Год выпуска', ylabel='Цена, евро')
+    ax.legend()
+    plt.show()
+  explanation: |
+    - Первый вызов `ax.scatter` — фон из всех машин BMW: маленькие серые точки с `alpha=0.15`.
+    - Второй вызов `ax.plot` на тех же осях — линия медиан поверх облака.
+    - `label=` у каждого слоя и `ax.legend()` объясняют, что есть что.
+  hints:
+    - "Два вызова на одних осях: сначала точки всех машин BMW, потом линия медиан."
+    - "`ax.scatter(bmw['Year'], bmw['Price'], s=8, alpha=0.15, color='gray', label=...)`."
+    - "`ax.plot(bmw_median.index, bmw_median.values, 'o-', label='Медианная цена')`, затем `ax.legend()`."
+  tests: |
+    ax = axes()
+    pts = [c for c in ax.collections if type(c).__name__ == 'PathCollection']
+    ensure(len(pts) >= 1, 'На графике нет облака точек — нарисуйте машины BMW методом `ax.scatter(...)`.')
+    n_bmw = len(ref('bmw'))
+    cloud = max(pts, key=lambda c: len(c.get_offsets()))
+    ensure(len(cloud.get_offsets()) == n_bmw, 'В облаке должно быть {0} точек — все машины BMW, а у вас {1}.'.format(n_bmw, len(cloud.get_offsets())))
+    alpha = cloud.get_alpha()
+    ensure(alpha is not None and alpha <= 0.3, 'Сделайте точки облака полупрозрачными: `alpha` не больше 0,3.')
+    lines = ax.get_lines()
+    ensure(len(lines) >= 1, 'Добавьте линию медиан методом `ax.plot(...)`.')
+    same_array(lines[0].get_ydata(), ref('bmw_median').values, 'Линия должна показывать медианную цену BMW по годам.')
+    leg = ax.get_legend()
+    ensure(leg is not None, 'Добавьте легенду: `ax.legend()`.')
+    ensure(len(leg.get_texts()) >= 2, 'В легенде должны быть оба слоя — задайте `label=` и у точек, и у линии.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+    ensure(ax.get_xlabel().strip() != '' and ax.get_ylabel().strip() != '', 'Подпишите обе оси.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        bmw = df[df['Make'] == 'BMW']
+        bmw_median = bmw.groupby('Year')['Price'].median()
+        fig, ax = plt.subplots()
+        ax.scatter(bmw['Year'], bmw['Price'], color='gray', label='Машины')
+        ax.plot(bmw_median.index, bmw_median.values, 'o-', label='Медиана')
+        ax.set(title='BMW', xlabel='Год выпуска', ylabel='Цена, евро')
+        ax.legend()
+        plt.show()
+      expect: полупрозрачными
+    - code: |
+        bmw = df[df['Make'] == 'BMW']
+        bmw_median = bmw.groupby('Year')['Price'].median()
+        fig, ax = plt.subplots()
+        ax.scatter(bmw['Year'], bmw['Price'], s=8, alpha=0.15, color='gray')
+        ax.plot(bmw_median.index, bmw_median.values, 'o-', label='Медиана')
+        ax.set(title='BMW', xlabel='Год выпуска', ylabel='Цена, евро')
+        ax.legend()
+        plt.show()
+      expect: оба слоя
+
+- id: m4-l2-t4
+  kind: plot
+  title: Размер точки — число машин
+  difficulty: main
+  introduces: [mpl-layers]
+  uses: [pd-agg, pd-bool-filter]
+  statement: |
+    Для **Opel** получите `stats` — среднюю цену `mean` и число машин `count` по году выпуска — и нарисуйте средние кружками (`ax.scatter`), у которых **площадь** пропорциональна числу машин года: самый частый год — `s=300`, остальные — пропорционально меньше. Добавьте заголовок и подписи осей.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    opel = ...
+    stats = ...
+    sizes = ...
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.scatter(stats.index, stats['mean'], s=sizes)
+    ax.set(title=..., xlabel=..., ylabel=...)
+    plt.show()
+  solution: |
+    opel = df[df['Make'] == 'Opel']
+    stats = opel.groupby('Year')['Price'].agg(['mean', 'count'])
+    sizes = 300 * stats['count'] / stats['count'].max()
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.scatter(stats.index, stats['mean'], s=sizes)
+    ax.set(title='Opel: средняя цена по году выпуска (площадь — число машин)', xlabel='Год выпуска', ylabel='Средняя цена, евро')
+    plt.show()
+  explanation: |
+    - `agg(['mean', 'count'])` — средняя и число машин в каждом году (урок 3.2).
+    - `300 * count / count.max()` — площадь от 0 до 300: у самого частого года ровно 300.
+    - `s` в `ax.scatter` — **площадь** маркера, поэтому её делают пропорциональной числу машин, а не его квадрату.
+  hints:
+    - Две статистики по годам одним `agg`; размер — доля от максимального числа машин, умноженная на 300.
+    - "`opel.groupby('Year')['Price'].agg(['mean', 'count'])`; `sizes = 300 * stats['count'] / stats['count'].max()`."
+    - "`ax.scatter(stats.index, stats['mean'], s=sizes)`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    st = var('stats', pd.DataFrame, 'таблицей DataFrame')
+    ensure({'mean', 'count'} <= set(st.columns), 'В `stats` должны быть колонки `mean` и `count`.')
+    same_frame(st[['mean', 'count']], ref('stats')[['mean', 'count']], 'Средние и число машин Opel по годам не совпадают.')
+    ax = axes()
+    pts = [c for c in ax.collections if type(c).__name__ == 'PathCollection']
+    ensure(len(pts) >= 1, 'Нарисуйте средние кружками: `ax.scatter(...)`.')
+    sc = pts[-1]
+    offs = np.asarray(sc.get_offsets())
+    exp = ref('stats')
+    ensure(len(offs) == len(exp), 'Кружков должно быть {0} — по одному на год, а у вас {1}.'.format(len(exp), len(offs)))
+    same_array(offs[:, 1], exp['mean'].values, 'Кружки должны стоять на высоте средней цены года.')
+    sizes = np.asarray(sc.get_sizes(), dtype=float)
+    ensure(len(sizes) == len(exp), 'Размер `s` должен быть свой для каждого года — передайте Series размеров, а не одно число.')
+    want = 300 * exp['count'].values / exp['count'].max()
+    if np.allclose(sizes, 300 * (exp['count'].values / exp['count'].max()) ** 2, rtol=1e-6):
+        fail('Размер пропорционален квадрату числа машин. `s` — это площадь: делайте её пропорциональной самому числу.')
+    same_array(sizes, want, 'Площадь кружка должна быть `300 * count / count.max()`.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+    ensure(ax.get_xlabel().strip() != '' and ax.get_ylabel().strip() != '', 'Подпишите обе оси.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        opel = df[df['Make'] == 'Opel']
+        stats = opel.groupby('Year')['Price'].agg(['mean', 'count'])
+        sizes = 300 * (stats['count'] / stats['count'].max()) ** 2
+        fig, ax = plt.subplots()
+        ax.scatter(stats.index, stats['mean'], s=sizes)
+        ax.set(title='Opel', xlabel='Год выпуска', ylabel='Цена, евро')
+        plt.show()
+      expect: квадрату
+    - code: |
+        opel = df[df['Make'] == 'Opel']
+        stats = opel.groupby('Year')['Price'].agg(['mean', 'count'])
+        sizes = 100
+        fig, ax = plt.subplots()
+        ax.scatter(stats.index, stats['mean'], s=sizes)
+        ax.set(title='Opel', xlabel='Год выпуска', ylabel='Цена, евро')
+        plt.show()
+      expect: свой для каждого года
+
+- id: m4-l2-t5
+  kind: quiz
+  title: Figure, Axes и слои
+  difficulty: main
+  introduces: [mpl-fig-ax, mpl-layers]
+  uses: []
+  statement: |
+    Проверьте, как устроен график Matplotlib.
+  quiz:
+    - q: "Какой объект возвращает `plt.subplots()` вторым?"
+      options:
+        - Figure — весь рисунок
+        - Axes — область графика, на которой рисуют и которую подписывают
+        - Список цветов
+      answer: 1
+      explain: "`fig, ax = plt.subplots()`: сначала рисунок, затем оси."
+    - q: "На осях вызвали `ax.scatter(...)`, затем `ax.plot(...)`. Что получится?"
+      options:
+        - Второй вызов сотрёт первый
+        - Два слоя на одних осях — точки и поверх них линия
+        - Два отдельных рисунка
+      answer: 1
+      explain: Каждый вызов метода осей добавляет слой; новый рисунок создаёт только `plt.subplots()` (или `plt.figure()`).
+    - q: "После `ax.legend()` легенда пустая. В чём причина?"
+      options:
+        - У слоёв не задан `label='…'`
+        - Нужно сначала вызвать `plt.show()`
+        - Легенда работает только для линий
+      answer: 0
+      explain: Легенда собирает подписи слоёв; без `label` подписывать нечего.
+  hints:
+    - "Вспомните схему урока: что такое Figure и Axes и что делает каждый вызов метода осей."
+    - "`fig, ax` — рисунок и оси; вызовы на тех же осях — слои; легенде нужны `label`."
+    - "Ответы: Axes; два слоя; не задан `label`."
+
+- id: m4-l2-t6
+  kind: plot
+  title: "Коридор Q1–Q3 вокруг медианы"
+  difficulty: star
+  introduces: [mpl-layers]
+  uses: [quantiles-iqr, pd-groupby, pd-multiindex]
+  statement: |
+    Покажите не только «центр», но и разброс цены. Для **Mercedes 2000 года выпуска и новее** получите `bands` — квантили цены уровней 0,25, 0,5 и 0,75 по годам (годы по строкам, уровни по колонкам) — и нарисуйте на одних осях:
+
+    - закрашенный **коридор** от Q1 до Q3: `ax.fill_between(годы, нижняя, верхняя, alpha=0.3, label=...)`;
+    - поверх — линию медианы с маркерами и подписью.
+
+    Добавьте легенду, заголовок и подписи осей.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    mercedes = ...
+    bands = ...
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.fill_between(...)
+    ax.plot(...)
+    ax.set(title=..., xlabel=..., ylabel=...)
+    ax.legend()
+    plt.show()
+  solution: |
+    mercedes = df[(df['Make'] == 'Mercedes') & (df['Year'] >= 2000)]
+    bands = mercedes.groupby('Year')['Price'].quantile([0.25, 0.5, 0.75]).unstack()
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.fill_between(bands.index, bands[0.25], bands[0.75], alpha=0.3, label='Q1–Q3: центральные 50 % цен')
+    ax.plot(bands.index, bands[0.5], 'o-', label='Медиана')
+    ax.set(title='Mercedes: медианная цена и разброс по году выпуска', xlabel='Год выпуска', ylabel='Цена, евро')
+    ax.legend()
+    plt.show()
+  explanation: |
+    - `groupby('Year')['Price'].quantile([...])` даёт Series с составным индексом «год, уровень»; `unstack()` переносит уровни в колонки (урок 3.4).
+    - Колонки называются числами `0.25`, `0.5`, `0.75` — к ним обращаются `bands[0.25]`.
+    - `ax.fill_between(x, y1, y2)` закрашивает область между двумя линиями — коридор центральных 50 % цен (урок 1.7); линия медианы — следующим слоем поверх.
+  alternatives:
+    - |
+      mercedes = df[(df['Make'] == 'Mercedes') & (df['Year'] >= 2000)]
+      g = mercedes.groupby('Year')['Price']
+      bands = pd.DataFrame({0.25: g.quantile(0.25), 0.5: g.median(), 0.75: g.quantile(0.75)})
+      fig, ax = plt.subplots()
+      ax.fill_between(bands.index, bands[0.25], bands[0.75], alpha=0.25, label='Q1–Q3')
+      ax.plot(bands.index, bands[0.5], marker='o', label='Медиана')
+      ax.set(title='Mercedes: медиана и разброс цен', xlabel='Год выпуска', ylabel='Цена, евро')
+      ax.legend()
+      plt.show()
+  hints:
+    - "Квантили по группам: `groupby(...)['Price'].quantile([0.25, 0.5, 0.75])`, затем `unstack()` — уровни станут колонками."
+    - "`ax.fill_between(bands.index, bands[0.25], bands[0.75], alpha=0.3, label=...)` — коридор; медиана — `ax.plot(bands.index, bands[0.5], 'o-', label=...)`."
+    - "`bands = mercedes.groupby('Year')['Price'].quantile([0.25, 0.5, 0.75]).unstack()`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    b = var('bands', pd.DataFrame, 'таблицей DataFrame: годы по строкам, уровни квантилей по колонкам')
+    if b.index.min() < 2000:
+        fail('В `bands` есть годы раньше 2000 — добавьте условие на год.')
+    same_frame(b, ref('bands'), 'Квантили цены Mercedes по годам не совпадают.', check_like=True)
+    ax = axes()
+    polys = [c for c in ax.collections if 'Poly' in type(c).__name__]
+    ensure(len(polys) >= 1, 'Нет закрашенного коридора — нарисуйте его методом `ax.fill_between(...)`.')
+    v = polys[0].get_paths()[0].vertices
+    exp = ref('bands')
+    for year in exp.index[:3].tolist() + exp.index[-2:].tolist():
+        ys = v[np.isclose(v[:, 0], year), 1]
+        ensure(len(ys) > 0, 'Коридор должен проходить по годам выпуска.')
+        ensure(np.isclose(ys.min(), exp.loc[year, 0.25], rtol=1e-6) and np.isclose(ys.max(), exp.loc[year, 0.75], rtol=1e-6),
+               'Коридор в {0} году должен идти от Q1 = {1:.0f} до Q3 = {2:.0f}.'.format(year, exp.loc[year, 0.25], exp.loc[year, 0.75]))
+    lines = ax.get_lines()
+    ensure(len(lines) >= 1, 'Добавьте линию медианы методом `ax.plot(...)`.')
+    same_array(lines[0].get_ydata(), exp[0.5].values, 'Линия должна показывать медиану цены по годам.')
+    leg = ax.get_legend()
+    ensure(leg is not None and len(leg.get_texts()) >= 2, 'Добавьте легенду с подписями коридора и медианы: `label=` у обоих слоёв и `ax.legend()`.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        mercedes = df[(df['Make'] == 'Mercedes') & (df['Year'] >= 2000)]
+        bands = mercedes.groupby('Year')['Price'].quantile([0.25, 0.5, 0.75]).unstack()
+        fig, ax = plt.subplots()
+        ax.fill_between(bands.index, bands[0.5], bands[0.75], alpha=0.3, label='Разброс')
+        ax.plot(bands.index, bands[0.5], 'o-', label='Медиана')
+        ax.set(title='Mercedes', xlabel='Год выпуска', ylabel='Цена, евро')
+        ax.legend()
+        plt.show()
+      expect: от Q1
+    - code: |
+        mercedes = df[(df['Make'] == 'Mercedes') & (df['Year'] >= 2000)]
+        bands = mercedes.groupby('Year')['Price'].quantile([0.25, 0.5, 0.75]).unstack()
+        fig, ax = plt.subplots()
+        ax.plot(bands.index, bands[0.5], 'o-', label='Медиана')
+        ax.set(title='Mercedes', xlabel='Год выпуска', ylabel='Цена, евро')
+        ax.legend()
+        plt.show()
+      expect: коридора

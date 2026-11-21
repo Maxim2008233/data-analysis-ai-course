@@ -1,0 +1,433 @@
+- id: m9-l8-t1
+  title: Точность одного варианта
+  difficulty: warmup
+  introduces: [prompt-template]
+  uses: [zero-shot]
+  statement: |
+    Напишите функцию `accuracy(variant)` — долю верных ответов CLIP, если подписями классов служат подписи варианта `variant` (столбец `variant` таблицы `prompts`). Кандидаты — все классы. Получите `acc_raw`, `acc_en` и `acc_photo` — точность вариантов `'raw'`, `'en'` и `'photo'`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    images = pd.read_csv('zs_public.csv')
+    image_emb = np.load('zs_public.npy').astype(np.float32)
+    with np.load('zs_prompts.npz') as data:
+        prompts = pd.DataFrame({k: [str(x) for x in data[k]] for k in ['class', 'group', 'language', 'variant', 'prompt']})
+        prompt_emb = data['emb'].astype(np.float32)
+    classes = prompts.loc[prompts['variant'] == 'raw', 'class'].to_numpy()
+  starter: |
+    def accuracy(variant):
+        rows = ...
+        S = ...
+        pred = classes[S.argmax(axis=1)]
+        return ...
+
+    acc_raw = accuracy('raw')
+    acc_en = accuracy('en')
+    acc_photo = accuracy('photo')
+    print(round(acc_raw, 3), round(acc_en, 3), round(acc_photo, 3))
+  solution: |
+    def accuracy(variant):
+        rows = (prompts['variant'] == variant).to_numpy()
+        S = image_emb @ prompt_emb[rows].T
+        pred = classes[S.argmax(axis=1)]
+        return (pred == images['class']).mean()
+
+    acc_raw = accuracy('raw')
+    acc_en = accuracy('en')
+    acc_photo = accuracy('photo')
+    print(round(acc_raw, 3), round(acc_en, 3), round(acc_photo, 3))
+  explanation: |
+    - Маска `prompts['variant'] == variant` выбирает 349 строк — по подписи на класс в одном и том же порядке классов. Поэтому номер столбца с наибольшим косинусом — номер класса в `classes`.
+    - Голое исходное название даёт 0,568, английский перевод — 0,776, перевод в шаблоне «a photo of a …» — 0,799. Перевод добавляет больше всего: модель училась на английских подписях.
+  hints:
+    - "Строки варианта — `(prompts['variant'] == variant).to_numpy()`."
+    - "Косинусы — `image_emb @ prompt_emb[rows].T`."
+    - "Доля верных — `(pred == images['class']).mean()`."
+  tests: |
+    f = var('accuracy')
+    ensure(callable(f), '`accuracy` должна быть функцией.')
+    g = ref('accuracy')
+    for v in ['closeup', 'drawing']:
+        close(float(f(v)), float(g(v)), 'Для варианта «' + v + '» точность {expected}, а `accuracy` дала {actual}.')
+    for name in ['acc_raw', 'acc_en', 'acc_photo']:
+        close(var(name, 'number', 'числом'), ref(name), '`' + name + '` — {expected}, а у вас {actual}.')
+    close(alt('acc_en'), alt_ref('acc_en'), HARDCODE_MSG)
+  files: [zs_public.csv, zs_public.npy, zs_prompts.npz]
+  wrong:
+    - code: |
+        def accuracy(variant):
+            rows = (prompts['variant'] == variant).to_numpy()
+            S = image_emb @ prompt_emb[rows].T
+            pred = classes[S.argmin(axis=1)]
+            return (pred == images['class']).mean()
+        acc_raw = accuracy('raw')
+        acc_en = accuracy('en')
+        acc_photo = accuracy('photo')
+      expect: "`accuracy` дала"
+    - code: |
+        def accuracy(variant):
+            rows = (prompts['variant'] == variant).to_numpy()
+            S = image_emb @ prompt_emb[rows].T
+            pred = classes[S.argmax(axis=1)]
+            return (pred == images['class']).sum()
+        acc_raw = accuracy('raw')
+        acc_en = accuracy('en')
+        acc_photo = accuracy('photo')
+      expect: "`accuracy` дала"
+
+- id: m9-l8-t2
+  title: Лучший шаблон
+  difficulty: main
+  introduces: []
+  uses: [prompt-template, pd-groupby]
+  statement: |
+    Сравните все десять вариантов подписей. Получите:
+
+    - `table` — Series: точность каждого варианта (индекс — названия вариантов), по убыванию;
+    - `best` — название лучшего варианта;
+    - `gain` — насколько лучший вариант точнее подписей `'pipeline'` из базового решения;
+    - `by_lang_best` — Series: точность лучшего варианта для каждого языка `language`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    images = pd.read_csv('zs_public.csv')
+    image_emb = np.load('zs_public.npy').astype(np.float32)
+    with np.load('zs_prompts.npz') as data:
+        prompts = pd.DataFrame({k: [str(x) for x in data[k]] for k in ['class', 'group', 'language', 'variant', 'prompt']})
+        prompt_emb = data['emb'].astype(np.float32)
+    classes = prompts.loc[prompts['variant'] == 'raw', 'class'].to_numpy()
+    def predict(variant):
+        rows = (prompts['variant'] == variant).to_numpy()
+        return classes[(image_emb @ prompt_emb[rows].T).argmax(axis=1)]
+  starter: |
+    table = pd.Series({v: ... for v in prompts['variant'].unique()}).sort_values(ascending=False)
+    best = ...
+    gain = ...
+    correct_best = predict(best) == images['class']
+    by_lang_best = ...
+    print(table.round(3))
+    print(best, round(gain, 3))
+    print(by_lang_best.round(3))
+  solution: |
+    table = pd.Series({v: (predict(v) == images['class']).mean() for v in prompts['variant'].unique()}).sort_values(ascending=False)
+    best = table.index[0]
+    gain = table[best] - table['pipeline']
+    correct_best = predict(best) == images['class']
+    by_lang_best = correct_best.groupby(images['language']).mean()
+    print(table.round(3))
+    print(best, round(gain, 3))
+    print(by_lang_best.round(3))
+  explanation: |
+    - Лучший одиночный вариант — `photo_group`: «a photo of a flamingo, a type of bird». Он точнее базового решения на 21 пункт: 0,807 против 0,595.
+    - По языкам: английские классы — 0,81, латинские — 0,83, а испанские — лишь 0,36. Латинские классы выиграли от перевода больше всех. Испанские упираются в синонимы: перевод «flamingo» проигрывает «american flamingo» — то же животное под латинским названием.
+    - `table.index[0]` — первая метка индекса отсортированной Series, то есть лучший вариант.
+  hints:
+    - "Точность варианта — `(predict(v) == images['class']).mean()`."
+    - "Лучший — `table.index[0]`; прирост — `table[best] - table['pipeline']`."
+    - "По языкам — `correct_best.groupby(images['language']).mean()`."
+  tests: |
+    import pandas as pd
+    tb = var('table', pd.Series, 'Series')
+    ensure(set(tb.index) == set(ref('table').index), '`table` — точность для каждого из 10 вариантов (индекс — названия вариантов).')
+    same_array(tb.reindex(ref('table').index).to_numpy(dtype=float), ref('table').to_numpy(dtype=float), '`table` — точность каждого варианта.')
+    ensure(list(tb.index) == list(ref('table').index), 'Отсортируйте `table` по убыванию точности: `sort_values(ascending=False)`.')
+    equal(var('best', str, 'строкой'), ref('best'), 'Лучший вариант — {expected}, а у вас {actual}.')
+    close(var('gain', 'number', 'числом'), ref('gain'), 'Прирост над подписями pipeline — {expected}, а у вас {actual}.')
+    bl = var('by_lang_best', pd.Series, 'Series')
+    same_array(bl.reindex(ref('by_lang_best').index).to_numpy(dtype=float), ref('by_lang_best').to_numpy(dtype=float), '`by_lang_best` — точность лучшего варианта по языкам.')
+    close(alt('gain'), alt_ref('gain'), HARDCODE_MSG)
+  files: [zs_public.csv, zs_public.npy, zs_prompts.npz]
+  wrong:
+    - code: |
+        table = pd.Series({v: (predict(v) == images['class']).mean() for v in prompts['variant'].unique()}).sort_values()
+        best = table.index[0]
+        gain = table[best] - table['pipeline']
+        correct_best = predict(best) == images['class']
+        by_lang_best = correct_best.groupby(images['language']).mean()
+      expect: по убыванию
+    - code: |
+        table = pd.Series({v: (predict(v) == images['class']).mean() for v in prompts['variant'].unique()}).sort_values(ascending=False)
+        best = table.index[0]
+        gain = table[best] - table['raw']
+        correct_best = predict(best) == images['class']
+        by_lang_best = correct_best.groupby(images['language']).mean()
+      expect: Прирост над подписями pipeline
+
+- id: m9-l8-t3
+  title: Ансамбль шаблонов
+  difficulty: main
+  introduces: []
+  uses: [prompt-template, cosine-similarity]
+  statement: |
+    Напишите функцию `ensemble_emb(variants)`: для каждого класса — среднее векторов его подписей из списка вариантов `variants`, нормированное к длине 1 (матрица 349 × 512, порядок классов — как в `classes`). Получите:
+
+    - `acc_ens6` — точность ансамбля шести шаблонов `templates`;
+    - `acc_pair` — точность ансамбля двух шаблонов: `'photo'` и `'bad_photo'`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    images = pd.read_csv('zs_public.csv')
+    image_emb = np.load('zs_public.npy').astype(np.float32)
+    with np.load('zs_prompts.npz') as data:
+        prompts = pd.DataFrame({k: [str(x) for x in data[k]] for k in ['class', 'group', 'language', 'variant', 'prompt']})
+        prompt_emb = data['emb'].astype(np.float32)
+    classes = prompts.loc[prompts['variant'] == 'raw', 'class'].to_numpy()
+    templates = ['photo', 'photo_group', 'closeup', 'bad_photo', 'photo_the', 'drawing']
+    def acc_of(E):
+        return (classes[(image_emb @ E.T).argmax(axis=1)] == images['class']).mean()
+  starter: |
+    def ensemble_emb(variants):
+        E = np.mean([... for v in variants], axis=0)
+        return ...
+
+    acc_ens6 = acc_of(ensemble_emb(templates))
+    acc_pair = acc_of(ensemble_emb(['photo', 'bad_photo']))
+    print(round(acc_ens6, 4), round(acc_pair, 4))
+  solution: |
+    def ensemble_emb(variants):
+        E = np.mean([prompt_emb[(prompts['variant'] == v).to_numpy()] for v in variants], axis=0)
+        return E / np.linalg.norm(E, axis=1, keepdims=True)
+
+    acc_ens6 = acc_of(ensemble_emb(templates))
+    acc_pair = acc_of(ensemble_emb(['photo', 'bad_photo']))
+    print(round(acc_ens6, 4), round(acc_pair, 4))
+  explanation: |
+    - `np.mean([...], axis=0)` усредняет матрицы 349 × 512 поэлементно: для каждого класса получается среднее его подписей.
+    - Среднее векторов длины 1 короче единицы — у шести шаблонов в среднем 0,966. Без нормировки косинусы с разными классами нельзя сравнивать честно.
+    - Ансамбль шести шаблонов — 0,809, пары «photo» и «bad_photo» — 0,810. Оба чуть лучше лучшего одиночного шаблона (0,807). Выигрыш скромный, зато ансамбль меньше зависит от удачной формулировки.
+  hints:
+    - "Векторы варианта — `prompt_emb[(prompts['variant'] == v).to_numpy()]`."
+    - "Среднее — `np.mean([...], axis=0)`, нормировка строк — `E / np.linalg.norm(E, axis=1, keepdims=True)`."
+    - "Точность ансамбля считает готовая функция `acc_of(E)`."
+  tests: |
+    import numpy as np
+    f = var('ensemble_emb')
+    ensure(callable(f), '`ensemble_emb` должна быть функцией.')
+    for vs in [['en', 'photo'], ['closeup', 'drawing', 'photo_the']]:
+        E = np.asarray(f(vs), dtype=float)
+        ensure(E.shape == (349, 512), '`ensemble_emb` должна вернуть матрицу 349 × 512, а вернула {0}.'.format(E.shape))
+        if not np.allclose(np.linalg.norm(E, axis=1), 1, atol=1e-4):
+            fail('Строки ансамбля должны иметь длину 1: среднее векторов короче единицы, нормируйте его заново.')
+        same_array(E, np.asarray(ref('ensemble_emb')(vs), dtype=float), 'Для вариантов ' + str(vs) + ' ансамбль неверен: среднее векторов подписей каждого класса.', atol=1e-5)
+    close(var('acc_ens6', 'number', 'числом'), ref('acc_ens6'), 'Точность ансамбля шести шаблонов — {expected}, а у вас {actual}.')
+    close(var('acc_pair', 'number', 'числом'), ref('acc_pair'), 'Точность пары шаблонов — {expected}, а у вас {actual}.')
+    close(alt('acc_ens6'), alt_ref('acc_ens6'), HARDCODE_MSG)
+  files: [zs_public.csv, zs_public.npy, zs_prompts.npz]
+  wrong:
+    - code: |
+        def ensemble_emb(variants):
+            return np.mean([prompt_emb[(prompts['variant'] == v).to_numpy()] for v in variants], axis=0)
+        acc_ens6 = acc_of(ensemble_emb(templates))
+        acc_pair = acc_of(ensemble_emb(['photo', 'bad_photo']))
+      expect: длину 1
+    - code: |
+        def ensemble_emb(variants):
+            E = np.mean([prompt_emb[(prompts['variant'] == v).to_numpy()] for v in variants], axis=1)
+            return E / np.linalg.norm(E, axis=1, keepdims=True)
+        acc_ens6 = acc_of(ensemble_emb(templates))
+        acc_pair = acc_of(ensemble_emb(['photo', 'bad_photo']))
+      expect: 349 × 512
+
+- id: m9-l8-t4
+  title: Только свои классы
+  difficulty: main
+  introduces: []
+  uses: [prompt-template, zero-shot]
+  statement: |
+    Для каждой картинки известны группа и язык её класса. Оставьте кандидатами только классы с той же группой и тем же языком (`cls_group`, `cls_lang` — группа и язык каждого класса в порядке `classes`). Получите:
+
+    - `allowed` — логическую матрицу «картинки × классы»: подходит ли класс картинке;
+    - `mean_cands` — среднее число кандидатов на картинку;
+    - `acc_restricted` — точность подписей `'photo_group'` с такими кандидатами;
+    - `n_single` — у скольких картинок кандидат всего один;
+    - `acc_multi` — точность на картинках, у которых кандидатов больше одного.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    images = pd.read_csv('zs_public.csv')
+    image_emb = np.load('zs_public.npy').astype(np.float32)
+    with np.load('zs_prompts.npz') as data:
+        prompts = pd.DataFrame({k: [str(x) for x in data[k]] for k in ['class', 'group', 'language', 'variant', 'prompt']})
+        prompt_emb = data['emb'].astype(np.float32)
+    raw = prompts[prompts['variant'] == 'raw']
+    classes, cls_group, cls_lang = raw['class'].to_numpy(), raw['group'].to_numpy(), raw['language'].to_numpy()
+    S = image_emb @ prompt_emb[(prompts['variant'] == 'photo_group').to_numpy()].T
+  starter: |
+    allowed = ...
+    mean_cands = ...
+    pred = classes[np.where(allowed, S, -np.inf).argmax(axis=1)]
+    correct = pred == images['class'].to_numpy()
+    acc_restricted = ...
+    n_cands = allowed.sum(axis=1)
+    n_single = ...
+    acc_multi = ...
+    print(round(mean_cands, 1), round(acc_restricted, 3), n_single, round(acc_multi, 3))
+  solution: |
+    allowed = (images['group'].to_numpy()[:, None] == cls_group[None, :]) & (images['language'].to_numpy()[:, None] == cls_lang[None, :])
+    mean_cands = allowed.sum(axis=1).mean()
+    pred = classes[np.where(allowed, S, -np.inf).argmax(axis=1)]
+    correct = pred == images['class'].to_numpy()
+    acc_restricted = correct.mean()
+    n_cands = allowed.sum(axis=1)
+    n_single = int((n_cands == 1).sum())
+    acc_multi = correct[n_cands > 1].mean()
+    print(round(mean_cands, 1), round(acc_restricted, 3), n_single, round(acc_multi, 3))
+  explanation: |
+    - `[:, None]` и `[None, :]` превращают два вектора в столбец и строку, и сравнение даёт матрицу 706 × 349 — это broadcasting (урок 1.10). Классы чужих групп получают оценку −∞ и не могут победить.
+    - Кандидатов в среднем 117 вместо 349, точность — 0,875 вместо 0,807.
+    - У 16 картинок кандидат один: например, «Hormiga» — единственное испанское насекомое. Без них точность 0,872, то есть почти весь прирост — заслуга модели, а не подсказки разметки.
+  hints:
+    - "Совпадение групп — `images['group'].to_numpy()[:, None] == cls_group[None, :]`; так же для языков, условия соедините через `&`."
+    - "Кандидатов у картинки — `allowed.sum(axis=1)`; точность — `correct.mean()`."
+    - "Один кандидат — `(n_cands == 1).sum()`; точность остальных — `correct[n_cands > 1].mean()`."
+  tests: |
+    import numpy as np
+    al = np.asarray(var('allowed'), dtype=bool)
+    ensure(al.shape == ref('allowed').shape, '`allowed` — матрица «картинки × классы» формы {0}, а у вас {1}.'.format(ref('allowed').shape, al.shape))
+    gi = ref('images')['group'].to_numpy()[:, None] == ref('cls_group')[None, :]
+    li = ref('images')['language'].to_numpy()[:, None] == ref('cls_lang')[None, :]
+    if (al == (gi | li)).all() and not (al == ref('allowed')).all():
+        fail('Класс подходит, только если совпадают и группа, и язык: условия соединяют через `&`, а не `|`.')
+    same_array(al.astype(float), ref('allowed').astype(float), '`allowed` — совпадают ли группа и язык картинки и класса.')
+    close(var('mean_cands', 'number', 'числом'), ref('mean_cands'), 'Кандидатов в среднем {expected}, а у вас {actual}.')
+    close(var('acc_restricted', 'number', 'числом'), ref('acc_restricted'), 'Точность со своими классами — {expected}, а у вас {actual}.')
+    equal(int(var('n_single', 'number', 'числом')), int(ref('n_single')), 'Картинок с одним кандидатом — {expected}, а у вас {actual}.')
+    close(var('acc_multi', 'number', 'числом'), ref('acc_multi'), 'Точность без картинок с одним кандидатом — {expected}, а у вас {actual}.')
+    close(alt('acc_restricted'), alt_ref('acc_restricted'), HARDCODE_MSG)
+  files: [zs_public.csv, zs_public.npy, zs_prompts.npz]
+  wrong:
+    - code: |
+        allowed = (images['group'].to_numpy()[:, None] == cls_group[None, :]) | (images['language'].to_numpy()[:, None] == cls_lang[None, :])
+        mean_cands = allowed.sum(axis=1).mean()
+        pred = classes[np.where(allowed, S, -np.inf).argmax(axis=1)]
+        correct = pred == images['class'].to_numpy()
+        acc_restricted = correct.mean()
+        n_cands = allowed.sum(axis=1)
+        n_single = int((n_cands == 1).sum())
+        acc_multi = correct[n_cands > 1].mean()
+      expect: а не `|`
+    - code: |
+        allowed = (images['group'].to_numpy()[:, None] == cls_group[None, :]) & (images['language'].to_numpy()[:, None] == cls_lang[None, :])
+        mean_cands = allowed.sum(axis=1).mean()
+        pred = classes[np.where(allowed, S, -np.inf).argmax(axis=1)]
+        correct = pred == images['class'].to_numpy()
+        acc_restricted = correct.mean()
+        n_cands = allowed.sum(axis=1)
+        n_single = int((n_cands == 1).sum())
+        acc_multi = correct.mean()
+      expect: без картинок с одним
+
+- id: m9-l8-t5
+  title: Честный выбор шаблона
+  difficulty: star
+  introduces: []
+  uses: [prompt-template, zero-shot]
+  statement: |
+    Выбирать шаблон по тем же картинкам, на которых считаешь точность, — подгонка. Проверим, насколько она завышает оценку. Картинки каждого класса уже поделены на две части: `dev` (на ней выбираем) и `test` (на ней проверяем). Для каждого варианта подписей посчитайте точность со своими классами (`allowed`) отдельно на `dev` и на `test`. Получите:
+
+    - `scores` — DataFrame: строки — варианты, столбцы `dev` и `test`;
+    - `chosen` — вариант с наибольшей точностью на `dev`;
+    - `chosen_test` — его точность на `test`;
+    - `oracle_test` — наибольшую точность на `test` среди всех вариантов (её нельзя знать заранее);
+    - `optimism` — насколько точность выбранного варианта на `dev` выше его же точности на `test`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    images = pd.read_csv('zs_public.csv')
+    image_emb = np.load('zs_public.npy').astype(np.float32)
+    with np.load('zs_prompts.npz') as data:
+        prompts = pd.DataFrame({k: [str(x) for x in data[k]] for k in ['class', 'group', 'language', 'variant', 'prompt']})
+        prompt_emb = data['emb'].astype(np.float32)
+    raw = prompts[prompts['variant'] == 'raw']
+    classes = raw['class'].to_numpy()
+    allowed = (images['group'].to_numpy()[:, None] == raw['group'].to_numpy()[None, :]) & (images['language'].to_numpy()[:, None] == raw['language'].to_numpy()[None, :])
+    dev = (images.groupby('class').cumcount() % 2 == 0).to_numpy()     # чётные картинки каждого класса
+    test = ~dev
+  starter: |
+    def correct_of(variant):
+        rows = (prompts['variant'] == variant).to_numpy()
+        S = np.where(allowed, image_emb @ prompt_emb[rows].T, -np.inf)
+        return classes[S.argmax(axis=1)] == images['class'].to_numpy()
+
+    table = {}
+    for v in prompts['variant'].unique():
+        ok = correct_of(v)
+        table[v] = {'dev': ..., 'test': ...}
+    scores = pd.DataFrame(table).T
+    chosen = ...
+    chosen_test = ...
+    oracle_test = ...
+    optimism = ...
+    print(scores.round(3))
+    print(chosen, round(chosen_test, 4), round(oracle_test, 4), round(optimism, 4))
+  solution: |
+    def correct_of(variant):
+        rows = (prompts['variant'] == variant).to_numpy()
+        S = np.where(allowed, image_emb @ prompt_emb[rows].T, -np.inf)
+        return classes[S.argmax(axis=1)] == images['class'].to_numpy()
+
+    table = {}
+    for v in prompts['variant'].unique():
+        ok = correct_of(v)
+        table[v] = {'dev': ok[dev].mean(), 'test': ok[test].mean()}
+    scores = pd.DataFrame(table).T
+    chosen = scores['dev'].idxmax()
+    chosen_test = scores.loc[chosen, 'test']
+    oracle_test = scores['test'].max()
+    optimism = scores.loc[chosen, 'dev'] - chosen_test
+    print(scores.round(3))
+    print(chosen, round(chosen_test, 4), round(oracle_test, 4), round(optimism, 4))
+  explanation: |
+    - На `dev` лучшим оказался `photo_group` (0,878), на `test` он даёт 0,873. Оценка по `dev` завышена на полпункта — это и есть цена выбора по тем же данным.
+    - На `test` лучше всех `bad_photo` (0,878), но узнать это заранее нельзя: мы бы подглядели в проверочные данные. Честная оценка выбранного решения — 0,873, а не 0,878.
+    - Вариантов всего десять, поэтому подгонка небольшая. Если перебирать сотни шаблонов и их сочетаний, разрыв растёт. Скрытая половина соревнования покажет его честно.
+  hints:
+    - "Точность варианта на части — `ok[dev].mean()` и `ok[test].mean()`."
+    - "Выбранный — `scores['dev'].idxmax()`, его test — `scores.loc[chosen, 'test']`."
+    - "Оптимизм — `scores.loc[chosen, 'dev'] - chosen_test`."
+  tests: |
+    import pandas as pd
+    sc = var('scores', pd.DataFrame, 'таблицей')
+    ensure(set(sc.columns) >= {'dev', 'test'}, 'В `scores` нужны столбцы `dev` и `test`.')
+    rs = ref('scores')
+    same_array(sc.reindex(rs.index)[['dev', 'test']].to_numpy(dtype=float), rs[['dev', 'test']].to_numpy(dtype=float), '`scores` — точность каждого варианта на `dev` и на `test`.')
+    ch = var('chosen', str, 'строкой')
+    if ch == rs['test'].idxmax() and ch != rs['dev'].idxmax():
+        fail('Выбирать нужно по `dev`: точность на `test` при выборе знать нельзя.')
+    equal(ch, ref('chosen'), 'По `dev` выбирается вариант {expected}, а у вас {actual}.')
+    close(var('chosen_test', 'number', 'числом'), ref('chosen_test'), 'Точность выбранного варианта на `test` — {expected}, а у вас {actual}.')
+    close(var('oracle_test', 'number', 'числом'), ref('oracle_test'), 'Лучшая точность на `test` — {expected}, а у вас {actual}.')
+    close(var('optimism', 'number', 'числом'), ref('optimism'), 'Завышение оценки — {expected}, а у вас {actual}.')
+    close(alt('chosen_test'), alt_ref('chosen_test'), HARDCODE_MSG)
+  files: [zs_public.csv, zs_public.npy, zs_prompts.npz]
+  wrong:
+    - code: |
+        def correct_of(variant):
+            rows = (prompts['variant'] == variant).to_numpy()
+            S = np.where(allowed, image_emb @ prompt_emb[rows].T, -np.inf)
+            return classes[S.argmax(axis=1)] == images['class'].to_numpy()
+        table = {}
+        for v in prompts['variant'].unique():
+            ok = correct_of(v)
+            table[v] = {'dev': ok[dev].mean(), 'test': ok[test].mean()}
+        scores = pd.DataFrame(table).T
+        chosen = scores['test'].idxmax()
+        chosen_test = scores.loc[chosen, 'test']
+        oracle_test = scores['test'].max()
+        optimism = scores.loc[chosen, 'dev'] - chosen_test
+      expect: Выбирать нужно по
+    - code: |
+        def correct_of(variant):
+            rows = (prompts['variant'] == variant).to_numpy()
+            S = np.where(allowed, image_emb @ prompt_emb[rows].T, -np.inf)
+            return classes[S.argmax(axis=1)] == images['class'].to_numpy()
+        table = {}
+        for v in prompts['variant'].unique():
+            ok = correct_of(v)
+            table[v] = {'dev': ok[dev].mean(), 'test': ok[test].mean()}
+        scores = pd.DataFrame(table).T
+        chosen = scores['dev'].idxmax()
+        chosen_test = scores.loc[chosen, 'test']
+        oracle_test = scores['test'].max()
+        optimism = chosen_test - scores.loc[chosen, 'dev']
+      expect: Завышение оценки

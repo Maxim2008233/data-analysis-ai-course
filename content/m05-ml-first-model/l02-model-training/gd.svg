@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 250" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="Градиентный спуск: функция потерь MSE зависит от параметра w и имеет форму чаши. Начиная со случайного w, на каждом шаге параметр сдвигается против градиента на величину шаг обучения умножить на градиент, и потери уменьшаются до минимума">
+  <defs><marker id="ga" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#c2410c"/></marker></defs>
+  <line x1="40" y1="210" x2="470" y2="210" stroke="currentColor" stroke-opacity="0.6"/>
+  <line x1="40" y1="210" x2="40" y2="20" stroke="currentColor" stroke-opacity="0.6"/>
+  <text x="470" y="230" text-anchor="end" fill="currentColor" font-size="11.5">параметр w</text>
+  <text x="48" y="28" fill="currentColor" font-size="11.5">потери MSE(w)</text>
+  <path d="M60 40 Q 270 380 460 40" fill="none" stroke="#3d5bd9" stroke-width="2.2"/>
+  <g fill="#c2410c">
+    <circle cx="86" cy="79" r="5"/><circle cx="150" cy="156" r="5"/><circle cx="198" cy="190" r="5"/><circle cx="232" cy="205" r="5"/><circle cx="252" cy="209" r="5"/>
+  </g>
+  <g stroke="#c2410c" stroke-width="1.6" fill="none">
+    <path d="M92 86 L144 150" marker-end="url(#ga)"/><path d="M156 161 L192 187" marker-end="url(#ga)"/><path d="M204 194 L226 203" marker-end="url(#ga)"/>
+  </g>
+  <line x1="262" y1="204" x2="262" y2="214" stroke="currentColor" stroke-opacity="0.6"/>
+  <text x="262" y="244" text-anchor="middle" fill="currentColor" font-size="11">минимум</text>
+  <text x="96" y="70" fill="#c2410c" font-size="11.5">старт: случайное w</text>
+  <g fill="currentColor" font-size="12">
+    <text x="500" y="52" font-weight="700">Шаг градиентного спуска</text>
+    <text x="500" y="78" font-family="JetBrains Mono, monospace" font-size="11.5" fill="#3d5bd9">w ← w − lr · ∂MSE/∂w</text>
+    <text x="500" y="104">градиент — куда потери растут</text>
+    <text x="500" y="120">быстрее всего; идём в обратную</text>
+    <text x="500" y="136">сторону маленьким шагом lr</text>
+    <text x="500" y="166" fill-opacity="0.8">круто — шаги большие,</text>
+    <text x="500" y="182" fill-opacity="0.8">у минимума — маленькие:</text>
+    <text x="500" y="198" fill-opacity="0.8">градиент там почти 0</text>
+  </g>
+</svg>

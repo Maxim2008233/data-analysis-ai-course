@@ -1,0 +1,370 @@
+- id: m2-l5-t1
+  title: Объявления с ручной коробкой
+  difficulty: warmup
+  introduces: [pd-bool-filter]
+  uses: [bool-mask]
+  statement: |
+    Получите `manual` — таблицу только с объявлениями, где коробка **не** автоматическая (`AutoTransmission` равно `False`), и `n_manual` — число таких объявлений.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')   # загрузка — урок 2.1
+    df = raw.copy()
+  starter: |
+    manual = ...
+    n_manual = ...
+    print(n_manual)
+    manual.head(3)
+  solution: |
+    manual = df[df['AutoTransmission'] == False]
+    n_manual = len(manual)
+    print(n_manual)
+    manual.head(3)
+  explanation: |
+    - `df['AutoTransmission'] == False` — маска: True там, где коробка ручная.
+    - `df[маска]` оставляет только такие строки; метки строк сохраняются.
+    - `len(manual)` — число строк в отобранной таблице.
+  alternatives:
+    - |
+      manual = df[~df['AutoTransmission']]
+      n_manual = manual.shape[0]
+    - |
+      manual = df.loc[df['AutoTransmission'] == False]
+      n_manual = int((df['AutoTransmission'] == False).sum())
+  hints:
+    - Постройте маску сравнением колонки и отберите по ней строки.
+    - "Маска: `df['AutoTransmission'] == False`; отбор — `df[маска]`; число строк — `len(...)`."
+    - "`manual = df[df['AutoTransmission'] == False]`, `n_manual = len(manual)`."
+  tests: |
+    import pandas as pd
+    m = var('manual', pd.DataFrame, 'таблицей DataFrame — результатом `df[маска]`')
+    n = var('n_manual', 'number', 'числом')
+    if len(m) == 0:
+        fail('Таблица `manual` пуста. Колонка AutoTransmission логическая: сравнивайте с `False` без кавычек, а не со строкой `\'False\'`.')
+    same_frame(m, ref('manual'), 'В `manual` должны быть все объявления с ручной коробкой, и только они.')
+    close(n, ref('n_manual'), 'Объявлений с ручной коробкой — {expected}, а у вас {actual}.')
+    close(alt('n_manual'), alt_ref('n_manual'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        manual = df[df['AutoTransmission'] == 'False']
+        n_manual = len(manual)
+      expect: без кавычек
+    - code: |
+        manual = df[df['AutoTransmission'] == True]
+        n_manual = len(manual)
+      expect: только они
+
+- id: m2-l5-t2
+  title: Toyota или BMW не дороже 10 000 евро
+  difficulty: main
+  introduces: [pd-bool-filter, pd-isin-between]
+  uses: [mask-combine]
+  statement: |
+    Получите `cheap_tb` — объявления марок Toyota **или** BMW с ценой **не более** 10 000 евро, и `n_cheap_tb` — их число. Для выбора марок используйте `isin`.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+  starter: |
+    cheap_tb = ...
+    n_cheap_tb = ...
+    print(n_cheap_tb)
+  solution: |
+    cheap_tb = df[df['Make'].isin(['Toyota', 'BMW']) & (df['Price(euro)'] <= 10_000)]
+    n_cheap_tb = len(cheap_tb)
+    print(n_cheap_tb)
+  explanation: |
+    - `df['Make'].isin(['Toyota', 'BMW'])` — маска «марка из списка».
+    - `(df['Price(euro)'] <= 10_000)` — «не более» включает 10 000; сравнение — в скобках.
+    - `&` — оба условия одновременно.
+  alternatives:
+    - |
+      makes = (df['Make'] == 'Toyota') | (df['Make'] == 'BMW')
+      cheap_tb = df[makes & (df['Price(euro)'] <= 10000)]
+      n_cheap_tb = cheap_tb.shape[0]
+  hints:
+    - "Нужны два условия одновременно: марка из списка и цена не выше порога."
+    - "`df['Make'].isin([...])` и `(df['Price(euro)'] <= 10_000)`, объединить через `&`."
+    - "`cheap_tb = df[df['Make'].isin(['Toyota', 'BMW']) & (df['Price(euro)'] <= 10_000)]`."
+  tests: |
+    import pandas as pd
+    d = ref('df')
+    t = var('cheap_tb', pd.DataFrame, 'таблицей DataFrame')
+    if len(t) == len(d):
+        fail('В `cheap_tb` оказались все строки таблицы. Похоже, не хватает скобок вокруг сравнения цены: `(df[\'Price(euro)\'] <= 10_000)` — оператор `&` выполняется раньше сравнения.')
+    if (~t['Make'].isin(['Toyota', 'BMW'])).any():
+        fail('В `cheap_tb` есть другие марки. Похоже, условия объединены через `|` вместо `&`.')
+    if (t['Price(euro)'] > 10_000).any():
+        fail('В `cheap_tb` есть цены выше 10 000 евро — проверьте условие цены.')
+    if len(t) == int((d['Make'].isin(['Toyota', 'BMW']) & (d['Price(euro)'] < 10_000)).sum()) and len(t) != len(ref('cheap_tb')):
+        fail('Не хватает объявлений ровно за 10 000 евро: «не более» — это `<= 10_000`.')
+    same_frame(t, ref('cheap_tb'), 'Отобраны не те строки.')
+    close(var('n_cheap_tb', 'number', 'числом'), ref('n_cheap_tb'), 'Подходящих объявлений — {expected}, а у вас {actual}.')
+    close(alt('n_cheap_tb'), alt_ref('n_cheap_tb'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        cheap_tb = df[df['Make'].isin(['Toyota', 'BMW']) & (df['Price(euro)'] < 10_000)]
+        n_cheap_tb = len(cheap_tb)
+      expect: "<= 10_000"
+    - code: |
+        cheap_tb = df[df['Make'].isin(['Toyota', 'BMW']) | (df['Price(euro)'] <= 10_000)]
+        n_cheap_tb = len(cheap_tb)
+      expect: другие марки
+    - code: |
+        cheap_tb = df[df['Make'].isin(['Toyota', 'BMW']) & df['Price(euro)'] <= 10_000]
+        n_cheap_tb = len(cheap_tb)
+      expect: не хватает скобок
+
+- id: m2-l5-t3
+  title: Годы и пробеги в диапазонах
+  difficulty: main
+  introduces: [pd-isin-between]
+  uses: [mask-combine]
+  statement: |
+    Получите `mid` — автомобили **2010–2020** годов выпуска (включительно) с пробегом **от 50 000 до 200 000 км** (включительно), и `n_mid` — их число. Используйте `between`.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+  starter: |
+    mid = ...
+    n_mid = ...
+    print(n_mid)
+  solution: |
+    mid = df[df['Year'].between(2010, 2020) & df['Distance'].between(50_000, 200_000)]
+    n_mid = len(mid)
+    print(n_mid)
+  explanation: |
+    - `between(2010, 2020)` — год от 2010 до 2020, оба конца включены.
+    - `between(50_000, 200_000)` — пробег в диапазоне; методы возвращают маски, их объединяет `&`.
+    - Скобки вокруг `between(...)` не нужны: это вызов метода, а не сравнение.
+  alternatives:
+    - |
+      years = (df['Year'] >= 2010) & (df['Year'] <= 2020)
+      km = (df['Distance'] >= 50000) & (df['Distance'] <= 200000)
+      mid = df[years & km]
+      n_mid = len(mid)
+  hints:
+    - Два диапазона одновременно — две маски, объединённые «и».
+    - "`df['Year'].between(2010, 2020)` и `df['Distance'].between(50_000, 200_000)`; объединить через `&`."
+    - "`mid = df[df['Year'].between(2010, 2020) & df['Distance'].between(50_000, 200_000)]`."
+  tests: |
+    import pandas as pd
+    t = var('mid', pd.DataFrame, 'таблицей DataFrame')
+    if not t['Year'].between(2010, 2020).all() or not t['Distance'].between(50_000, 200_000).all():
+        fail('В `mid` есть строки вне диапазонов. Проверьте границы и оператор `&`.')
+    same_frame(t, ref('mid'), 'Отобраны не все подходящие строки. Границы включаются: годы 2010 и 2020, пробеги 50 000 и 200 000 км тоже подходят.')
+    close(var('n_mid', 'number', 'числом'), ref('n_mid'), 'Подходящих объявлений — {expected}, а у вас {actual}.')
+    close(alt('n_mid'), alt_ref('n_mid'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        mid = df[(df['Year'] > 2010) & (df['Year'] < 2020) & df['Distance'].between(50_000, 200_000)]
+        n_mid = len(mid)
+      expect: Границы включаются
+    - code: |
+        mid = df[df['Year'].between(2010, 2020) | df['Distance'].between(50_000, 200_000)]
+        n_mid = len(mid)
+      expect: вне диапазонов
+
+- id: m2-l5-t4
+  title: Пропуск или необычное значение
+  difficulty: main
+  introduces: [pd-isin-between]
+  uses: []
+  statement: |
+    Разделите две разные проблемы колонки `Engine_capacity(cm3)`:
+
+    - `engine_missing` — строки, где объём **не указан** (пропуск);
+    - `engine_outside` — строки, где объём **известен**, но лежит вне диапазона 200–5000 см³.
+
+    Также получите `n_missing` и `n_outside` — число строк в каждой таблице.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+    engine = df['Engine_capacity(cm3)']
+  starter: |
+    engine_missing = ...
+    engine_outside = ...
+    n_missing, n_outside = len(engine_missing), len(engine_outside)
+    print(n_missing, n_outside)
+  solution: |
+    engine_missing = df[engine.isna()]
+    engine_outside = df[~engine.between(200, 5000) & engine.notna()]
+    n_missing, n_outside = len(engine_missing), len(engine_outside)
+    print(n_missing, n_outside)
+  explanation: |
+    - `engine.isna()` — маска пропусков (урок 2.3).
+    - `~engine.between(200, 5000)` — «вне диапазона», но для пропусков `between` даёт False, и отрицание делает их True.
+    - `& engine.notna()` убирает пропуски: остаются только известные значения вне диапазона.
+  alternatives:
+    - |
+      engine_missing = df[df['Engine_capacity(cm3)'].isna()]
+      engine_outside = df[(engine < 200) | (engine > 5000)]
+      n_missing, n_outside = len(engine_missing), len(engine_outside)
+  hints:
+    - Пропуск не входит ни в какой диапазон. Что сделает с ним отрицание `~between`?
+    - "Пропуски — `engine.isna()`; вне диапазона — `~engine.between(200, 5000)`, но добавьте `& engine.notna()`."
+    - "`engine_outside = df[~engine.between(200, 5000) & engine.notna()]`."
+  tests: |
+    import pandas as pd
+    m = var('engine_missing', pd.DataFrame, 'таблицей DataFrame')
+    o = var('engine_outside', pd.DataFrame, 'таблицей DataFrame')
+    same_frame(m, ref('engine_missing'), 'В `engine_missing` должны быть все строки с пропущенным объёмом, и только они.')
+    if o['Engine_capacity(cm3)'].isna().any():
+        fail('В `engine_outside` попали {0} строк с пропуском: `~between` отмечает и пропуски. Добавьте условие `& engine.notna()`.'.format(int(o['Engine_capacity(cm3)'].isna().sum())))
+    same_frame(o, ref('engine_outside'), 'В `engine_outside` должны быть известные значения вне диапазона 200–5000 см³.')
+    close(alt('n_outside'), alt_ref('n_outside'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        engine_missing = df[engine.isna()]
+        engine_outside = df[~engine.between(200, 5000)]
+        n_missing, n_outside = len(engine_missing), len(engine_outside)
+      expect: notna
+    - code: |
+        engine_missing = df[engine == None]
+        engine_outside = df[~engine.between(200, 5000) & engine.notna()]
+        n_missing, n_outside = len(engine_missing), len(engine_outside)
+      expect: пропущенным объёмом
+
+- id: m2-l5-t5
+  title: Функция отбора автомобилей
+  difficulty: main
+  introduces: [pd-bool-filter]
+  uses: [py-functions]
+  statement: |
+    Напишите функцию `select_cars(table, make, model, year)`, которая возвращает строки таблицы `table` с заданными маркой, моделью и годом выпуска (все колонки). Если совпадений нет, функция должна вернуть пустую таблицу с теми же колонками — это получится само собой.
+
+    Проверка вызовет функцию для разных автомобилей, в том числе для несуществующего, и для другой таблицы.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+  starter: |
+    def select_cars(table, make, model, year):
+        ...
+
+    found = select_cars(df, 'Toyota', 'Land Cruiser Prado', 2012)
+    print('Найдено:', len(found))
+    print('Несуществующая машина:', len(select_cars(df, 'Tesla', 'Model S', 1990)))
+  solution: |
+    def select_cars(table, make, model, year):
+        mask = (table['Make'] == make) & (table['Model'] == model) & (table['Year'] == year)
+        return table[mask]
+
+    found = select_cars(df, 'Toyota', 'Land Cruiser Prado', 2012)
+    print('Найдено:', len(found))
+    print('Несуществующая машина:', len(select_cars(df, 'Tesla', 'Model S', 1990)))
+  explanation: |
+    - Маска строится по аргументу `table`, а не по глобальной `df` — так функция работает с любой таблицей.
+    - Три условия объединены через `&`, каждое в скобках.
+    - Если совпадений нет, `table[mask]` — пустая таблица с теми же колонками; проверить это можно через `len(...) == 0` или `.empty`.
+  alternatives:
+    - |
+      def select_cars(table, make, model, year):
+          return table.loc[(table['Make'] == make) & (table['Model'] == model) & (table['Year'] == year)]
+  hints:
+    - Внутри функции работайте только с аргументами — таблицей `table` и значениями марки, модели, года.
+    - "Маска из трёх сравнений `(table['Make'] == make) & ...`; верните `table[mask]`."
+    - "`mask = (table['Make'] == make) & (table['Model'] == model) & (table['Year'] == year)`, затем `return table[mask]`."
+  tests: |
+    import pandas as pd
+    f = var('select_cars')
+    ensure(callable(f), '`select_cars` должна быть функцией: `def select_cars(table, make, model, year): ...`.')
+    d = ref('df')
+    ref_f = ref('select_cars')
+    for args in [('Toyota', 'Land Cruiser Prado', 2012), ('Volkswagen', 'Golf', 1998), ('Tesla', 'Model S', 1990)]:
+        got = f(d, *args)
+        if got is None:
+            fail('Функция ничего не вернула. Добавьте `return table[mask]`.')
+        if not isinstance(got, pd.DataFrame):
+            fail('Функция должна возвращать таблицу DataFrame, а вернула {0}.'.format(type(got).__name__))
+        same_frame(got, ref_f(d, *args), 'select_cars(df, {0!r}, {1!r}, {2}) вернула не те строки.'.format(*args))
+    small = d.head(100)
+    same_frame(f(small, 'Toyota', 'Prius', 2011), ref_f(small, 'Toyota', 'Prius', 2011), 'Функция должна отбирать строки из переданной таблицы `table`, а не из глобальной `df`.')
+  wrong:
+    - code: |
+        def select_cars(table, make, model, year):
+            return df[(df['Make'] == make) & (df['Model'] == model) & (df['Year'] == year)]
+      expect: переданной таблицы
+    - code: |
+        def select_cars(table, make, model, year):
+            mask = (table['Make'] == make) & (table['Model'] == model) & (table['Year'] == year)
+            print(table[mask])
+      expect: ничего не вернула
+    - code: |
+        def select_cars(table, make, model, year):
+            return table[(table['Make'] == make) | (table['Model'] == model) | (table['Year'] == year)]
+      expect: не те строки
+
+- id: m2-l5-t6
+  title: Лишний ноль в цене
+  difficulty: star
+  introduces: [pd-bool-filter]
+  uses: [mean-median]
+  statement: |
+    Возьмите `prado` — Toyota Land Cruiser Prado 2012 года с автоматической коробкой — и получите:
+
+    - `n_prado` — число объявлений;
+    - `mean_price` и `median_price` — среднюю и медианную цену;
+    - `mean_without_extreme` — среднюю цену без объявлений дороже 100 000 евро.
+
+    Сравните три статистики: какая из первых двух лучше описывает типичную цену и почему?
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+  starter: |
+    prado = ...
+    n_prado = ...
+    mean_price = ...
+    median_price = ...
+    mean_without_extreme = ...
+    print(n_prado, round(mean_price), median_price, round(mean_without_extreme))
+  solution: |
+    prado = df[(df['Make'] == 'Toyota') & (df['Model'] == 'Land Cruiser Prado') &
+               (df['Year'] == 2012) & (df['AutoTransmission'] == True)]
+    n_prado = len(prado)
+    mean_price = prado['Price(euro)'].mean()
+    median_price = prado['Price(euro)'].median()
+    mean_without_extreme = prado.loc[prado['Price(euro)'] <= 100_000, 'Price(euro)'].mean()
+    print(n_prado, round(mean_price), median_price, round(mean_without_extreme))
+  explanation: |
+    - Четыре условия через `&` отбирают нужный сегмент; `len(prado)` — сколько записей нашлось.
+    - Одна цена 200 000 евро сильно тянет среднее вверх, а медиана почти не меняется (урок 1.6).
+    - `prado.loc[маска, 'Price(euro)']` — цены только тех строк, где цена не выше 100 000; их среднее близко к медиане.
+  alternatives:
+    - |
+      prado = df.query("Make == 'Toyota' and Model == 'Land Cruiser Prado' and Year == 2012 and AutoTransmission == True")
+      price = prado['Price(euro)']
+      n_prado = price.size
+      mean_price = price.mean()
+      median_price = price.median()
+      mean_without_extreme = price[price <= 100000].mean()
+  hints:
+    - Отберите сегмент четырьмя условиями, затем возьмите колонку цен.
+    - "Цены сегмента — `prado['Price(euro)']`; `.mean()` и `.median()`; без экстремальных — маска `<= 100_000` по ценам."
+    - "`mean_without_extreme = prado.loc[prado['Price(euro)'] <= 100_000, 'Price(euro)'].mean()`."
+  tests: |
+    import pandas as pd
+    p = var('prado', pd.DataFrame, 'таблицей DataFrame')
+    same_frame(p, ref('prado'), 'В `prado` должны быть Toyota Land Cruiser Prado 2012 года с автоматической коробкой.')
+    close(var('n_prado', 'number', 'числом'), ref('n_prado'), 'Объявлений — {expected}, а у вас {actual}.')
+    close(var('mean_price', 'number', 'числом'), ref('mean_price'), 'Средняя цена — {expected}, а у вас {actual}.')
+    close(var('median_price', 'number', 'числом'), ref('median_price'), 'Медианная цена — {expected}, а у вас {actual}.')
+    close(var('mean_without_extreme', 'number', 'числом'), ref('mean_without_extreme'), 'Средняя цена без объявлений дороже 100 000 — {expected}, а у вас {actual}.')
+    close(alt('mean_without_extreme'), alt_ref('mean_without_extreme'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        prado = df[(df['Make'] == 'Toyota') & (df['Model'] == 'Land Cruiser Prado') & (df['AutoTransmission'] == True)]
+        n_prado = len(prado)
+        mean_price = prado['Price(euro)'].mean()
+        median_price = prado['Price(euro)'].median()
+        mean_without_extreme = prado.loc[prado['Price(euro)'] <= 100_000, 'Price(euro)'].mean()
+      expect: 2012 года
+    - code: |
+        prado = df[(df['Make'] == 'Toyota') & (df['Model'] == 'Land Cruiser Prado') & (df['Year'] == 2012) & (df['AutoTransmission'] == True)]
+        n_prado = len(prado)
+        mean_price = prado['Price(euro)'].mean()
+        median_price = prado['Price(euro)'].median()
+        mean_without_extreme = mean_price
+      expect: без объявлений дороже

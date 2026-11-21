@@ -1,0 +1,441 @@
+- id: m6-l5-t1
+  title: Дерево без ограничений
+  difficulty: warmup
+  introduces: [tree-depth]
+  uses: [decision-tree, overfitting]
+  statement: |
+    Обучите `full` — дерево решений без ограничений (только `random_state=42`). Получите `train_mae` и `valid_mae`, `n_leaves` — число листьев и `single_share` — долю листьев, в которые попала ровно одна обучающая машина (номер листа каждой машины — `full.apply(X_train)`).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.tree import DecisionTreeRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    full = ...
+    train_mae = ...
+    valid_mae = ...
+    n_leaves = ...
+    leaf_of_car = full.apply(X_train)
+    sizes = pd.Series(leaf_of_car).value_counts()     # сколько машин в каждом листе
+    single_share = ...
+    print(round(train_mae), round(valid_mae), n_leaves, round(single_share, 3))
+  solution: |
+    full = DecisionTreeRegressor(random_state=42).fit(X_train, y_train)
+    train_mae = mean_absolute_error(y_train, full.predict(X_train))
+    valid_mae = mean_absolute_error(y_valid, full.predict(X_valid))
+    n_leaves = full.get_n_leaves()
+    leaf_of_car = full.apply(X_train)
+    sizes = pd.Series(leaf_of_car).value_counts()     # сколько машин в каждом листе
+    single_share = (sizes == 1).mean()
+    print(round(train_mae), round(valid_mae), n_leaves, round(single_share, 3))
+  explanation: |
+    - Без ограничений дерево делит машины, пока это возможно: 16 237 листьев, 87 % из них — с одной машиной.
+    - MAE на train ≈ 361 — дерево «помнит» цены, а на validation ≈ 3 345. Разрыв почти в 3 000 евро — переобучение.
+    - `value_counts` по номерам листьев даёт размер каждого листа (урок 2.3); доля листьев размера 1 — среднее логической маски.
+  hints:
+    - "Дерево без ограничений — `DecisionTreeRegressor(random_state=42)`; число листьев — `get_n_leaves()`."
+    - "Ошибки — `mean_absolute_error` по train и по validation."
+    - "`single_share = (sizes == 1).mean()` — доля листьев, где ровно одна машина."
+  tests: |
+    from sklearn.tree import DecisionTreeRegressor
+    t = var('full', DecisionTreeRegressor, 'моделью DecisionTreeRegressor')
+    ensure(t.max_depth is None and t.min_samples_leaf == 1, 'Дерево должно быть без ограничений: `DecisionTreeRegressor(random_state=42)`.')
+    close(var('train_mae', 'number', 'числом'), ref('train_mae'), 'MAE на train — {expected}, а у вас {actual}.')
+    close(var('valid_mae', 'number', 'числом'), ref('valid_mae'), 'MAE на validation — {expected}, а у вас {actual}.')
+    equal(var('n_leaves', 'number', 'числом'), ref('n_leaves'), 'Листьев — {expected}, а у вас {actual}.')
+    s = var('single_share', 'number', 'числом')
+    if abs(s - (ref('sizes') == 1).sum() / len(ref('X_train'))) < 1e-9:
+        fail('Это доля **машин**, а нужна доля **листьев** с одной машиной: `(sizes == 1).mean()`.')
+    close(s, ref('single_share'), 'Доля листьев с одной машиной — {expected}, а у вас {actual}.')
+    close(alt('valid_mae'), alt_ref('valid_mae'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        full = DecisionTreeRegressor(max_depth=10, random_state=42).fit(X_train, y_train)
+        train_mae = mean_absolute_error(y_train, full.predict(X_train))
+        valid_mae = mean_absolute_error(y_valid, full.predict(X_valid))
+        n_leaves = full.get_n_leaves()
+        leaf_of_car = full.apply(X_train)
+        sizes = pd.Series(leaf_of_car).value_counts()
+        single_share = (sizes == 1).mean()
+      expect: без ограничений
+    - code: |
+        full = DecisionTreeRegressor(random_state=42).fit(X_train, y_train)
+        train_mae = mean_absolute_error(y_train, full.predict(X_train))
+        valid_mae = mean_absolute_error(y_valid, full.predict(X_valid))
+        n_leaves = full.get_n_leaves()
+        leaf_of_car = full.apply(X_train)
+        sizes = pd.Series(leaf_of_car).value_counts()
+        single_share = (sizes == 1).sum() / len(X_train)
+      expect: доля **машин**
+
+- id: m6-l5-t2
+  title: Кривая ошибки по глубине
+  difficulty: main
+  introduces: [tree-depth]
+  uses: [validation-curve, decision-tree]
+  statement: |
+    Для каждой глубины из `depths` обучите дерево (`random_state=42`) и посчитайте MAE на train и validation. Соберите `depth_curve` — DataFrame с индексом-глубиной и колонками `train`, `valid` — и найдите `best_depth` по validation и `gap_best` — разрыв «validation минус train» на этой глубине.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.tree import DecisionTreeRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    depths = [2, 4, 6, 7, 8, 10, 15]
+  starter: |
+    rows = []
+    for d in depths:
+        m = ...
+        rows.append({'train': ..., 'valid': ...})
+    depth_curve = pd.DataFrame(rows, index=depths)
+    best_depth = ...
+    gap_best = ...
+    print(depth_curve.round(0))
+    print(best_depth, round(gap_best))
+  solution: |
+    rows = []
+    for d in depths:
+        m = DecisionTreeRegressor(max_depth=d, random_state=42).fit(X_train, y_train)
+        rows.append({'train': mean_absolute_error(y_train, m.predict(X_train)),
+                     'valid': mean_absolute_error(y_valid, m.predict(X_valid))})
+    depth_curve = pd.DataFrame(rows, index=depths)
+    best_depth = depth_curve['valid'].idxmin()
+    gap_best = depth_curve.loc[best_depth, 'valid'] - depth_curve.loc[best_depth, 'train']
+    print(depth_curve.round(0))
+    print(best_depth, round(gap_best))
+  explanation: |
+    - Лучшая глубина по validation — 7 (≈ 2 759 евро). На ней разрыв с train ≈ 217 евро — небольшой.
+    - При глубине 15 ошибка на train падает до ≈ 1 353, а на validation растёт до ≈ 3 065: модель запоминает шум.
+    - Глубина 6 и 8 немного хуже 7 — дно кривой и здесь довольно плоское.
+  hints:
+    - "Для каждой глубины — `DecisionTreeRegressor(max_depth=d, random_state=42).fit(X_train, y_train)`."
+    - "Две ошибки в словарь — как в задании 6.3.2."
+    - "`best_depth = depth_curve['valid'].idxmin()`; разрыв — `loc[best_depth, 'valid'] - loc[best_depth, 'train']`."
+  tests: |
+    import pandas as pd
+    c = var('depth_curve', pd.DataFrame, 'таблицей DataFrame')
+    ensure(list(c.columns) == ['train', 'valid'] and list(c.index) == ref('depths'), 'Индекс `depth_curve` — глубины из `depths`, колонки — `train` и `valid`.')
+    same_frame(c.astype(float), ref('depth_curve').astype(float), 'Ошибки не совпадают: у дерева должны быть `max_depth=d` и `random_state=42`.')
+    b = var('best_depth')
+    if b == ref('depth_curve')['train'].idxmin() and b != ref('best_depth'):
+        fail('Глубина выбрана по train — так всегда побеждает самое глубокое дерево. Выбирайте по validation.')
+    equal(b, ref('best_depth'), 'Лучшая глубина — {expected}, а у вас {actual}.')
+    close(var('gap_best', 'number', 'числом'), ref('gap_best'), 'Разрыв на лучшей глубине — {expected}, а у вас {actual}.')
+    close(float(alt('depth_curve')['valid'].iloc[2]), float(alt_ref('depth_curve')['valid'].iloc[2]), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        rows = []
+        for d in depths:
+            m = DecisionTreeRegressor(max_depth=d, random_state=42).fit(X_train, y_train)
+            rows.append({'train': mean_absolute_error(y_train, m.predict(X_train)), 'valid': mean_absolute_error(y_valid, m.predict(X_valid))})
+        depth_curve = pd.DataFrame(rows, index=depths)
+        best_depth = depth_curve['train'].idxmin()
+        gap_best = depth_curve.loc[best_depth, 'valid'] - depth_curve.loc[best_depth, 'train']
+      expect: выбрана по train
+    - code: |
+        rows = []
+        for d in depths:
+            m = DecisionTreeRegressor(random_state=42).fit(X_train, y_train)
+            rows.append({'train': mean_absolute_error(y_train, m.predict(X_train)), 'valid': mean_absolute_error(y_valid, m.predict(X_valid))})
+        depth_curve = pd.DataFrame(rows, index=depths)
+        best_depth = depth_curve['valid'].idxmin()
+        gap_best = depth_curve.loc[best_depth, 'valid'] - depth_curve.loc[best_depth, 'train']
+      expect: "max_depth=d"
+
+- id: m6-l5-t3
+  kind: plot
+  title: График кривой и лучшая глубина
+  difficulty: main
+  introduces: [tree-depth]
+  uses: [validation-curve, mpl-layers]
+  statement: |
+    По таблице `depth_curve` нарисуйте две линии с точками — `train` и `valid` — от глубины (подписи в легенде `'train'` и `'validation'`) и вертикальную пунктирную линию на лучшей глубине по validation (`ax.axvline`). Подпишите оси: «Глубина дерева» и «MAE, евро».
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    depth_curve = pd.DataFrame({'train': [4243.0, 3050.0, 2723.0, 2542.0, 2419.0, 2176.0, 1353.0, 714.0],
+                                'valid': [4188.0, 3054.0, 2841.0, 2759.0, 2791.0, 2850.0, 3065.0, 3216.0]},
+                               index=[2, 4, 6, 7, 8, 10, 15, 20])
+  starter: |
+    best_depth = ...
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ...
+    ax.legend()
+    plt.show()
+  solution: |
+    best_depth = depth_curve['valid'].idxmin()
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.plot(depth_curve.index, depth_curve['train'], 'o-', label='train')
+    ax.plot(depth_curve.index, depth_curve['valid'], 'o-', label='validation')
+    ax.axvline(best_depth, color='gray', linestyle='--')
+    ax.set(xlabel='Глубина дерева', ylabel='MAE, евро')
+    ax.legend()
+    plt.show()
+  explanation: |
+    - Два вызова `ax.plot` на одних осях и вертикаль `axvline` — три слоя графика (урок 4.2).
+    - Глубина здесь растёт слева направо вместе со сложностью — в отличие от k у kNN, где сложность растёт с уменьшением k. Логарифмическая шкала не нужна: значения глубины небольшие.
+    - На графике видны обе зоны: слева обе ошибки большие (недообучение), справа train падает почти до нуля, а validation растёт (переобучение).
+  hints:
+    - "Лучшая глубина — `depth_curve['valid'].idxmin()`."
+    - "Линии — `ax.plot(depth_curve.index, depth_curve['train'], 'o-', label='train')` и так же для `valid`."
+    - "Вертикаль — `ax.axvline(best_depth, color='gray', linestyle='--')`."
+  tests: |
+    import numpy as np
+    ax = axes()
+    n = len(ref('depth_curve'))
+    lines = [l for l in ax.get_lines() if len(l.get_xdata()) == n]
+    ys = [np.asarray(l.get_ydata(), dtype=float) for l in lines]
+    tr = ref('depth_curve')['train'].to_numpy(dtype=float)
+    va = ref('depth_curve')['valid'].to_numpy(dtype=float)
+    ensure(any(np.allclose(v, tr) for v in ys) and any(np.allclose(v, va) for v in ys), 'Нужны две линии по {0} точкам: ошибки `train` и `valid` от глубины.'.format(n))
+    vert = [l for l in ax.get_lines() if len(l.get_xdata()) == 2 and np.allclose(np.asarray(l.get_xdata(), dtype=float), np.asarray(l.get_xdata(), dtype=float)[0])]
+    ensure(len(vert) >= 1, 'Добавьте вертикальную линию на лучшей глубине: `ax.axvline(best_depth, linestyle=\'--\')`.')
+    ensure(abs(float(np.asarray(vert[0].get_xdata(), dtype=float)[0]) - ref('best_depth')) < 1e-9, 'Вертикальная линия должна стоять на лучшей глубине по validation — {0}.'.format(ref('best_depth')))
+    labels = [t.get_text().lower() for t in (ax.get_legend().get_texts() if ax.get_legend() else [])]
+    ensure(any('train' in t for t in labels) and any('valid' in t for t in labels), 'Подпишите линии `label=\'train\'` и `label=\'validation\'`.')
+    ensure('глубин' in ax.get_xlabel().lower() and 'mae' in ax.get_ylabel().lower(), 'Подпишите оси: «Глубина дерева» и «MAE, евро».')
+  wrong:
+    - code: |
+        best_depth = depth_curve['train'].idxmin()
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.plot(depth_curve.index, depth_curve['train'], 'o-', label='train')
+        ax.plot(depth_curve.index, depth_curve['valid'], 'o-', label='validation')
+        ax.axvline(best_depth, color='gray', linestyle='--')
+        ax.set(xlabel='Глубина дерева', ylabel='MAE, евро')
+        ax.legend()
+        plt.show()
+      expect: лучшей глубине по validation
+    - code: |
+        best_depth = depth_curve['valid'].idxmin()
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.plot(depth_curve.index, depth_curve['train'], 'o-', label='train')
+        ax.plot(depth_curve.index, depth_curve['valid'], 'o-', label='validation')
+        ax.set(xlabel='Глубина дерева', ylabel='MAE, евро')
+        ax.legend()
+        plt.show()
+      expect: вертикальную линию
+
+- id: m6-l5-t4
+  title: Минимальный размер листа
+  difficulty: main
+  introduces: [tree-depth]
+  uses: [hyperparameter, decision-tree]
+  statement: |
+    Ограничим дерево не глубиной, а размером листа. Для каждого значения из `leaf_sizes` обучите дерево с `min_samples_leaf` (и `random_state=42`, без ограничения глубины) и соберите `leaf_mae` — Series «размер листа → MAE на validation». Найдите `best_leaf` и `best_leaves` — число листьев у дерева с лучшим размером листа.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.tree import DecisionTreeRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    leaf_sizes = [1, 10, 50, 200]
+  starter: |
+    result = {}
+    for leaf in leaf_sizes:
+        m = ...
+        result[leaf] = ...
+    leaf_mae = pd.Series(result)
+    best_leaf = ...
+    best_leaves = ...
+    print(leaf_mae.round(0))
+    print(best_leaf, best_leaves)
+  solution: |
+    result = {}
+    for leaf in leaf_sizes:
+        m = DecisionTreeRegressor(min_samples_leaf=leaf, random_state=42).fit(X_train, y_train)
+        result[leaf] = mean_absolute_error(y_valid, m.predict(X_valid))
+    leaf_mae = pd.Series(result)
+    best_leaf = leaf_mae.idxmin()
+    best_leaves = DecisionTreeRegressor(min_samples_leaf=best_leaf, random_state=42).fit(X_train, y_train).get_n_leaves()
+    print(leaf_mae.round(0))
+    print(best_leaf, best_leaves)
+  explanation: |
+    - Лучший вариант — листья не меньше 50 машин: MAE ≈ 2 728, лучше лучшей глубины (≈ 2 759). Листьев всего 298 вместо 16 237.
+    - Лист из 50 машин выдаёт среднее 50 цен: одна машина с опечаткой в цене почти не сдвинет прогноз.
+    - Слишком большие листья (200 машин) снова огрубляют модель: MAE растёт до ≈ 2 792.
+  hints:
+    - "`DecisionTreeRegressor(min_samples_leaf=leaf, random_state=42)` — глубину не задаём."
+    - "Лучший размер — `leaf_mae.idxmin()`."
+    - "Число листьев — обучите дерево с лучшим размером ещё раз и вызовите `get_n_leaves()`."
+  tests: |
+    import pandas as pd
+    s = var('leaf_mae', pd.Series, 'Series')
+    ensure(list(s.index) == ref('leaf_sizes'), 'Индекс `leaf_mae` — размеры листа из `leaf_sizes`.')
+    same_array(s.to_numpy(dtype=float), ref('leaf_mae').to_numpy(dtype=float), 'MAE не совпадают: `min_samples_leaf=leaf`, `random_state=42`, без `max_depth`.')
+    equal(var('best_leaf'), ref('best_leaf'), 'Лучший размер листа — {expected}, а у вас {actual}.')
+    equal(var('best_leaves', 'number', 'числом'), ref('best_leaves'), 'Листьев у лучшего дерева — {expected}, а у вас {actual}.')
+    same_array(alt('leaf_mae').to_numpy(dtype=float), alt_ref('leaf_mae').to_numpy(dtype=float), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        result = {}
+        for leaf in leaf_sizes:
+            m = DecisionTreeRegressor(min_samples_leaf=leaf, max_depth=8, random_state=42).fit(X_train, y_train)
+            result[leaf] = mean_absolute_error(y_valid, m.predict(X_valid))
+        leaf_mae = pd.Series(result)
+        best_leaf = leaf_mae.idxmin()
+        best_leaves = DecisionTreeRegressor(min_samples_leaf=best_leaf, random_state=42).fit(X_train, y_train).get_n_leaves()
+      expect: "без `max_depth`"
+    - code: |
+        result = {}
+        for leaf in leaf_sizes:
+            m = DecisionTreeRegressor(min_samples_leaf=leaf, random_state=42).fit(X_train, y_train)
+            result[leaf] = mean_absolute_error(y_valid, m.predict(X_valid))
+        leaf_mae = pd.Series(result)
+        best_leaf = leaf_mae.idxmin()
+        best_leaves = 16237
+      expect: Листьев у лучшего дерева
+
+- id: m6-l5-t5
+  title: На что опирается дерево
+  difficulty: main
+  introduces: [feature-importance]
+  uses: [decision-tree]
+  statement: |
+    Обучите `tree8` — дерево глубины 8 (`random_state=42`). Получите `importance` — Series важностей признаков (индекс — имена признаков), отсортированную по убыванию, `top2` — список двух самых важных признаков и `total` — сумму всех важностей.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.tree import DecisionTreeRegressor
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    tree8 = ...
+    importance = ...
+    top2 = ...
+    total = ...
+    print(importance.round(3))
+    print(top2, round(total, 6))
+  solution: |
+    tree8 = DecisionTreeRegressor(max_depth=8, random_state=42).fit(X_train, y_train)
+    importance = pd.Series(tree8.feature_importances_, index=features).sort_values(ascending=False)
+    top2 = list(importance.index[:2])
+    total = importance.sum()
+    print(importance.round(3))
+    print(top2, round(total, 6))
+  explanation: |
+    - `feature_importances_` — массив в порядке колонок `X_train`; Series с индексом `features` подписывает значения.
+    - Самые важные — год (≈ 0,45) и объём двигателя (≈ 0,37); сумма важностей всегда 1: это доли общего уменьшения ошибки.
+    - Пробег — всего ≈ 0,03: его информацию дерево берёт из года и пробега в год. Это свойство модели, а не вывод «пробег не влияет на цену».
+  hints:
+    - "Важности — `tree8.feature_importances_`; подпишите их: `pd.Series(..., index=features)`."
+    - "По убыванию — `.sort_values(ascending=False)`; два первых имени — `list(importance.index[:2])`."
+    - "`total = importance.sum()`."
+  tests: |
+    import pandas as pd
+    s = var('importance', pd.Series, 'Series')
+    ensure(set(s.index) == set(ref('features')), 'Индекс `importance` — имена признаков: `index=features`.')
+    same_array(s.sort_index().to_numpy(dtype=float), ref('importance').sort_index().to_numpy(dtype=float), 'Важности не совпадают: дерево глубины 8 с `random_state=42`.')
+    ensure(list(s.index) == list(ref('importance').index), 'Отсортируйте важности по убыванию: `sort_values(ascending=False)`.')
+    equal([str(v) for v in var('top2', list, 'списком')], [str(v) for v in ref('top2')], 'Два самых важных признака — {expected}, а у вас {actual}.')
+    close(var('total', 'number', 'числом'), 1.0, 'Сумма важностей — {expected}, а у вас {actual}.')
+    same_array(alt('importance').sort_index().to_numpy(dtype=float), alt_ref('importance').sort_index().to_numpy(dtype=float), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        tree8 = DecisionTreeRegressor(max_depth=8, random_state=42).fit(X_train, y_train)
+        importance = pd.Series(tree8.feature_importances_, index=features).sort_values()
+        top2 = list(importance.index[:2])
+        total = importance.sum()
+      expect: по убыванию
+    - code: |
+        tree8 = DecisionTreeRegressor(max_depth=3, random_state=42).fit(X_train, y_train)
+        importance = pd.Series(tree8.feature_importances_, index=features).sort_values(ascending=False)
+        top2 = list(importance.index[:2])
+        total = importance.sum()
+      expect: глубины 8
+
+- id: m6-l5-t6
+  title: Важность делится между похожими признаками
+  difficulty: star
+  introduces: [feature-importance]
+  uses: [decision-tree, regression-metrics]
+  statement: |
+    Проверьте, что важность — свойство модели, а не признака. Обучите два дерева глубины 8 (`random_state=42`): `tree4` — на всех четырёх признаках, `tree3` — без `km_year`. Получите `dist_imp4` и `dist_imp3` — важность `Distance` в каждом, `growth` — во сколько раз она выросла, и `mae4`, `mae3` — MAE обоих деревьев на validation.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.tree import DecisionTreeRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    three = ['Year', 'Distance', 'Engine']
+    tree4 = ...
+    tree3 = ...
+    dist_imp4 = ...
+    dist_imp3 = ...
+    growth = ...
+    mae4 = ...
+    mae3 = ...
+    print(round(dist_imp4, 3), round(dist_imp3, 3), round(growth, 1), round(mae4), round(mae3))
+  solution: |
+    three = ['Year', 'Distance', 'Engine']
+    tree4 = DecisionTreeRegressor(max_depth=8, random_state=42).fit(X_train, y_train)
+    tree3 = DecisionTreeRegressor(max_depth=8, random_state=42).fit(X_train[three], y_train)
+    dist_imp4 = pd.Series(tree4.feature_importances_, index=features)['Distance']
+    dist_imp3 = pd.Series(tree3.feature_importances_, index=three)['Distance']
+    growth = dist_imp3 / dist_imp4
+    mae4 = mean_absolute_error(y_valid, tree4.predict(X_valid))
+    mae3 = mean_absolute_error(y_valid, tree3.predict(X_valid[three]))
+    print(round(dist_imp4, 3), round(dist_imp3, 3), round(growth, 1), round(mae4), round(mae3))
+  explanation: |
+    - Без `km_year` важность пробега выросла с ≈ 0,029 до ≈ 0,108 — почти вчетверо, а MAE даже немного уменьшилась (≈ 2 791 → 2 775).
+    - Пробег в год — это пробег, делённый на возраст, а возраст определяется годом. Пока `km_year` в данных, дерево берёт часть информации о пробеге из него, и важность делится.
+    - Вывод: низкая важность не означает, что признак не нужен; высокая — что он «причина». Чтобы понять вклад признака, полезнее посмотреть, как меняется ошибка, если его убрать.
+  hints:
+    - "Второе дерево учится на `X_train[three]` и предсказывает для `X_valid[three]`."
+    - "Важность пробега — элемент Series важностей с индексом признаков: `pd.Series(tree.feature_importances_, index=...)['Distance']`."
+    - "`growth = dist_imp3 / dist_imp4`."
+  tests: |
+    close(var('dist_imp4', 'number', 'числом'), ref('dist_imp4'), 'Важность пробега в дереве на 4 признаках — {expected}, а у вас {actual}.')
+    d3 = var('dist_imp3', 'number', 'числом')
+    close(d3, ref('dist_imp3'), 'Важность пробега в дереве без km_year — {expected}, а у вас {actual}. Подпишите важности списком `three`, а не `features`.')
+    g = var('growth', 'number', 'числом')
+    if abs(g - 1 / ref('growth')) < 1e-9:
+        fail('Отношение перевёрнуто: новая важность, делённая на прежнюю.')
+    close(g, ref('growth'), 'Рост важности — в {expected} раза, а у вас {actual}.')
+    close(var('mae4', 'number', 'числом'), ref('mae4'), 'MAE дерева на 4 признаках — {expected}, а у вас {actual}.')
+    close(var('mae3', 'number', 'числом'), ref('mae3'), 'MAE дерева без km_year — {expected}, а у вас {actual}.')
+    close(alt('dist_imp3'), alt_ref('dist_imp3'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        three = ['Year', 'Distance', 'Engine']
+        tree4 = DecisionTreeRegressor(max_depth=8, random_state=42).fit(X_train, y_train)
+        tree3 = DecisionTreeRegressor(max_depth=8, random_state=42).fit(X_train[three], y_train)
+        dist_imp4 = pd.Series(tree4.feature_importances_, index=features)['Distance']
+        dist_imp3 = pd.Series(tree3.feature_importances_, index=three)['Distance']
+        growth = dist_imp4 / dist_imp3
+        mae4 = mean_absolute_error(y_valid, tree4.predict(X_valid))
+        mae3 = mean_absolute_error(y_valid, tree3.predict(X_valid[three]))
+      expect: перевёрнуто
+    - code: |
+        three = ['Year', 'Distance', 'Engine']
+        tree4 = DecisionTreeRegressor(max_depth=8, random_state=42).fit(X_train, y_train)
+        tree3 = DecisionTreeRegressor(max_depth=8, random_state=42).fit(X_train[three], y_train)
+        dist_imp4 = pd.Series(tree4.feature_importances_, index=features)['Distance']
+        dist_imp3 = tree3.feature_importances_[2]
+        growth = dist_imp3 / dist_imp4
+        mae4 = mean_absolute_error(y_valid, tree4.predict(X_valid))
+        mae3 = mean_absolute_error(y_valid, tree3.predict(X_valid[three]))
+      expect: без km_year

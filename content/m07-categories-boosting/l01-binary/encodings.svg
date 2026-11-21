@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="Четыре способа превратить категорию в числа на примере трёх машин: BMW, Dacia и Volvo. Бинарный признак: коробка автомат — 1, механика — 0. Порядковые коды по алфавиту: BMW — 1, Dacia — 3, Volvo — 21; деревьям этого хватает. One-Hot: по столбцу на каждую марку, у машины единица в столбце своей марки; подходит линейной модели. Target Encoding: средняя цена марки на обучающей части — 13 917, 5 408 и 15 881 евро">
+  <text x="12" y="22" fill="currentColor" font-weight="700">Исходные строки</text>
+  <g font-size="12">
+    <rect x="12" y="32" width="208" height="26" fill="currentColor" fill-opacity="0.08"/>
+    <text x="20" y="50" fill="currentColor" font-weight="700">Make</text>
+    <text x="104" y="50" fill="currentColor" font-weight="700">AutoTransmission</text>
+    <text x="20" y="78" fill="currentColor">BMW</text><text x="104" y="78" fill="currentColor">True</text>
+    <text x="20" y="102" fill="currentColor">Dacia</text><text x="104" y="102" fill="currentColor">False</text>
+    <text x="20" y="126" fill="currentColor">Volvo</text><text x="104" y="126" fill="currentColor">True</text>
+  </g>
+  <line x1="228" y1="16" x2="228" y2="270" stroke="currentColor" stroke-opacity="0.2"/>
+
+  <!-- бинарный -->
+  <text x="240" y="22" fill="#3d5bd9" font-weight="700">Бинарный (2 значения)</text>
+  <text x="240" y="44" fill="currentColor">AutoTransmission → 1 / 0</text>
+  <text x="240" y="66" fill="currentColor">1</text><text x="240" y="84" fill="currentColor">0</text><text x="240" y="102" fill="currentColor">1</text>
+  <text x="262" y="84" fill="currentColor" fill-opacity="0.75" font-size="11">один столбец, урок 7.1</text>
+
+  <!-- порядковые -->
+  <text x="500" y="22" fill="#3d5bd9" font-weight="700">Порядковые коды</text>
+  <text x="500" y="44" fill="currentColor">номер марки по алфавиту</text>
+  <text x="500" y="66" fill="currentColor">BMW → 1</text><text x="500" y="84" fill="currentColor">Dacia → 3</text><text x="500" y="102" fill="currentColor">Volvo → 21</text>
+  <text x="600" y="84" fill="currentColor" fill-opacity="0.75" font-size="11">для деревьев, урок 7.2</text>
+
+  <line x1="232" y1="128" x2="748" y2="128" stroke="currentColor" stroke-opacity="0.15"/>
+
+  <!-- one-hot -->
+  <text x="240" y="152" fill="#c2410c" font-weight="700">One-Hot: столбец на каждую марку</text>
+  <g font-size="11">
+    <text x="240" y="174" fill="currentColor" fill-opacity="0.8">Audi</text><text x="280" y="174" fill="currentColor" fill-opacity="0.8">BMW</text><text x="318" y="174" fill="currentColor" fill-opacity="0.8">Chevr.</text><text x="362" y="174" fill="currentColor" fill-opacity="0.8">Dacia</text><text x="402" y="174" fill="currentColor" fill-opacity="0.8">…</text><text x="424" y="174" fill="currentColor" fill-opacity="0.8">Volvo</text>
+  </g>
+  <g>
+    <text x="248" y="194" fill="currentColor">0</text><text x="288" y="194" fill="#c2410c" font-weight="700">1</text><text x="330" y="194" fill="currentColor">0</text><text x="372" y="194" fill="currentColor">0</text><text x="402" y="194" fill="currentColor">…</text><text x="434" y="194" fill="currentColor">0</text>
+    <text x="248" y="212" fill="currentColor">0</text><text x="288" y="212" fill="currentColor">0</text><text x="330" y="212" fill="currentColor">0</text><text x="372" y="212" fill="#c2410c" font-weight="700">1</text><text x="402" y="212" fill="currentColor">…</text><text x="434" y="212" fill="currentColor">0</text>
+    <text x="248" y="230" fill="currentColor">0</text><text x="288" y="230" fill="currentColor">0</text><text x="330" y="230" fill="currentColor">0</text><text x="372" y="230" fill="currentColor">0</text><text x="402" y="230" fill="currentColor">…</text><text x="434" y="230" fill="#c2410c" font-weight="700">1</text>
+  </g>
+  <text x="240" y="252" fill="currentColor" fill-opacity="0.75" font-size="11">22 столбца для марок, 725 — для моделей;</text>
+  <text x="240" y="266" fill="currentColor" fill-opacity="0.75" font-size="11">для линейной модели, урок 7.4</text>
+
+  <!-- target -->
+  <text x="500" y="152" fill="#c2410c" font-weight="700">Target Encoding</text>
+  <text x="500" y="174" fill="currentColor">средняя цена марки на train</text>
+  <text x="500" y="194" fill="currentColor">BMW → 13 917</text><text x="500" y="212" fill="currentColor">Dacia → 5 408</text><text x="500" y="230" fill="currentColor">Volvo → 15 881</text>
+  <text x="500" y="252" fill="currentColor" fill-opacity="0.75" font-size="11">один столбец; осторожно</text>
+  <text x="500" y="266" fill="currentColor" fill-opacity="0.75" font-size="11">с утечкой, урок 7.5</text>
+
+  <text x="12" y="292" fill="currentColor" fill-opacity="0.8">Любой кодировщик строит словарь только по train и одинаково применяет его к validation и test.</text>
+</svg>

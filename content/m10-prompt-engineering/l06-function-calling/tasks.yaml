@@ -1,0 +1,455 @@
+- id: m10-l6-t1
+  title: Описание функции для модели
+  difficulty: warmup
+  introduces: [function-calling]
+  uses: []
+  statement: |
+    Напишите функцию `describe(name, description, params)`. `params` — список кортежей `(имя, тип, описание, обязателен)`. Функция возвращает описание функции для модели — словарь:
+
+    ```
+    {'name': name,
+     'description': description,
+     'parameters': {'type': 'object',
+                    'properties': {имя: {'type': тип, 'description': описание}, ...},
+                    'required': [имена обязательных аргументов]}}
+    ```
+
+    Получите:
+
+    - `calc_spec` — описание калькулятора из ноутбука: имя `'calculate'`, описание `CALC_DESC`, один обязательный аргумент `'expression'` типа `'string'` с описанием `EXPR_DESC`;
+    - `date_spec` — описание функции `'get_current_date'` из упражнения ноутбука: описание `DATE_DESC`, аргументов нет.
+  prelude: |
+    CALC_DESC = "Выполняет математические вычисления. Передавай ТОЛЬКО выражение в виде строки, например: '2 + 3 * 4'."
+    EXPR_DESC = 'Математическое выражение (только цифры, +, -, *, /, **, скобки)'
+    DATE_DESC = 'Возвращает текущую дату в формате ГГГГ-ММ-ДД.'
+  starter: |
+    def describe(name, description, params):
+        properties = {}
+        required = []
+        for pname, ptype, pdesc, is_required in params:
+            properties[pname] = ...
+            if is_required:
+                ...
+        return {'name': name, 'description': description,
+                'parameters': {'type': 'object', 'properties': properties, 'required': required}}
+
+    calc_spec = describe('calculate', CALC_DESC, [...])
+    date_spec = ...
+    print(calc_spec)
+    print(date_spec)
+  solution: |
+    def describe(name, description, params):
+        properties = {}
+        required = []
+        for pname, ptype, pdesc, is_required in params:
+            properties[pname] = {'type': ptype, 'description': pdesc}
+            if is_required:
+                required.append(pname)
+        return {'name': name, 'description': description,
+                'parameters': {'type': 'object', 'properties': properties, 'required': required}}
+
+    calc_spec = describe('calculate', CALC_DESC, [('expression', 'string', EXPR_DESC, True)])
+    date_spec = describe('get_current_date', DATE_DESC, [])
+    print(calc_spec)
+    print(date_spec)
+  explanation: |
+    - Получился ровно тот словарь, который библиотека gigachat собирает из `Function` и `FunctionParameters` в ноутбуке. Модель получает его в запросе в формате JSON.
+    - У функции без аргументов `properties` пустой, а `required` — пустой список. Модель поймёт, что звать её можно без аргументов.
+    - JSON Schema — общий стандарт описания данных. Так же функции описывают в API GigaChat, OpenAI и других моделей.
+  hints:
+    - "Описание аргумента — словарь `{'type': ptype, 'description': pdesc}`."
+    - "Обязательный аргумент добавляют в список: `required.append(pname)`."
+    - "Калькулятор — `describe('calculate', CALC_DESC, [('expression', 'string', EXPR_DESC, True)])`; у даты список аргументов пустой."
+  tests: |
+    f = var('describe')
+    ensure(callable(f), '`describe` должна быть функцией.')
+    got = f('weather', 'Погода в городе', [('city', 'string', 'Город', True), ('days', 'integer', 'Сколько дней', False)])
+    ensure(isinstance(got, dict), '`describe` должна вернуть словарь.')
+    params = got.get('parameters', {})
+    ensure(params.get('type') == 'object', 'В `parameters` поле `type` — строка `object`: аргументы передаются объектом.')
+    if params.get('required') == ['city', 'days']:
+        fail('В `required` — только обязательные аргументы: у `days` флаг обязательности False.')
+    equal(got, {'name': 'weather', 'description': 'Погода в городе',
+                'parameters': {'type': 'object',
+                               'properties': {'city': {'type': 'string', 'description': 'Город'},
+                                              'days': {'type': 'integer', 'description': 'Сколько дней'}},
+                               'required': ['city']}}, 'Описание функции weather получилось другим: {actual}.')
+    equal(var('calc_spec', dict, 'словарём'), ref('calc_spec'), '`calc_spec` должен совпасть с описанием калькулятора из ноутбука.')
+    equal(var('date_spec', dict, 'словарём'), ref('date_spec'), '`date_spec` — описание функции без аргументов: пустые `properties` и `required`.')
+  wrong:
+    - code: |
+        def describe(name, description, params):
+            properties = {p: {'type': t, 'description': d} for p, t, d, r in params}
+            return {'name': name, 'description': description,
+                    'parameters': {'type': 'object', 'properties': properties, 'required': [p for p, t, d, r in params]}}
+        calc_spec = describe('calculate', CALC_DESC, [('expression', 'string', EXPR_DESC, True)])
+        date_spec = describe('get_current_date', DATE_DESC, [])
+      expect: только обязательные аргументы
+    - code: |
+        def describe(name, description, params):
+            properties = {p: t for p, t, d, r in params}
+            return {'name': name, 'description': description,
+                    'parameters': {'type': 'object', 'properties': properties, 'required': [p for p, t, d, r in params if r]}}
+        calc_spec = describe('calculate', CALC_DESC, [('expression', 'string', EXPR_DESC, True)])
+        date_spec = describe('get_current_date', DATE_DESC, [])
+      expect: получилось другим
+
+- id: m10-l6-t2
+  title: Выполнить вызов
+  difficulty: main
+  introduces: []
+  uses: [function-calling, structured-output]
+  statement: |
+    Модель вернула вызов — словарь `{'name': имя, 'arguments': аргументы}`. В GigaChat аргументы приходят словарём, а в API некоторых других моделей — JSON-строкой. Напишите функцию `run_call(call, tools)`. `tools` — словарь «имя → функция Python». Функция возвращает строку — результат, который отправят модели:
+
+    - нет такой функции — `'Ошибка: неизвестная функция ИМЯ'`;
+    - аргументы — строка, но не JSON — `'Ошибка: аргументы не JSON'`;
+    - иначе вызвать `tools[имя](**аргументы)` и вернуть `str(результат)`. Если функция упала, вернуть `'Ошибка: ' + текст_ошибки`.
+
+    Получите `results` — результаты `run_call` для вызовов из `CALLS` с инструментами `TOOLS`.
+  prelude: |
+    import json
+    import re
+
+    def safe_calculate(expression: str) -> str:
+        if not re.fullmatch(r'[\d+\-*/().\s]+', expression):
+            return 'Ошибка: выражение содержит недопустимые символы.'
+        try:
+            if '^' in expression or len(expression) > 50:
+                return 'Ошибка: выражение слишком сложное или длинное.'
+            return str(eval(expression, {'__builtins__': {}}, {}))
+        except Exception as e:
+            return f'Ошибка вычисления: {e}'
+
+    def count_words(text: str) -> int:
+        return len(text.split())
+
+    TOOLS = {'calculate': safe_calculate, 'count_words': count_words}
+    CALLS = [{'name': 'calculate', 'arguments': {'expression': '3*(4+5)**2'}},
+             {'name': 'count_words', 'arguments': '{"text": "Модель просит, программа выполняет"}'},
+             {'name': 'get_weather', 'arguments': {'city': 'Москва'}},
+             {'name': 'calculate', 'arguments': {'expr': '2 + 2'}},
+             {'name': 'calculate', 'arguments': 'expression=2+2'}]
+  starter: |
+    def run_call(call, tools):
+        name, args = call['name'], call['arguments']
+        if name not in tools:
+            return ...
+        if isinstance(args, str):
+            try:
+                args = ...
+            except json.JSONDecodeError:
+                return ...
+        try:
+            return str(...)
+        except Exception as e:
+            return 'Ошибка: ' + str(e)
+
+    results = [run_call(c, TOOLS) for c in CALLS]
+    for r in results:
+        print(r)
+  solution: |
+    def run_call(call, tools):
+        name, args = call['name'], call['arguments']
+        if name not in tools:
+            return 'Ошибка: неизвестная функция ' + name
+        if isinstance(args, str):
+            try:
+                args = json.loads(args)
+            except json.JSONDecodeError:
+                return 'Ошибка: аргументы не JSON'
+        try:
+            return str(tools[name](**args))
+        except Exception as e:
+            return 'Ошибка: ' + str(e)
+
+    results = [run_call(c, TOOLS) for c in CALLS]
+    for r in results:
+        print(r)
+  explanation: |
+    - `tools[name](**args)` распаковывает словарь в именованные аргументы: `{'expression': '3*(4+5)**2'}` превращается в `safe_calculate(expression='3*(4+5)**2')`.
+    - Модель может позвать функцию, которой нет, или ошибиться в имени аргумента (`expr` вместо `expression`). Программа не падает, а возвращает ошибку строкой. Модель прочитает её и попробует снова или объяснит пользователю.
+    - Результат всегда строка: сообщение с ролью `function` содержит текст. Число 4 из `count_words` превращается в `'4'`.
+  hints:
+    - "Неизвестная функция — `'Ошибка: неизвестная функция ' + name`."
+    - "Аргументы-строку разбирает `json.loads(args)`."
+    - "Вызов — `str(tools[name](**args))`."
+  tests: |
+    f = var('run_call')
+    ensure(callable(f), '`run_call` должна быть функцией.')
+    tools = {'add': lambda a, b: a + b, 'boom': lambda: 1 / 0}
+    equal(f({'name': 'add', 'arguments': {'a': 2, 'b': 3}}, tools), '5', 'Вызов add(a=2, b=3) должен дать строку {expected!r}, а получилось {actual}.'.replace('{expected!r}', "'5'"))
+    equal(f({'name': 'add', 'arguments': '{"a": 1, "b": 1}'}, tools), '2', 'Аргументы JSON-строкой нужно разобрать `json.loads`: ожидалось «2», а получилось {actual}.')
+    got = f({'name': 'mul', 'arguments': {}}, tools)
+    equal(got, 'Ошибка: неизвестная функция mul', 'Для функции, которой нет в `tools`, ожидалось «Ошибка: неизвестная функция mul», а получилось {actual}.')
+    equal(f({'name': 'add', 'arguments': 'a=1'}, tools), 'Ошибка: аргументы не JSON', 'Для аргументов не в JSON ожидалось «Ошибка: аргументы не JSON», а получилось {actual}.')
+    try:
+        bad = f({'name': 'add', 'arguments': {'a': 1}}, tools)
+    except Exception:
+        fail('Если функция упала (например, не хватает аргумента), `run_call` не должна падать: верните `\'Ошибка: \' + str(e)`.')
+    ensure(isinstance(bad, str) and bad.startswith('Ошибка: '), 'Ошибку функции нужно вернуть строкой, начинающейся с «Ошибка: ».')
+    boom = f({'name': 'boom', 'arguments': {}}, tools)
+    equal(boom, 'Ошибка: division by zero', 'Ошибка внутри функции — «Ошибка: » и текст ошибки: ожидалось {expected}, а получилось {actual}.')
+    equal(var('results', list, 'списком'), ref('results'), '`results` — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        def run_call(call, tools):
+            name, args = call['name'], call['arguments']
+            if name not in tools:
+                return 'Ошибка: неизвестная функция ' + name
+            if isinstance(args, str):
+                try:
+                    args = json.loads(args)
+                except json.JSONDecodeError:
+                    return 'Ошибка: аргументы не JSON'
+            return str(tools[name](**args))
+        results = [run_call(c, TOOLS) for c in CALLS[:3]]
+      expect: не должна падать
+    - code: |
+        def run_call(call, tools):
+            name, args = call['name'], call['arguments']
+            if name not in tools:
+                return 'Ошибка: неизвестная функция ' + name
+            try:
+                return str(tools[name](**args))
+            except Exception as e:
+                return 'Ошибка: ' + str(e)
+        results = [run_call(c, TOOLS) for c in CALLS]
+      expect: json.loads
+
+- id: m10-l6-t3
+  title: История после вызова
+  difficulty: main
+  introduces: []
+  uses: [function-calling, llm-chat-api]
+  statement: |
+    Напишите функцию `after_call(messages, call, result)`. Она возвращает **новую** историю для второго запроса к модели: старые сообщения, затем сообщение модели с вызовом и затем результат функции:
+
+    - `{'role': 'assistant', 'content': '', 'function_call': call}`;
+    - `{'role': 'function', 'name': имя_функции, 'content': result}`.
+
+    Исходный список `messages` не меняется. Получите `second` — историю после вызова калькулятора из урока (`QUESTION`, `CALL`, результат `safe_calculate`), и `roles` — роли её сообщений.
+  prelude: |
+    import re
+
+    def safe_calculate(expression: str) -> str:
+        if not re.fullmatch(r'[\d+\-*/().\s]+', expression):
+            return 'Ошибка: выражение содержит недопустимые символы.'
+        try:
+            if '^' in expression or len(expression) > 50:
+                return 'Ошибка: выражение слишком сложное или длинное.'
+            return str(eval(expression, {'__builtins__': {}}, {}))
+        except Exception as e:
+            return f'Ошибка вычисления: {e}'
+
+    QUESTION = [{'role': 'user', 'content': 'Сколько будет 3*(4+5)**2'}]
+    CALL = {'name': 'calculate', 'arguments': {'expression': '3*(4+5)**2'}}
+  starter: |
+    def after_call(messages, call, result):
+        return messages + [..., ...]
+
+    result = safe_calculate(CALL['arguments']['expression'])
+    second = after_call(QUESTION, CALL, result)
+    roles = ...
+    for m in second:
+        print(m)
+  solution: |
+    def after_call(messages, call, result):
+        return messages + [{'role': 'assistant', 'content': '', 'function_call': call},
+                           {'role': 'function', 'name': call['name'], 'content': result}]
+
+    result = safe_calculate(CALL['arguments']['expression'])
+    second = after_call(QUESTION, CALL, result)
+    roles = [m['role'] for m in second]
+    for m in second:
+        print(m)
+  explanation: |
+    - Порядок важен: сначала просьба модели вызвать функцию, потом результат. Так модель видит, на какой вызов пришёл ответ «243».
+    - Поле `name` в сообщении с ролью `function` говорит, какая функция вернула результат. Это помогает, когда функций несколько.
+    - Ответ на второй запрос в ноутбуке — «Результат выражения 3*(4+5)**2 равен 243». Каждый вызов функции — это лишний запрос к модели, лишние токены и время.
+  hints:
+    - "Сообщение с вызовом — `{'role': 'assistant', 'content': '', 'function_call': call}`."
+    - "Результат — `{'role': 'function', 'name': call['name'], 'content': result}`."
+    - "Сложение списков `messages + [...]` не меняет `messages`."
+  tests: |
+    import copy
+    f = var('after_call')
+    ensure(callable(f), '`after_call` должна быть функцией.')
+    msgs = [{'role': 'system', 'content': 'S'}, {'role': 'user', 'content': 'Q'}]
+    before = copy.deepcopy(msgs)
+    call = {'name': 'count_words', 'arguments': {'text': 'раз два'}}
+    got = f(msgs, call, '2')
+    if msgs != before:
+        fail('`after_call` не должна менять исходный список: верните новый, например `messages + [...]`.')
+    ensure(isinstance(got, list) and len(got) == 4, 'После вызова в истории должно стать на два сообщения больше.')
+    if got[2].get('role') == 'function':
+        fail('Сначала идёт сообщение модели с вызовом (роль assistant), а потом результат функции.')
+    equal(got[2], {'role': 'assistant', 'content': '', 'function_call': call}, 'Сообщение модели с вызовом — {expected}, а у вас {actual}.')
+    if got[3].get('role') == 'user':
+        fail('Результат функции отправляют с ролью function, а не user.')
+    equal(got[3], {'role': 'function', 'name': 'count_words', 'content': '2'}, 'Сообщение с результатом — {expected}, а у вас {actual}.')
+    equal(var('second', list, 'списком'), ref('second'), '`second` — история после вызова калькулятора.')
+    equal(var('roles', list, 'списком'), ['user', 'assistant', 'function'], 'Роли — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        def after_call(messages, call, result):
+            return messages + [{'role': 'user', 'content': result}]
+        result = safe_calculate(CALL['arguments']['expression'])
+        second = after_call(QUESTION, CALL, result)
+        roles = [m['role'] for m in second]
+      expect: на два сообщения больше
+    - code: |
+        def after_call(messages, call, result):
+            messages.append({'role': 'assistant', 'content': '', 'function_call': call})
+            messages.append({'role': 'function', 'name': call['name'], 'content': result})
+            return messages
+        result = safe_calculate(CALL['arguments']['expression'])
+        second = after_call(QUESTION, CALL, result)
+        roles = [m['role'] for m in second]
+      expect: не должна менять
+
+- id: m10-l6-t4
+  title: Калькулятор без 9**9**9
+  difficulty: star
+  introduces: []
+  uses: [function-calling]
+  statement: |
+    Починим калькулятор из ноутбука. Модуль `ast` разбирает выражение Python в дерево, не вычисляя его: `ast.parse('2**10', mode='eval')`. Каждая степень в дереве — узел `ast.BinOp` с операцией `ast.Pow`: основание — `node.left`, показатель — `node.right`.
+
+    1. Напишите `power_ok(expression)`: `True`, если у **каждой** степени в выражении показатель — просто число (`ast.Constant`), возможно со знаком минус (`ast.UnaryOp` с `ast.USub`), по модулю не больше 100. Иначе `False`. Узлы дерева перебирает `ast.walk(tree)`.
+    2. Напишите `calc(expression)` — калькулятор ноутбука, но вместо проверки на `^` он проверяет `power_ok`. Если степень недопустима — `'Ошибка: слишком большая степень.'`
+
+    Получите `blocked = power_ok('9**9**9')` и `results` — результаты `calc` для выражений `EXPRS`. Не вычисляйте `9**9**9` — программа зависнет.
+  prelude: |
+    import ast
+    import re
+    EXPRS = ['3*(4+5)**2', '2**10', '2**-2', '-2**3', '2**1000', '2**(5+5)', '(2**10)**10', '1/0', '2+']
+  starter: |
+    def power_ok(expression):
+        tree = ast.parse(expression, mode='eval')
+        for node in ast.walk(tree):
+            if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Pow):
+                exp = node.right
+                if isinstance(exp, ast.UnaryOp) and isinstance(exp.op, ast.USub):
+                    exp = exp.operand
+                if ...:
+                    return False
+        return True
+
+    def calc(expression):
+        if not re.fullmatch(r'[\d+\-*/().\s]+', expression) or len(expression) > 50:
+            return 'Ошибка: выражение содержит недопустимые символы или слишком длинное.'
+        try:
+            if ...:
+                return 'Ошибка: слишком большая степень.'
+            return str(eval(expression, {'__builtins__': {}}, {}))
+        except Exception as e:
+            return f'Ошибка вычисления: {e}'
+
+    blocked = power_ok('9**9**9')
+    results = [calc(e) for e in EXPRS]
+    print(blocked)
+    for e, r in zip(EXPRS, results):
+        print(f'{e:14} → {r}')
+  solution: |
+    def power_ok(expression):
+        tree = ast.parse(expression, mode='eval')
+        for node in ast.walk(tree):
+            if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Pow):
+                exp = node.right
+                if isinstance(exp, ast.UnaryOp) and isinstance(exp.op, ast.USub):
+                    exp = exp.operand
+                if not (isinstance(exp, ast.Constant) and isinstance(exp.value, (int, float)) and abs(exp.value) <= 100):
+                    return False
+        return True
+
+    def calc(expression):
+        if not re.fullmatch(r'[\d+\-*/().\s]+', expression) or len(expression) > 50:
+            return 'Ошибка: выражение содержит недопустимые символы или слишком длинное.'
+        try:
+            if not power_ok(expression):
+                return 'Ошибка: слишком большая степень.'
+            return str(eval(expression, {'__builtins__': {}}, {}))
+        except Exception as e:
+            return f'Ошибка вычисления: {e}'
+
+    blocked = power_ok('9**9**9')
+    results = [calc(e) for e in EXPRS]
+    print(blocked)
+    for e, r in zip(EXPRS, results):
+        print(f'{e:14} → {r}')
+  explanation: |
+    - В `9**9**9` степени вложены: Python читает его как `9**(9**9)`. У внешней степени показатель — не число, а выражение `9**9`, и `power_ok` её отвергает. Ничего при этом не вычисляется.
+    - `ast.parse` только строит дерево. Безопаснее проверять выражение по его устройству, а не искать символы в строке, как делала проверка на `^`.
+    - Правило строгое: `2**(5+5)` тоже отвергнут, хотя он безобиден. Зато ни одна степень не может стать огромной. `(2**10)**10` разрешён: это всего 2¹⁰⁰.
+    - Синтаксическая ошибка (`2+`) падает в `ast.parse`, ловится `except` и возвращается строкой — как и деление на ноль.
+  hints:
+    - "Показатель годится, если `isinstance(exp, ast.Constant) and isinstance(exp.value, (int, float)) and abs(exp.value) <= 100`; функция возвращает False, если это **не** так."
+    - "В `calc` проверка — `if not power_ok(expression): return 'Ошибка: слишком большая степень.'`."
+    - "`power_ok` вызывайте внутри `try`: для `2+` `ast.parse` выбросит SyntaxError."
+  tests: |
+    f = var('power_ok')
+    ensure(callable(f), '`power_ok` должна быть функцией.')
+    cases = [('9**9**9', False), ('3*(4+5)**2', True), ('2**-3', True), ('2*3', True), ('(2**10)**10', True), ('2**100', True),
+             ('2**1000', False), ('2**(1+1)', False), ('2**101', False), ('2**-500', False)]
+    for expr, want in cases:
+        got = f(expr)
+        if expr == '9**9**9' and got:
+            fail('`9**9**9` — это `9**(9**9)`: показатель внешней степени — выражение, а не число, и power_ok должна вернуть False.')
+        if got != want:
+            fail('power_ok({0!r}) должна вернуть {1}, а вернула {2}.'.format(expr, want, got))
+    g = var('calc')
+    ensure(callable(g), '`calc` должна быть функцией.')
+    big = g('2**1000')
+    if isinstance(big, str) and big.isdigit():
+        fail('`calc(\'2**1000\')` вычислила огромное число. Проверьте степень через `power_ok` до вычисления.')
+    equal(big, 'Ошибка: слишком большая степень.', 'Для `2**1000` ожидалось {expected}, а получилось {actual}.')
+    equal(g('3*(4+5)**2'), '243', 'calc(\'3*(4+5)**2\') — {expected}, а у вас {actual}.')
+    bad = g('2+')
+    ensure(isinstance(bad, str) and bad.startswith('Ошибка'), 'Для `2+` calc должна вернуть строку с ошибкой, а не упасть.')
+    ensure(str(g("__import__('os')")).startswith('Ошибка'), 'Буквы в выражении недопустимы — нужна строка с ошибкой.')
+    equal(var('blocked'), False, '`blocked` — результат `power_ok(\'9**9**9\')`, он должен быть False.')
+    equal(var('results', list, 'списком'), ref('results'), '`results` — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        def power_ok(expression):
+            tree = ast.parse(expression, mode='eval')
+            for node in ast.walk(tree):
+                if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Pow):
+                    exp = node.right
+                    if isinstance(exp, ast.Constant) and abs(exp.value) > 100:
+                        return False
+            return True
+        def calc(expression):
+            if not re.fullmatch(r'[\d+\-*/().\s]+', expression) or len(expression) > 50:
+                return 'Ошибка: выражение содержит недопустимые символы или слишком длинное.'
+            try:
+                if not power_ok(expression):
+                    return 'Ошибка: слишком большая степень.'
+                return str(eval(expression, {'__builtins__': {}}, {}))
+            except Exception as e:
+                return f'Ошибка вычисления: {e}'
+        blocked = power_ok('9**9**9')
+        results = [calc(e) for e in EXPRS if e != '2**(5+5)']
+      expect: power_ok должна вернуть False
+    - code: |
+        def power_ok(expression):
+            tree = ast.parse(expression, mode='eval')
+            for node in ast.walk(tree):
+                if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Pow):
+                    exp = node.right
+                    if isinstance(exp, ast.UnaryOp) and isinstance(exp.op, ast.USub):
+                        exp = exp.operand
+                    if not (isinstance(exp, ast.Constant) and isinstance(exp.value, (int, float)) and abs(exp.value) <= 100):
+                        return False
+            return True
+        def calc(expression):
+            if not re.fullmatch(r'[\d+\-*/().\s]+', expression) or len(expression) > 50:
+                return 'Ошибка: выражение содержит недопустимые символы или слишком длинное.'
+            try:
+                return str(eval(expression, {'__builtins__': {}}, {}))
+            except Exception as e:
+                return f'Ошибка вычисления: {e}'
+        blocked = power_ok('9**9**9')
+        results = [calc(e) for e in EXPRS]
+      expect: огромное число

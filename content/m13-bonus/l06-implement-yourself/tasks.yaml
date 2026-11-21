@@ -1,0 +1,871 @@
+- id: b1-l6-t1
+  title: Ориентир с fit и predict
+  difficulty: warmup
+  introduces: [estimator-api]
+  uses: []
+  statement: |
+    Напишите класс `MajorityClassifier` с устройством scikit-learn:
+
+    - `fit(X, y)` запоминает `classes_` — различные классы по возрастанию (`np.unique`) — и `majority_` — самый частый класс (при равенстве — меньший). Метод возвращает `self`;
+    - `predict(X)` возвращает массив из `majority_` длиной `len(X)`.
+
+    Получите `acc_major` — долю верных этой модели на проверочной части машин (`X_train`, `y_train`, `X_test`, `y_test`) и `acc_dummy` — долю верных `DummyClassifier(strategy='most_frequent')` там же.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.dummy import DummyClassifier
+    cars = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'Price']
+    X = cars[features].to_numpy(dtype=float)
+    y = cars['AutoTransmission'].astype(int).to_numpy()
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+  starter: |
+    class MajorityClassifier:
+        def fit(self, X, y):
+            self.classes_, counts = np.unique(y, return_counts=True)
+            self.majority_ = ...
+            return ...
+
+        def predict(self, X):
+            return ...
+
+    acc_major = float(np.mean(MajorityClassifier().fit(X_train, y_train).predict(X_test) == y_test))
+    acc_dummy = float(DummyClassifier(strategy='most_frequent').fit(X_train, y_train).score(X_test, y_test))
+    print(acc_major, acc_dummy)
+  solution: |
+    class MajorityClassifier:
+        def fit(self, X, y):
+            self.classes_, counts = np.unique(y, return_counts=True)
+            self.majority_ = self.classes_[int(np.argmax(counts))]
+            return self
+
+        def predict(self, X):
+            return np.full(len(X), self.majority_)
+
+    acc_major = float(np.mean(MajorityClassifier().fit(X_train, y_train).predict(X_test) == y_test))
+    acc_dummy = float(DummyClassifier(strategy='most_frequent').fit(X_train, y_train).score(X_test, y_test))
+    print(acc_major, acc_dummy)
+  explanation: |
+    - `np.unique(y, return_counts=True)` возвращает классы по возрастанию и их количества. `np.argmax(counts)` — первый максимум, поэтому при равенстве выбирается меньший класс, как у `DummyClassifier`.
+    - `return self` позволяет писать `MajorityClassifier().fit(...).predict(...)` в одну строку, как с моделями scikit-learn.
+    - Атрибуты `classes_` и `majority_` появляются только после `fit`: у необученной модели их нет. Обе модели верны в 54,5 % случаев — это ориентир «всегда механика» из урока Б.1.
+  hints:
+    - "Самый частый класс — `self.classes_[int(np.argmax(counts))]`."
+    - "Из `fit` возвращается сам объект — `return self`."
+    - "Предсказание — `np.full(len(X), self.majority_)`."
+  tests: |
+    import numpy as np
+    C = var('MajorityClassifier')
+    ensure(isinstance(C, type), '`MajorityClassifier` должен быть классом.')
+    m = C()
+    ensure(not hasattr(m, 'majority_'), 'У необученной модели не должно быть majority_ — атрибут появляется в fit.')
+    r = m.fit(np.zeros((3, 2)), np.array([0, 1, 1]))
+    if r is None:
+        fail('fit должен возвращать self, чтобы можно было писать model.fit(X, y).predict(X).')
+    ensure(r is m, 'fit должен возвращать сам объект: return self.')
+    equal(int(m.majority_), 1, 'Для y = [0, 1, 1] самый частый класс — 1, а у вас {actual}.')
+    equal([int(v) for v in m.classes_], [0, 1], 'classes_ — различные классы по возрастанию: [0, 1].')
+    equal([int(v) for v in m.predict(np.zeros((4, 2)))], [1, 1, 1, 1], 'predict возвращает majority_ для каждой строки X.')
+    equal(int(C().fit(np.zeros((2, 1)), np.array([1, 0])).majority_), 0, 'При равенстве — меньший класс: для y = [1, 0] это 0.')
+    close(var('acc_major', 'number', 'числом'), ref('acc_dummy'), 'Доля верных должна совпасть с DummyClassifier: {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        class MajorityClassifier:
+            def fit(self, X, y):
+                self.classes_, counts = np.unique(y, return_counts=True)
+                self.majority_ = self.classes_[int(np.argmax(counts))]
+            def predict(self, X):
+                return np.full(len(X), self.majority_)
+        acc_major = 0.0
+        acc_dummy = float(DummyClassifier(strategy='most_frequent').fit(X_train, y_train).score(X_test, y_test))
+      expect: fit должен возвращать self
+    - code: |
+        class MajorityClassifier:
+            majority_ = 0
+            def fit(self, X, y):
+                self.classes_, counts = np.unique(y, return_counts=True)
+                self.majority_ = self.classes_[int(np.argmax(counts))]
+                return self
+            def predict(self, X):
+                return np.full(len(X), self.majority_)
+        acc_major = float(np.mean(MajorityClassifier().fit(X_train, y_train).predict(X_test) == y_test))
+        acc_dummy = float(DummyClassifier(strategy='most_frequent').fit(X_train, y_train).score(X_test, y_test))
+      expect: необученной модели
+
+- id: b1-l6-t2
+  title: Логистическая регрессия градиентным спуском
+  difficulty: main
+  introduces: []
+  uses: [logistic-regression, gradient-descent, estimator-api]
+  statement: |
+    Напишите класс `LogRegGD(lr=0.5, n_iter=2000)`:
+
+    - `fit(X, y)` начинает с нулевых `coef_` и `intercept_` и `n_iter` раз делает шаг градиентного спуска по log loss: `coef_ -= lr · Xᵀ(p − y) / n`, `intercept_ -= lr · mean(p − y)`, где p — сигмоида от `X @ coef_ + intercept_`. Возвращает `self`;
+    - `predict_proba(X)` — вероятности класса 1, одномерный массив;
+    - `predict(X)` — 1, если вероятность не меньше 0,5, иначе 0.
+
+    Обучите её на стандартизованных признаках `Xtr` и сравните с `LogisticRegression(C=1e10)`: `coef_diff` — наибольшее расхождение коэффициентов, `agree` — доля машин проверочной части `Xte` с одинаковым предсказанием.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LogisticRegression
+    cars = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'Price']
+    X = cars[features].to_numpy(dtype=float)
+    y = cars['AutoTransmission'].astype(int).to_numpy()
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    scaler = StandardScaler().fit(X_train)
+    Xtr, Xte = scaler.transform(X_train), scaler.transform(X_test)
+  starter: |
+    class LogRegGD:
+        def __init__(self, lr=0.5, n_iter=2000):
+            self.lr, self.n_iter = lr, n_iter
+
+        def predict_proba(self, X):
+            return 1 / (1 + np.exp(-(X @ self.coef_ + self.intercept_)))
+
+        def fit(self, X, y):
+            self.coef_ = np.zeros(X.shape[1])
+            self.intercept_ = 0.0
+            for _ in range(self.n_iter):
+                err = self.predict_proba(X) - y
+                self.coef_ = self.coef_ - ...
+                self.intercept_ = self.intercept_ - ...
+            return self
+
+        def predict(self, X):
+            return (self.predict_proba(X) >= 0.5).astype(int)
+
+    mine = LogRegGD().fit(Xtr, y_train)
+    sk = LogisticRegression(C=1e10).fit(Xtr, y_train)
+    coef_diff = float(np.abs(mine.coef_ - sk.coef_[0]).max())
+    agree = float(np.mean(mine.predict(Xte) == sk.predict(Xte)))
+    print(mine.coef_.round(3), sk.coef_[0].round(3), coef_diff, agree)
+  solution: |
+    class LogRegGD:
+        def __init__(self, lr=0.5, n_iter=2000):
+            self.lr, self.n_iter = lr, n_iter
+
+        def predict_proba(self, X):
+            return 1 / (1 + np.exp(-(X @ self.coef_ + self.intercept_)))
+
+        def fit(self, X, y):
+            self.coef_ = np.zeros(X.shape[1])
+            self.intercept_ = 0.0
+            for _ in range(self.n_iter):
+                err = self.predict_proba(X) - y
+                self.coef_ = self.coef_ - self.lr * X.T @ err / len(y)
+                self.intercept_ = self.intercept_ - self.lr * err.mean()
+            return self
+
+        def predict(self, X):
+            return (self.predict_proba(X) >= 0.5).astype(int)
+
+    mine = LogRegGD().fit(Xtr, y_train)
+    sk = LogisticRegression(C=1e10).fit(Xtr, y_train)
+    coef_diff = float(np.abs(mine.coef_ - sk.coef_[0]).max())
+    agree = float(np.mean(mine.predict(Xte) == sk.predict(Xte)))
+    print(mine.coef_.round(3), sk.coef_[0].round(3), coef_diff, agree)
+  explanation: |
+    - `X.T @ err / len(y)` — градиент log loss по коэффициентам: ошибки вероятностей, взвешенные признаками. Для свободного члена признак — константа 1, поэтому просто среднее ошибок.
+    - Шаг 0,5 подходит, потому что признаки стандартизованы: градиенты по всем координатам одного масштаба. На сырых признаках с пробегом в километрах тот же шаг уже после первого шага даёт коэффициент пробега около −8500, после второго — около +28 000: спуск мечется и за 2000 шагов не сходится.
+    - За 2000 шагов коэффициенты сошлись к решению scikit-learn до тысячных, а предсказания совпали у всех машин. Своя реализация верна.
+  hints:
+    - "Шаг по коэффициентам — `self.lr * X.T @ err / len(y)`."
+    - "Шаг по свободному члену — `self.lr * err.mean()`."
+    - "Знак минус: спускаемся против градиента — он уже стоит в заготовке."
+  tests: |
+    import numpy as np
+    C = var('LogRegGD')
+    ensure(isinstance(C, type), '`LogRegGD` должен быть классом.')
+    Xs_ = np.array([[1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])
+    ys_ = np.array([1, 0, 1])
+    m = C(lr=0.5, n_iter=1)
+    r = m.fit(Xs_, ys_)
+    ensure(r is m, 'fit должен возвращать self.')
+    if np.allclose(m.coef_, [-1 / 6, 0]):
+        fail('Знак шага перепутан: коэффициенты двигают против градиента — coef_ -= lr · Xᵀ(p − y) / n.')
+    if np.allclose(m.coef_, [0.5, 0]):
+        fail('Градиент нужно разделить на число объектов n: Xᵀ(p − y) / n.')
+    same_array(np.asarray(m.coef_, dtype=float), [1 / 6, 0.0], 'После одного шага из нуля на этих данных coef_ = [1/6, 0].')
+    close(float(m.intercept_), 1 / 12, 'После одного шага intercept_ = 1/12, а у вас {actual}.')
+    p = np.asarray(m.predict_proba(Xs_))
+    ensure(p.shape == (3,), 'predict_proba возвращает одномерный массив вероятностей класса 1.')
+    close(var('coef_diff', 'number', 'числом'), ref('coef_diff'), 'Расхождение коэффициентов со scikit-learn — {expected}, а у вас {actual}.', atol=1e-4)
+    close(var('agree', 'number', 'числом'), 1.0, 'Предсказания должны совпасть со scikit-learn у всех машин, а доля {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        class LogRegGD:
+            def __init__(self, lr=0.5, n_iter=2000):
+                self.lr, self.n_iter = lr, n_iter
+            def predict_proba(self, X):
+                return 1 / (1 + np.exp(-(X @ self.coef_ + self.intercept_)))
+            def fit(self, X, y):
+                self.coef_ = np.zeros(X.shape[1])
+                self.intercept_ = 0.0
+                for _ in range(self.n_iter):
+                    err = self.predict_proba(X) - y
+                    self.coef_ = self.coef_ + self.lr * X.T @ err / len(y)
+                    self.intercept_ = self.intercept_ + self.lr * err.mean()
+                return self
+            def predict(self, X):
+                return (self.predict_proba(X) >= 0.5).astype(int)
+        coef_diff = 1.0
+        agree = 0.0
+      expect: Знак шага перепутан
+    - code: |
+        class LogRegGD:
+            def __init__(self, lr=0.5, n_iter=2000):
+                self.lr, self.n_iter = lr, n_iter
+            def predict_proba(self, X):
+                return 1 / (1 + np.exp(-(X @ self.coef_ + self.intercept_)))
+            def fit(self, X, y):
+                self.coef_ = np.zeros(X.shape[1])
+                self.intercept_ = 0.0
+                for _ in range(self.n_iter):
+                    err = self.predict_proba(X) - y
+                    self.coef_ = self.coef_ - self.lr * X.T @ err
+                    self.intercept_ = self.intercept_ - self.lr * err.mean()
+                return self
+            def predict(self, X):
+                return (self.predict_proba(X) >= 0.5).astype(int)
+        coef_diff = 1.0
+        agree = 0.0
+      expect: разделить на число объектов
+
+- id: b1-l6-t3
+  title: PCA как класс
+  difficulty: main
+  introduces: []
+  uses: [pca, estimator-api]
+  statement: |
+    Напишите класс `MyPCA(n_components)`:
+
+    - `fit(X)` запоминает `mean_` — средние столбцов, `components_` — первые `n_components` собственных векторов ковариационной матрицы центрированных данных **строками** (по убыванию собственных чисел) и `explained_variance_ratio_` — их доли разброса. Возвращает `self`;
+    - `transform(X)` — координаты в новых осях: `(X - mean_) @ components_.T`.
+
+    Сравните с `PCA(n_components=2)` из scikit-learn на стандартизованных признаках машин `Xs`: `ratio_diff` — наибольшее расхождение долей, `comp_diff` — наибольшее расхождение **модулей** компонент, `z_diff` — наибольшее расхождение модулей координат после `transform`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.decomposition import PCA
+    cars = pd.read_csv('cars_processed.csv')
+    num = ['Year', 'Distance', 'Engine', 'Price', 'km_year']
+    Xs = StandardScaler().fit_transform(cars[num].to_numpy(dtype=float))
+  starter: |
+    class MyPCA:
+        def __init__(self, n_components):
+            self.n_components = n_components
+
+        def fit(self, X):
+            self.mean_ = X.mean(axis=0)
+            vals, vecs = np.linalg.eigh(np.cov(X - self.mean_, rowvar=False))
+            order = np.argsort(vals)[::-1][:self.n_components]
+            self.components_ = ...
+            self.explained_variance_ratio_ = ...
+            return self
+
+        def transform(self, X):
+            return ...
+
+    mine, sk = MyPCA(2).fit(Xs), PCA(n_components=2).fit(Xs)
+    ratio_diff = float(np.abs(mine.explained_variance_ratio_ - sk.explained_variance_ratio_).max())
+    comp_diff = float(np.abs(np.abs(mine.components_) - np.abs(sk.components_)).max())
+    z_diff = float(np.abs(np.abs(mine.transform(Xs)) - np.abs(sk.transform(Xs))).max())
+    print(ratio_diff, comp_diff, z_diff)
+  solution: |
+    class MyPCA:
+        def __init__(self, n_components):
+            self.n_components = n_components
+
+        def fit(self, X):
+            self.mean_ = X.mean(axis=0)
+            vals, vecs = np.linalg.eigh(np.cov(X - self.mean_, rowvar=False))
+            order = np.argsort(vals)[::-1][:self.n_components]
+            self.components_ = vecs[:, order].T
+            self.explained_variance_ratio_ = vals[order] / vals.sum()
+            return self
+
+        def transform(self, X):
+            return (X - self.mean_) @ self.components_.T
+
+    mine, sk = MyPCA(2).fit(Xs), PCA(n_components=2).fit(Xs)
+    ratio_diff = float(np.abs(mine.explained_variance_ratio_ - sk.explained_variance_ratio_).max())
+    comp_diff = float(np.abs(np.abs(mine.components_) - np.abs(sk.components_)).max())
+    z_diff = float(np.abs(np.abs(mine.transform(Xs)) - np.abs(sk.transform(Xs))).max())
+    print(ratio_diff, comp_diff, z_diff)
+  explanation: |
+    - `vecs[:, order]` выбирает нужные столбцы-векторы, а `.T` делает их строками — как `components_` в scikit-learn.
+    - Доли делят на сумму **всех** собственных чисел, а не только оставленных: иначе две компоненты «объясняли» бы 100 %.
+    - Все расхождения — на уровне ошибок округления, порядка 10⁻¹³ и меньше. Модули сравниваются, потому что знак собственного вектора произволен.
+  hints:
+    - "Компоненты строками — `vecs[:, order].T`."
+    - "Доли — `vals[order] / vals.sum()`: делим на сумму всех собственных чисел."
+    - "Новые координаты — `(X - self.mean_) @ self.components_.T`."
+  tests: |
+    import numpy as np
+    C = var('MyPCA')
+    ensure(isinstance(C, type), '`MyPCA` должен быть классом.')
+    T = np.array([[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [4.0, 4.0]])
+    m = C(1)
+    ensure(m.fit(T) is m, 'fit должен возвращать self.')
+    comp = np.asarray(m.components_, dtype=float)
+    ensure(comp.shape == (1, 2), 'components_ — компоненты строками: для одной компоненты и двух признаков форма (1, 2), а у вас {0}.'.format(comp.shape))
+    same_array(np.abs(comp), [[2 ** -0.5, 2 ** -0.5]], 'Точки на прямой y = x: первая компонента — (1, 1)/√2.')
+    ev = np.asarray(m.explained_variance_ratio_, dtype=float)
+    close(float(ev[0]), 1.0, 'Весь разброс точек на прямой — вдоль одной оси: доля 1, а у вас {actual}.')
+    z = np.asarray(m.transform(np.array([[2.5, 2.5]])), dtype=float)
+    close(float(z[0, 0]), 0.0, 'Точка (2.5, 2.5) — среднее; её координата на компоненте — 0, а у вас {actual}. Не забудьте вычесть mean_.', atol=1e-9)
+    m2 = C(1).fit(np.array([[0.0, 0.0], [2.0, 0.0], [0.0, 1.0], [2.0, 1.0]]))
+    if float(np.asarray(m2.explained_variance_ratio_)[0]) > 0.999:
+        fail('Доли делят на сумму всех собственных чисел, а не только оставленных компонент.')
+    close(var('ratio_diff', 'number', 'числом'), 0.0, 'Доли должны совпасть с sklearn, а расхождение {actual}.', atol=1e-9)
+    close(var('comp_diff', 'number', 'числом'), 0.0, 'Компоненты по модулю должны совпасть с sklearn, а расхождение {actual}.', atol=1e-9)
+    close(var('z_diff', 'number', 'числом'), 0.0, 'Координаты по модулю должны совпасть с sklearn, а расхождение {actual}.', atol=1e-7)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        class MyPCA:
+            def __init__(self, n_components):
+                self.n_components = n_components
+            def fit(self, X):
+                self.mean_ = X.mean(axis=0)
+                vals, vecs = np.linalg.eigh(np.cov(X - self.mean_, rowvar=False))
+                order = np.argsort(vals)[::-1][:self.n_components]
+                self.components_ = vecs[:, order].T
+                self.explained_variance_ratio_ = vals[order] / vals[order].sum()
+                return self
+            def transform(self, X):
+                return (X - self.mean_) @ self.components_.T
+        ratio_diff = comp_diff = z_diff = 1.0
+      expect: сумму всех собственных чисел
+    - code: |
+        class MyPCA:
+            def __init__(self, n_components):
+                self.n_components = n_components
+            def fit(self, X):
+                self.mean_ = X.mean(axis=0)
+                vals, vecs = np.linalg.eigh(np.cov(X - self.mean_, rowvar=False))
+                order = np.argsort(vals)[::-1][:self.n_components]
+                self.components_ = vecs[:, order].T
+                self.explained_variance_ratio_ = vals[order] / vals.sum()
+                return self
+            def transform(self, X):
+                return X @ self.components_.T
+        ratio_diff = comp_diff = z_diff = 1.0
+      expect: вычесть mean_
+
+- id: b1-l6-t4
+  title: k-means как класс
+  difficulty: main
+  introduces: []
+  uses: [k-means, estimator-api]
+  statement: |
+    Напишите класс `MyKMeans(n_clusters, max_iter=300)`:
+
+    - `fit(X, init)` начинает с центров `init` и повторяет «назначить ближайшим — пересчитать центры», пока центры меняются (`np.allclose`), но не больше `max_iter` раз. Запоминает `cluster_centers_`, `labels_` (назначения к итоговым центрам) и `inertia_`. Возвращает `self`;
+    - `predict(X)` — номера ближайших центров.
+
+    Сравните с `KMeans(n_clusters=4, init=init, n_init=1, tol=0)` на стандартизованных признаках `Xs`: `inertia_mine`, `inertia_sk` и `same_predict` — доля новых точек `new_points`, для которых номера кластеров совпали.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.cluster import KMeans
+    cars = pd.read_csv('cars_processed.csv')
+    cars['logPrice'] = np.log(cars['Price'])
+    Xs = StandardScaler().fit_transform(cars[['Year', 'Distance', 'Engine', 'logPrice', 'km_year']].to_numpy(dtype=float))
+    rng = np.random.default_rng(0)
+    init = Xs[rng.choice(len(Xs), 4, replace=False)]
+    new_points = rng.normal(size=(200, 5))
+  starter: |
+    class MyKMeans:
+        def __init__(self, n_clusters, max_iter=300):
+            self.n_clusters, self.max_iter = n_clusters, max_iter
+
+        def predict(self, X):
+            d = ((X[:, None, :] - self.cluster_centers_[None, :, :]) ** 2).sum(axis=2)
+            return d.argmin(axis=1)
+
+        def fit(self, X, init):
+            self.cluster_centers_ = np.array(init, dtype=float)
+            for _ in range(self.max_iter):
+                labels = self.predict(X)
+                new = np.array([X[labels == k].mean(axis=0) for k in range(self.n_clusters)])
+                if np.allclose(new, self.cluster_centers_):
+                    break
+                self.cluster_centers_ = new
+            self.labels_ = ...
+            self.inertia_ = ...
+            return self
+
+    mine = MyKMeans(4).fit(Xs, init)
+    sk = KMeans(n_clusters=4, init=init, n_init=1, tol=0).fit(Xs)
+    inertia_mine, inertia_sk = mine.inertia_, float(sk.inertia_)
+    same_predict = float(np.mean(mine.predict(new_points) == sk.predict(new_points)))
+    print(round(inertia_mine, 3), round(inertia_sk, 3), same_predict)
+  solution: |
+    class MyKMeans:
+        def __init__(self, n_clusters, max_iter=300):
+            self.n_clusters, self.max_iter = n_clusters, max_iter
+
+        def predict(self, X):
+            d = ((X[:, None, :] - self.cluster_centers_[None, :, :]) ** 2).sum(axis=2)
+            return d.argmin(axis=1)
+
+        def fit(self, X, init):
+            self.cluster_centers_ = np.array(init, dtype=float)
+            for _ in range(self.max_iter):
+                labels = self.predict(X)
+                new = np.array([X[labels == k].mean(axis=0) for k in range(self.n_clusters)])
+                if np.allclose(new, self.cluster_centers_):
+                    break
+                self.cluster_centers_ = new
+            self.labels_ = self.predict(X)
+            self.inertia_ = float(((X - self.cluster_centers_[self.labels_]) ** 2).sum())
+            return self
+
+    mine = MyKMeans(4).fit(Xs, init)
+    sk = KMeans(n_clusters=4, init=init, n_init=1, tol=0).fit(Xs)
+    inertia_mine, inertia_sk = mine.inertia_, float(sk.inertia_)
+    same_predict = float(np.mean(mine.predict(new_points) == sk.predict(new_points)))
+    print(round(inertia_mine, 3), round(inertia_sk, 3), same_predict)
+  explanation: |
+    - `predict` используется и внутри `fit`: назначение к ближайшему центру — одна и та же операция при обучении и при ответе. Так устроены и модели scikit-learn.
+    - `labels_` считаются по итоговым центрам — после последнего пересчёта, иначе метки отстанут от центров на шаг.
+    - Инерция совпала со scikit-learn: от тех же центров и до полной остановки (`tol=0`) алгоритм проходит тот же путь. Номера кластеров новых точек тоже совпали — значит, совпали и сами центры.
+  hints:
+    - "Итоговые метки — `self.predict(X)` по последним центрам."
+    - "Инерция — `((X - self.cluster_centers_[self.labels_]) ** 2).sum()`."
+    - "Не забудьте `float(...)` для инерции и `return self` — он уже в заготовке."
+  tests: |
+    import numpy as np
+    C = var('MyKMeans')
+    ensure(isinstance(C, type), '`MyKMeans` должен быть классом.')
+    P = np.array([[0.0, 0.0], [0.0, 1.0], [10.0, 10.0], [10.0, 11.0]])
+    m = C(2)
+    ensure(m.fit(P, P[[0, 2]]) is m, 'fit должен возвращать self.')
+    same_array(np.sort(np.asarray(m.cluster_centers_), axis=0), [[0.0, 0.5], [10.0, 10.5]], 'Для двух пар точек центры — (0, 0.5) и (10, 10.5).')
+    close(float(m.inertia_), 1.0, 'Инерция для этих точек — 4 · 0.25 = 1, а у вас {actual}.')
+    equal([int(v) for v in m.predict(np.array([[1.0, 1.0], [9.0, 9.0]]))], [int(m.predict(P[:1])[0]), int(m.predict(P[2:3])[0])], 'predict назначает новые точки ближайшим центрам.')
+    close(var('inertia_mine', 'number', 'числом'), var('inertia_sk', 'number', 'числом'), 'Инерция должна совпасть с KMeans от тех же центров: у sklearn {expected}, у вас {actual}.', rtol=1e-9)
+    close(var('same_predict', 'number', 'числом'), 1.0, 'Номера кластеров новых точек должны совпасть со sklearn, а доля {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        class MyKMeans:
+            def __init__(self, n_clusters, max_iter=300):
+                self.n_clusters, self.max_iter = n_clusters, max_iter
+            def predict(self, X):
+                d = ((X[:, None, :] - self.cluster_centers_[None, :, :]) ** 2).sum(axis=2)
+                return d.argmin(axis=1)
+            def fit(self, X, init):
+                self.cluster_centers_ = np.array(init, dtype=float)
+                for _ in range(self.max_iter):
+                    labels = self.predict(X)
+                    new = np.array([X[labels == k].mean(axis=0) for k in range(self.n_clusters)])
+                    if np.allclose(new, self.cluster_centers_):
+                        break
+                    self.cluster_centers_ = new
+                self.labels_ = self.predict(X)
+                self.inertia_ = float(np.sqrt(((X - self.cluster_centers_[self.labels_]) ** 2).sum(axis=1)).sum())
+                return self
+        mine = MyKMeans(4).fit(Xs, init)
+        sk = KMeans(n_clusters=4, init=init, n_init=1, tol=0).fit(Xs)
+        inertia_mine, inertia_sk = mine.inertia_, float(sk.inertia_)
+        same_predict = float(np.mean(mine.predict(new_points) == sk.predict(new_points)))
+      expect: Инерция для этих точек
+    - code: |
+        class MyKMeans:
+            def __init__(self, n_clusters, max_iter=300):
+                self.n_clusters, self.max_iter = n_clusters, max_iter
+            def predict(self, X):
+                d = ((X[:, None, :] - self.cluster_centers_[None, :, :]) ** 2).sum(axis=2)
+                return d.argmin(axis=1)
+            def fit(self, X, init):
+                self.cluster_centers_ = np.array(init, dtype=float)
+                for _ in range(1):
+                    labels = self.predict(X)
+                    new = np.array([X[labels == k].mean(axis=0) for k in range(self.n_clusters)])
+                    self.cluster_centers_ = new
+                self.labels_ = self.predict(X)
+                self.inertia_ = float(((X - self.cluster_centers_[self.labels_]) ** 2).sum())
+                return self
+        mine = MyKMeans(4).fit(Xs, init)
+        sk = KMeans(n_clusters=4, init=init, n_init=1, tol=0).fit(Xs)
+        inertia_mine, inertia_sk = mine.inertia_, float(sk.inertia_)
+        same_predict = float(np.mean(mine.predict(new_points) == sk.predict(new_points)))
+      expect: Инерция должна совпасть
+
+- id: b1-l6-t5
+  title: Индекс Джини и лучшее разбиение
+  difficulty: main
+  introduces: []
+  uses: [decision-tree, tree-split]
+  statement: |
+    1. Напишите функцию `gini(y)` — индекс Джини для двух классов 0 и 1: 2·p·(1 − p), где p — доля единиц; для пустого массива — 0.
+    2. Напишите функцию `best_split(X, y)`: перебрать все признаки и все пороги и вернуть кортеж `(номер признака, порог, взвешенный Джини частей)` для лучшего разбиения «признак ≤ порог». Порог — посередине между соседними различными значениями отсортированного признака. Для каждого признака пороги перебирайте без цикла — накопленной суммой, как в уроке.
+
+    Найдите `split` для 3000 машин `Xs3`, `ys3` (признаки — год, объём двигателя, цена) и сверьте с корнем `DecisionTreeClassifier(max_depth=1)`: `sk_feature`, `sk_threshold`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.tree import DecisionTreeClassifier
+    cars = pd.read_csv('cars_processed.csv')
+    X = cars[['Year', 'Engine', 'Price']].to_numpy(dtype=float)
+    y = cars['AutoTransmission'].astype(int).to_numpy()
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    idx = np.random.default_rng(0).choice(len(X_train), 3000, replace=False)
+    Xs3, ys3 = X_train[idx], y_train[idx]
+  starter: |
+    def gini(y):
+        if len(y) == 0:
+            return 0.0
+        p = np.mean(y)
+        return float(...)
+
+    def best_split(X, y):
+        n = len(y)
+        best = (None, None, gini(y))
+        for j in range(X.shape[1]):
+            order = np.argsort(X[:, j], kind='stable')
+            xs, ys = X[order, j], y[order]
+            left_n = np.arange(1, n)
+            left_pos = np.cumsum(ys)[:-1]
+            pl, pr = left_pos / left_n, (ys.sum() - left_pos) / (n - left_n)
+            imp = ...
+            imp[xs[1:] == xs[:-1]] = np.inf
+            i = int(np.argmin(imp))
+            if imp[i] < best[2]:
+                best = (j, float((xs[i] + xs[i + 1]) / 2), float(imp[i]))
+        return best
+
+    split = best_split(Xs3, ys3)
+    tree = DecisionTreeClassifier(max_depth=1, random_state=0).fit(Xs3, ys3)
+    sk_feature, sk_threshold = int(tree.tree_.feature[0]), float(tree.tree_.threshold[0])
+    print(split, sk_feature, sk_threshold)
+  solution: |
+    def gini(y):
+        if len(y) == 0:
+            return 0.0
+        p = np.mean(y)
+        return float(2 * p * (1 - p))
+
+    def best_split(X, y):
+        n = len(y)
+        best = (None, None, gini(y))
+        for j in range(X.shape[1]):
+            order = np.argsort(X[:, j], kind='stable')
+            xs, ys = X[order, j], y[order]
+            left_n = np.arange(1, n)
+            left_pos = np.cumsum(ys)[:-1]
+            pl, pr = left_pos / left_n, (ys.sum() - left_pos) / (n - left_n)
+            imp = (left_n * 2 * pl * (1 - pl) + (n - left_n) * 2 * pr * (1 - pr)) / n
+            imp[xs[1:] == xs[:-1]] = np.inf
+            i = int(np.argmin(imp))
+            if imp[i] < best[2]:
+                best = (j, float((xs[i] + xs[i + 1]) / 2), float(imp[i]))
+        return best
+
+    split = best_split(Xs3, ys3)
+    tree = DecisionTreeClassifier(max_depth=1, random_state=0).fit(Xs3, ys3)
+    sk_feature, sk_threshold = int(tree.tree_.feature[0]), float(tree.tree_.threshold[0])
+    print(split, sk_feature, sk_threshold)
+  explanation: |
+    - После сортировки по признаку порог между позициями i и i + 1 оставляет слева i + 1 объект. Накопленная сумма единиц сразу даёт, сколько из них класса 1, — для всех порогов одной операцией.
+    - Взвешенный Джини — `(n_left·G_left + n_right·G_right) / n`: большая часть весит больше. Между равными значениями порог не поставить, поэтому там `np.inf`.
+    - Лучший первый вопрос — о цене (признак 2) с порогом 8299,5 евро. Ровно его выбрал и `DecisionTreeClassifier`: перебор порогов в scikit-learn устроен так же.
+  hints:
+    - "Джини — `2 * p * (1 - p)`."
+    - "Взвешенный Джини частей — `(left_n * 2 * pl * (1 - pl) + (n - left_n) * 2 * pr * (1 - pr)) / n`."
+    - "Порог — середина: `(xs[i] + xs[i + 1]) / 2`; это уже в заготовке."
+  tests: |
+    import numpy as np
+    g = var('gini')
+    ensure(callable(g), '`gini` должна быть функцией.')
+    close(g(np.array([0, 0, 1, 1])), 0.5, 'Джини при 50 на 50 — 0.5, а у вас {actual}.')
+    close(g(np.array([1, 1, 1])), 0.0, 'Джини чистой части — 0, а у вас {actual}.')
+    close(g(np.array([], dtype=int)), 0.0, 'Джини пустого массива — 0, а у вас {actual}.')
+    f = var('best_split')
+    ensure(callable(f), '`best_split` должна быть функцией.')
+    Xt = np.array([[1.0, 5.0], [2.0, 6.0], [3.0, 1.0], [4.0, 2.0]])
+    yt = np.array([0, 0, 1, 1])
+    j, thr, imp = f(Xt, yt)
+    equal(int(j), 0, 'Для X = [[1,5],[2,6],[3,1],[4,2]] и y = [0,0,1,1] идеально делит первый признак: номер 0, а у вас {actual}.')
+    if abs(thr - 2.0) < 1e-9 or abs(thr - 3.0) < 1e-9:
+        fail('Порог ставят посередине между соседними значениями: между 2 и 3 — 2.5.')
+    close(thr, 2.5, 'Порог — {expected}, а у вас {actual}.')
+    close(imp, 0.0, 'После идеального разбиения взвешенный Джини — 0, а у вас {actual}.', atol=1e-12)
+    j2, thr2, imp2 = f(np.array([[1.0], [2.0], [3.0], [4.0]]), np.array([0, 0, 1, 0]))
+    if abs(imp2 - 2 / 9) < 1e-9:
+        fail('Джини частей взвешивают их размерами: (n_left·G_left + n_right·G_right) / n, а не берут простое среднее двух частей.')
+    close(thr2, 2.5, 'Для x = [1, 2, 3, 4] и y = [0, 0, 1, 0] лучший порог — 2.5: слева [0, 0], справа [1, 0]. У вас {actual}.')
+    close(imp2, 0.25, 'Взвешенный Джини этого разбиения — (2·0 + 2·0.5) / 4 = 0.25, а у вас {actual}.')
+    sp = var('split')
+    equal(int(sp[0]), int(var('sk_feature')), 'Признак лучшего разбиения должен совпасть со scikit-learn: {expected}, а у вас {actual}.')
+    close(float(sp[1]), var('sk_threshold', 'number', 'числом'), 'Порог должен совпасть со scikit-learn: {expected}, а у вас {actual}.', rtol=1e-6)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def gini(y):
+            if len(y) == 0:
+                return 0.0
+            p = np.mean(y)
+            return float(2 * p * (1 - p))
+        def best_split(X, y):
+            n = len(y)
+            best = (None, None, gini(y))
+            for j in range(X.shape[1]):
+                order = np.argsort(X[:, j], kind='stable')
+                xs, ys = X[order, j], y[order]
+                left_n = np.arange(1, n)
+                left_pos = np.cumsum(ys)[:-1]
+                pl, pr = left_pos / left_n, (ys.sum() - left_pos) / (n - left_n)
+                imp = (left_n * 2 * pl * (1 - pl) + (n - left_n) * 2 * pr * (1 - pr)) / n
+                imp[xs[1:] == xs[:-1]] = np.inf
+                i = int(np.argmin(imp))
+                if imp[i] < best[2]:
+                    best = (j, float(xs[i]), float(imp[i]))
+            return best
+        split = best_split(Xs3, ys3)
+        tree = DecisionTreeClassifier(max_depth=1, random_state=0).fit(Xs3, ys3)
+        sk_feature, sk_threshold = int(tree.tree_.feature[0]), float(tree.tree_.threshold[0])
+      expect: посередине
+    - code: |
+        def gini(y):
+            if len(y) == 0:
+                return 0.0
+            p = np.mean(y)
+            return float(2 * p * (1 - p))
+        def best_split(X, y):
+            n = len(y)
+            best = (None, None, gini(y))
+            for j in range(X.shape[1]):
+                order = np.argsort(X[:, j], kind='stable')
+                xs, ys = X[order, j], y[order]
+                left_n = np.arange(1, n)
+                left_pos = np.cumsum(ys)[:-1]
+                pl, pr = left_pos / left_n, (ys.sum() - left_pos) / (n - left_n)
+                imp = (2 * pl * (1 - pl) + 2 * pr * (1 - pr)) / 2
+                imp[xs[1:] == xs[:-1]] = np.inf
+                i = int(np.argmin(imp))
+                if imp[i] < best[2]:
+                    best = (j, float((xs[i] + xs[i + 1]) / 2), float(imp[i]))
+            return best
+        split = best_split(Xs3, ys3)
+        tree = DecisionTreeClassifier(max_depth=1, random_state=0).fit(Xs3, ys3)
+        sk_feature, sk_threshold = int(tree.tree_.feature[0]), float(tree.tree_.threshold[0])
+      expect: взвешивают их размерами
+
+- id: b1-l6-t6
+  title: Дерево глубины 2
+  difficulty: star
+  introduces: []
+  uses: [decision-tree, estimator-api]
+  statement: |
+    Соберите дерево решений из разбиений. Класс `MyTree(max_depth=2)`:
+
+    - `fit(X, y)` строит узлы рекурсивно функцией `build(X, y, depth)`. Если глубина достигла `max_depth`, в части один класс или разбиения нет (`best_split` вернул `None` вместо признака), получается лист `{'leaf': класс}` — самый частый класс части (при равенстве — 0, как в scikit-learn). Иначе узел `{'feature': j, 'threshold': t, 'left': …, 'right': …}`: слева строки с `X[:, j] <= t`. Результат — в атрибуте `tree_`, метод возвращает `self`;
+    - `predict(X)` — для каждой строки спуститься от корня до листа.
+
+    Функция `best_split` из прошлого задания уже есть. Обучите дерево на 3000 машинах `Xs3`, `ys3` и сравните с `DecisionTreeClassifier(max_depth=2)` на проверочной части `X_test`: `agree` — доля совпавших предсказаний, `acc_mine` — доля верных своего дерева.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.tree import DecisionTreeClassifier
+    cars = pd.read_csv('cars_processed.csv')
+    X = cars[['Year', 'Engine', 'Price']].to_numpy(dtype=float)
+    y = cars['AutoTransmission'].astype(int).to_numpy()
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    idx = np.random.default_rng(0).choice(len(X_train), 3000, replace=False)
+    Xs3, ys3 = X_train[idx], y_train[idx]
+
+    def gini(y):
+        if len(y) == 0:
+            return 0.0
+        p = np.mean(y)
+        return float(2 * p * (1 - p))
+
+    def best_split(X, y):
+        n = len(y)
+        best = (None, None, gini(y))
+        for j in range(X.shape[1]):
+            order = np.argsort(X[:, j], kind='stable')
+            xs, ys = X[order, j], y[order]
+            left_n = np.arange(1, n)
+            left_pos = np.cumsum(ys)[:-1]
+            pl, pr = left_pos / left_n, (ys.sum() - left_pos) / (n - left_n)
+            imp = (left_n * 2 * pl * (1 - pl) + (n - left_n) * 2 * pr * (1 - pr)) / n
+            imp[xs[1:] == xs[:-1]] = np.inf
+            i = int(np.argmin(imp))
+            if imp[i] < best[2]:
+                best = (j, float((xs[i] + xs[i + 1]) / 2), float(imp[i]))
+        return best
+  starter: |
+    class MyTree:
+        def __init__(self, max_depth=2):
+            self.max_depth = max_depth
+
+        def build(self, X, y, depth):
+            majority = int(np.mean(y) > 0.5)
+            if depth == self.max_depth or len(set(y)) == 1:
+                return {'leaf': majority}
+            j, t, _ = best_split(X, y)
+            if j is None:
+                return {'leaf': majority}
+            left = X[:, j] <= t
+            return {'feature': j, 'threshold': t,
+                    'left': ...,
+                    'right': ...}
+
+        def fit(self, X, y):
+            self.tree_ = self.build(X, y, 0)
+            return self
+
+        def predict_one(self, x):
+            node = self.tree_
+            while 'leaf' not in node:
+                node = ...
+            return node['leaf']
+
+        def predict(self, X):
+            return np.array([self.predict_one(x) for x in X])
+
+    mine = MyTree(2).fit(Xs3, ys3)
+    sk = DecisionTreeClassifier(max_depth=2, random_state=0).fit(Xs3, ys3)
+    agree = float(np.mean(mine.predict(X_test) == sk.predict(X_test)))
+    acc_mine = float(np.mean(mine.predict(X_test) == y_test))
+    print(mine.tree_)
+    print(agree, round(acc_mine, 4))
+  solution: |
+    class MyTree:
+        def __init__(self, max_depth=2):
+            self.max_depth = max_depth
+
+        def build(self, X, y, depth):
+            majority = int(np.mean(y) > 0.5)
+            if depth == self.max_depth or len(set(y)) == 1:
+                return {'leaf': majority}
+            j, t, _ = best_split(X, y)
+            if j is None:
+                return {'leaf': majority}
+            left = X[:, j] <= t
+            return {'feature': j, 'threshold': t,
+                    'left': self.build(X[left], y[left], depth + 1),
+                    'right': self.build(X[~left], y[~left], depth + 1)}
+
+        def fit(self, X, y):
+            self.tree_ = self.build(X, y, 0)
+            return self
+
+        def predict_one(self, x):
+            node = self.tree_
+            while 'leaf' not in node:
+                node = node['left'] if x[node['feature']] <= node['threshold'] else node['right']
+            return node['leaf']
+
+        def predict(self, X):
+            return np.array([self.predict_one(x) for x in X])
+
+    mine = MyTree(2).fit(Xs3, ys3)
+    sk = DecisionTreeClassifier(max_depth=2, random_state=0).fit(Xs3, ys3)
+    agree = float(np.mean(mine.predict(X_test) == sk.predict(X_test)))
+    acc_mine = float(np.mean(mine.predict(X_test) == y_test))
+    print(mine.tree_)
+    print(agree, round(acc_mine, 4))
+  explanation: |
+    - Рекурсия: узел строит своих детей тем же методом `build`, увеличив глубину на 1. Остановка — глубина, чистая часть или отсутствие полезного разбиения.
+    - `predict_one` спускается от корня: если значение признака не больше порога — налево, иначе направо, пока не встретит лист.
+    - Дерево читается как правила. Машины не дороже 8299,5 евро с двигателем больше 2579,5 см³ — автомат, остальные дешёвые — механика. У дорогих оба листа отвечают «автомат»: второе разбиение делает части чище, но ответа не меняет. Доля верных на проверочной части — 0,797.
+    - Своё дерево предсказывает в точности как `DecisionTreeClassifier(max_depth=2)` на всех машинах проверочной части: оно задаёт те же вопросы в том же порядке. scikit-learn строит деревья по алгоритму CART, и его основа — перебор порогов из прошлого задания и рекурсия.
+  hints:
+    - "Дети узла — `self.build(X[left], y[left], depth + 1)` и `self.build(X[~left], y[~left], depth + 1)`."
+    - "Шаг спуска — `node['left'] if x[node['feature']] <= node['threshold'] else node['right']`."
+    - "Остановки уже в заготовке: глубина, один класс и `j is None`."
+  tests: |
+    import numpy as np
+    C = var('MyTree')
+    ensure(isinstance(C, type), '`MyTree` должен быть классом.')
+    Xt = np.array([[1.0], [2.0], [3.0], [4.0]])
+    yt = np.array([0, 0, 1, 1])
+    m = C(2)
+    ensure(m.fit(Xt, yt) is m, 'fit должен возвращать self.')
+    tr = m.tree_
+    ensure(isinstance(tr, dict) and tr.get('feature') == 0, 'Корень для X = [[1],[2],[3],[4]], y = [0,0,1,1] — разбиение по признаку 0.')
+    close(float(tr['threshold']), 2.5, 'Порог корня — 2.5, а у вас {actual}.')
+    ensure(tr['left'] == {'leaf': 0} and tr['right'] == {'leaf': 1}, 'Части после идеального разбиения чистые — листья {"leaf": 0} и {"leaf": 1}.')
+    equal([int(v) for v in m.predict(np.array([[0.0], [2.4], [2.6], [9.0]]))], [0, 0, 1, 1], 'Предсказания для 0, 2.4, 2.6, 9 — [0, 0, 1, 1], а у вас {actual}.')
+    m1 = C(1).fit(np.array([[1.0], [2.0], [3.0], [4.0]]), np.array([0, 1, 0, 1]))
+    ensure(all('leaf' in m1.tree_[k] for k in ('left', 'right')), 'При max_depth=1 дети корня — листья.')
+    close(var('agree', 'number', 'числом'), 1.0, 'Предсказания должны совпасть со scikit-learn у всех машин, а доля {actual}.')
+    close(var('acc_mine', 'number', 'числом'), ref('acc_mine'), 'Доля верных своего дерева — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        class MyTree:
+            def __init__(self, max_depth=2):
+                self.max_depth = max_depth
+            def build(self, X, y, depth):
+                majority = int(np.mean(y) > 0.5)
+                if depth == self.max_depth or len(set(y)) == 1:
+                    return {'leaf': majority}
+                j, t, _ = best_split(X, y)
+                if j is None:
+                    return {'leaf': majority}
+                left = X[:, j] <= t
+                return {'feature': j, 'threshold': t,
+                        'left': self.build(X[left], y[left], depth + 1),
+                        'right': self.build(X[~left], y[~left], depth + 1)}
+            def fit(self, X, y):
+                self.tree_ = self.build(X, y, 0)
+                return self
+            def predict_one(self, x):
+                node = self.tree_
+                while 'leaf' not in node:
+                    node = node['right'] if x[node['feature']] <= node['threshold'] else node['left']
+                return node['leaf']
+            def predict(self, X):
+                return np.array([self.predict_one(x) for x in X])
+        mine = MyTree(2).fit(Xs3, ys3)
+        sk = DecisionTreeClassifier(max_depth=2, random_state=0).fit(Xs3, ys3)
+        agree = float(np.mean(mine.predict(X_test) == sk.predict(X_test)))
+        acc_mine = float(np.mean(mine.predict(X_test) == y_test))
+      expect: Предсказания для 0, 2.4, 2.6, 9
+    - code: |
+        class MyTree:
+            def __init__(self, max_depth=2):
+                self.max_depth = max_depth
+            def build(self, X, y, depth):
+                majority = int(np.mean(y) > 0.5)
+                if len(set(y)) == 1:
+                    return {'leaf': majority}
+                j, t, _ = best_split(X, y)
+                if j is None:
+                    return {'leaf': majority}
+                left = X[:, j] <= t
+                return {'feature': j, 'threshold': t,
+                        'left': self.build(X[left], y[left], depth + 1),
+                        'right': self.build(X[~left], y[~left], depth + 1)}
+            def fit(self, X, y):
+                self.tree_ = self.build(X, y, 0)
+                return self
+            def predict_one(self, x):
+                node = self.tree_
+                while 'leaf' not in node:
+                    node = node['left'] if x[node['feature']] <= node['threshold'] else node['right']
+                return node['leaf']
+            def predict(self, X):
+                return np.array([self.predict_one(x) for x in X])
+        mine = MyTree(2).fit(Xs3, ys3)
+        sk = DecisionTreeClassifier(max_depth=2, random_state=0).fit(Xs3, ys3)
+        agree = float(np.mean(mine.predict(X_test) == sk.predict(X_test)))
+        acc_mine = float(np.mean(mine.predict(X_test) == y_test))
+      expect: дети корня — листья

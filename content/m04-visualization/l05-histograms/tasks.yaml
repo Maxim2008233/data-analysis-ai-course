@@ -1,0 +1,380 @@
+- id: m4-l5-t1
+  kind: plot
+  title: Гистограмма цен до 50 000 евро
+  difficulty: warmup
+  introduces: [hist-bins]
+  uses: [histogram-counts, mpl-fig-ax]
+  statement: |
+    Нарисуйте гистограмму цен в диапазоне **от 0 до 50 000 евро** с **40** интервалами (`ax.hist`). Добавьте заголовок, подпись оси X с единицами `евро` и подпись оси Y.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    fig, ax = plt.subplots(figsize=(9, 3))
+    ax.hist(...)
+    ax.set(title=..., xlabel=..., ylabel=...)
+    plt.show()
+  solution: |
+    fig, ax = plt.subplots(figsize=(9, 3))
+    ax.hist(df['Price'], bins=40, range=(0, 50_000))
+    ax.set(title='Цены до 50 000 евро: 40 интервалов по 1 250 евро', xlabel='Цена, евро', ylabel='Число объявлений')
+    plt.show()
+  explanation: |
+    - `bins=40` — число интервалов, `range=(0, 50_000)` — диапазон: ширина интервала 50 000 / 40 = 1 250 евро.
+    - Цены выше 50 000 в гистограмму не попадают — это обрезанный диапазон.
+  hints:
+    - Число интервалов задаёт `bins`, диапазон — `range`.
+    - "`ax.hist(df['Price'], bins=40, range=(0, 50_000))`."
+    - "`ax.set(title='Цены до 50 000 евро', xlabel='Цена, евро', ylabel='Число объявлений')`."
+  tests: |
+    import numpy as np
+    ax = axes()
+    bars = [p for p in ax.patches if type(p).__name__ == 'Rectangle']
+    ensure(len(bars) > 0, 'На графике нет гистограммы — нарисуйте её методом `ax.hist(...)`.')
+    ensure(len(bars) == 40, 'Интервалов должно быть 40, а у вас {0}: `bins=40`.'.format(len(bars)))
+    left, right = bars[0].get_x(), bars[-1].get_x() + bars[-1].get_width()
+    ensure(abs(left) < 1e-6 and abs(right - 50_000) < 1e-6, 'Диапазон должен быть от 0 до 50 000 евро: `range=(0, 50_000)`.')
+    exp = np.histogram(ref('df')['Price'], bins=40, range=(0, 50_000))[0]
+    same_array([b.get_height() for b in bars], exp, 'Высоты столбиков должны быть числами объявлений в интервалах.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+    ensure('евро' in ax.get_xlabel().lower(), 'В подписи оси X укажите единицы: `xlabel=\'Цена, евро\'`.')
+    ensure(ax.get_ylabel().strip() != '', 'Подпишите ось Y.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        fig, ax = plt.subplots()
+        ax.hist(df['Price'], bins=40)
+        ax.set(title='Цены', xlabel='Цена, евро', ylabel='Число объявлений')
+        plt.show()
+      expect: от 0 до 50 000
+    - code: |
+        fig, ax = plt.subplots()
+        ax.hist(df['Price'], bins=40, range=(0, 50_000))
+        ax.set(title='Цены', xlabel='Цена', ylabel='Число объявлений')
+        plt.show()
+      expect: единицы
+
+- id: m4-l5-t2
+  kind: plot
+  title: Интервал на каждый год выпуска
+  difficulty: main
+  introduces: [hist-bins]
+  uses: [pd-isin-between, mpl-fig-ax]
+  statement: |
+    Год выпуска — целое число, и интервалы удобно выровнять по годам. Для машин **1990–2021** годов выпуска (`years`) нарисуйте гистограмму, в которой у каждого года свой интервал: границы — целые годы от 1990 до 2022 (`bins=range(1990, 2023)`). Добавьте заголовок и подписи осей.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    years = ...
+    fig, ax = plt.subplots(figsize=(10, 3))
+    ax.hist(years, bins=...)
+    ax.set(title=..., xlabel=..., ylabel=...)
+    plt.show()
+  solution: |
+    years = df.loc[df['Year'].between(1990, 2021), 'Year']
+    fig, ax = plt.subplots(figsize=(10, 3))
+    ax.hist(years, bins=range(1990, 2023))
+    ax.set(title='Объявления по году выпуска (1990–2021)', xlabel='Год выпуска', ylabel='Число объявлений')
+    plt.show()
+  explanation: |
+    - `between(1990, 2021)` оставляет нужные годы (урок 2.5).
+    - `bins` можно задать не числом, а списком **границ**: `range(1990, 2023)` даёт границы 1990, 1991, …, 2022 — 32 интервала, по одному на год.
+    - С `bins=32` границы шли бы через 0,97 года и не совпадали бы с годами: часть столбиков объединила бы по два года, часть оказалась бы пустой.
+  hints:
+    - "`bins` принимает список границ; для года нужна граница на каждом целом годе и ещё одна после последнего."
+    - "`years = df.loc[df['Year'].between(1990, 2021), 'Year']`."
+    - "`ax.hist(years, bins=range(1990, 2023))`."
+  tests: |
+    import pandas as pd
+    y = var('years', pd.Series, 'Series — колонкой Year')
+    ensure(y.min() >= 1990 and y.max() <= 2021, 'В `years` должны быть только годы от 1990 до 2021.')
+    same_frame(y, ref('years'), 'Набор годов не совпадает.')
+    ax = axes()
+    bars = [p for p in ax.patches if type(p).__name__ == 'Rectangle']
+    ensure(len(bars) == 32, 'Интервалов должно быть 32 — по одному на каждый год с 1990 по 2021, а у вас {0}.'.format(len(bars)))
+    lefts = [round(b.get_x(), 6) for b in bars]
+    ensure(lefts == [float(v) for v in range(1990, 2022)], 'Границы интервалов должны быть целыми годами: `bins=range(1990, 2023)`.')
+    exp = ref('years').value_counts().reindex(range(1990, 2022), fill_value=0)
+    same_array([b.get_height() for b in bars], exp.values, 'Высота столбика должна быть числом объявлений этого года выпуска.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+    ensure(ax.get_xlabel().strip() != '' and ax.get_ylabel().strip() != '', 'Подпишите обе оси.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        years = df.loc[df['Year'].between(1990, 2021), 'Year']
+        fig, ax = plt.subplots()
+        ax.hist(years, bins=32)
+        ax.set(title='Годы', xlabel='Год выпуска', ylabel='Число объявлений')
+        plt.show()
+      expect: целыми годами
+    - code: |
+        years = df.loc[df['Year'].between(1990, 2021), 'Year']
+        fig, ax = plt.subplots()
+        ax.hist(years, bins=range(1990, 2022))
+        ax.set(title='Годы', xlabel='Год выпуска', ylabel='Число объявлений')
+        plt.show()
+      expect: по одному на каждый год
+
+- id: m4-l5-t3
+  kind: plot
+  title: Все цены на логарифмической шкале
+  difficulty: main
+  introduces: [log-axis]
+  uses: [mpl-fig-ax]
+  statement: |
+    Нарисуйте гистограмму **всех** цен на логарифмической оси X: 40 интервалов, границы которых растут в одно и то же число раз, — `bins=np.geomspace(price.min(), price.max(), 41)` (41 граница — 40 интервалов), затем `ax.set_xscale('log')`. В заголовке упомяните, что шкала логарифмическая.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    price = df['Price']
+    fig, ax = plt.subplots(figsize=(9, 3))
+    ax.hist(price, bins=...)
+    ax.set_xscale(...)
+    ax.set(title=..., xlabel=..., ylabel=...)
+    plt.show()
+  solution: |
+    price = df['Price']
+    fig, ax = plt.subplots(figsize=(9, 3))
+    ax.hist(price, bins=np.geomspace(price.min(), price.max(), 41))
+    ax.set_xscale('log')
+    ax.set(title='Все цены, логарифмическая шкала', xlabel='Цена, евро', ylabel='Число объявлений')
+    plt.show()
+  explanation: |
+    - `np.geomspace(начало, конец, 41)` — 41 граница, каждая в одно и то же число раз больше предыдущей; на логарифмической оси интервалы получаются одинаковой ширины.
+    - `ax.set_xscale('log')` — логарифмическая ось X: равные отрезки — равные отношения цен.
+    - На такой шкале видно все цены сразу — от 200 до 490 000 евро, — и распределение похоже на колокол.
+  hints:
+    - Границы интервалов — геометрическая прогрессия от минимальной до максимальной цены; шкалу оси включает `set_xscale`.
+    - "`bins=np.geomspace(price.min(), price.max(), 41)`; `ax.set_xscale('log')`."
+    - "`ax.set(title='Все цены, логарифмическая шкала', xlabel='Цена, евро', ylabel='Число объявлений')`."
+  tests: |
+    import numpy as np
+    ax = axes()
+    bars = [p for p in ax.patches if type(p).__name__ == 'Rectangle']
+    ensure(len(bars) > 0, 'На графике нет гистограммы.')
+    ensure(ax.get_xscale() == 'log', 'Ось X не логарифмическая: `ax.set_xscale(\'log\')`.')
+    ensure(len(bars) == 40, 'Интервалов должно быть 40 (41 граница), а у вас {0}.'.format(len(bars)))
+    edges = np.array([b.get_x() for b in bars] + [bars[-1].get_x() + bars[-1].get_width()])
+    ratios = edges[1:] / edges[:-1]
+    if np.allclose(np.diff(edges), np.diff(edges)[0], rtol=1e-6):
+        fail('Интервалы равной ширины — на логарифмической оси они искажаются. Задайте границы `np.geomspace(...)`.')
+    ensure(np.allclose(ratios, ratios[0], rtol=1e-6), 'Границы должны расти в одно и то же число раз: `np.geomspace(price.min(), price.max(), 41)`.')
+    p = ref('df')['Price']
+    ensure(np.isclose(edges[0], p.min()) and np.isclose(edges[-1], p.max()), 'Границы должны идти от минимальной до максимальной цены.')
+    exp = np.histogram(p, bins=np.geomspace(p.min(), p.max(), 41))[0]
+    same_array([b.get_height() for b in bars], exp, 'Высоты столбиков должны быть числами объявлений в интервалах.')
+    ensure('логарифм' in ax.get_title().lower(), 'Упомяните в заголовке, что шкала логарифмическая.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        price = df['Price']
+        fig, ax = plt.subplots()
+        ax.hist(price, bins=40)
+        ax.set_xscale('log')
+        ax.set(title='Цены, логарифмическая шкала', xlabel='Цена, евро', ylabel='Число')
+        plt.show()
+      expect: равной ширины
+    - code: |
+        price = df['Price']
+        fig, ax = plt.subplots()
+        ax.hist(price, bins=np.geomspace(price.min(), price.max(), 41))
+        ax.set(title='Цены, логарифмическая шкала', xlabel='Цена, евро', ylabel='Число')
+        plt.show()
+      expect: не логарифмическая
+
+- id: m4-l5-t4
+  kind: plot
+  title: Четыре распределения в области графика
+  difficulty: main
+  introduces: [hist-bins]
+  uses: [pd-isin-between, mpl-subplots]
+  statement: |
+    Получите `df_plot` — записи с ценой от 0 до 100 000, пробегом в год от 0 до 100 000, пробегом от 0 до 500 000 и годом выпуска от 1990 до 2021 (все границы включительно). Нарисуйте сетку 2 × 2 гистограмм по 40 интервалов для колонок `Price`, `Year`, `km_year`, `Distance` (в этом порядке, по строкам) с заголовком-названием колонки у каждой.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    df_plot = ...
+    fig, axes = plt.subplots(2, 2, figsize=(12, 7))
+    for ax, column in zip(axes.flat, ['Price', 'Year', 'km_year', 'Distance']):
+        ...
+    fig.tight_layout()
+    plt.show()
+  solution: |
+    df_plot = df[df['Price'].between(0, 100_000)
+                 & df['km_year'].between(0, 100_000)
+                 & df['Distance'].between(0, 500_000)
+                 & df['Year'].between(1990, 2021)]
+    fig, axes = plt.subplots(2, 2, figsize=(12, 7))
+    for ax, column in zip(axes.flat, ['Price', 'Year', 'km_year', 'Distance']):
+        ax.hist(df_plot[column], bins=40)
+        ax.set_title(column)
+    fig.tight_layout()
+    plt.show()
+  explanation: |
+    - Четыре условия `between` объединены через `&` — запись попадает в область графика, только если все четыре признака в своих диапазонах (урок 2.5).
+    - `zip(axes.flat, columns)` идёт по осям и колонкам парами; в каждой оси — гистограмма своей колонки и заголовок.
+  hints:
+    - "Четыре условия `between`, объединённые `&`; затем цикл по парам «ось, колонка»."
+    - "Внутри цикла: `ax.hist(df_plot[column], bins=40)` и `ax.set_title(column)`."
+    - "`df_plot = df[df['Price'].between(0, 100_000) & df['km_year'].between(0, 100_000) & df['Distance'].between(0, 500_000) & df['Year'].between(1990, 2021)]`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    d = var('df_plot', pd.DataFrame, 'таблицей DataFrame')
+    exp_d = ref('df_plot')
+    ensure(len(d) == len(exp_d), 'В `df_plot` должно быть {0} записей, а у вас {1}. Проверьте все четыре условия и границы.'.format(len(exp_d), len(d)))
+    fig = figures()[-1]
+    axs = plot_axes(fig)
+    ensure(len(axs) == 4, 'На рисунке должно быть 4 графика — `plt.subplots(2, 2)`, а у вас {0}.'.format(len(axs)))
+    for ax, column in zip(axs, ['Price', 'Year', 'km_year', 'Distance']):
+        bars = [b for b in ax.patches if type(b).__name__ == 'Rectangle']
+        ensure(len(bars) == 40, 'На графике {0} должно быть 40 интервалов, а у вас {1}.'.format(column, len(bars)))
+        exp = np.histogram(exp_d[column], bins=40)[0]
+        same_array([b.get_height() for b in bars], exp, 'Гистограмма {0} не совпадает: рисуйте колонку {0} из `df_plot`, графики по строкам в порядке Price, Year, km_year, Distance.'.format(column))
+        ensure(column in ax.get_title(), 'Подпишите график колонки {0}: `ax.set_title(column)`.'.format(column))
+    close(len(alt('df_plot')), len(alt_ref('df_plot')), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        df_plot = df[df['Price'].between(0, 100_000) & df['Distance'].between(0, 500_000) & df['Year'].between(1990, 2021)]
+        fig, axes = plt.subplots(2, 2)
+        for ax, column in zip(axes.flat, ['Price', 'Year', 'km_year', 'Distance']):
+            ax.hist(df_plot[column], bins=40)
+            ax.set_title(column)
+        plt.show()
+      expect: все четыре условия
+    - code: |
+        df_plot = df[df['Price'].between(0, 100_000) & df['km_year'].between(0, 100_000) & df['Distance'].between(0, 500_000) & df['Year'].between(1990, 2021)]
+        fig, axes = plt.subplots(2, 2)
+        for ax, column in zip(axes.flat, ['Price', 'Year', 'km_year', 'Distance']):
+            ax.hist(df[column], bins=40)
+            ax.set_title(column)
+        plt.show()
+      expect: из `df_plot`
+
+- id: m4-l5-t5
+  kind: quiz
+  title: Интервалы и шкала
+  difficulty: main
+  introduces: [hist-bins, log-axis]
+  uses: []
+  statement: |
+    Проверьте понимание гистограмм.
+  quiz:
+    - q: "Пробег от 0 до 500 000 км разбит на 40 интервалов. Какова ширина интервала?"
+      options:
+        - 1 250 км
+        - 12 500 км
+        - 20 000 км
+      answer: 1
+      ordered: true
+      explain: (500 000 − 0) / 40 = 12 500 км.
+    - q: "На гистограмме всех цен почти все записи попали в первый столбик. Что сделать?"
+      options:
+        - Удалить дорогие машины
+        - Обрезать диапазон (`range=`) или включить логарифмическую шкалу
+        - Уменьшить число интервалов до 5
+      answer: 1
+      explain: Редкие большие значения растягивают ось; обрезанный диапазон или логарифмическая шкала покажут основную массу.
+    - q: "На логарифмической гистограмме цены 490 000 евро выглядят «почти рядом» с остальными. Значит…"
+      options:
+        - шкала исправила выброс
+        - "значение не изменилось: шкала меняет только вид, запись нужно проверить отдельно"
+        - такие цены нормальны и проверять их не нужно
+      answer: 1
+      explain: Логарифмическая шкала — способ посмотреть на широкий диапазон, а не исправить данные.
+  hints:
+    - Ширина интервала — длина диапазона, делённая на число интервалов; шкала оси не меняет данные.
+    - "(max − min) / bins; огромный первый столбик — диапазон или логарифм; шкала меняет только вид."
+    - "Ответы: 12 500 км; обрезать диапазон или логарифм; значение не изменилось."
+
+- id: m4-l5-t6
+  kind: plot
+  title: "Сколько интервалов взять: правило Фридмана — Диакониса"
+  difficulty: star
+  introduces: [hist-bins]
+  uses: [quantiles-iqr, pd-isin-between]
+  statement: |
+    Есть правило, которое подбирает ширину интервала по данным: **правило Фридмана — Диакониса**
+
+    $$h = \frac{2 \cdot \text{IQR}}{\sqrt[3]{n}},$$
+
+    где n — число значений. Для цен **от 0 до 50 000 евро** (`p`) получите `h` и `n_bins` — число интервалов, округлённое **вверх**: `np.ceil((p.max() - p.min()) / h)`, целым числом. Нарисуйте гистограмму `p` с `n_bins` интервалами.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    p = ...
+    q1, q3 = ...
+    h = ...
+    n_bins = ...
+    print(round(h), n_bins)
+    fig, ax = plt.subplots(figsize=(9, 3))
+    ax.hist(p, bins=n_bins)
+    ax.set(title=f'Цены до 50 000 евро: {n_bins} интервалов по правилу Фридмана — Диакониса',
+           xlabel='Цена, евро', ylabel='Число объявлений')
+    plt.show()
+  solution: |
+    p = df.loc[df['Price'].between(0, 50_000), 'Price']
+    q1, q3 = p.quantile([0.25, 0.75])
+    h = 2 * (q3 - q1) / len(p) ** (1 / 3)
+    n_bins = int(np.ceil((p.max() - p.min()) / h))
+    print(round(h), n_bins)
+    fig, ax = plt.subplots(figsize=(9, 3))
+    ax.hist(p, bins=n_bins)
+    ax.set(title=f'Цены до 50 000 евро: {n_bins} интервалов по правилу Фридмана — Диакониса',
+           xlabel='Цена, евро', ylabel='Число объявлений')
+    plt.show()
+  explanation: |
+    - IQR = Q3 − Q1 (урок 1.7) — устойчивая мера разброса, поэтому правило не боится выбросов.
+    - Корень третьей степени — `** (1 / 3)`: чем больше данных, тем уже интервалы.
+    - `np.ceil` округляет вверх, `int` делает из результата целое число — его и передают в `bins`.
+    - Для цен до 50 000 евро правило предлагает интервалы около 536 евро — около 90 интервалов. В NumPy то же правило встроено: `np.histogram_bin_edges(p, bins='fd')`.
+  hints:
+    - "Сначала отберите цены в диапазоне, затем квартили и n; корень третьей степени — возведение в степень `1 / 3`."
+    - "`h = 2 * (q3 - q1) / len(p) ** (1 / 3)`; `n_bins = int(np.ceil((p.max() - p.min()) / h))`."
+    - "`p = df.loc[df['Price'].between(0, 50_000), 'Price']`; `q1, q3 = p.quantile([0.25, 0.75])`."
+  tests: |
+    import numpy as np
+    h = var('h', 'number', 'числом')
+    if abs(h - 2 * (ref('q3') - ref('q1')) / len(ref('p')) ** 0.5) < 1e-6:
+        fail('В знаменателе корень третьей степени: `len(p) ** (1 / 3)`, а не квадратный.')
+    close(h, ref('h'), 'Ширина интервала по правилу — {expected} евро, а у вас {actual}.')
+    nb = var('n_bins', int, 'целым числом')
+    if nb == int(round((ref('p').max() - ref('p').min()) / ref('h'))) and nb != ref('n_bins'):
+        fail('Число интервалов нужно округлить вверх: `np.ceil(...)`.')
+    equal(nb, ref('n_bins'), 'Интервалов должно быть {expected}, а у вас {actual}.')
+    ax = axes()
+    bars = [b for b in ax.patches if type(b).__name__ == 'Rectangle']
+    ensure(len(bars) == ref('n_bins'), 'На гистограмме должно быть `n_bins` интервалов ({0}), а у вас {1}.'.format(ref('n_bins'), len(bars)))
+    close(alt('h'), alt_ref('h'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        p = df.loc[df['Price'].between(0, 50_000), 'Price']
+        q1, q3 = p.quantile([0.25, 0.75])
+        h = 2 * (q3 - q1) / len(p) ** 0.5
+        n_bins = int(np.ceil((p.max() - p.min()) / h))
+        fig, ax = plt.subplots()
+        ax.hist(p, bins=n_bins)
+        plt.show()
+      expect: корень третьей степени
+    - code: |
+        p = df.loc[df['Price'].between(0, 50_000), 'Price']
+        q1, q3 = p.quantile([0.25, 0.75])
+        h = 2 * (q3 - q1) / len(p) ** (1 / 3)
+        n_bins = 60
+        fig, ax = plt.subplots()
+        ax.hist(p, bins=n_bins)
+        plt.show()
+      expect: Интервалов должно быть

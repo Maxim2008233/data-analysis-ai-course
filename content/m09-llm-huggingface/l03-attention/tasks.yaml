@@ -1,0 +1,472 @@
+- id: m9-l3-t1
+  title: Softmax без переполнения
+  difficulty: warmup
+  introduces: []
+  uses: [activation-function]
+  statement: |
+    Напишите функцию `softmax(s)` для одномерного массива оценок: экспонента каждой оценки, делённая на сумму экспонент. Чтобы `np.exp` не переполнялась на больших оценках, сначала вычтите из всех оценок их максимум — ответ от этого не меняется. Получите:
+
+    - `w1 = softmax(np.array([2.0, 1.0, 0.0]))`;
+    - `w2 = softmax(np.array([1000.0, 999.0, 998.0]))`.
+  prelude: |
+    import numpy as np
+  starter: |
+    def softmax(s):
+        e = ...
+        return ...
+
+    w1 = softmax(np.array([2.0, 1.0, 0.0]))
+    w2 = softmax(np.array([1000.0, 999.0, 998.0]))
+    print(w1.round(3), w2.round(3), w1.sum())
+  solution: |
+    def softmax(s):
+        e = np.exp(s - s.max())
+        return e / e.sum()
+
+    w1 = softmax(np.array([2.0, 1.0, 0.0]))
+    w2 = softmax(np.array([1000.0, 999.0, 998.0]))
+    print(w1.round(3), w2.round(3), w1.sum())
+  explanation: |
+    - Вычитание максимума не меняет ответ: e^(s − m) = e^s · e^(−m), и общий множитель e^(−m) сокращается при делении. Зато самая большая экспонента теперь e⁰ = 1, и переполнения нет.
+    - `w1` ≈ [0,665; 0,245; 0,090], и `w2` — те же числа: softmax зависит только от разностей оценок.
+    - Без вычитания `np.exp(1000)` — бесконечность, а бесконечность, делённая на бесконечность, — `nan`.
+  hints:
+    - "Сначала сдвиг: `s - s.max()`."
+    - "`e = np.exp(s - s.max())`, затем `e / e.sum()`."
+    - "Проверьте: сумма весов должна быть 1, а `w2` — совпадать с `w1`."
+  tests: |
+    import numpy as np
+    f = var('softmax')
+    ensure(callable(f), '`softmax` должна быть функцией.')
+    rng = np.random.default_rng(3)
+    for _ in range(3):
+        s = rng.normal(0, 3, size=6)
+        e = np.exp(s - s.max())
+        same_array(np.asarray(f(s), dtype=float), e / e.sum(), 'На других оценках `softmax` неверна: экспонента каждой оценки, делённая на сумму экспонент.')
+    with np.errstate(all='ignore'):
+        big = np.asarray(f(np.array([1000.0, 1001.0])), dtype=float)
+    if not np.all(np.isfinite(big)):
+        fail('На оценках [1000, 1001] вышло nan: `np.exp(1000)` переполняется. Вычтите из оценок максимум.')
+    same_array(np.asarray(var('w1'), dtype=float), ref('w1'), '`w1` — softmax оценок [2, 1, 0].')
+    same_array(np.asarray(var('w2'), dtype=float), ref('w2'), '`w2` — softmax оценок [1000, 999, 998].')
+  wrong:
+    - code: |
+        def softmax(s):
+            e = np.exp(s)
+            return e / e.sum()
+        w1 = softmax(np.array([2.0, 1.0, 0.0]))
+        with np.errstate(all='ignore'):
+            w2 = softmax(np.array([1000.0, 999.0, 998.0]))
+      expect: переполняется
+    - code: |
+        def softmax(s):
+            return np.exp(s - s.max())
+        w1 = softmax(np.array([2.0, 1.0, 0.0]))
+        w2 = softmax(np.array([1000.0, 999.0, 998.0]))
+      expect: делённая на сумму
+
+- id: m9-l3-t2
+  title: Переводчик пишет «don't»
+  difficulty: main
+  introduces: [attention]
+  uses: [vectorization]
+  statement: |
+    Продолжаем пример из урока. Переводчик написал «Why» и собирается писать «don't», его новый запрос — `q`. Напишите функцию `attend(q, K, V)`: оценки — скалярные произведения `q` с каждой строкой `K`, веса — их softmax. Функция возвращает пару: веса и контекст — взвешенную сумму строк `V`. Получите:
+
+    - `weights, context = attend(q, K, K)` — в лекции ключи и значения — одни и те же векторы слов;
+    - `focus` — слово с наибольшим весом.
+  prelude: |
+    import numpy as np
+    def softmax(s):
+        e = np.exp(s - s.max(axis=-1, keepdims=True))
+        return e / e.sum(axis=-1, keepdims=True)
+    words = ['почему', 'бы', 'тебе', 'не', 'дать']
+    K = np.array([[0.11, -1.2], [1.8, 0.2], [3.7, 0.9], [-1.3, 4.1], [2.6, 0.6]])
+    q = np.array([-0.2, 0.6])
+  starter: |
+    def attend(q, K, V):
+        scores = ...
+        w = ...
+        return w, ...
+
+    weights, context = attend(q, K, K)
+    focus = ...
+    print(weights.round(3), context.round(3), focus)
+  solution: |
+    def attend(q, K, V):
+        scores = K @ q
+        w = softmax(scores)
+        return w, w @ V
+
+    weights, context = attend(q, K, K)
+    focus = words[int(np.argmax(weights))]
+    print(weights.round(3), context.round(3), focus)
+  explanation: |
+    - Оценки: −0,74, −0,24, −0,20, 2,72 и −0,16. Самая большая — у «не», и softmax отдаёт этому слову 84 % внимания: переводчик пишет «don't».
+    - Контекст `w @ V` — взвешенная сумма строк V: (−0,72; 3,48). Это почти вектор «не» (−1,3; 4,1) с примесью остальных слов.
+    - Функция работает с любыми K и V. В самовнимании ключи и значения — разные векторы (следующее задание).
+  hints:
+    - "Оценки всех слов сразу — `K @ q`."
+    - "Веса — `softmax(scores)`, контекст — `w @ V`."
+    - "Слово с наибольшим весом — `words[int(np.argmax(weights))]`."
+  tests: |
+    import numpy as np
+    f = var('attend')
+    ensure(callable(f), '`attend` должна быть функцией.')
+    rng = np.random.default_rng(8)
+    for n, d, dv in [(4, 3, 2), (6, 5, 3)]:
+        qq, KK, VV = rng.normal(size=d), rng.normal(size=(n, d)), rng.normal(size=(n, dv))
+        res = f(qq, KK, VV)
+        ensure(isinstance(res, (tuple, list)) and len(res) == 2, '`attend` должна возвращать пару: веса и контекст.')
+        w, c = np.asarray(res[0], dtype=float), np.asarray(res[1], dtype=float)
+        s = KK @ qq
+        exp_w = np.exp(s - s.max())
+        exp_w = exp_w / exp_w.sum()
+        if w.shape == s.shape and np.allclose(w, s):
+            fail('Это оценки, а не веса: пропустите их через softmax.')
+        same_array(w, exp_w, 'На других K и q веса неверны: softmax от `K @ q`.')
+        if c.shape == (d,):
+            fail('Контекст — взвешенная сумма строк `V`, а не `K`: `w @ V`.')
+        same_array(c, exp_w @ VV, 'На других данных контекст неверен: `w @ V`.')
+    same_array(np.asarray(var('weights'), dtype=float), ref('weights'), '`weights` — веса внимания для запроса `q`.')
+    same_array(np.asarray(var('context'), dtype=float), ref('context'), '`context` — взвешенная сумма векторов слов.')
+    equal(var('focus', str, 'строкой'), ref('focus'), 'Больше всего внимания получает слово {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        def attend(q, K, V):
+            scores = K @ q
+            return scores, scores @ V
+        weights, context = attend(q, K, K)
+        focus = words[int(np.argmax(weights))]
+      expect: оценки, а не веса
+    - code: |
+        def attend(q, K, V):
+            w = softmax(K @ q)
+            return w, w @ K
+        weights, context = attend(q, K, K)
+        focus = words[int(np.argmax(weights))]
+      expect: а не `K`
+
+- id: m9-l3-t3
+  title: Самовнимание целиком
+  difficulty: main
+  introduces: []
+  uses: [attention, vectorization]
+  statement: |
+    Напишите функцию `self_attention(X, Wq, Wk, Wv)` — самовнимание фразы. `X` — векторы слов по строкам, матрицы `W` превращают их в запросы, ключи и значения. Функция возвращает пару: матрицу весов `A` (строка — веса одного слова, в сумме 1) и выход `A @ V`. Оценки делите на √d, где d — длина векторов-ключей. Получите:
+
+    - `A, out = self_attention(X, Wq, Wk, Wv)` для фразы из подготовки;
+    - `strongest` — список: для каждого слова фразы — слово, на которое оно смотрит сильнее всего.
+  prelude: |
+    import numpy as np
+    def softmax(s):
+        e = np.exp(s - s.max(axis=-1, keepdims=True))
+        return e / e.sum(axis=-1, keepdims=True)
+    rng = np.random.default_rng(42)
+    sentence = ['модель', 'смотрит', 'на', 'все', 'слова']
+    X = rng.normal(size=(5, 6))
+    Wq, Wk, Wv = (rng.normal(size=(6, 6)) for _ in range(3))
+  starter: |
+    def self_attention(X, Wq, Wk, Wv):
+        Q, K, V = ..., ..., ...
+        d = K.shape[1]
+        A = ...
+        return A, A @ V
+
+    A, out = self_attention(X, Wq, Wk, Wv)
+    strongest = ...
+    print(np.round(A, 2))
+    print(strongest)
+  solution: |
+    def self_attention(X, Wq, Wk, Wv):
+        Q, K, V = X @ Wq, X @ Wk, X @ Wv
+        d = K.shape[1]
+        A = softmax(Q @ K.T / np.sqrt(d))
+        return A, A @ V
+
+    A, out = self_attention(X, Wq, Wk, Wv)
+    strongest = [sentence[j] for j in A.argmax(axis=1)]
+    print(np.round(A, 2))
+    print(strongest)
+  explanation: |
+    - `Q @ K.T` — оценки всех пар слов сразу: элемент (i, j) — скалярное произведение запроса слова i и ключа слова j. Softmax в функции из подготовки работает по последней оси, то есть по строкам.
+    - Сильнее всего слова смотрят на «все», «модель», «модель», «модель» и «на». Матрицы W случайные, поэтому смысла в этой картине нет: в настоящей модели W подбирает обучение.
+    - Деление на √6 ≈ 2,45 смягчает веса: без него первое слово отдало бы одному слову 98 % внимания, с делением — 82 %.
+  hints:
+    - "Запросы, ключи и значения — `X @ Wq`, `X @ Wk`, `X @ Wv`."
+    - "Веса — `softmax(Q @ K.T / np.sqrt(d))`."
+    - "Номер самого сильного слова в каждой строке — `A.argmax(axis=1)`."
+  tests: |
+    import numpy as np
+    def sm(s):
+        e = np.exp(s - s.max(axis=-1, keepdims=True))
+        return e / e.sum(axis=-1, keepdims=True)
+    f = var('self_attention')
+    ensure(callable(f), '`self_attention` должна быть функцией.')
+    rng = np.random.default_rng(5)
+    for n, d in [(3, 4), (7, 5)]:
+        XX = rng.normal(size=(n, d))
+        W = [rng.normal(size=(d, d)) for _ in range(3)]
+        res = f(XX, *W)
+        ensure(isinstance(res, (tuple, list)) and len(res) == 2, '`self_attention` должна возвращать пару: веса `A` и выход.')
+        AA = np.asarray(res[0], dtype=float)
+        S = (XX @ W[0]) @ (XX @ W[1]).T
+        ensure(AA.shape == (n, n), 'Для фразы из {0} слов матрица весов — {0} × {0}, а у вас {1}.'.format(n, AA.shape))
+        if not np.allclose(AA.sum(axis=1), 1):
+            fail('Строки `A` должны давать в сумме 1: softmax — по строкам (последняя ось).')
+        if np.allclose(AA, sm(S)):
+            fail('Оценки забыли разделить на √d: `Q @ K.T / np.sqrt(d)`.')
+        exp_A = sm(S / np.sqrt(d))
+        same_array(AA, exp_A, 'На другой фразе веса неверны: `softmax(Q @ K.T / np.sqrt(d))`.')
+        same_array(np.asarray(res[1], dtype=float), exp_A @ (XX @ W[2]), 'На другой фразе выход неверен: `A @ V`.')
+    same_array(np.asarray(var('A'), dtype=float), ref('A'), '`A` — веса самовнимания для фразы из подготовки.')
+    equal(list(var('strongest', list, 'списком')), list(ref('strongest')), 'Сильнее всего слова смотрят на {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        def self_attention(X, Wq, Wk, Wv):
+            Q, K, V = X @ Wq, X @ Wk, X @ Wv
+            A = softmax(Q @ K.T)
+            return A, A @ V
+        A, out = self_attention(X, Wq, Wk, Wv)
+        strongest = [sentence[j] for j in A.argmax(axis=1)]
+      expect: √d
+    - code: |
+        def self_attention(X, Wq, Wk, Wv):
+            Q, K, V = X @ Wq, X @ Wk, X @ Wv
+            A = softmax((Q @ K.T / np.sqrt(K.shape[1])).T).T
+            return A, A @ V
+        A, out = self_attention(X, Wq, Wk, Wv)
+        strongest = [sentence[j] for j in A.argmax(axis=1)]
+      expect: по строкам
+
+- id: m9-l3-t4
+  title: Маска будущего
+  difficulty: main
+  introduces: [transformer]
+  uses: [attention]
+  statement: |
+    В декодировщике GPT слово не должно видеть следующих слов. Напишите функцию `causal_attention(X, Wq, Wk, Wv)` — то же самовнимание, но перед softmax оценки над диагональю (слова правее) заменены на `-np.inf`. Функция возвращает пару: веса и выход. Для фразы из подготовки получите:
+
+    - `A_causal, out_causal = causal_attention(X, Wq, Wk, Wv)`;
+    - `same_last` — совпадает ли выход последнего слова с выходом без маски `out_full[-1]` (`True` или `False`);
+    - `visible` — список: сколько слов видит каждое слово, то есть сколько в его строке ненулевых весов.
+  prelude: |
+    import numpy as np
+    def softmax(s):
+        e = np.exp(s - s.max(axis=-1, keepdims=True))
+        return e / e.sum(axis=-1, keepdims=True)
+    rng = np.random.default_rng(42)
+    sentence = ['модель', 'смотрит', 'на', 'все', 'слова']
+    X = rng.normal(size=(5, 6))
+    Wq, Wk, Wv = (rng.normal(size=(6, 6)) for _ in range(3))
+    out_full = softmax((X @ Wq) @ (X @ Wk).T / np.sqrt(6)) @ (X @ Wv)   # выход без маски
+  starter: |
+    def causal_attention(X, Wq, Wk, Wv):
+        Q, K, V = X @ Wq, X @ Wk, X @ Wv
+        scores = Q @ K.T / np.sqrt(K.shape[1])
+        future = ...
+        A = ...
+        return A, A @ V
+
+    A_causal, out_causal = causal_attention(X, Wq, Wk, Wv)
+    same_last = ...
+    visible = ...
+    print(np.round(A_causal, 2))
+    print(same_last, visible)
+  solution: |
+    def causal_attention(X, Wq, Wk, Wv):
+        Q, K, V = X @ Wq, X @ Wk, X @ Wv
+        scores = Q @ K.T / np.sqrt(K.shape[1])
+        future = np.triu(np.ones(scores.shape, dtype=bool), k=1)
+        A = softmax(np.where(future, -np.inf, scores))
+        return A, A @ V
+
+    A_causal, out_causal = causal_attention(X, Wq, Wk, Wv)
+    same_last = bool(np.allclose(out_causal[-1], out_full[-1]))
+    visible = [int(n) for n in (A_causal > 0).sum(axis=1)]
+    print(np.round(A_causal, 2))
+    print(same_last, visible)
+  explanation: |
+    - `np.triu(..., k=1)` — маска над диагональю: слово i не видит слов с номерами больше i. После softmax их веса ровно 0, потому что e^−∞ = 0.
+    - Слова видят 1, 2, 3, 4 и 5 слов. Первое слово смотрит только на себя (вес 1), последнее — на всю фразу, поэтому его выход тот же, что без маски: `same_last = True`.
+    - Так устроены декодировщики вроде GPT: при обучении каждое слово предсказывает следующее, не подглядывая в него.
+  hints:
+    - "Маска будущего — `np.triu(np.ones(scores.shape, dtype=bool), k=1)`."
+    - "Оценки с маской — `np.where(future, -np.inf, scores)`, затем softmax."
+    - "Ненулевые веса в строках — `(A_causal > 0).sum(axis=1)`; сравнение выходов — `np.allclose`."
+  tests: |
+    import numpy as np
+    def sm(s):
+        e = np.exp(s - s.max(axis=-1, keepdims=True))
+        return e / e.sum(axis=-1, keepdims=True)
+    f = var('causal_attention')
+    ensure(callable(f), '`causal_attention` должна быть функцией.')
+    rng = np.random.default_rng(9)
+    for n, d in [(4, 3), (6, 4)]:
+        XX = rng.normal(size=(n, d))
+        W = [rng.normal(size=(d, d)) for _ in range(3)]
+        with np.errstate(all='ignore'):
+            res = f(XX, *W)
+        ensure(isinstance(res, (tuple, list)) and len(res) == 2, '`causal_attention` должна возвращать пару: веса и выход.')
+        AA = np.asarray(res[0], dtype=float)
+        S = (XX @ W[0]) @ (XX @ W[1]).T / np.sqrt(d)
+        ensure(AA.shape == (n, n), 'Для фразы из {0} слов матрица весов — {0} × {0}.'.format(n))
+        if np.isnan(AA).any():
+            fail('В весах nan: маска закрыла и диагональ. Слово должно видеть само себя — маска строго над диагональю, `np.triu(..., k=1)`.')
+        if np.abs(np.triu(AA, k=1)).max() > 1e-12:
+            fail('Над диагональю остались ненулевые веса: будущим словам ставят оценку `-np.inf` (не 0) до softmax.')
+        if not np.allclose(AA.sum(axis=1), 1):
+            fail('Строки весов не дают в сумме 1: маску ставят на оценки до softmax, а не обнуляют веса после.')
+        fut = np.triu(np.ones((n, n), dtype=bool), k=1)
+        exp_A = sm(np.where(fut, -np.inf, S))
+        same_array(AA, exp_A, 'На другой фразе веса с маской неверны.')
+        same_array(np.asarray(res[1], dtype=float), exp_A @ (XX @ W[2]), 'На другой фразе выход неверен: `A @ V`.')
+    same_array(np.asarray(var('A_causal'), dtype=float), ref('A_causal'), '`A_causal` — веса с маской для фразы из подготовки.')
+    sl = var('same_last')
+    ensure(isinstance(sl, (bool, np.bool_)), '`same_last` — `True` или `False`.')
+    equal(bool(sl), bool(ref('same_last')), 'Последнее слово видит всю фразу и с маской: ожидалось {expected}, а у вас {actual}.')
+    equal([int(x) for x in var('visible', list, 'списком')], list(ref('visible')), 'Слова видят {expected} слов, а у вас {actual}.')
+  wrong:
+    - code: |
+        def causal_attention(X, Wq, Wk, Wv):
+            Q, K, V = X @ Wq, X @ Wk, X @ Wv
+            scores = Q @ K.T / np.sqrt(K.shape[1])
+            future = np.triu(np.ones(scores.shape, dtype=bool), k=1)
+            A = softmax(np.where(future, 0, scores))
+            return A, A @ V
+        A_causal, out_causal = causal_attention(X, Wq, Wk, Wv)
+        same_last = bool(np.allclose(out_causal[-1], out_full[-1]))
+        visible = [int(n) for n in (A_causal > 0).sum(axis=1)]
+      expect: (не 0)
+    - code: |
+        def causal_attention(X, Wq, Wk, Wv):
+            Q, K, V = X @ Wq, X @ Wk, X @ Wv
+            scores = Q @ K.T / np.sqrt(K.shape[1])
+            future = np.triu(np.ones(scores.shape, dtype=bool), k=1)
+            A = softmax(scores) * ~future
+            return A, A @ V
+        A_causal, out_causal = causal_attention(X, Wq, Wk, Wv)
+        same_last = bool(np.allclose(out_causal[-1], out_full[-1]))
+        visible = [int(n) for n in (A_causal > 0).sum(axis=1)]
+      expect: обнуляют веса после
+    - code: |
+        def causal_attention(X, Wq, Wk, Wv):
+            Q, K, V = X @ Wq, X @ Wk, X @ Wv
+            scores = Q @ K.T / np.sqrt(K.shape[1])
+            future = np.triu(np.ones(scores.shape, dtype=bool), k=0)
+            with np.errstate(all='ignore'):
+                A = softmax(np.where(future, -np.inf, scores))
+            return A, A @ V
+        A_causal, out_causal = causal_attention(X, Wq, Wk, Wv)
+        same_last = bool(np.allclose(out_causal[-1], out_full[-1]))
+        visible = [int(n) for n in (A_causal > 0).sum(axis=1)]
+      expect: само себя
+
+- id: m9-l3-t5
+  title: Головы-специалисты DistilBERT
+  difficulty: star
+  introduces: []
+  uses: [attention, transformer]
+  statement: |
+    `attn` — настоящие веса внимания DistilBERT для фразы `tokens` из 16 токенов: `attn[l, h]` — матрица 16 × 16 головы `h` слоя `l` (номера в массиве — с нуля). Строка i показывает, на какие токены смотрит токен i.
+
+    Напишите функцию `share(A, offset)` — долю настоящих токенов, которые сильнее всего смотрят на токен со сдвигом `offset`: строка i — на токен i + offset. Настоящие токены — строки с 1 по T − 2, без [CLS] и [SEP]. Получите:
+
+    - `prev_share` и `next_share` — массивы 6 × 12: `share` каждой головы для сдвигов −1 (предыдущий токен) и +1 (следующий);
+    - `n_next` — сколько голов смотрят на следующий токен у 90 % настоящих токенов или больше;
+    - `best_prev` — голову, которая чаще всех смотрит на предыдущий токен: кортеж (слой, голова) в нумерации с 1, как в уроке.
+  prelude: |
+    import numpy as np
+    with np.load('distilbert_attention.npz') as data:
+        tokens = [str(t) for t in data['tokens']]
+        attn = data['attn']
+  starter: |
+    def share(A, offset):
+        T = A.shape[0]
+        rows = np.arange(1, T - 1)
+        target = ...
+        return ...
+
+    prev_share = np.array([[share(attn[l, h], -1) for h in range(12)] for l in range(6)])
+    next_share = ...
+    n_next = ...
+    l, h = np.unravel_index(prev_share.argmax(), prev_share.shape)
+    best_prev = ...
+    print(next_share.round(2))
+    print(n_next, best_prev)
+  solution: |
+    def share(A, offset):
+        T = A.shape[0]
+        rows = np.arange(1, T - 1)
+        target = A[rows].argmax(axis=1)
+        return (target == rows + offset).mean()
+
+    prev_share = np.array([[share(attn[l, h], -1) for h in range(12)] for l in range(6)])
+    next_share = np.array([[share(attn[l, h], 1) for h in range(12)] for l in range(6)])
+    n_next = int((next_share >= 0.9).sum())
+    l, h = np.unravel_index(prev_share.argmax(), prev_share.shape)
+    best_prev = (int(l) + 1, int(h) + 1)
+    print(next_share.round(2))
+    print(n_next, best_prev)
+  explanation: |
+    - `A[rows].argmax(axis=1)` — для каждого настоящего токена номер токена, на который он смотрит сильнее всего. Сравнение с `rows + offset` и `.mean()` дают долю.
+    - Три головы смотрят на следующий токен: головы 1 и 10 второго слоя — у всех 14 настоящих токенов, голова 11 первого слоя — у 13. Чаще всех на предыдущий токен смотрит голова 3 первого слоя: у 12 токенов из 14. Так первые слои собирают сведения о соседях каждого слова.
+    - В массиве слои и головы нумеруются с нуля, а в тексте урока — с единицы, отсюда `+ 1`.
+  hints:
+    - "Номер самого сильного токена для каждой настоящей строки — `A[rows].argmax(axis=1)`."
+    - "Доля совпадений — `(target == rows + offset).mean()`."
+    - "Голов с долей не меньше 0,9 — `(next_share >= 0.9).sum()`; номера для ответа — `(int(l) + 1, int(h) + 1)`."
+  tests: |
+    import numpy as np
+    f = var('share')
+    ensure(callable(f), '`share` должна быть функцией.')
+    rng = np.random.default_rng(13)
+    for T, off, k in [(6, 1, 3), (9, -1, 5), (8, 2, 4)]:
+        M = rng.random((T, T))
+        rows = np.arange(1, T - 1)
+        ok = [i for i in rows if 0 <= i + off < T]
+        for i in rng.choice(ok, size=k, replace=False):
+            M[i, i + off] += 5
+        for i in (0, T - 1):
+            if 0 <= i + off < T:
+                M[i, i + off] += 5
+        M = M / M.sum(axis=1, keepdims=True)
+        exp = float((M[rows].argmax(axis=1) == rows + off).mean())
+        got = float(f(M, off))
+        every = float((M.argmax(axis=1) == np.arange(T) + off).mean())
+        if abs(got - exp) > 1e-9 and abs(got - every) < 1e-9:
+            fail('Считайте только настоящие токены — строки с 1 по T − 2, без [CLS] и [SEP].')
+        close(got, exp, 'На другой матрице (T = ' + str(T) + ', сдвиг ' + str(off) + ') доля {expected}, а у вас {actual}.')
+    same_array(np.asarray(var('next_share'), dtype=float), ref('next_share'), '`next_share` — доли «на следующий токен» для всех 6 × 12 голов.')
+    same_array(np.asarray(var('prev_share'), dtype=float), ref('prev_share'), '`prev_share` — доли «на предыдущий токен» для всех 6 × 12 голов.')
+    equal(int(var('n_next', 'number', 'числом')), int(ref('n_next')), 'Голов, которые смотрят на следующий токен у 90 % токенов или больше, — {expected}, а у вас {actual}.')
+    bp = tuple(int(x) for x in var('best_prev'))
+    if bp == tuple(x - 1 for x in ref('best_prev')):
+        fail('В ответе слои и головы нумеруются с 1, как в уроке: прибавьте 1 к номерам из массива.')
+    equal(bp, tuple(ref('best_prev')), 'Чаще всех на предыдущий токен смотрит голова {expected}, а у вас {actual}.')
+  files: [distilbert_attention.npz]
+  wrong:
+    - code: |
+        def share(A, offset):
+            T = A.shape[0]
+            rows = np.arange(T)
+            target = A[rows].argmax(axis=1)
+            return (target == rows + offset).mean()
+        prev_share = np.array([[share(attn[l, h], -1) for h in range(12)] for l in range(6)])
+        next_share = np.array([[share(attn[l, h], 1) for h in range(12)] for l in range(6)])
+        n_next = int((next_share >= 0.9).sum())
+        l, h = np.unravel_index(prev_share.argmax(), prev_share.shape)
+        best_prev = (int(l) + 1, int(h) + 1)
+      expect: настоящие токены
+    - code: |
+        def share(A, offset):
+            T = A.shape[0]
+            rows = np.arange(1, T - 1)
+            target = A[rows].argmax(axis=1)
+            return (target == rows + offset).mean()
+        prev_share = np.array([[share(attn[l, h], -1) for h in range(12)] for l in range(6)])
+        next_share = np.array([[share(attn[l, h], 1) for h in range(12)] for l in range(6)])
+        n_next = int((next_share >= 0.9).sum())
+        l, h = np.unravel_index(prev_share.argmax(), prev_share.shape)
+        best_prev = (int(l), int(h))
+      expect: нумеруются с 1

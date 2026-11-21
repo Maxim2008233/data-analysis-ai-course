@@ -1,0 +1,385 @@
+- id: m5-l3-t1
+  kind: quiz
+  title: Переобучение, недообучение или норма
+  difficulty: warmup
+  introduces: [overfitting]
+  uses: []
+  statement: |
+    По ошибкам на обучающей и валидационной выборке определите состояние модели. Ориентир — модель «одно число для всех» даёт MSE 1,0.
+  quiz:
+    - q: "MSE train = 0,02, MSE validation = 0,90."
+      options:
+        - Переобучение
+        - Недообучение
+        - Хорошая модель
+      answer: 0
+      explain: На train почти идеально, на новых данных почти как ориентир — модель выучила шум.
+    - q: "MSE train = 0,95, MSE validation = 0,97."
+      options:
+        - Переобучение
+        - Недообучение
+        - Хорошая модель
+      answer: 1
+      explain: Ошибки близки, но почти такие же, как у ориентира, — модель слишком проста.
+    - q: "MSE train = 0,10, MSE validation = 0,12."
+      options:
+        - Переобучение
+        - Недообучение
+        - Хорошая модель
+      answer: 2
+      explain: Ошибки маленькие и близкие — модель обобщает.
+  hints:
+    - Сравните ошибку на train с ошибкой на validation и обе — с ориентиром 1,0.
+    - "Большой разрыв — переобучение; обе ошибки большие — недообучение; обе маленькие и близкие — хорошо."
+    - "Ответы: переобучение; недообучение; хорошая модель."
+
+- id: m5-l3-t2
+  title: Ошибки на обучающих и новых данных
+  difficulty: main
+  introduces: [overfitting]
+  uses: [loss-mse, param-model]
+  statement: |
+    Для многочленов степеней `degrees = [1, 3, 9]` (подбор — `Polynomial.fit(x_train, y_train, степень)`) получите массивы `mse_train` и `mse_test` (MSE на обучающих и на новых точках, в порядке степеней), `gap` — их разность `mse_test - mse_train` и `most_overfit` — степень с наибольшим разрывом.
+  prelude: |
+    import numpy as np
+    from numpy.polynomial import Polynomial
+    rng = np.random.default_rng(0)
+    x_train = np.sort(rng.uniform(0, 1, 15))
+    y_train = np.sin(2 * np.pi * x_train) + rng.normal(0, 0.3, 15)
+    x_test = rng.uniform(x_train.min(), x_train.max(), 300)
+    y_test = np.sin(2 * np.pi * x_test) + rng.normal(0, 0.3, 300)
+  starter: |
+    degrees = [1, 3, 9]
+    mse_train, mse_test = [], []
+    for degree in degrees:
+        model = ...
+        mse_train.append(...)
+        mse_test.append(...)
+    mse_train, mse_test = np.array(mse_train), np.array(mse_test)
+    gap = ...
+    most_overfit = ...
+    print(mse_train.round(3), mse_test.round(3), most_overfit)
+  solution: |
+    degrees = [1, 3, 9]
+    mse_train, mse_test = [], []
+    for degree in degrees:
+        model = Polynomial.fit(x_train, y_train, degree)
+        mse_train.append(((model(x_train) - y_train) ** 2).mean())
+        mse_test.append(((model(x_test) - y_test) ** 2).mean())
+    mse_train, mse_test = np.array(mse_train), np.array(mse_test)
+    gap = mse_test - mse_train
+    most_overfit = degrees[int(gap.argmax())]
+    print(mse_train.round(3), mse_test.round(3), most_overfit)
+  explanation: |
+    - Модель обучается только на `x_train`; её проверяют и на тех же точках, и на новых.
+    - Ошибка на train падает с ростом степени, а на новых данных у степени 9 снова растёт.
+    - Наибольший разрыв — у степени 9: она переобучена. Наименьшая ошибка на новых данных — у степени 3.
+  hints:
+    - "В цикле: обучите многочлен на train, затем посчитайте MSE на train и на test."
+    - "`model = Polynomial.fit(x_train, y_train, degree)`; MSE — `((model(x) - y) ** 2).mean()`."
+    - "`gap = mse_test - mse_train`; `most_overfit = degrees[int(gap.argmax())]`."
+  tests: |
+    import numpy as np
+    tr = np.asarray(var('mse_train', None, 'массивом'))
+    te = np.asarray(var('mse_test', None, 'массивом'))
+    if np.allclose(tr, ref('mse_test')) and np.allclose(te, ref('mse_train')):
+        fail('`mse_train` и `mse_test` перепутаны местами.')
+    same_array(tr, ref('mse_train'), 'MSE на обучающих точках не совпадает: модель обучается на `x_train`, ошибка — на `x_train`.')
+    same_array(te, ref('mse_test'), 'MSE на новых точках не совпадает: та же модель, ошибка на `x_test`, `y_test`.')
+    same_array(np.asarray(var('gap', None, 'массивом')), ref('gap'), 'Разрыв — `mse_test - mse_train`.')
+    equal(var('most_overfit', 'number', 'числом'), ref('most_overfit'), 'Наибольший разрыв у степени {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        degrees = [1, 3, 9]
+        mse_train, mse_test = [], []
+        for degree in degrees:
+            model = Polynomial.fit(x_test, y_test, degree)
+            mse_train.append(((model(x_train) - y_train) ** 2).mean())
+            mse_test.append(((model(x_test) - y_test) ** 2).mean())
+        mse_train, mse_test = np.array(mse_train), np.array(mse_test)
+        gap = mse_test - mse_train
+        most_overfit = degrees[int(gap.argmax())]
+      expect: обучается на `x_train`
+    - code: |
+        degrees = [1, 3, 9]
+        mse_train, mse_test = [], []
+        for degree in degrees:
+            model = Polynomial.fit(x_train, y_train, degree)
+            mse_train.append(((model(x_train) - y_train) ** 2).mean())
+            mse_test.append(((model(x_test) - y_test) ** 2).mean())
+        mse_train, mse_test = np.array(mse_train), np.array(mse_test)
+        gap = mse_test - mse_train
+        most_overfit = int(gap.argmax())
+      expect: Наибольший разрыв
+
+- id: m5-l3-t3
+  title: Степень по валидации, оценка по тесту
+  difficulty: main
+  introduces: [train-valid-test]
+  uses: [loss-mse, param-model]
+  statement: |
+    Данные уже разделены на три части: `x_train`/`y_train`, `x_valid`/`y_valid`, `x_test`/`y_test`. Для степеней 0–9 обучите многочлен на train и получите `valid_mse` — массив MSE на validation. Выберите `best_degree` с наименьшей валидационной ошибкой и только для него посчитайте `test_mse` — итоговую ошибку на тесте.
+  prelude: |
+    import numpy as np
+    from numpy.polynomial import Polynomial
+    rng = np.random.default_rng(5)
+    def make(n):
+        x = rng.uniform(0, 1, n)
+        return x, np.sin(2 * np.pi * x) + rng.normal(0, 0.3, n)
+    x_train, y_train = make(20)
+    x_valid, y_valid = make(20)
+    x_test, y_test = make(200)
+  starter: |
+    degrees = range(10)
+    valid_mse = np.array([... for d in degrees])
+    best_degree = ...
+    best_model = ...
+    test_mse = ...
+    print(valid_mse.round(3), best_degree, round(test_mse, 3))
+  solution: |
+    degrees = range(10)
+    valid_mse = np.array([((Polynomial.fit(x_train, y_train, d)(x_valid) - y_valid) ** 2).mean() for d in degrees])
+    best_degree = int(valid_mse.argmin())
+    best_model = Polynomial.fit(x_train, y_train, best_degree)
+    test_mse = ((best_model(x_test) - y_test) ** 2).mean()
+    print(valid_mse.round(3), best_degree, round(test_mse, 3))
+  explanation: |
+    - Каждую модель обучаем **только на train**, сравниваем на validation — так выбираем сложность.
+    - Тест открываем один раз — для уже выбранной модели. Его ошибка — честная оценка того, как модель будет работать на новых данных.
+    - Ошибка на тесте немного больше лучшей валидационной: мы выбирали «самую удачную» на validation, и её оценка чуть оптимистична.
+  hints:
+    - "Для степени d: обучить на train, MSE на validation; номер наименьшей ошибки — лучшая степень."
+    - "`((Polynomial.fit(x_train, y_train, d)(x_valid) - y_valid) ** 2).mean()` внутри списка; `best_degree = int(valid_mse.argmin())`."
+    - "`best_model = Polynomial.fit(x_train, y_train, best_degree)`; `test_mse = ((best_model(x_test) - y_test) ** 2).mean()`."
+  tests: |
+    import numpy as np
+    from numpy.polynomial import Polynomial
+    v = var('valid_mse', np.ndarray, 'массивом NumPy')
+    ensure(len(v) == 10, 'Нужно 10 значений — по степеням 0–9.')
+    same_array(v, ref('valid_mse'), 'Валидационные ошибки не совпадают: обучение на train, MSE на validation.')
+    b = var('best_degree', 'number', 'числом')
+    if b == int(np.argmin([((Polynomial.fit(ref('x_train'), ref('y_train'), d)(ref('x_test')) - ref('y_test')) ** 2).mean() for d in range(10)])) and b != ref('best_degree'):
+        fail('Степень выбрана по тестовой выборке. Выбирать нужно по validation, test — только для итоговой оценки.')
+    equal(int(b), int(ref('best_degree')), 'Лучшая по валидации степень — {expected}, а у вас {actual}.')
+    close(var('test_mse', 'number', 'числом'), ref('test_mse'), 'Итоговая ошибка на тесте — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        degrees = range(10)
+        valid_mse = np.array([((Polynomial.fit(x_train, y_train, d)(x_train) - y_train) ** 2).mean() for d in degrees])
+        best_degree = int(valid_mse.argmin())
+        best_model = Polynomial.fit(x_train, y_train, best_degree)
+        test_mse = ((best_model(x_test) - y_test) ** 2).mean()
+      expect: MSE на validation
+    - code: |
+        degrees = range(10)
+        valid_mse = np.array([((Polynomial.fit(x_train, y_train, d)(x_valid) - y_valid) ** 2).mean() for d in degrees])
+        best_degree = int(valid_mse.argmin())
+        best_model = Polynomial.fit(x_train, y_train, best_degree)
+        test_mse = ((best_model(x_valid) - y_valid) ** 2).mean()
+      expect: на тесте
+
+- id: m5-l3-t4
+  kind: quiz
+  title: Зачем три выборки
+  difficulty: main
+  introduces: [train-valid-test]
+  uses: []
+  statement: |
+    Выберите верное утверждение.
+  quiz:
+    - q: Зачем нужна валидационная выборка, если есть тестовая?
+      options:
+        - Чтобы выбирать модель и настройки, не «тратя» тест
+        - Чтобы обучать модель на большем числе данных
+        - Она не нужна
+      answer: 0
+      explain: Каждое сравнение на тесте делает его оценку оптимистичнее; выбор делают на validation.
+    - q: Аналитик перепробовал 50 моделей и выбрал лучшую по тестовой выборке. Что не так?
+      options:
+        - Ничего
+        - Тестовая оценка лучшей модели оптимистична — тест превратился в валидацию
+        - Нужно было перепробовать 100 моделей
+      answer: 1
+      explain: Из 50 попыток какая-то случайно окажется удачной именно на этих данных.
+    - q: Одна и та же машина продаётся двумя почти одинаковыми объявлениями, и они попали в train и в test. К чему это приведёт?
+      options:
+        - К завышенной оценке качества — модель «проверяется» на почти выученном примере
+        - Ни к чему
+        - Модель станет точнее на новых данных
+      answer: 0
+      explain: Это утечка через повторы; поэтому повторы ищут до разделения (урок 2.6).
+  hints:
+    - Вспомните роли выборок и почему test открывают один раз.
+    - "Validation — выбор; много попыток на test — оптимистичная оценка; повторы в разных частях — утечка."
+    - "Ответы: выбирать, не тратя тест; оценка оптимистична; завышенная оценка."
+
+- id: m5-l3-t5
+  kind: plot
+  title: Кривая ошибок по сложности
+  difficulty: main
+  introduces: [overfitting]
+  uses: [loss-mse, mpl-fig-ax]
+  statement: |
+    Для степеней 0–9 обучите многочлены на train и нарисуйте на одних осях две линии с маркерами: MSE на train (подпись `train`) и на validation (подпись `validation`). Ось Y — логарифмическая; добавьте легенду, заголовок и подписи осей.
+  prelude: |
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from numpy.polynomial import Polynomial
+    rng = np.random.default_rng(5)
+    def make(n):
+        x = rng.uniform(0, 1, n)
+        return x, np.sin(2 * np.pi * x) + rng.normal(0, 0.3, n)
+    x_train, y_train = make(20)
+    x_valid, y_valid = make(20)
+  starter: |
+    degrees = list(range(10))
+    train_mse, valid_mse = [], []
+    for d in degrees:
+        model = Polynomial.fit(x_train, y_train, d)
+        train_mse.append(...)
+        valid_mse.append(...)
+    fig, ax = plt.subplots(figsize=(8, 3.5))
+    ...
+    plt.show()
+  solution: |
+    degrees = list(range(10))
+    train_mse, valid_mse = [], []
+    for d in degrees:
+        model = Polynomial.fit(x_train, y_train, d)
+        train_mse.append(((model(x_train) - y_train) ** 2).mean())
+        valid_mse.append(((model(x_valid) - y_valid) ** 2).mean())
+    fig, ax = plt.subplots(figsize=(8, 3.5))
+    ax.plot(degrees, train_mse, 'o-', label='train')
+    ax.plot(degrees, valid_mse, 'o-', label='validation')
+    ax.set(title='Ошибка и сложность модели', xlabel='Степень многочлена', ylabel='MSE', yscale='log')
+    ax.legend()
+    plt.show()
+  explanation: |
+    - Две линии на одних осях (урок 4.2): ошибка на train монотонно падает, на validation — падает, а затем растёт.
+    - Логарифмическая шкала (урок 4.5) показывает и маленькие, и большие ошибки.
+    - Лучшая степень — минимум линии validation, а не train.
+  hints:
+    - "В цикле добавьте MSE на train и на validation; затем две линии `ax.plot` с `label`."
+    - "`ax.plot(degrees, train_mse, 'o-', label='train')` и то же для `valid_mse` с `label='validation'`."
+    - "`ax.set(..., yscale='log')`; `ax.legend()`."
+  tests: |
+    import numpy as np
+    ax = axes()
+    lines = {l.get_label(): l for l in ax.get_lines()}
+    ensure('train' in lines and 'validation' in lines, 'Подпишите линии `train` и `validation` (`label=...`).')
+    same_array(lines['train'].get_ydata(), ref('train_mse'), 'Линия train должна показывать MSE на обучающих точках.')
+    same_array(lines['validation'].get_ydata(), ref('valid_mse'), 'Линия validation должна показывать MSE на валидационных точках.')
+    ensure(lines['train'].get_marker() not in (None, 'None', ''), 'Добавьте маркеры: `\'o-\'`.')
+    ensure(ax.get_yscale() == 'log', 'Сделайте ось Y логарифмической: `yscale=\'log\'`.')
+    ensure(ax.get_legend() is not None, 'Добавьте легенду: `ax.legend()`.')
+    ensure(ax.get_title().strip() != '' and ax.get_xlabel().strip() != '' and ax.get_ylabel().strip() != '', 'Добавьте заголовок и подписи осей.')
+  wrong:
+    - code: |
+        degrees = list(range(10))
+        train_mse, valid_mse = [], []
+        for d in degrees:
+            model = Polynomial.fit(x_train, y_train, d)
+            train_mse.append(((model(x_train) - y_train) ** 2).mean())
+            valid_mse.append(((model(x_valid) - y_valid) ** 2).mean())
+        fig, ax = plt.subplots()
+        ax.plot(degrees, train_mse, 'o-', label='train')
+        ax.plot(degrees, valid_mse, 'o-', label='validation')
+        ax.set(title='Ошибка', xlabel='Степень', ylabel='MSE')
+        ax.legend()
+        plt.show()
+      expect: логарифмической
+    - code: |
+        degrees = list(range(10))
+        train_mse, valid_mse = [], []
+        for d in degrees:
+            model = Polynomial.fit(x_train, y_train, d)
+            train_mse.append(((model(x_train) - y_train) ** 2).mean())
+            valid_mse.append(((model(x_valid) - y_valid) ** 2).mean())
+        fig, ax = plt.subplots()
+        ax.plot(degrees, train_mse, 'o-')
+        ax.plot(degrees, valid_mse, 'o-')
+        ax.set(title='Ошибка', xlabel='Степень', ylabel='MSE', yscale='log')
+        plt.show()
+      expect: Подпишите линии
+
+- id: m5-l3-t6
+  title: Больше данных — меньше переобучение
+  difficulty: star
+  introduces: [overfitting]
+  uses: [loss-mse, rng-sample, py-functions]
+  statement: |
+    Переобучение зависит не только от сложности модели, но и от объёма данных. Функция `make(n, seed)` возвращает `n` обучающих точек. Для `n` из `[15, 60, 240]` обучите многочлен **9-й** степени и получите массивы `train_err` и `test_err` (MSE на обучающих точках и на общей тестовой выборке `x_test`, `y_test` — только в пределах диапазона обучающих x) и `gaps` = `test_err - train_err`. Убедитесь, что разрыв уменьшается.
+  prelude: |
+    import numpy as np
+    from numpy.polynomial import Polynomial
+    def make(n, seed):
+        rng = np.random.default_rng(seed)
+        x = rng.uniform(0, 1, n)
+        return x, np.sin(2 * np.pi * x) + rng.normal(0, 0.3, n)
+    x_test, y_test = make(500, 100)
+  starter: |
+    sizes = [15, 60, 240]
+    train_err, test_err = [], []
+    for n in sizes:
+        x, y = make(n, n)
+        model = ...
+        inside = (x_test >= x.min()) & (x_test <= x.max())
+        train_err.append(...)
+        test_err.append(...)
+    train_err, test_err = np.array(train_err), np.array(test_err)
+    gaps = ...
+    print(train_err.round(3), test_err.round(3), gaps.round(3))
+  solution: |
+    sizes = [15, 60, 240]
+    train_err, test_err = [], []
+    for n in sizes:
+        x, y = make(n, n)
+        model = Polynomial.fit(x, y, 9)
+        inside = (x_test >= x.min()) & (x_test <= x.max())
+        train_err.append(((model(x) - y) ** 2).mean())
+        test_err.append(((model(x_test[inside]) - y_test[inside]) ** 2).mean())
+    train_err, test_err = np.array(train_err), np.array(test_err)
+    gaps = test_err - train_err
+    print(train_err.round(3), test_err.round(3), gaps.round(3))
+  explanation: |
+    - Одна и та же модель — многочлен 9-й степени — на 15 точках переобучается (разрыв большой), на 240 — почти нет: шум отдельных точек усредняется.
+    - Маска `inside` оставляет тестовые точки внутри диапазона обучающих: за его краями многочлен высокой степени «улетает», и сравнение было бы нечестным.
+    - Вывод: чем больше данных, тем более сложную модель можно себе позволить.
+  hints:
+    - "Для каждого n: данные `make(n, n)`, модель степени 9, ошибки на своих точках и на тесте внутри диапазона."
+    - "`model = Polynomial.fit(x, y, 9)`; тест — `x_test[inside]`, `y_test[inside]`."
+    - "`gaps = test_err - train_err` — разрыв должен уменьшаться с ростом n."
+  tests: |
+    import numpy as np
+    tr = np.asarray(var('train_err', None, 'массивом'))
+    te = np.asarray(var('test_err', None, 'массивом'))
+    ensure(len(tr) == 3 and len(te) == 3, 'Нужно по три значения — для n = 15, 60, 240.')
+    same_array(tr, ref('train_err'), 'Ошибки на обучающих точках не совпадают: многочлен 9-й степени, MSE на своих точках.')
+    same_array(te, ref('test_err'), 'Ошибки на тесте не совпадают: тестовые точки внутри диапазона обучающих (`inside`).')
+    g = np.asarray(var('gaps', None, 'массивом'))
+    same_array(g, ref('gaps'), 'Разрыв — `test_err - train_err`.')
+    ensure(g[0] > g[1] > g[2], 'Разрыв должен уменьшаться с ростом числа точек.')
+  wrong:
+    - code: |
+        sizes = [15, 60, 240]
+        train_err, test_err = [], []
+        for n in sizes:
+            x, y = make(n, n)
+            model = Polynomial.fit(x, y, 3)
+            inside = (x_test >= x.min()) & (x_test <= x.max())
+            train_err.append(((model(x) - y) ** 2).mean())
+            test_err.append(((model(x_test[inside]) - y_test[inside]) ** 2).mean())
+        train_err, test_err = np.array(train_err), np.array(test_err)
+        gaps = test_err - train_err
+      expect: 9-й степени
+    - code: |
+        sizes = [15, 60, 240]
+        train_err, test_err = [], []
+        for n in sizes:
+            x, y = make(n, n)
+            model = Polynomial.fit(x, y, 9)
+            train_err.append(((model(x) - y) ** 2).mean())
+            test_err.append(((model(x_test) - y_test) ** 2).mean())
+        train_err, test_err = np.array(train_err), np.array(test_err)
+        gaps = test_err - train_err
+      expect: inside

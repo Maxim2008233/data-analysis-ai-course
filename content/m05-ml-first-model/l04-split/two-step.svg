@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 236" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="Разбиение в два шага: сначала train_test_split отделяет 20 процентов строк в test, остальные 80 процентов — временная часть; затем временную часть делят на train и validation в отношении 75 на 25, что даёт 60 и 20 процентов от всех строк">
+  <defs><marker id="sa2" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor" fill-opacity="0.6"/></marker></defs>
+  <rect x="12" y="14" width="736" height="36" rx="6" fill="currentColor" fill-opacity="0.08" stroke="currentColor" stroke-opacity="0.45"/>
+  <text x="380" y="37" text-anchor="middle" fill="currentColor" font-weight="700">X, y — все 32 067 строк</text>
+  <path d="M300 52 L300 82" stroke="currentColor" stroke-opacity="0.6" marker-end="url(#sa2)"/>
+  <path d="M672 52 L672 82" stroke="currentColor" stroke-opacity="0.6" marker-end="url(#sa2)"/>
+  <text x="318" y="72" fill="currentColor" font-size="11.5" font-family="JetBrains Mono, monospace">шаг 1: train_test_split(X, y, test_size=0.2, random_state=42)</text>
+  <rect x="12" y="86" width="588" height="36" rx="6" fill="#3d5bd9" fill-opacity="0.08" stroke="#3d5bd9" stroke-opacity="0.5" stroke-dasharray="5 3"/>
+  <text x="306" y="109" text-anchor="middle" fill="currentColor">X_temp, y_temp — 80 %</text>
+  <rect x="600" y="86" width="148" height="36" rx="6" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-opacity="0.5"/>
+  <text x="674" y="109" text-anchor="middle" fill="currentColor" font-weight="700">test — 20 %</text>
+  <path d="M220 124 L220 154" stroke="currentColor" stroke-opacity="0.6" marker-end="url(#sa2)"/>
+  <path d="M526 124 L526 154" stroke="currentColor" stroke-opacity="0.6" marker-end="url(#sa2)"/>
+  <text x="238" y="144" fill="currentColor" font-size="11.5" font-family="JetBrains Mono, monospace">шаг 2: train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)</text>
+  <rect x="12" y="158" width="441" height="36" rx="6" fill="#3d5bd9" fill-opacity="0.16" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="232" y="181" text-anchor="middle" fill="currentColor" font-weight="700">train — 60 % (19 239)</text>
+  <rect x="453" y="158" width="147" height="36" fill="#c2410c" fill-opacity="0.14" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="526" y="181" text-anchor="middle" fill="currentColor" font-weight="700">validation — 20 %</text>
+  <rect x="600" y="158" width="148" height="36" rx="6" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-opacity="0.5"/>
+  <text x="674" y="181" text-anchor="middle" fill="currentColor">test (не трогаем)</text>
+  <text x="12" y="222" fill="currentColor" fill-opacity="0.8" font-size="12">0,25 от оставшихся 80 % — это 20 % от всех строк. Строки X и y делятся вместе: пары «признаки — цена» не разрываются.</text>
+</svg>

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" font-family="Inter, Arial, sans-serif" font-size="12.5" role="img" aria-label="Частоты марок: Volkswagen 3403, Toyota 3024, Mercedes 3002 и другие; порог 1 % — около 321 объявления; 61 марка ниже порога объединяется в категорию Rare с 2595 объявлениями">
+  <g fill="currentColor">
+    <text x="130" y="30" text-anchor="end">Volkswagen</text><rect x="140" y="19" width="300" height="14" rx="2" fill="#3d5bd9" fill-opacity="0.55"/><text x="446" y="30" font-family="JetBrains Mono, monospace" font-size="11.5">3403</text>
+    <text x="130" y="52" text-anchor="end">Toyota</text><rect x="140" y="41" width="267" height="14" rx="2" fill="#3d5bd9" fill-opacity="0.55"/><text x="413" y="52" font-family="JetBrains Mono, monospace" font-size="11.5">3024</text>
+    <text x="130" y="74" text-anchor="end">Mercedes</text><rect x="140" y="63" width="265" height="14" rx="2" fill="#3d5bd9" fill-opacity="0.55"/><text x="411" y="74" font-family="JetBrains Mono, monospace" font-size="11.5">3002</text>
+    <text x="130" y="96" text-anchor="end" fill-opacity="0.6">…</text>
+    <text x="130" y="118" text-anchor="end">Peugeot</text><rect x="140" y="107" width="34" height="14" rx="2" fill="#3d5bd9" fill-opacity="0.55"/><text x="180" y="118" font-family="JetBrains Mono, monospace" font-size="11.5">384</text>
+    <text x="130" y="140" text-anchor="end">Chevrolet</text><rect x="140" y="129" width="28" height="14" rx="2" fill="#3d5bd9" fill-opacity="0.55"/><text x="174" y="140" font-family="JetBrains Mono, monospace" font-size="11.5">322</text>
+    <text x="130" y="176" text-anchor="end">Citroen</text><rect x="140" y="165" width="26" height="14" rx="2" fill="#c2410c" fill-opacity="0.5"/><text x="172" y="176" font-family="JetBrains Mono, monospace" font-size="11.5">297</text>
+    <text x="130" y="198" text-anchor="end">Land Rover</text><rect x="140" y="187" width="25" height="14" rx="2" fill="#c2410c" fill-opacity="0.5"/><text x="171" y="198" font-family="JetBrains Mono, monospace" font-size="11.5">286</text>
+    <text x="130" y="220" text-anchor="end">Porsche</text><rect x="140" y="209" width="17" height="14" rx="2" fill="#c2410c" fill-opacity="0.5"/><text x="163" y="220" font-family="JetBrains Mono, monospace" font-size="11.5">188</text>
+    <text x="130" y="242" text-anchor="end" fill-opacity="0.6">… ещё 58 марок</text>
+  </g>
+  <!-- порог -->
+  <line x1="20" y1="153" x2="470" y2="153" stroke="#c2410c" stroke-dasharray="5 4" stroke-width="1.5"/>
+  <text x="200" y="149" fill="#c2410c" font-size="12">порог 1 % ≈ 321 объявление</text>
+  <!-- Rare -->
+  <path d="M250 205 C 330 205, 360 200, 470 200" stroke="#c2410c" stroke-width="1.5" fill="none" marker-end="url(#ra)"/>
+  <defs><marker id="ra" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#c2410c"/></marker></defs>
+  <rect x="480" y="182" width="230" height="38" rx="5" fill="#c2410c" fill-opacity="0.12" stroke="#c2410c"/>
+  <text x="595" y="206" text-anchor="middle" fill="currentColor" font-weight="700">Rare — 61 марка, 2595 строк</text>
+  <text x="480" y="244" fill="currentColor" font-size="12">исходная марка сохраняется в <tspan font-family="JetBrains Mono, monospace">Make_original</tspan></text>
+  <text x="20" y="282" fill="currentColor" fill-opacity="0.75" font-size="12">Было 82 марки — стало 22 категории (21 частая марка + Rare). Внутри Rare: Porsche (медиана 33 500 €) и Fiat (3 500 €).</text>
+</svg>

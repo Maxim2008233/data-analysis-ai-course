@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 270" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="Разреженная матрица после One-Hot Encoding: 770 столбцов — 22 для марок, 725 для моделей, 12 для кузовов, 6 для топлива и 5 числовых. В каждой строке ровно по одной единице в блоке каждой категории и пять чисел, остальные 761 значение — нули. Хранятся только ненулевые значения: 1,2 процента матрицы">
+  <text x="12" y="22" fill="currentColor" font-weight="700">Матрица после One-Hot: 19 239 строк × 770 столбцов</text>
+  <rect x="40" y="58" width="64" height="136" fill="#3d5bd9" fill-opacity="0.06" stroke="currentColor" stroke-opacity="0.35"/>
+  <text x="72.0" y="50" fill="currentColor" font-size="11" text-anchor="middle" font-weight="700">Make: 22</text>
+  <rect x="110" y="58" width="240" height="136" fill="#3d5bd9" fill-opacity="0.06" stroke="currentColor" stroke-opacity="0.35"/>
+  <text x="230.0" y="50" fill="currentColor" font-size="11" text-anchor="middle" font-weight="700">Model: 725</text>
+  <rect x="356" y="58" width="46" height="136" fill="#3d5bd9" fill-opacity="0.06" stroke="currentColor" stroke-opacity="0.35"/>
+  <text x="379.0" y="50" fill="currentColor" font-size="11" text-anchor="middle" font-weight="700">Style: 12</text>
+  <rect x="408" y="58" width="40" height="136" fill="#3d5bd9" fill-opacity="0.06" stroke="currentColor" stroke-opacity="0.35"/>
+  <text x="428.0" y="50" fill="currentColor" font-size="11" text-anchor="middle" font-weight="700">Fuel_type: 6</text>
+  <rect x="454" y="58" width="60" height="136" fill="currentColor" fill-opacity="0.06" stroke="currentColor" stroke-opacity="0.35"/>
+  <text x="484.0" y="50" fill="currentColor" font-size="11" text-anchor="middle" font-weight="700">числа: 5</text>
+  <circle cx="62.1" cy="66.5" r="3.4" fill="#c2410c"/>
+  <circle cx="149.0" cy="66.5" r="3.4" fill="#c2410c"/>
+  <circle cx="384.7" cy="66.5" r="3.4" fill="#c2410c"/>
+  <circle cx="414.3" cy="66.5" r="3.4" fill="#c2410c"/>
+  <circle cx="460.0" cy="66.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="472.0" cy="66.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="484.0" cy="66.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="496.0" cy="66.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="508.0" cy="66.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="74.0" cy="83.5" r="3.4" fill="#c2410c"/>
+  <circle cx="198.8" cy="83.5" r="3.4" fill="#c2410c"/>
+  <circle cx="362.2" cy="83.5" r="3.4" fill="#c2410c"/>
+  <circle cx="428.2" cy="83.5" r="3.4" fill="#c2410c"/>
+  <circle cx="460.0" cy="83.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="472.0" cy="83.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="484.0" cy="83.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="496.0" cy="83.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="508.0" cy="83.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="46.1" cy="100.5" r="3.4" fill="#c2410c"/>
+  <circle cx="214.6" cy="100.5" r="3.4" fill="#c2410c"/>
+  <circle cx="362.7" cy="100.5" r="3.4" fill="#c2410c"/>
+  <circle cx="414.9" cy="100.5" r="3.4" fill="#c2410c"/>
+  <circle cx="460.0" cy="100.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="472.0" cy="100.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="484.0" cy="100.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="496.0" cy="100.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="508.0" cy="100.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="67.8" cy="117.5" r="3.4" fill="#c2410c"/>
+  <circle cx="305.8" cy="117.5" r="3.4" fill="#c2410c"/>
+  <circle cx="364.7" cy="117.5" r="3.4" fill="#c2410c"/>
+  <circle cx="419.1" cy="117.5" r="3.4" fill="#c2410c"/>
+  <circle cx="460.0" cy="117.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="472.0" cy="117.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="484.0" cy="117.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="496.0" cy="117.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="508.0" cy="117.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="79.1" cy="134.5" r="3.4" fill="#c2410c"/>
+  <circle cx="333.9" cy="134.5" r="3.4" fill="#c2410c"/>
+  <circle cx="381.9" cy="134.5" r="3.4" fill="#c2410c"/>
+  <circle cx="424.7" cy="134.5" r="3.4" fill="#c2410c"/>
+  <circle cx="460.0" cy="134.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="472.0" cy="134.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="484.0" cy="134.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="496.0" cy="134.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="508.0" cy="134.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="98.7" cy="151.5" r="3.4" fill="#c2410c"/>
+  <circle cx="124.8" cy="151.5" r="3.4" fill="#c2410c"/>
+  <circle cx="392.6" cy="151.5" r="3.4" fill="#c2410c"/>
+  <circle cx="421.3" cy="151.5" r="3.4" fill="#c2410c"/>
+  <circle cx="460.0" cy="151.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="472.0" cy="151.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="484.0" cy="151.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="496.0" cy="151.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="508.0" cy="151.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="52.1" cy="168.5" r="3.4" fill="#c2410c"/>
+  <circle cx="141.3" cy="168.5" r="3.4" fill="#c2410c"/>
+  <circle cx="371.7" cy="168.5" r="3.4" fill="#c2410c"/>
+  <circle cx="438.1" cy="168.5" r="3.4" fill="#c2410c"/>
+  <circle cx="460.0" cy="168.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="472.0" cy="168.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="484.0" cy="168.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="496.0" cy="168.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="508.0" cy="168.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="54.1" cy="185.5" r="3.4" fill="#c2410c"/>
+  <circle cx="248.9" cy="185.5" r="3.4" fill="#c2410c"/>
+  <circle cx="384.3" cy="185.5" r="3.4" fill="#c2410c"/>
+  <circle cx="423.9" cy="185.5" r="3.4" fill="#c2410c"/>
+  <circle cx="460.0" cy="185.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="472.0" cy="185.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="484.0" cy="185.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="496.0" cy="185.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <circle cx="508.0" cy="185.5" r="3" fill="currentColor" fill-opacity="0.55"/>
+  <text x="40" y="212" fill="currentColor" fill-opacity="0.75" font-size="11">● — единица в столбце своей категории или число; пустое место — нули</text>
+  <text x="534" y="64" fill="currentColor">В каждой строке 770 значений,</text>
+  <text x="534" y="81" fill="currentColor">но ненулевых только 9:</text>
+  <text x="534" y="98" fill="currentColor">4 единицы (по одной на категорию)</text>
+  <text x="534" y="115" fill="currentColor">и 5 чисел.</text>
+  <text x="534" y="149" fill="currentColor" font-weight="700">Хранятся только они — 1,2 %</text>
+  <text x="534" y="166" fill="currentColor">матрицы. Такая «разреженная»</text>
+  <text x="534" y="183" fill="currentColor">(sparse) матрица занимает ≈ 2 МБ</text>
+  <text x="534" y="200" fill="currentColor">вместо 118 МБ.</text>
+  <text x="12" y="262" fill="currentColor" fill-opacity="0.8">У каждого столбца — свой коэффициент: линейная модель даёт каждой марке и каждой модели свою поправку к цене.</text>
+</svg>

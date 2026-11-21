@@ -1,0 +1,318 @@
+- id: m10-l7-t1
+  title: Цепочка из трёх шагов
+  difficulty: warmup
+  introduces: [llm-chain]
+  uses: []
+  statement: |
+    `prompt` — шаблон с переменной `country`, `fake` — тестовая модель, которая всегда отвечает «Москва». Соберите цепочку `chain`: шаблон, модель и `StrOutputParser()`. Получите:
+
+    - `answer` — результат цепочки для `{'country': 'Россия'}`;
+    - `prompt_text` — текст, в который шаблон превратил этот вход (`prompt.format(...)`).
+  prelude: |
+    from langchain_core.prompts import PromptTemplate
+    from langchain_core.language_models import FakeListChatModel
+    from langchain_core.output_parsers import StrOutputParser
+    prompt = PromptTemplate.from_template('Назови столицу страны {country}. Ответь одним словом.')
+    fake = FakeListChatModel(responses=['Москва'])
+  starter: |
+    chain = prompt | ... | ...
+    answer = chain.invoke(...)
+    prompt_text = ...
+    print(repr(answer))
+    print(prompt_text)
+  solution: |
+    chain = prompt | fake | StrOutputParser()
+    answer = chain.invoke({'country': 'Россия'})
+    prompt_text = prompt.format(country='Россия')
+    print(repr(answer))
+    print(prompt_text)
+  explanation: |
+    - `prompt | fake | StrOutputParser()` — три шага. Шаблон превращает словарь в промпт, модель отвечает сообщением `AIMessage`, парсер достаёт из него строку.
+    - Тестовая модель ответила «Москва», какой бы ни была страна: ответы заданы заранее. Так проверяют, что цепочка собрана и данные проходят по ней, не тратя токенов.
+    - `prompt.format(country='Россия')` показывает, что именно уйдёт модели. Это первое, что стоит проверить, если модель отвечает странно.
+  hints:
+    - "Шаги соединяет оператор `|`: `prompt | fake | StrOutputParser()`."
+    - "На вход цепочке — словарь значений переменных: `chain.invoke({'country': 'Россия'})`."
+    - "`prompt_text = prompt.format(country='Россия')`."
+  tests: |
+    chain = var('chain')
+    steps = getattr(chain, 'steps', None)
+    ensure(steps is not None, '`chain` должна быть цепочкой, собранной оператором `|`.')
+    names = [type(s).__name__ for s in steps]
+    ans = var('answer')
+    if not isinstance(ans, str):
+        fail('`answer` — {0}, а не строка: добавьте в конец цепочки `StrOutputParser()`.'.format(type(ans).__name__))
+    equal(names, ['PromptTemplate', 'FakeListChatModel', 'StrOutputParser'], 'Шаги цепочки — {expected}, а у вас {actual}.')
+    equal(ans, 'Москва', 'Цепочка должна вернуть ответ тестовой модели {expected}, а вернула {actual}.')
+    pt = var('prompt_text', str, 'строкой')
+    if '{country}' in pt:
+        fail('В `prompt_text` осталось `{country}`: заполните шаблон — `prompt.format(country=\'Россия\')`.')
+    equal(pt, 'Назови столицу страны Россия. Ответь одним словом.', '`prompt_text` — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        chain = prompt | fake
+        answer = chain.invoke({'country': 'Россия'})
+        prompt_text = prompt.format(country='Россия')
+      expect: StrOutputParser
+    - code: |
+        chain = prompt | fake | StrOutputParser()
+        answer = chain.invoke({'country': 'Россия'})
+        prompt_text = prompt.template
+      expect: заполните шаблон
+
+- id: m10-l7-t2
+  title: Разбор ответа в цепочке
+  difficulty: main
+  introduces: []
+  uses: [llm-chain, structured-output]
+  statement: |
+    `parse_answer(text)` — строгий разбор из урока 10.5: номер варианта от 0 до 3, число или «Ответ: N»; иначе `None`. Тестовая модель `fake` отвечает пятью заранее заданными текстами, среди них есть ответы не по формату.
+
+    Соберите цепочку `chain`: шаблон `template`, модель `fake`, `StrOutputParser()` и последним шагом — `parse_answer`, обёрнутая в `RunnableLambda`. Получите:
+
+    - `parsed` — результаты цепочки для всех вопросов `QUESTIONS` (метод `batch`);
+    - `n_bad` — сколько ответов не разобралось (`None`).
+  prelude: |
+    import re
+    from langchain_core.prompts import PromptTemplate
+    from langchain_core.language_models import FakeListChatModel
+    from langchain_core.output_parsers import StrOutputParser
+    from langchain_core.runnables import RunnableLambda
+
+    def parse_answer(text):
+        m = re.fullmatch(r'\s*(?:ответ\s*:?\s*)?(\d+)\s*\.?\s*', text, flags=re.IGNORECASE)
+        if m is None:
+            return None
+        k = int(m.group(1))
+        return k if k < 4 else None
+
+    template = PromptTemplate.from_template('Вопрос: {question}\nОтветь одной цифрой — номером варианта от 0 до 3.')
+    fake = FakeListChatModel(responses=['1', 'Ответ: 3', 'Скорее всего, второй вариант', '4', '0.'])
+    QUESTIONS = [{'question': q} for q in ['Сколько часов в 180 минутах?', 'Сколько будет √64?', 'Какой газ легче воздуха?',
+                                           'Чему равна сумма углов треугольника?', 'Сколько будет 99 + 11?']]
+  starter: |
+    chain = template | fake | StrOutputParser() | ...
+    parsed = ...
+    n_bad = ...
+    print(parsed, n_bad)
+  solution: |
+    chain = template | fake | StrOutputParser() | RunnableLambda(parse_answer)
+    parsed = chain.batch(QUESTIONS)
+    n_bad = sum(p is None for p in parsed)
+    print(parsed, n_bad)
+  explanation: |
+    - Разбор встроен в цепочку последним шагом, и результат цепочки — уже номер или `None`, а не текст. Остальной программе не нужно знать, как модель записала ответ.
+    - Тестовая модель отвечает по очереди, поэтому `batch` по пяти вопросам получил все пять заготовленных ответов. Два из них — «Скорее всего, второй вариант» и недопустимое «4» — не разобрались.
+    - Подставив вместо `fake` настоящую модель, получим ту же цепочку для настоящего теста. Логику разбора мы уже проверили.
+  hints:
+    - "Обычная функция становится шагом цепочки так: `RunnableLambda(parse_answer)`."
+    - "Список входов обрабатывает `chain.batch(QUESTIONS)`."
+    - "`n_bad = sum(p is None for p in parsed)`."
+  tests: |
+    chain = var('chain')
+    steps = getattr(chain, 'steps', None)
+    ensure(steps is not None, '`chain` должна быть цепочкой, собранной оператором `|`.')
+    ensure(len(steps) == 4, 'В цепочке 4 шага: шаблон, модель, StrOutputParser и разбор. У вас — {0}.'.format(len(steps)))
+    last = steps[-1]
+    equal(type(last).__name__, 'RunnableLambda', 'Последний шаг — функция разбора в `RunnableLambda`, а у вас {actual}.')
+    equal(last.invoke('Ответ: 2'), 2, 'Последний шаг должен разбирать ответ: «Ответ: 2» → {expected}, а получилось {actual}.')
+    equal(last.invoke('7'), None, 'Последний шаг должен отвергать недопустимый номер: «7» → None, а получилось {actual}.')
+    parsed = var('parsed', list, 'списком')
+    if parsed and isinstance(parsed[0], str):
+        fail('В `parsed` — тексты ответов. Добавьте разбор последним шагом цепочки.')
+    equal(parsed, ref('parsed'), '`parsed` — {expected}, а у вас {actual}.')
+    equal(int(var('n_bad', 'number', 'числом')), ref('n_bad'), 'Не разобралось {expected} ответов, а у вас {actual}.')
+  wrong:
+    - code: |
+        chain = template | fake | StrOutputParser()
+        parsed = chain.batch(QUESTIONS)
+        n_bad = sum(p is None for p in parsed)
+      expect: 4 шага
+    - code: |
+        chain = template | fake | StrOutputParser() | RunnableLambda(lambda t: int(re.findall(r'\d+', t)[0]) if re.findall(r'\d+', t) else None)
+        parsed = chain.batch(QUESTIONS)
+        n_bad = sum(p is None for p in parsed)
+      expect: недопустимый номер
+
+- id: m10-l7-t3
+  title: Что увидит модель
+  difficulty: main
+  introduces: []
+  uses: [llm-chain, context-window]
+  statement: |
+    `ChatPromptTemplate` собирает не текст, а список сообщений. `MessagesPlaceholder('history')` — место, куда при вызове подставляется история диалога (урок 10.3).
+
+    Соберите `prompt` из трёх частей: системного сообщения `SYSTEM` (`('system', SYSTEM)`), места для истории `MessagesPlaceholder('history')` и вопроса `('human', '{question}')`. Получите:
+
+    - `sent` — сообщения, которые получит модель для истории `HISTORY` и вопроса `QUESTION`: `prompt.invoke({...}).to_messages()`;
+    - `types` — список типов этих сообщений (`m.type`);
+    - `answer` — ответ цепочки `prompt | fake | StrOutputParser()` на тот же вход.
+  prelude: |
+    from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+    from langchain_core.messages import HumanMessage, AIMessage
+    from langchain_core.language_models import FakeListChatModel
+    from langchain_core.output_parsers import StrOutputParser
+    SYSTEM = 'Ты решаешь тест. Отвечай одной цифрой — номером правильного варианта.'
+    HISTORY = [HumanMessage(content='Сколько будет 2 + 2? Варианты: 0) 3 1) 4'), AIMessage(content='1')]
+    QUESTION = 'Сколько будет 3 + 3? Варианты: 0) 6 1) 7'
+    fake = FakeListChatModel(responses=['0'])
+  starter: |
+    prompt = ChatPromptTemplate.from_messages([
+        ('system', SYSTEM),
+        ...,
+        ('human', '{question}'),
+    ])
+    sent = prompt.invoke({...}).to_messages()
+    types = ...
+    answer = ...
+    for m in sent:
+        print(m.type, '|', m.content)
+    print(answer)
+  solution: |
+    prompt = ChatPromptTemplate.from_messages([
+        ('system', SYSTEM),
+        MessagesPlaceholder('history'),
+        ('human', '{question}'),
+    ])
+    sent = prompt.invoke({'history': HISTORY, 'question': QUESTION}).to_messages()
+    types = [m.type for m in sent]
+    answer = (prompt | fake | StrOutputParser()).invoke({'history': HISTORY, 'question': QUESTION})
+    for m in sent:
+        print(m.type, '|', m.content)
+    print(answer)
+  explanation: |
+    - Модель получит четыре сообщения: системное, вопрос и ответ из истории и новый вопрос. Типы в LangChain — `system`, `human`, `ai`. В запросе к API они превращаются в роли `system`, `user`, `assistant`.
+    - История в `HISTORY` — заодно и пример ответа одной цифрой (урок 10.4): модель видит «свой» прошлый ответ «1» и отвечает в том же формате.
+    - Шаблон с `MessagesPlaceholder` — то, что делает чат-бот на каждом ходу: подставляет накопленную историю. Как не дать ей переполнить контекстное окно — урок 10.3.
+  hints:
+    - "Место для истории — `MessagesPlaceholder('history')` вторым элементом списка."
+    - "Вход шаблону — словарь с обеими переменными: `{'history': HISTORY, 'question': QUESTION}`."
+    - "`types = [m.type for m in sent]`; ответ — та же цепочка с `fake` и `StrOutputParser()`."
+  tests: |
+    sent = var('sent', list, 'списком')
+    types = var('types', list, 'списком')
+    if types == ['system', 'human']:
+        fail('Модель не видит историю: добавьте в шаблон `MessagesPlaceholder(\'history\')` и передайте `HISTORY`.')
+    equal(types, ['system', 'human', 'ai', 'human'], 'Типы сообщений — {expected}, а у вас {actual}.')
+    equal(sent[0].content, ref('SYSTEM'), 'Первое сообщение — системное `SYSTEM`.')
+    equal(sent[-1].content, ref('QUESTION'), 'Последнее сообщение — новый вопрос `QUESTION`.')
+    equal(sent[2].content, '1', 'Третье сообщение — ответ модели из истории, «1».')
+    equal(var('answer'), '0', 'Цепочка должна вернуть ответ тестовой модели «0», а вернула {actual}.')
+  wrong:
+    - code: |
+        prompt = ChatPromptTemplate.from_messages([('system', SYSTEM), ('human', '{question}')])
+        sent = prompt.invoke({'question': QUESTION}).to_messages()
+        types = [m.type for m in sent]
+        answer = (prompt | fake | StrOutputParser()).invoke({'question': QUESTION})
+      expect: не видит историю
+    - code: |
+        prompt = ChatPromptTemplate.from_messages([('system', SYSTEM), MessagesPlaceholder('history'), ('human', '{question}')])
+        sent = prompt.invoke({'history': HISTORY, 'question': QUESTION}).to_messages()
+        types = [m.type for m in sent]
+        answer = (prompt | fake).invoke({'history': HISTORY, 'question': QUESTION})
+      expect: тестовой модели
+
+- id: m10-l7-t4
+  title: Рассуждение с разбором ответа
+  difficulty: star
+  introduces: []
+  uses: [llm-chain, structured-output]
+  statement: |
+    `llm` — учебный GigaChat-Pro: он воспроизводит ответы ноутбука на две задачи `problems`. `cot_prompt` — шаблон «реши задачу шаг за шагом» из урока, `final_number(text)` — число после последнего «Ответ» из урока 10.5.
+
+    1. Соберите цепочку `chain` из четырёх шагов: `cot_prompt`, `llm`, `StrOutputParser()` и `final_number` в `RunnableLambda`.
+    2. Получите `cot_answers` — ответы цепочки на обе задачи (`batch`).
+    3. Посчитайте правильные ответы сами, на Python: `expected` — список из двух чисел (мальчиков в классе и цены книги после скидки).
+    4. `all_correct` — `True`, если ответы цепочки совпали с вашими.
+    5. `cot_tokens` — сколько примерно токенов в каждом полном ответе модели (длина текста, делённая на 5.09, с округлением вверх, как в уроке 10.3). Полный текст даёт та же цепочка без последнего шага.
+  prelude: |
+    import math
+    import re
+    from langchain_gigachat import GigaChat
+    from langchain.prompts import PromptTemplate
+    from langchain_core.output_parsers import StrOutputParser
+    from langchain_core.runnables import RunnableLambda
+
+    def final_number(text):
+        numbers = re.findall(r'\d+', text)
+        if not numbers:
+            return None
+        if 'Ответ' in text:
+            after = re.findall(r'\d+', text[text.rfind('Ответ'):])
+            if after:
+                return int(after[0])
+        return int(numbers[-1])
+
+    llm = GigaChat(model='GigaChat-Pro', credentials='ваш-ключ', verify_ssl_certs=False)
+    cot_template = """
+    Реши задачу шаг за шагом:
+
+    Задача: {problem}
+
+    Пожалуйста:
+    1. Сначала пойми, что дано и что нужно найти
+    2. Разбей решение на логические шаги
+    3. Выполни вычисления для каждого шага
+    4. Проверь правильность рассуждений
+    5. Сформулируй окончательный ответ
+
+    """
+    cot_prompt = PromptTemplate(input_variables=['problem'], template=cot_template)
+    problems = ['В классе 30 учеников. 40% из них - девочки. Сколько мальчиков в классе?',
+                'Книга стоит 500 рублей. После скидки цена снизилась на 20%. Сколько стоит книга после скидки?']
+  starter: |
+    chain = cot_prompt | llm | StrOutputParser() | ...
+    inputs = [{'problem': p} for p in problems]
+    cot_answers = chain.batch(inputs)
+    expected = [..., ...]
+    all_correct = ...
+    texts = (cot_prompt | llm | StrOutputParser()).batch(inputs)
+    cot_tokens = [... for t in texts]
+    print(cot_answers, expected, all_correct, cot_tokens)
+  solution: |
+    chain = cot_prompt | llm | StrOutputParser() | RunnableLambda(final_number)
+    inputs = [{'problem': p} for p in problems]
+    cot_answers = chain.batch(inputs)
+    expected = [30 - 30 * 40 // 100, 500 - 500 * 20 // 100]
+    all_correct = cot_answers == expected
+    texts = (cot_prompt | llm | StrOutputParser()).batch(inputs)
+    cot_tokens = [math.ceil(len(t) / 5.09) for t in texts]
+    print(cot_answers, expected, all_correct, cot_tokens)
+  explanation: |
+    - Цепочка из четырёх шагов возвращает сразу число: 18 и 400. Обе задачи модель решила верно — проверка на Python подтверждает.
+    - Правильные ответы мы посчитали сами. Так и проверяют LLM-решение: сравнивают с ответами, в которых уверены (урок 10.8).
+    - Рассуждения стоят около 219 и 195 токенов, а сам ответ — одно число. Для двух простых задач это много. Нужен ли такой приём, решают проверкой: насколько он повышает долю верных ответов и сколько стоит.
+  hints:
+    - "Последний шаг — `RunnableLambda(final_number)`."
+    - "30 учеников, из них 40 % девочек: мальчиков `30 - 30 * 40 // 100`; цена после скидки 20 % — `500 - 500 * 20 // 100`."
+    - "Токены — `math.ceil(len(t) / 5.09)` для каждого полного текста."
+  tests: |
+    chain = var('chain')
+    steps = getattr(chain, 'steps', None)
+    ensure(steps is not None, '`chain` должна быть цепочкой, собранной оператором `|`.')
+    equal([type(s).__name__ for s in steps], ['PromptTemplate', 'GigaChat', 'StrOutputParser', 'RunnableLambda'], 'Шаги цепочки — {expected}, а у вас {actual}.')
+    equal(steps[-1].invoke('Шаг 1. 2 + 2 = 4\n### Ответ: 4'), 4, 'Последний шаг — разбор `final_number`: для «Шаг 1 … Ответ: 4» ожидалось {expected}, а получилось {actual}.')
+    equal(var('cot_answers', list, 'списком'), [18, 400], 'Ответы цепочки — {expected}, а у вас {actual}.')
+    equal([int(x) for x in var('expected', list, 'списком')], [18, 400], 'Правильные ответы задач — {expected}, а у вас {actual}.')
+    equal(var('all_correct'), True, '`all_correct` — совпали ли ответы цепочки с правильными: здесь True.')
+    equal([int(x) for x in var('cot_tokens', list, 'списком')], ref('cot_tokens'), 'Токенов в полных ответах — {expected}, а у вас {actual}.')
+  files: [gigachat_notebook.json]
+  wrong:
+    - code: |
+        chain = cot_prompt | llm | StrOutputParser() | RunnableLambda(lambda t: int(re.findall(r'\d+', t)[0]))
+        inputs = [{'problem': p} for p in problems]
+        cot_answers = chain.batch(inputs)
+        expected = [18, 400]
+        all_correct = cot_answers == expected
+        texts = (cot_prompt | llm | StrOutputParser()).batch(inputs)
+        cot_tokens = [math.ceil(len(t) / 5.09) for t in texts]
+      expect: Последний шаг — разбор
+    - code: |
+        chain = cot_prompt | llm | StrOutputParser() | RunnableLambda(final_number)
+        inputs = [{'problem': p} for p in problems]
+        cot_answers = chain.batch(inputs)
+        expected = [18, 400]
+        all_correct = cot_answers == expected
+        texts = (cot_prompt | llm | StrOutputParser()).batch(inputs)
+        cot_tokens = [len(t.split()) for t in texts]
+      expect: Токенов в полных ответах

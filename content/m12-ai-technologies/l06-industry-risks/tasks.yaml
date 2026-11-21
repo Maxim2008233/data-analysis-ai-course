@@ -1,0 +1,452 @@
+- id: m12-l6-t1
+  kind: quiz
+  title: Какая технология?
+  difficulty: warmup
+  introduces: [ai-applications]
+  uses: []
+  statement: |
+    Отнесите проекты российских компаний из лекции (слайды 50–63) к технологиям ИИ из национальной стратегии.
+  quiz:
+    - q: Какие проекты основаны на компьютерном зрении? Выберите все.
+      options:
+        - Видеоаналитика для контроля внимания операторов (Уралхим)
+        - Автомобили без водителя (Яндекс)
+        - Планирование уборки урожая (Русагро)
+        - Генерация текста GigaChat (Сбер)
+      answer: [0, 1]
+      explain: "Видеоаналитика и беспилотники работают с видео и картинками. Планирование урожая — поддержка решений по данным полей и погоды, GigaChat — обработка языка."
+    - q: Рекомендации VK, планирование уборки урожая Русагро и стабилизация режимов СИБУРа — это…
+      options:
+        - интеллектуальная поддержка принятия решений
+        - обработка естественного языка
+        - компьютерное зрение
+      answer: 0
+      explain: Все три по данным — таблицам, журналам, показаниям датчиков — подсказывают решение. Это модели того же рода, что в модулях 5–8.
+    - q: Какие технологии нужны голосовому помощнику вроде Маруси? Выберите все.
+      options:
+        - Распознавание речи
+        - Обработка естественного языка
+        - Синтез речи
+        - Компьютерное зрение
+      answer: [0, 1, 2]
+      explain: "Это цепочка из урока 11.8: речь → текст → ответ языковой модели → речь. Зрение помощнику, который только слушает, не нужно."
+    - q: Магазин хочет по фотографиям полок находить пустые места. С чего начинается выбор технологии?
+      options:
+        - С данных задачи — это фотографии, значит, компьютерное зрение
+        - С самой большой модели — она справится с чем угодно
+        - С языковой модели — она умеет всё
+      answer: 0
+      explain: Технологию выбирают по данным и задаче. Найти пустое место на полке — задача обнаружения объектов из урока 12.2.
+  hints:
+    - "Смотрите на данные: видео и фото — зрение, тексты — язык, звук — речь, таблицы и датчики — поддержка решений."
+    - "Голосовой помощник — цепочка из урока 11.8: распознавание, языковая модель, синтез."
+    - "Ответы: 1 — Уралхим и Яндекс; 2 — поддержка принятия решений; 3 — речь, язык и синтез; 4 — начать с данных задачи."
+
+- id: m12-l6-t2
+  title: Порог по цене ошибок
+  difficulty: main
+  introduces: [ai-risks]
+  uses: [binary-classification]
+  statement: |
+    Детектор из урока оценивает уверенность `score`, что оператор отвлёкся (`distracted` — правильные ответы). Тревога — когда `score >= threshold`.
+
+    1. Напишите функцию `total_cost(y, score, threshold, c_fn, c_fp)` — стоимость ошибок: `c_fn` за каждый пропуск (`y = 1`, а тревоги нет) плюс `c_fp` за каждую ложную тревогу (`y = 0`, а тревога есть).
+    2. Для порогов `ths` найдите лучший по стоимости порог при `c_fp = 1` и трёх ценах пропуска: `th_50` — при `c_fn = 50`, `th_10` — при `c_fn = 10`, `th_1` — при `c_fn = 1`. При равной стоимости берите меньший порог.
+  prelude: |
+    import numpy as np
+    rng = np.random.default_rng(7)
+    n = 2000
+    distracted = (rng.random(n) < 0.05).astype(int)
+    score = np.clip(np.where(distracted == 1, rng.normal(0.65, 0.15, n), rng.normal(0.35, 0.15, n)), 0, 1)
+    ths = np.round(np.arange(0.05, 0.96, 0.01), 2)
+  starter: |
+    def total_cost(y, score, threshold, c_fn, c_fp):
+        alarm = score >= threshold
+        misses = ...
+        false_alarms = ...
+        return c_fn * misses + c_fp * false_alarms
+
+    def best_threshold(c_fn):
+        costs = np.array([total_cost(distracted, score, th, c_fn, 1) for th in ths])
+        return ths[costs.argmin()]
+
+    th_50, th_10, th_1 = best_threshold(50), best_threshold(10), best_threshold(1)
+    print(th_50, th_10, th_1)
+  solution: |
+    def total_cost(y, score, threshold, c_fn, c_fp):
+        alarm = score >= threshold
+        misses = ((~alarm) & (y == 1)).sum()
+        false_alarms = (alarm & (y == 0)).sum()
+        return c_fn * misses + c_fp * false_alarms
+
+    def best_threshold(c_fn):
+        costs = np.array([total_cost(distracted, score, th, c_fn, 1) for th in ths])
+        return ths[costs.argmin()]
+
+    th_50, th_10, th_1 = best_threshold(50), best_threshold(10), best_threshold(1)
+    print(th_50, th_10, th_1)
+  explanation: |
+    - `~alarm` — «тревоги нет». Пропуск — тревоги нет, а `y == 1`; ложная тревога — тревога есть, а `y == 0`. Сумма логической маски — число таких эпизодов.
+    - `costs.argmin()` возвращает первый номер наименьшей стоимости. Пороги идут по возрастанию, поэтому при равенстве выбирается меньший порог.
+    - Чем дороже пропуск, тем ниже порог: 0,71 при равной цене, 0,53 при `c_fn = 10`, 0,47 при `c_fn = 50`. При равной цене стоимость — просто число ошибок, и лучший порог совпадает с лучшим по доле верных.
+    - Порог — не свойство модели, а решение о том, какие ошибки дороже. Одна и та же модель с разными порогами годится для разных производств.
+  hints:
+    - "Пропуски — `((~alarm) & (y == 1)).sum()`: тревоги нет, а оператор отвлёкся."
+    - "Ложные тревоги — `(alarm & (y == 0)).sum()`."
+    - "Тревога — при `score >= threshold`: уверенность, равная порогу, уже тревога."
+  tests: |
+    import numpy as np
+    f = var('total_cost')
+    ensure(callable(f), '`total_cost` должна быть функцией.')
+    y = np.array([1, 0, 0, 1, 0])
+    s = np.array([0.9, 0.8, 0.3, 0.4, 0.1])
+    if f(y, s, 0.95, 10, 1) == 2:
+        fail('Цены перепутаны: пропуски умножаются на c_fn, ложные тревоги — на c_fp. При пороге 0.95 два пропуска стоят 2 × 10 = 20.')
+    if f(y, s, 0.4, 10, 1) == 11:
+        fail('Тревога — когда уверенность не меньше порога: score >= threshold. При пороге 0.4 уверенность 0.4 — уже тревога.')
+    equal(int(f(y, s, 0.5, 10, 1)), 11, 'При пороге 0.5 — один пропуск (0.4) и одна ложная тревога (0.8): 10 + 1 = 11, а у вас {actual}.')
+    equal(int(f(y, s, 0.4, 10, 1)), 1, 'При пороге 0.4 пропусков нет, ложная тревога одна: стоимость 1, а у вас {actual}.')
+    equal(int(f(y, s, 0.95, 10, 1)), 20, 'При пороге 0.95 тревог нет, оба отвлечения пропущены: 20, а у вас {actual}.')
+    equal(int(f(y, s, 0.0, 10, 1)), 3, 'При пороге 0 тревожно всё: три ложные тревоги, стоимость 3, а у вас {actual}.')
+    close(var('th_50', 'number', 'числом'), ref('th_50'), 'При c_fn = 50 лучший порог — {expected}, а у вас {actual}.')
+    close(var('th_10', 'number', 'числом'), ref('th_10'), 'При c_fn = 10 лучший порог — {expected}, а у вас {actual}.')
+    close(var('th_1', 'number', 'числом'), ref('th_1'), 'При равной цене ошибок лучший порог — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        def total_cost(y, score, threshold, c_fn, c_fp):
+            alarm = score >= threshold
+            return c_fp * ((~alarm) & (y == 1)).sum() + c_fn * (alarm & (y == 0)).sum()
+        def best_threshold(c_fn):
+            costs = np.array([total_cost(distracted, score, th, c_fn, 1) for th in ths])
+            return ths[costs.argmin()]
+        th_50, th_10, th_1 = best_threshold(50), best_threshold(10), best_threshold(1)
+      expect: Цены перепутаны
+    - code: |
+        def total_cost(y, score, threshold, c_fn, c_fp):
+            alarm = score > threshold
+            return c_fn * ((~alarm) & (y == 1)).sum() + c_fp * (alarm & (y == 0)).sum()
+        def best_threshold(c_fn):
+            costs = np.array([total_cost(distracted, score, th, c_fn, 1) for th in ths])
+            return ths[costs.argmin()]
+        th_50, th_10, th_1 = best_threshold(50), best_threshold(10), best_threshold(1)
+      expect: не меньше порога
+
+- id: m12-l6-t3
+  title: Ошибки по группам
+  difficulty: main
+  introduces: []
+  uses: [ai-risks, binary-classification]
+  statement: |
+    Напишите функцию `group_rates(y_true, y_pred, groups)` — таблицу ошибок по группам. Это `pandas.DataFrame`, строки — группы по алфавиту, столбцы:
+
+    - `base` — доля настоящих 1 в группе;
+    - `selected` — доля предсказанных 1;
+    - `accuracy` — доля верных;
+    - `fnr` — доля пропусков среди настоящих 1;
+    - `fpr` — доля ложных срабатываний среди настоящих 0.
+
+    Для модели урока на проверочной части (`y_te`, `pred`, `sex`) получите `report` и `fnr_gap` — на сколько процентных пунктов доля пропусков у женщин (`Female`) больше, чем у мужчин (`Male`).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.compose import make_column_transformer
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import make_pipeline
+    from sklearn.model_selection import train_test_split
+    adult = pd.read_csv('adult.csv')
+    y = (adult['salary'] == '>50K').astype(int).to_numpy()
+    num = ['age', 'education-num', 'hours-per-week', 'capital-gain', 'capital-loss']
+    cat = ['workclass', 'marital-status', 'occupation', 'relationship', 'race', 'sex']
+    X_tr, X_te, y_tr, y_te = train_test_split(adult[num + cat], y, test_size=0.3, random_state=0, stratify=y)
+    model = make_pipeline(make_column_transformer((StandardScaler(), num), (OneHotEncoder(handle_unknown='ignore'), cat)),
+                          LogisticRegression(max_iter=1000)).fit(X_tr, y_tr)
+    pred = model.predict(X_te)
+    sex = X_te['sex'].to_numpy()
+  starter: |
+    def group_rates(y_true, y_pred, groups):
+        y_true, y_pred, groups = np.asarray(y_true), np.asarray(y_pred), np.asarray(groups)
+        rows = {}
+        for g in sorted(set(groups)):
+            t, p = y_true[groups == g], y_pred[groups == g]
+            rows[g] = {'base': t.mean(), 'selected': p.mean(), 'accuracy': (t == p).mean(),
+                       'fnr': ..., 'fpr': ...}
+        return pd.DataFrame(rows).T
+
+    report = group_rates(y_te, pred, sex)
+    fnr_gap = ...
+    print(report.round(3), round(fnr_gap, 1))
+  solution: |
+    def group_rates(y_true, y_pred, groups):
+        y_true, y_pred, groups = np.asarray(y_true), np.asarray(y_pred), np.asarray(groups)
+        rows = {}
+        for g in sorted(set(groups)):
+            t, p = y_true[groups == g], y_pred[groups == g]
+            rows[g] = {'base': t.mean(), 'selected': p.mean(), 'accuracy': (t == p).mean(),
+                       'fnr': ((p == 0) & (t == 1)).sum() / (t == 1).sum(),
+                       'fpr': ((p == 1) & (t == 0)).sum() / (t == 0).sum()}
+        return pd.DataFrame(rows).T
+
+    report = group_rates(y_te, pred, sex)
+    fnr_gap = (report.loc['Female', 'fnr'] - report.loc['Male', 'fnr']) * 100
+    print(report.round(3), round(fnr_gap, 1))
+  explanation: |
+    - Доля пропусков делится на число настоящих 1 группы, а не на размер группы. Вопрос такой: «из тех, кого надо было отобрать, скольких модель не отобрала?». Ложные срабатывания — так же, но среди настоящих 0.
+    - `pd.DataFrame(rows).T` — словарь «группа → словарь долей» превращается в таблицу, а `.T` делает группы строками.
+    - Модель пропускает 46,7 % женщин с доходом выше 50 тысяч и 40,1 % мужчин — разрыв 6,6 пункта. При этом доля верных у женщин выше: высокий доход у них в данных реже, и ответ «нет» чаще оказывается верным.
+    - Такая таблица — обычная проверка перед запуском модели, которая решает что-то о людях. Её считают для всех значимых групп: пол, возраст, регион.
+  hints:
+    - "Пропуски группы — `((p == 0) & (t == 1)).sum()`, а делить их нужно на `(t == 1).sum()` — число настоящих 1."
+    - "Ложные срабатывания — `((p == 1) & (t == 0)).sum() / (t == 0).sum()`."
+    - "Разрыв в процентных пунктах — `(report.loc['Female', 'fnr'] - report.loc['Male', 'fnr']) * 100`."
+  tests: |
+    import numpy as np
+    f = var('group_rates')
+    ensure(callable(f), '`group_rates` должна быть функцией.')
+    yt = np.array([1, 1, 0, 0, 1, 0, 0, 0])
+    yp = np.array([1, 0, 0, 1, 1, 0, 0, 0])
+    gr = np.array(['b', 'b', 'b', 'b', 'a', 'a', 'a', 'a'])
+    got = f(yt, yp, gr)
+    ensure(hasattr(got, 'loc') and hasattr(got, 'columns'), '`group_rates` должна вернуть таблицу pandas.DataFrame.')
+    equal(list(got.index), ['a', 'b'], 'Строки — группы по алфавиту: {expected}, а у вас {actual}.')
+    equal(list(got.columns), ['base', 'selected', 'accuracy', 'fnr', 'fpr'], 'Столбцы — {expected}, а у вас {actual}.')
+    if abs(float(got.loc['b', 'fnr']) - 0.25) < 1e-9:
+        fail('Доля пропусков посчитана среди всех строк группы. Её считают среди настоящих 1: в группе b из двух настоящих 1 пропущена одна — 0.5.')
+    same_array(got.loc['b'].to_numpy(dtype=float), [0.5, 0.5, 0.5, 0.5, 0.5], 'В группе b половина настоящих 1, отобрана половина, верна половина, пропущен один из двух настоящих 1, ложно отобран один из двух настоящих 0 — все доли 0.5.')
+    same_array(got.loc['a'].to_numpy(dtype=float), [0.25, 0.25, 1.0, 0.0, 0.0], 'В группе a модель не ошиблась: доли [0.25, 0.25, 1, 0, 0].')
+    rep = var('report')
+    same_array(rep.to_numpy(dtype=float), ref('report').to_numpy(dtype=float), 'Таблица ошибок для женщин и мужчин не совпадает с ожидаемой.')
+    close(var('fnr_gap', 'number', 'числом'), ref('fnr_gap'), 'Разрыв в долях пропусков — {expected} процентных пунктов, а у вас {actual}.')
+  files: [adult.csv]
+  wrong:
+    - code: |
+        def group_rates(y_true, y_pred, groups):
+            y_true, y_pred, groups = np.asarray(y_true), np.asarray(y_pred), np.asarray(groups)
+            rows = {}
+            for g in sorted(set(groups)):
+                t, p = y_true[groups == g], y_pred[groups == g]
+                rows[g] = {'base': t.mean(), 'selected': p.mean(), 'accuracy': (t == p).mean(),
+                           'fnr': ((p == 0) & (t == 1)).mean(), 'fpr': ((p == 1) & (t == 0)).mean()}
+            return pd.DataFrame(rows).T
+        report = group_rates(y_te, pred, sex)
+        fnr_gap = (report.loc['Female', 'fnr'] - report.loc['Male', 'fnr']) * 100
+      expect: среди всех строк группы
+    - code: |
+        def group_rates(y_true, y_pred, groups):
+            y_true, y_pred, groups = np.asarray(y_true), np.asarray(y_pred), np.asarray(groups)
+            rows = {}
+            for g in sorted(set(groups)):
+                t, p = y_true[groups == g], y_pred[groups == g]
+                rows[g] = {'base': t.mean(), 'selected': p.mean(), 'accuracy': (t == p).mean(),
+                           'fnr': ((p == 0) & (t == 1)).sum() / (t == 1).sum(),
+                           'fpr': ((p == 1) & (t == 0)).sum() / (t == 0).sum()}
+            return pd.DataFrame(rows).T
+        report = group_rates(y_te, pred, sex)
+        fnr_gap = report.loc['Female', 'fnr'] - report.loc['Male', 'fnr']
+      expect: процентных пунктов
+
+- id: m12-l6-t4
+  title: Обезличивание сообщений
+  difficulty: main
+  introduces: []
+  uses: [ai-risks, named-entities]
+  statement: |
+    Напишите функцию `anonymize(text, names)`, которая заменяет в тексте:
+
+    - адреса почты — на `[ПОЧТА]`. Точка в конце предложения — не часть адреса;
+    - телефоны — на `[ТЕЛЕФОН]`: `+7` или `8`, затем 10 цифр, а между группами цифр могут стоять пробелы, скобки и дефисы (`+7 000 111-22-33`, `8 (000) 765-43-21`, `+70001112233`);
+    - имена из списка `names`, в том числе с окончанием до трёх русских букв («Ивану»), — на `[ИМЯ]`.
+
+    Замены — в этом порядке. Обезличьте сообщения в поддержку `messages` (данные выдуманы: телефонного кода 000 нет) — `masked`. Посчитайте `counts` — `Counter` меток во всех обезличенных сообщениях.
+  prelude: |
+    import re
+    from collections import Counter
+    messages = ['Здравствуйте! Я Анна Петрова, телефон +7 000 111-22-33, почта anna.petrova@example.ru.',
+                'Заказ 48213 не пришёл. Перезвоните Ивану Смирнову: 8 (000) 765-43-21.',
+                'Мой номер +70001234567, напишите на ivan_s@example.com или позвоните.',
+                'Спасибо, Анне всё понравилось! Оценка 5 из 5.',
+                'Сумма возврата 1290 рублей, счёт отправьте на petrova.a@example.org.']
+    names = ['Анна', 'Петрова', 'Иван', 'Смирнов']
+  starter: |
+    EMAIL = ...
+    PHONE = r'(?:\+7|\b8)[\s(-]*\d{3}[\s)-]*\d{3}[\s-]*\d{2}[\s-]*\d{2}'
+
+    def anonymize(text, names):
+        text = re.sub(EMAIL, '[ПОЧТА]', text)
+        text = re.sub(PHONE, '[ТЕЛЕФОН]', text)
+        if names:
+            text = re.sub(..., '[ИМЯ]', text)
+        return text
+
+    masked = [anonymize(m, names) for m in messages]
+    counts = Counter(tag for m in masked for tag in re.findall(r'\[[А-Я]+\]', m))
+    print(*masked, sep='\n')
+    print(counts)
+  solution: |
+    EMAIL = r'[\w.+-]+@[\w-]+(?:\.[\w-]+)+'
+    PHONE = r'(?:\+7|\b8)[\s(-]*\d{3}[\s)-]*\d{3}[\s-]*\d{2}[\s-]*\d{2}'
+
+    def anonymize(text, names):
+        text = re.sub(EMAIL, '[ПОЧТА]', text)
+        text = re.sub(PHONE, '[ТЕЛЕФОН]', text)
+        if names:
+            text = re.sub(r'\b(?:' + '|'.join(map(re.escape, names)) + r')[а-яё]{0,3}\b', '[ИМЯ]', text)
+        return text
+
+    masked = [anonymize(m, names) for m in messages]
+    counts = Counter(tag for m in masked for tag in re.findall(r'\[[А-Я]+\]', m))
+    print(*masked, sep='\n')
+    print(counts)
+  explanation: |
+    - Почта: `[\w.+-]+@` — имя ящика, затем домен из частей через точку `[\w-]+(?:\.[\w-]+)+`. Внутри частей точки нет, поэтому точка в конце предложения в адрес не попадает. Шаблон `[\w.-]+` после `@` съел бы и её.
+    - Телефон: `+7` или `8` в начале слова, затем группы цифр 3–3–2–2, а между ними — любые пробелы, скобки и дефисы. Номер заказа 48213 и сумма 1290 под шаблон не подходят.
+    - Имена — одним шаблоном через `|`, с местом под окончание, как в уроке 12.4. Найдено 4 имени, 3 телефона и 3 адреса.
+    - «Анне» в четвёртом сообщении осталось: у «Анны» при склонении меняется последняя буква. Правила обезличивания всегда что-то пропускают. Их дополняют моделями выделения сущностей и словарями форм слов, а результат проверяют выборочно вручную.
+  hints:
+    - "Адрес почты — `r'[\\w.+-]+@[\\w-]+(?:\\.[\\w-]+)+'`: домен из частей без точек, соединённых точками."
+    - "Шаблон имён — имена через `|` в группе `(?:…)`, затем `[а-яё]{0,3}` и `\\b`."
+    - "Целиком: `r'\\b(?:' + '|'.join(map(re.escape, names)) + r')[а-яё]{0,3}\\b'`."
+  tests: |
+    f = var('anonymize')
+    ensure(callable(f), '`anonymize` должна быть функцией.')
+    got = f('Пишите: a.b-c@mail.example.ru.', [])
+    if got == 'Пишите: [ПОЧТА]':
+        fail('Точка в конце предложения попала в адрес почты. Домен — части без точек, соединённые точками: `[\\w-]+(?:\\.[\\w-]+)+`.')
+    equal(got, 'Пишите: [ПОЧТА].', 'Ожидалось {expected}, а у вас {actual}.')
+    equal(f('Тел. +7 000 111-22-33 и 8(000)7654321', []), 'Тел. [ТЕЛЕФОН] и [ТЕЛЕФОН]', 'Телефоны в разных записях — {expected}, а у вас {actual}.')
+    equal(f('Заказ 123456789012 оплачен', []), 'Заказ 123456789012 оплачен', 'Номер заказа — не телефон: он не начинается с +7 или 8. А у вас {actual}.')
+    got = f('Позвоните Ивану, а не Сидору', ['Иван'])
+    if got == 'Позвоните Ивану, а не Сидору':
+        fail('Имена склоняются: «Ивану» — тоже «Иван». Разрешите после имени до трёх русских букв окончания.')
+    equal(got, 'Позвоните [ИМЯ], а не Сидору', 'Ожидалось {expected}, а у вас {actual}.')
+    equal(var('masked', list, 'списком'), ref('masked'), 'Обезличенные сообщения — {expected}, а у вас {actual}.')
+    equal(var('counts'), ref('counts'), 'Метки — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        EMAIL = r'[\w.+-]+@[\w.-]+'
+        PHONE = r'(?:\+7|\b8)[\s(-]*\d{3}[\s)-]*\d{3}[\s-]*\d{2}[\s-]*\d{2}'
+        def anonymize(text, names):
+            text = re.sub(EMAIL, '[ПОЧТА]', text)
+            text = re.sub(PHONE, '[ТЕЛЕФОН]', text)
+            if names:
+                text = re.sub(r'\b(?:' + '|'.join(map(re.escape, names)) + r')[а-яё]{0,3}\b', '[ИМЯ]', text)
+            return text
+        masked = [anonymize(m, names) for m in messages]
+        counts = Counter(tag for m in masked for tag in re.findall(r'\[[А-Я]+\]', m))
+      expect: Точка в конце предложения
+    - code: |
+        EMAIL = r'[\w.+-]+@[\w-]+(?:\.[\w-]+)+'
+        PHONE = r'(?:\+7|\b8)[\s(-]*\d{3}[\s)-]*\d{3}[\s-]*\d{2}[\s-]*\d{2}'
+        def anonymize(text, names):
+            text = re.sub(EMAIL, '[ПОЧТА]', text)
+            text = re.sub(PHONE, '[ТЕЛЕФОН]', text)
+            if names:
+                text = re.sub(r'\b(?:' + '|'.join(map(re.escape, names)) + r')\b', '[ИМЯ]', text)
+            return text
+        masked = [anonymize(m, names) for m in messages]
+        counts = Counter(tag for m in masked for tag in re.findall(r'\[[А-Я]+\]', m))
+      expect: Имена склоняются
+
+- id: m12-l6-t5
+  title: Выровнять пропуски
+  difficulty: star
+  introduces: []
+  uses: [ai-risks, binary-classification]
+  statement: |
+    Модель урока пропускает людей с доходом выше 50 тысяч среди женщин чаще, чем среди мужчин. Посмотрим, что будет, если выровнять пропуски своим порогом для каждой группы.
+
+    Напишите функцию `threshold_for_fnr(proba, y_true, target)` — порог, при котором доля пропусков среди настоящих 1 примерно равна `target`. Это квантиль уровня `target` вероятностей у настоящих 1 (`np.quantile`): ниже порога окажется доля `target` из них.
+
+    Для групп `Female` и `Male` (вероятности модели — `proba`, ответы — `y_te`, группы — `sex`) получите при `target = 0.3`:
+
+    - `thresholds` — словарь «группа → порог»;
+    - `fpr_after` — словарь «группа → доля ложных срабатываний при своём пороге». Срабатывание — `proba >= порог`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.compose import make_column_transformer
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import make_pipeline
+    from sklearn.model_selection import train_test_split
+    adult = pd.read_csv('adult.csv')
+    y = (adult['salary'] == '>50K').astype(int).to_numpy()
+    num = ['age', 'education-num', 'hours-per-week', 'capital-gain', 'capital-loss']
+    cat = ['workclass', 'marital-status', 'occupation', 'relationship', 'race', 'sex']
+    X_tr, X_te, y_tr, y_te = train_test_split(adult[num + cat], y, test_size=0.3, random_state=0, stratify=y)
+    model = make_pipeline(make_column_transformer((StandardScaler(), num), (OneHotEncoder(handle_unknown='ignore'), cat)),
+                          LogisticRegression(max_iter=1000)).fit(X_tr, y_tr)
+    proba = model.predict_proba(X_te)[:, 1]
+    sex = X_te['sex'].to_numpy()
+  starter: |
+    def threshold_for_fnr(proba, y_true, target):
+        return np.quantile(..., target)
+
+    thresholds, fpr_after = {}, {}
+    for g in ['Female', 'Male']:
+        m = sex == g
+        thresholds[g] = threshold_for_fnr(proba[m], y_te[m], 0.3)
+        selected = proba[m] >= thresholds[g]
+        fpr_after[g] = ...
+    print(thresholds, fpr_after)
+  solution: |
+    def threshold_for_fnr(proba, y_true, target):
+        return np.quantile(np.asarray(proba)[np.asarray(y_true) == 1], target)
+
+    thresholds, fpr_after = {}, {}
+    for g in ['Female', 'Male']:
+        m = sex == g
+        thresholds[g] = threshold_for_fnr(proba[m], y_te[m], 0.3)
+        selected = proba[m] >= thresholds[g]
+        fpr_after[g] = (selected & (y_te[m] == 0)).sum() / (y_te[m] == 0).sum()
+    print(thresholds, fpr_after)
+  explanation: |
+    - Пропуск — настоящая 1 с вероятностью ниже порога. Чтобы пропусков была доля `target`, порог ставят на квантиль уровня `target` среди вероятностей настоящих 1. Остальные строки на порог не влияют.
+    - Доли пропусков сравнялись — около 30 % в обеих группах. Но пороги вышли разными: 0,28 для женщин и 0,40 для мужчин. А ложные срабатывания разошлись: 5 % у женщин и 15 % у мужчин. Выровняли одну ошибку — раздвинули другую. Все доли ошибок сразу обычно выровнять нельзя, если доход выше 50 тысяч в группах встречается с разной частотой.
+    - Разные пороги для мужчин и женщин — это разное обращение с людьми по полу. Для решений вроде кредитов во многих странах это запрещено. Какой компромисс допустим, решают люди и закон, а не модель. Задача аналитика — честно посчитать, чем оборачивается каждый вариант.
+  hints:
+    - "Вероятности настоящих 1 — `proba[y_true == 1]`; порог — их квантиль уровня `target`."
+    - "Ложные срабатывания группы — `(selected & (y_te[m] == 0)).sum() / (y_te[m] == 0).sum()`."
+    - "Функция целиком: `np.quantile(np.asarray(proba)[np.asarray(y_true) == 1], target)`."
+  tests: |
+    import numpy as np
+    f = var('threshold_for_fnr')
+    ensure(callable(f), '`threshold_for_fnr` должна быть функцией.')
+    pr = np.array([0.1, 0.2, 0.3, 0.4, 0.9, 0.8])
+    yy = np.array([1, 1, 1, 1, 0, 0])
+    got = float(f(pr, yy, 0.5))
+    if abs(got - 0.35) < 1e-9:
+        fail('Квантиль посчитан по всем вероятностям. Пропуски бывают только у настоящих 1 — квантиль считают по их вероятностям.')
+    close(got, 0.25, 'Вероятности настоящих 1 — 0.1, 0.2, 0.3, 0.4; их медиана — 0.25, а у вас {actual}.')
+    got = float(f(pr, yy, 0.25))
+    if abs(got - 0.325) < 1e-9:
+        fail('Взят квантиль уровня 1 − target. Ниже порога должна оказаться доля target настоящих 1 — это квантиль уровня target.')
+    close(got, 0.175, 'Квантиль уровня 0.25 вероятностей 0.1, 0.2, 0.3, 0.4 — 0.175, а у вас {actual}.')
+    th = var('thresholds', dict, 'словарём')
+    fa = var('fpr_after', dict, 'словарём')
+    for g in ['Female', 'Male']:
+        ensure(g in th and g in fa, 'В словарях нужны обе группы: Female и Male.')
+        close(th[g], ref('thresholds')[g], 'Порог для ' + g + ' — {expected}, а у вас {actual}.')
+        close(fa[g], ref('fpr_after')[g], 'Доля ложных срабатываний для ' + g + ' — {expected}, а у вас {actual}.')
+  files: [adult.csv]
+  wrong:
+    - code: |
+        def threshold_for_fnr(proba, y_true, target):
+            return np.quantile(proba, target)
+        thresholds, fpr_after = {}, {}
+        for g in ['Female', 'Male']:
+            m = sex == g
+            thresholds[g] = threshold_for_fnr(proba[m], y_te[m], 0.3)
+            selected = proba[m] >= thresholds[g]
+            fpr_after[g] = (selected & (y_te[m] == 0)).sum() / (y_te[m] == 0).sum()
+      expect: по всем вероятностям
+    - code: |
+        def threshold_for_fnr(proba, y_true, target):
+            return np.quantile(np.asarray(proba)[np.asarray(y_true) == 1], 1 - target)
+        thresholds, fpr_after = {}, {}
+        for g in ['Female', 'Male']:
+            m = sex == g
+            thresholds[g] = threshold_for_fnr(proba[m], y_te[m], 0.3)
+            selected = proba[m] >= thresholds[g]
+            fpr_after[g] = (selected & (y_te[m] == 0)).sum() / (y_te[m] == 0).sum()
+      expect: 1 − target

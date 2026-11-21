@@ -1,0 +1,428 @@
+- id: m4-l6-t1
+  kind: plot
+  title: Объём двигателя в Seaborn
+  difficulty: warmup
+  introduces: [sns-basics]
+  uses: [hist-bins, mpl-fig-ax]
+  statement: |
+    Нарисуйте функцией `sns.histplot` гистограмму объёма двигателя (`Engine`) с **30** интервалами на осях `ax`. Добавьте заголовок и подписи осей; в подписи X укажите единицы `см³`.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    fig, ax = plt.subplots(figsize=(9, 3))
+    sns.histplot(...)
+    ax.set(title=..., xlabel=..., ylabel=...)
+    plt.show()
+  solution: |
+    fig, ax = plt.subplots(figsize=(9, 3))
+    sns.histplot(data=df, x='Engine', bins=30, ax=ax)
+    ax.set(title='Объём двигателя', xlabel='Объём двигателя, см³', ylabel='Число объявлений')
+    plt.show()
+  explanation: |
+    - `data=df, x='Engine'` — таблица и имя колонки; `bins=30` — число интервалов; `ax=ax` — оси, на которых рисовать.
+    - Seaborn рисует на осях Matplotlib, поэтому подписи задаются как обычно — `ax.set(...)`.
+    - Пики на 1 500, 1 600, 2 000 см³ — популярные объёмы двигателей.
+  alternatives:
+    - |
+      fig, ax = plt.subplots()
+      sns.histplot(x=df['Engine'], bins=30, ax=ax)
+      ax.set_title('Объём двигателя')
+      ax.set_xlabel('Объём, см³')
+      ax.set_ylabel('Число объявлений')
+      plt.show()
+  hints:
+    - "Функции Seaborn принимают таблицу (`data=`), имя колонки (`x=`) и оси (`ax=`)."
+    - "`sns.histplot(data=df, x='Engine', bins=30, ax=ax)`."
+    - "`ax.set(title='Объём двигателя', xlabel='Объём двигателя, см³', ylabel='Число объявлений')`."
+  tests: |
+    import numpy as np
+    ax = axes()
+    bars = [p for p in ax.patches if type(p).__name__ == 'Rectangle']
+    ensure(len(bars) > 0, 'На графике нет гистограммы — нарисуйте её функцией `sns.histplot(...)`.')
+    ensure(len(bars) == 30, 'Интервалов должно быть 30, а у вас {0}: `bins=30`.'.format(len(bars)))
+    exp = np.histogram(ref('df')['Engine'], bins=30)[0]
+    same_array([b.get_height() for b in bars], exp, 'Гистограмма должна показывать объём двигателя (`x=\'Engine\'`).')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+    ensure('см' in ax.get_xlabel(), 'В подписи оси X укажите единицы: `xlabel=\'Объём двигателя, см³\'`.')
+    ensure(ax.get_ylabel().strip() != '', 'Подпишите ось Y.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        fig, ax = plt.subplots()
+        sns.histplot(data=df, x='Engine', ax=ax)
+        ax.set(title='Двигатель', xlabel='Объём, см³', ylabel='Число')
+        plt.show()
+      expect: "bins=30"
+    - code: |
+        fig, ax = plt.subplots()
+        sns.histplot(data=df, x='Price', bins=30, ax=ax)
+        ax.set(title='Двигатель', xlabel='Объём, см³', ylabel='Число')
+        plt.show()
+      expect: объём двигателя
+
+- id: m4-l6-t2
+  kind: plot
+  title: Где кончается правый ус
+  difficulty: main
+  introduces: [boxplot-rule]
+  uses: [quantiles-iqr, sns-basics]
+  statement: |
+    Для объёма двигателя (`Engine`) получите квартили `q1`, `q3`, верхнюю границу усов `high` = Q3 + 1,5·IQR, `n_big` — число объявлений с объёмом **больше** границы и `whisker_end` — самый большой объём, который **не больше** `high` (там и заканчивается правый ус). Нарисуйте горизонтальный боксплот объёма: `sns.boxplot(data=df, x='Engine', ax=ax)` с заголовком.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    q1, q3 = ...
+    high = ...
+    n_big = ...
+    whisker_end = ...
+    print(q1, q3, high, n_big, whisker_end)
+    fig, ax = plt.subplots(figsize=(9, 2.5))
+    sns.boxplot(...)
+    ax.set_title(...)
+    plt.show()
+  solution: |
+    q1, q3 = df['Engine'].quantile([0.25, 0.75])
+    high = q3 + 1.5 * (q3 - q1)
+    n_big = int((df['Engine'] > high).sum())
+    whisker_end = df.loc[df['Engine'] <= high, 'Engine'].max()
+    print(q1, q3, high, n_big, whisker_end)
+    fig, ax = plt.subplots(figsize=(9, 2.5))
+    sns.boxplot(data=df, x='Engine', ax=ax)
+    ax.set_title(f'Объём двигателя: правый ус — {whisker_end:.0f} см³, правее — {n_big} объявлений')
+    plt.show()
+  explanation: |
+    - Квартили и IQR — урок 1.7; граница — Q3 плюс полтора IQR.
+    - `n_big` — сумма маски «больше границы»: эти объявления боксплот нарисует точками.
+    - Ус идёт не до самой границы, а до самого дальнего **настоящего** значения внутри неё: максимум среди объёмов, не больших `high`.
+    - За усом почти 3 000 объявлений — машины с двигателями 3 литра и больше: редкие для рынка, но не ошибки. А вот объёмы в 200 см³ слева от ящика стоит проверить.
+  hints:
+    - "Граница — `q3 + 1.5 * (q3 - q1)`; конец уса — максимальный объём среди тех, что не больше границы."
+    - "`n_big = int((df['Engine'] > high).sum())`; `whisker_end = df.loc[df['Engine'] <= high, 'Engine'].max()`."
+    - "`q1, q3 = df['Engine'].quantile([0.25, 0.75])`; `sns.boxplot(data=df, x='Engine', ax=ax)`."
+  tests: |
+    import numpy as np
+    close(var('q1', 'number', 'числом'), ref('q1'), 'Q1 объёма двигателя — {expected}, а у вас {actual}.')
+    close(var('q3', 'number', 'числом'), ref('q3'), 'Q3 объёма двигателя — {expected}, а у вас {actual}.')
+    hi = var('high', 'number', 'числом')
+    if abs(hi - (ref('q3') + 1.5 * ref('q3'))) < 1e-6:
+        fail('IQR — это Q3 − Q1: граница `q3 + 1.5 * (q3 - q1)`.')
+    close(hi, ref('high'), 'Верхняя граница усов — {expected}, а у вас {actual}.')
+    close(var('n_big', 'number', 'числом'), ref('n_big'), 'Объявлений правее границы {expected}, а у вас {actual}.')
+    close(var('whisker_end', 'number', 'числом'), ref('whisker_end'), 'Правый ус заканчивается на {expected}, а у вас {actual}. Нужен максимальный объём среди тех, что не больше `high`.')
+    ax = axes()
+    boxes = [p for p in ax.patches if type(p).__name__ == 'PathPatch']
+    ensure(len(boxes) >= 1, 'Нарисуйте боксплот: `sns.boxplot(data=df, x=\'Engine\', ax=ax)`.')
+    v = boxes[0].get_path().vertices
+    ok = (np.isclose(v[:, 0].min(), ref('q1')) and np.isclose(v[:, 0].max(), ref('q3'))) or (np.isclose(v[:, 1].min(), ref('q1')) and np.isclose(v[:, 1].max(), ref('q3')))
+    ensure(ok, 'Ящик боксплота должен идти от Q1 до Q3 объёма двигателя — постройте боксплот колонки Engine.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+    close(alt('whisker_end'), alt_ref('whisker_end'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        q1, q3 = df['Engine'].quantile([0.25, 0.75])
+        high = q3 + 1.5 * (q3 - q1)
+        n_big = int((df['Engine'] > high).sum())
+        whisker_end = high
+        fig, ax = plt.subplots()
+        sns.boxplot(data=df, x='Engine', ax=ax)
+        ax.set_title('Объём')
+        plt.show()
+      expect: максимальный объём
+    - code: |
+        q1, q3 = df['Engine'].quantile([0.25, 0.75])
+        high = q3 + 1.5 * (q3 - q1)
+        n_big = int((df['Engine'] > q3).sum())
+        whisker_end = df.loc[df['Engine'] <= high, 'Engine'].max()
+        fig, ax = plt.subplots()
+        sns.boxplot(data=df, x='Engine', ax=ax)
+        ax.set_title('Объём')
+        plt.show()
+      expect: правее границы
+
+- id: m4-l6-t3
+  kind: plot
+  title: ECDF пробега в год
+  difficulty: main
+  introduces: [dist-views]
+  uses: [sns-basics]
+  statement: |
+    Получите `share_20k` — долю объявлений с пробегом в год **не больше** 20 000 км — и нарисуйте ECDF пробега в год (`sns.ecdfplot`). Ограничьте ось X диапазоном от 0 до 60 000 км (`ax.set_xlim`), добавьте заголовок и подписи осей.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    share_20k = ...
+    print(round(share_20k, 3))
+    fig, ax = plt.subplots(figsize=(9, 3.5))
+    sns.ecdfplot(...)
+    ax.set_xlim(...)
+    ax.set(title=..., xlabel=..., ylabel=...)
+    plt.show()
+  solution: |
+    share_20k = (df['km_year'] <= 20_000).mean()
+    print(round(share_20k, 3))
+    fig, ax = plt.subplots(figsize=(9, 3.5))
+    sns.ecdfplot(data=df, x='km_year', ax=ax)
+    ax.set_xlim(0, 60_000)
+    ax.set(title=f'Пробег в год: {share_20k:.0%} объявлений — не больше 20 000 км',
+           xlabel='Пробег за год, км', ylabel='Доля объявлений')
+    plt.show()
+  explanation: |
+    - Среднее маски «не больше 20 000» — доля таких объявлений (урок 1.5).
+    - ECDF в точке x = 20 000 показывает ту же долю: накопленную долю значений не больше x.
+    - `set_xlim(0, 60_000)` прячет редкий длинный хвост и не меняет саму кривую.
+  hints:
+    - Доля «не больше» — среднее логической маски; ECDF рисует `sns.ecdfplot`.
+    - "`share_20k = (df['km_year'] <= 20_000).mean()`."
+    - "`sns.ecdfplot(data=df, x='km_year', ax=ax)`; `ax.set_xlim(0, 60_000)`."
+  tests: |
+    sh = var('share_20k', 'number', 'числом')
+    if abs(sh - (ref('df')['km_year'] < 20_000).mean()) < 1e-12 and abs(sh - ref('share_20k')) > 1e-12:
+        fail('Нужна доля «не больше» 20 000: `<=`, а не `<`.')
+    if abs(sh - (1 - ref('share_20k'))) < 1e-9:
+        fail('Это доля объявлений с пробегом больше 20 000 км. Нужна доля «не больше»: `<= 20_000`.')
+    close(sh, ref('share_20k'), 'Доля объявлений с пробегом не больше 20 000 км в год — {expected}, а у вас {actual}.')
+    ax = axes()
+    lines = [l for l in ax.get_lines() if len(l.get_ydata()) > 100]
+    ensure(len(lines) >= 1, 'Нарисуйте ECDF: `sns.ecdfplot(data=df, x=\'km_year\', ax=ax)`.')
+    yd = lines[0].get_ydata()
+    ensure(abs(yd[-1] - 1) < 1e-9 and len(yd) == len(ref('df')) + 1, 'ECDF должна строиться по всем значениям `km_year` и доходить до 1.')
+    left, right = ax.get_xlim()
+    ensure(abs(left) < 1e-6 and abs(right - 60_000) < 1e-6, 'Ограничьте ось X: `ax.set_xlim(0, 60_000)`.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+    close(alt('share_20k'), alt_ref('share_20k'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        share_20k = (df['km_year'] > 20_000).mean()
+        fig, ax = plt.subplots()
+        sns.ecdfplot(data=df, x='km_year', ax=ax)
+        ax.set_xlim(0, 60_000)
+        ax.set_title('Пробег')
+        plt.show()
+      expect: больше 20 000
+    - code: |
+        share_20k = (df['km_year'] <= 20_000).mean()
+        fig, ax = plt.subplots()
+        sns.ecdfplot(data=df, x='km_year', ax=ax)
+        ax.set_title('Пробег')
+        plt.show()
+      expect: set_xlim
+
+- id: m4-l6-t4
+  kind: plot
+  title: Боксплот и violin рядом
+  difficulty: main
+  introduces: [dist-views, boxplot-rule]
+  uses: [sns-basics, mpl-subplots, pd-isin-between]
+  statement: |
+    Для объявлений с пробегом в год **от 0 до 60 000 км** (`kmy`) нарисуйте рядом два представления пробега в год с общей осью Y (`plt.subplots(1, 2, sharey=True)`): слева — боксплот (`sns.boxplot`), справа — violin с квартилями (`sns.violinplot(..., inner='quartile', cut=0)`). Подпишите оба графика.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    kmy = ...
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharey=True)
+    sns.boxplot(...)
+    sns.violinplot(...)
+    axes[0].set_title(...)
+    axes[1].set_title(...)
+    plt.show()
+  solution: |
+    kmy = df[df['km_year'].between(0, 60_000)]
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharey=True)
+    sns.boxplot(data=kmy, y='km_year', ax=axes[0], color='lightgreen')
+    sns.violinplot(data=kmy, y='km_year', inner='quartile', cut=0, ax=axes[1], color='lightblue')
+    axes[0].set_title('Боксплот: квартили и редкие значения')
+    axes[1].set_title('Violin: форма плотности и квартили')
+    plt.show()
+  explanation: |
+    - Фильтр `between(0, 60_000)` оставляет основную массу (урок 2.5): несколько записей с 200 000+ км в год сжали бы оба графика.
+    - `sharey=True` — общая шкала Y: представления сравниваются честно.
+    - Violin показывает то, чего не видно на боксплоте: плотность наибольшая около 10–20 тыс. км в год, хвост вверх длинный.
+  hints:
+    - Отберите строки, затем две оси с общей шкалой Y и по функции Seaborn на каждой (`ax=axes[0]`, `ax=axes[1]`).
+    - "`sns.boxplot(data=kmy, y='km_year', ax=axes[0])`; `sns.violinplot(data=kmy, y='km_year', inner='quartile', cut=0, ax=axes[1])`."
+    - "`kmy = df[df['km_year'].between(0, 60_000)]`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    k = var('kmy', pd.DataFrame, 'таблицей DataFrame')
+    ensure(len(k) == len(ref('kmy')), 'В `kmy` должно быть {0} записей с пробегом в год от 0 до 60 000, а у вас {1}.'.format(len(ref('kmy')), len(k)))
+    fig = figures()[-1]
+    axs = plot_axes(fig)
+    ensure(len(axs) == 2, 'Нужны два графика рядом: `plt.subplots(1, 2, sharey=True)`.')
+    ensure(axs[0].get_shared_y_axes().joined(axs[0], axs[1]), 'Сделайте общую ось Y: `sharey=True`.')
+    boxes = [p for p in axs[0].patches if type(p).__name__ == 'PathPatch']
+    ensure(len(boxes) >= 1, 'Слева должен быть боксплот: `sns.boxplot(..., ax=axes[0])`.')
+    v = boxes[0].get_path().vertices
+    q1, q3 = ref('kmy')['km_year'].quantile([0.25, 0.75])
+    ensure(np.isclose(v[:, 1].min(), q1) and np.isclose(v[:, 1].max(), q3), 'Боксплот слева должен показывать `km_year` из `kmy` по вертикали (`y=\'km_year\'`).')
+    bodies = [c for c in axs[1].collections if 'Poly' in type(c).__name__]
+    ensure(len(bodies) >= 1, 'Справа должен быть violin: `sns.violinplot(..., ax=axes[1])`.')
+    ensure(len(axs[1].get_lines()) >= 3, 'Добавьте квартили внутрь violin: `inner=\'quartile\'`.')
+    ensure(axs[0].get_title().strip() != '' and axs[1].get_title().strip() != '', 'Подпишите оба графика.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        kmy = df[df['km_year'].between(0, 60_000)]
+        fig, axes = plt.subplots(1, 2)
+        sns.boxplot(data=kmy, y='km_year', ax=axes[0])
+        sns.violinplot(data=kmy, y='km_year', inner='quartile', cut=0, ax=axes[1])
+        axes[0].set_title('Боксплот')
+        axes[1].set_title('Violin')
+        plt.show()
+      expect: sharey=True
+    - code: |
+        kmy = df[df['km_year'].between(0, 60_000)]
+        fig, axes = plt.subplots(1, 2, sharey=True)
+        sns.boxplot(data=kmy, y='km_year', ax=axes[0])
+        sns.violinplot(data=kmy, y='km_year', inner=None, cut=0, ax=axes[1])
+        axes[0].set_title('Боксплот')
+        axes[1].set_title('Violin')
+        plt.show()
+      expect: квартили
+
+- id: m4-l6-t5
+  kind: quiz
+  title: Какое представление что показывает
+  difficulty: main
+  introduces: [dist-views, boxplot-rule]
+  uses: []
+  statement: |
+    Выберите представление распределения под задачу.
+  quiz:
+    - q: Нужно ответить «какая доля машин не дороже 10 000 евро» прямо по графику.
+      options:
+        - ECDF
+        - Боксплот
+        - Violin
+      answer: 0
+      explain: ECDF в точке x показывает долю значений не больше x.
+    - q: Подозреваете, что у распределения два пика. Какое представление их покажет?
+      options:
+        - Боксплот
+        - Violin или гистограмма
+        - Только медиана
+      answer: 1
+      explain: Боксплот сводит распределение к квартилям и прячет форму; violin и гистограмма её показывают.
+    - q: Что такое точки за усами боксплота?
+      options:
+        - Ошибки ввода, их нужно удалить
+        - Значения дальше 1,5·IQR от ящика — редкие, их стоит проверить
+        - Средние значения групп
+      answer: 1
+      explain: Правило «1,5 IQR» отмечает редкие значения; ошибка ли это, решают после проверки записи.
+  hints:
+    - Вспомните таблицу представлений урока.
+    - "ECDF — накопленная доля; violin — форма плотности; точки за усами — за пределами 1,5·IQR."
+    - "Ответы: ECDF; violin или гистограмма; редкие значения для проверки."
+
+- id: m4-l6-t6
+  kind: plot
+  title: "Q–Q-график своими руками"
+  difficulty: star
+  introduces: [dist-views]
+  uses: [quantiles-iqr, std-var, mean-median]
+  statement: |
+    **Q–Q-график** сравнивает квантили данных с квантилями нормального распределения с тем же средним и σ: если данные нормальны, точки ложатся на диагональ.
+
+    Для `log_price = np.log10(df['Price'])` и уровней `levels = np.linspace(0.01, 0.99, 99)` получите `emp` — квантили `log_price` этих уровней (массив NumPy), `theo` — квантили нормального распределения: `norm.ppf(levels, m, s)`, где `m`, `s` — среднее и стандартное отклонение `log_price`, и `max_dev` — наибольшее по модулю отклонение `emp - theo`. Нарисуйте точки (`theo`, `emp`) и красную пунктирную диагональ `y = x`, подпишите оси.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    from scipy.stats import norm
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    log_price = np.log10(df['Price'])
+    levels = np.linspace(0.01, 0.99, 99)
+    m, s = ...
+    emp = ...
+    theo = ...
+    max_dev = ...
+    print(round(max_dev, 3))
+    fig, ax = plt.subplots(figsize=(5, 5))
+    ax.scatter(theo, emp, s=12)
+    ax.plot([theo.min(), theo.max()], [theo.min(), theo.max()], 'r--')
+    ax.set(title=..., xlabel=..., ylabel=...)
+    plt.show()
+  solution: |
+    log_price = np.log10(df['Price'])
+    levels = np.linspace(0.01, 0.99, 99)
+    m, s = log_price.mean(), log_price.std()
+    emp = log_price.quantile(levels).to_numpy()
+    theo = norm.ppf(levels, m, s)
+    max_dev = np.abs(emp - theo).max()
+    print(round(max_dev, 3))
+    fig, ax = plt.subplots(figsize=(5, 5))
+    ax.scatter(theo, emp, s=12)
+    ax.plot([theo.min(), theo.max()], [theo.min(), theo.max()], 'r--')
+    ax.set(title='Q–Q: логарифм цены против нормального распределения',
+           xlabel='Квантили нормального распределения', ylabel='Квантили log₁₀(цены)')
+    plt.show()
+  explanation: |
+    - `quantile(levels)` считает 99 квантилей сразу (урок 1.7), `to_numpy()` делает из них массив.
+    - `norm.ppf(уровни, среднее, σ)` — квантили нормального распределения: обратная функция к накопленной доле.
+    - Точки почти на диагонали: в середине отклонения малы, сильнее всего расходятся крайние уровни — хвосты распределения цен немного «тяжелее» нормальных.
+    - Готовая функция того же графика — `scipy.stats.probplot`.
+  hints:
+    - "Квантили данных — метод `quantile` со списком уровней; квантили нормального — `norm.ppf(levels, m, s)`."
+    - "`emp = log_price.quantile(levels).to_numpy()`; `max_dev = np.abs(emp - theo).max()`."
+    - "`m, s = log_price.mean(), log_price.std()`; `theo = norm.ppf(levels, m, s)`."
+  tests: |
+    import numpy as np
+    emp = var('emp', np.ndarray, 'массивом NumPy — используйте `.to_numpy()`')
+    theo = var('theo', np.ndarray, 'массивом NumPy')
+    ensure(len(emp) == 99 and len(theo) == 99, 'В `emp` и `theo` должно быть по 99 значений — по одному на уровень.')
+    same_array(emp, ref('emp'), 'Квантили логарифма цены не совпадают.')
+    same_array(theo, ref('theo'), 'Квантили нормального распределения не совпадают: `norm.ppf(levels, m, s)` со средним и σ логарифма цены.', rtol=1e-4)
+    close(var('max_dev', 'number', 'числом'), ref('max_dev'), 'Наибольшее отклонение — {expected}, а у вас {actual}. Возьмите модуль: `np.abs(emp - theo).max()`.', rtol=1e-3)
+    ax = axes()
+    pts = [c for c in ax.collections if type(c).__name__ == 'PathCollection']
+    ensure(len(pts) >= 1 and len(pts[0].get_offsets()) == 99, 'Нарисуйте 99 точек (`theo`, `emp`): `ax.scatter(theo, emp)`.')
+    offs = np.asarray(pts[0].get_offsets())
+    same_array(offs[:, 0], ref('theo'), 'По оси X — квантили нормального распределения `theo`, по оси Y — `emp`.', rtol=1e-4)
+    diag = [l for l in ax.get_lines() if len(l.get_xdata()) >= 2 and np.allclose(l.get_xdata(), l.get_ydata())]
+    ensure(len(diag) >= 1, 'Добавьте диагональ `y = x`: `ax.plot([a, b], [a, b], \'r--\')`.')
+    ensure(ax.get_xlabel().strip() != '' and ax.get_ylabel().strip() != '', 'Подпишите обе оси.')
+    close(alt('max_dev'), alt_ref('max_dev'), HARDCODE_MSG, rtol=1e-3)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        log_price = np.log10(df['Price'])
+        levels = np.linspace(0.01, 0.99, 99)
+        m, s = log_price.mean(), log_price.std()
+        emp = log_price.quantile(levels).to_numpy()
+        theo = norm.ppf(levels)
+        max_dev = np.abs(emp - theo).max()
+        fig, ax = plt.subplots()
+        ax.scatter(theo, emp)
+        ax.plot([theo.min(), theo.max()], [theo.min(), theo.max()], 'r--')
+        ax.set(xlabel='Нормальные', ylabel='Данные')
+        plt.show()
+      expect: "norm.ppf(levels, m, s)"
+    - code: |
+        log_price = np.log10(df['Price'])
+        levels = np.linspace(0.01, 0.99, 99)
+        m, s = log_price.mean(), log_price.std()
+        emp = log_price.quantile(levels).to_numpy()
+        theo = norm.ppf(levels, m, s)
+        max_dev = (emp - theo).max()
+        fig, ax = plt.subplots()
+        ax.scatter(theo, emp)
+        ax.plot([theo.min(), theo.max()], [theo.min(), theo.max()], 'r--')
+        ax.set(xlabel='Нормальные', ylabel='Данные')
+        plt.show()
+      expect: модуль

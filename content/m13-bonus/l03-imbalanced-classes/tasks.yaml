@@ -1,0 +1,533 @@
+- id: b1-l3-t1
+  title: Доля верных обманывает
+  difficulty: warmup
+  introduces: [class-imbalance]
+  uses: [binary-classification]
+  statement: |
+    Модель `plain` — логистическая регрессия на четырёх числовых признаках — ищет гибриды. Для валидационной части получите:
+
+    - `share` — долю гибридов в обучающей части;
+    - `acc_never` — долю верных у ответа «гибридов нет» на валидации;
+    - `acc_model` и `recall_model` — долю верных и полноту модели при пороге 0,5 на валидации (`pred_valid` уже посчитан);
+    - `paradox` — `True`, если модель верна реже, чем ответ «гибридов нет».
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import make_pipeline
+    from sklearn.linear_model import LogisticRegression
+    cars = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'Price']
+    X = cars[features]
+    y = (cars['Fuel_type'] == 'Hybrid').astype(int)
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42, stratify=y_temp)
+    plain = make_pipeline(StandardScaler(), LogisticRegression()).fit(X_train, y_train)
+    pred_valid = plain.predict(X_valid)
+  starter: |
+    share = float(y_train.mean())
+    acc_never = ...
+    acc_model = float(np.mean(pred_valid == y_valid))
+    recall_model = ...
+    paradox = ...
+    print(round(share, 4), round(acc_never, 4), round(acc_model, 4), recall_model, paradox)
+  solution: |
+    share = float(y_train.mean())
+    acc_never = float(np.mean(y_valid == 0))
+    acc_model = float(np.mean(pred_valid == y_valid))
+    recall_model = float(((pred_valid == 1) & (y_valid == 1)).sum() / (y_valid == 1).sum())
+    paradox = acc_model < acc_never
+    print(round(share, 4), round(acc_never, 4), round(acc_model, 4), recall_model, paradox)
+  explanation: |
+    - Ответ «гибридов нет» верен ровно на всех не-гибридах — доля верных 0,944. Это ориентир для доли верных при редком классе (урок 5.5).
+    - Модель верна в 94,2 % случаев — реже ориентира — и не нашла ни одного гибрида: полнота 0. Она назвала гибридами несколько обычных машин и ни одного настоящего гибрида.
+    - Доля верных складывает ошибки обоих видов, а на редком классе их почти нет по количеству. Поэтому при дисбалансе её сравнивают с ориентиром и всегда смотрят полноту.
+  hints:
+    - "Ответ «гибридов нет» верен там, где `y_valid == 0`: `np.mean(y_valid == 0)`."
+    - "Полнота — найденные гибриды, делённые на все гибриды: `((pred_valid == 1) & (y_valid == 1)).sum() / (y_valid == 1).sum()`."
+    - "`paradox = acc_model < acc_never`."
+  tests: |
+    close(var('share', 'number', 'числом'), ref('share'), 'Доля гибридов в обучающей части — {expected}, а у вас {actual}.')
+    an = var('acc_never', 'number', 'числом')
+    if abs(an - ref('share')) < 0.01:
+        fail('Это доля гибридов. Ответ «гибридов нет» верен на всех остальных машинах: np.mean(y_valid == 0).')
+    close(an, ref('acc_never'), 'Доля верных ответа «гибридов нет» — {expected}, а у вас {actual}.')
+    close(var('acc_model', 'number', 'числом'), ref('acc_model'), 'Доля верных модели — {expected}, а у вас {actual}.')
+    close(var('recall_model', 'number', 'числом'), ref('recall_model'), 'Полнота модели — {expected}, а у вас {actual}.', atol=1e-9)
+    equal(bool(var('paradox')), True, 'Модель верна реже, чем ответ «гибридов нет», — paradox должен быть True.')
+    close(alt('acc_never'), alt_ref('acc_never'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        share = float(y_train.mean())
+        acc_never = float(y_valid.mean())
+        acc_model = float(np.mean(pred_valid == y_valid))
+        recall_model = float(((pred_valid == 1) & (y_valid == 1)).sum() / (y_valid == 1).sum())
+        paradox = acc_model < acc_never
+      expect: Это доля гибридов
+    - code: |
+        share = float(y_train.mean())
+        acc_never = float(np.mean(y_valid == 0))
+        acc_model = float(np.mean(pred_valid == y_valid))
+        recall_model = float(np.mean(pred_valid == y_valid))
+        paradox = acc_model < acc_never
+      expect: Полнота модели
+
+- id: b1-l3-t2
+  title: Стратификация на маленькой выборке
+  difficulty: main
+  introduces: []
+  uses: [class-imbalance, sk-split]
+  statement: |
+    На больших данных разбиение без `stratify` почти не меняет долю редкого класса в частях. А на маленьких? В таблице `small` — 200 машин, гибридов среди них — `ys`.
+
+    Для каждого `seed` от 0 до 199 разбейте `small` на части 75/25 (`train_test_split(small, ys, test_size=0.25, random_state=seed)`) и запишите, сколько гибридов попало в тестовую часть: список `counts_plain`. Сделайте то же с `stratify=ys`: список `counts_strat`. Получите:
+
+    - `plain_min`, `plain_max` — наименьшее и наибольшее число гибридов в тесте без стратификации;
+    - `strat_values` — отсортированный список различных значений `counts_strat`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    cars = pd.read_csv('cars_processed.csv')
+    small = cars.sample(200, random_state=1)
+    ys = (small['Fuel_type'] == 'Hybrid').astype(int)
+  starter: |
+    counts_plain, counts_strat = [], []
+    for seed in range(200):
+        _, _, _, y_te = train_test_split(small, ys, test_size=0.25, random_state=seed)
+        counts_plain.append(int(y_te.sum()))
+        _, _, _, y_te = train_test_split(...)
+        counts_strat.append(int(y_te.sum()))
+    plain_min, plain_max = ...
+    strat_values = ...
+    print('гибридов всего', int(ys.sum()), '| без stratify', plain_min, '…', plain_max, '| со stratify', strat_values)
+  solution: |
+    counts_plain, counts_strat = [], []
+    for seed in range(200):
+        _, _, _, y_te = train_test_split(small, ys, test_size=0.25, random_state=seed)
+        counts_plain.append(int(y_te.sum()))
+        _, _, _, y_te = train_test_split(small, ys, test_size=0.25, random_state=seed, stratify=ys)
+        counts_strat.append(int(y_te.sum()))
+    plain_min, plain_max = min(counts_plain), max(counts_plain)
+    strat_values = sorted(set(counts_strat))
+    print('гибридов всего', int(ys.sum()), '| без stratify', plain_min, '…', plain_max, '| со stratify', strat_values)
+  explanation: |
+    - `stratify=ys` делит каждый класс отдельно в той же пропорции, поэтому в тест всегда попадает одно и то же число гибридов — столько, сколько составляет четверть.
+    - Гибридов в выборке 14. Со стратификацией в тест из 50 машин всегда попадают 3, а без неё — от 0 до 8, хотя в среднем ждём 3,5. Полнота, посчитанная на двух-трёх гибридах, — почти случайное число.
+    - Поэтому при редком классе разбивают со `stratify`, а на маленьких данных ещё и проверяют по нескольким разбиениям — например, `StratifiedKFold` (урок 6.8).
+  hints:
+    - "Со стратификацией — тот же вызов с `stratify=ys`."
+    - "Наименьшее и наибольшее — `min(counts_plain), max(counts_plain)`."
+    - "Различные значения по порядку — `sorted(set(counts_strat))`."
+  tests: |
+    pmin = var('plain_min', 'int', 'целым числом')
+    pmax = var('plain_max', 'int', 'целым числом')
+    sv = var('strat_values', list, 'списком')
+    if len(sv) > 1:
+        fail('Со stratify число гибридов в тесте должно быть одним и тем же при всех seed: передайте stratify=ys.')
+    equal([int(v) for v in sv], [int(v) for v in ref('strat_values')], 'Со стратификацией в тесте всегда {expected} гибридов, а у вас {actual}.')
+    equal((int(pmin), int(pmax)), (int(ref('plain_min')), int(ref('plain_max'))), 'Без стратификации — от {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        counts_plain, counts_strat = [], []
+        for seed in range(200):
+            _, _, _, y_te = train_test_split(small, ys, test_size=0.25, random_state=seed)
+            counts_plain.append(int(y_te.sum()))
+            _, _, _, y_te = train_test_split(small, ys, test_size=0.25, random_state=seed)
+            counts_strat.append(int(y_te.sum()))
+        plain_min, plain_max = min(counts_plain), max(counts_plain)
+        strat_values = sorted(set(counts_strat))
+      expect: передайте stratify=ys
+    - code: |
+        counts_plain, counts_strat = [], []
+        for seed in range(200):
+            _, _, _, y_te = train_test_split(small, ys, test_size=0.25, random_state=seed)
+            counts_plain.append(int(y_te.sum()))
+            _, _, _, y_te = train_test_split(small, ys, test_size=0.25, random_state=seed, stratify=ys)
+            counts_strat.append(int(y_te.sum()))
+        plain_min, plain_max = int(np.mean(counts_plain)), max(counts_plain)
+        strat_values = sorted(set(counts_strat))
+      expect: Без стратификации
+
+- id: b1-l3-t3
+  title: Веса классов
+  difficulty: main
+  introduces: [rebalancing]
+  uses: [class-imbalance, precision-recall]
+  statement: |
+    1. Напишите функцию `class_weights(y)` — словарь `{0: w₀, 1: w₁}`, где wₖ = n / (2·nₖ): n — всего объектов, nₖ — объектов класса k. Так считает веса `class_weight='balanced'`.
+    2. Обучите `LogisticRegression(class_weight='balanced')` в конвейере со `StandardScaler` на обучающей части.
+
+    Получите `weights` для `y_train`, `ratio` — во сколько раз вес гибрида больше веса остальных машин, и `metrics_bal` — кортеж (точность, полнота, F1) модели с весами на валидации при пороге 0,5.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import make_pipeline
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import precision_score, recall_score, f1_score
+    cars = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'Price']
+    X = cars[features]
+    y = (cars['Fuel_type'] == 'Hybrid').astype(int)
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42, stratify=y_temp)
+  starter: |
+    def class_weights(y):
+        y = np.asarray(y)
+        n = len(y)
+        return {k: ... for k in (0, 1)}
+
+    weights = class_weights(y_train)
+    ratio = weights[1] / weights[0]
+    balanced = make_pipeline(StandardScaler(), LogisticRegression(class_weight='balanced')).fit(X_train, y_train)
+    pred = balanced.predict(X_valid)
+    metrics_bal = ...
+    print(weights, round(ratio, 2), np.round(metrics_bal, 3))
+  solution: |
+    def class_weights(y):
+        y = np.asarray(y)
+        n = len(y)
+        return {k: float(n / (2 * (y == k).sum())) for k in (0, 1)}
+
+    weights = class_weights(y_train)
+    ratio = weights[1] / weights[0]
+    balanced = make_pipeline(StandardScaler(), LogisticRegression(class_weight='balanced')).fit(X_train, y_train)
+    pred = balanced.predict(X_valid)
+    metrics_bal = (precision_score(y_valid, pred), recall_score(y_valid, pred), f1_score(y_valid, pred))
+    print(weights, round(ratio, 2), np.round(metrics_bal, 3))
+  explanation: |
+    - Вес обратно пропорционален размеру класса. Поэтому суммарный вес гибридов равен суммарному весу остальных: n₁·w₁ = n₀·w₀ = n / 2. Для модели классы становятся равными.
+    - Ошибка на гибриде стоит в 16,7 раза дороже: обычных машин во столько же раз больше.
+    - Полнота выросла с 0 до 0,80, но точность всего 0,12. Модель с весами называет гибридом треть всех машин, и из восьми меток верна одна. F1 — 0,21.
+  hints:
+    - "Число объектов класса k — `(y == k).sum()`; вес — `n / (2 * (y == k).sum())`."
+    - "Метрики — `precision_score`, `recall_score`, `f1_score` от `(y_valid, pred)`."
+    - "`metrics_bal = (precision_score(y_valid, pred), recall_score(y_valid, pred), f1_score(y_valid, pred))`."
+  tests: |
+    import numpy as np
+    f = var('class_weights')
+    ensure(callable(f), '`class_weights` должна быть функцией.')
+    w = f(np.array([0, 0, 0, 1]))
+    ensure(isinstance(w, dict) and set(w) == {0, 1}, 'Нужен словарь с ключами 0 и 1.')
+    if abs(w[1] - 0.25) < 1e-9:
+        fail('Вес — обратная величина доли: wₖ = n / (2·nₖ). У редкого класса вес больше, а не меньше.')
+    close(w[0], 4 / 6, 'Для y = [0, 0, 0, 1] вес класса 0 — 4 / (2·3) = 0.667, а у вас {actual}.')
+    close(w[1], 2.0, 'Вес класса 1 — 4 / (2·1) = 2, а у вас {actual}.')
+    close(var('ratio', 'number', 'числом'), ref('ratio'), 'Вес гибрида больше в {expected} раза, а у вас {actual}.')
+    same_array(np.asarray(var('metrics_bal'), dtype=float), np.asarray(ref('metrics_bal'), dtype=float), 'Метрики модели с весами на валидации не совпадают с ожидаемыми.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def class_weights(y):
+            y = np.asarray(y)
+            n = len(y)
+            return {k: float((y == k).sum() / n) for k in (0, 1)}
+        weights = class_weights(y_train)
+        ratio = weights[1] / weights[0]
+        balanced = make_pipeline(StandardScaler(), LogisticRegression(class_weight='balanced')).fit(X_train, y_train)
+        pred = balanced.predict(X_valid)
+        metrics_bal = (precision_score(y_valid, pred), recall_score(y_valid, pred), f1_score(y_valid, pred))
+      expect: обратная величина доли
+    - code: |
+        def class_weights(y):
+            y = np.asarray(y)
+            n = len(y)
+            return {k: float(n / (2 * (y == k).sum())) for k in (0, 1)}
+        weights = class_weights(y_train)
+        ratio = weights[1] / weights[0]
+        balanced = make_pipeline(StandardScaler(), LogisticRegression(class_weight='balanced')).fit(X_train, y_train)
+        pred = balanced.predict(X_train)
+        metrics_bal = (precision_score(y_train, pred), recall_score(y_train, pred), f1_score(y_train, pred))
+      expect: на валидации не совпадают
+
+- id: b1-l3-t4
+  title: Дублирование без утечки
+  difficulty: main
+  introduces: []
+  uses: [rebalancing, data-leakage]
+  statement: |
+    1. Напишите функцию `oversample_index(y, rng)`: номера строк обучающей выборки, в которых к исходным строкам добавлены случайные повторы объектов класса 1 (`rng.choice(..., replace=True)`), пока объектов двух классов не станет поровну. Сначала идут все исходные номера по порядку, затем повторы.
+    2. Обучите конвейер `StandardScaler` → `LogisticRegression()` на продублированной обучающей части и получите `prec_honest`, `rec_honest` — точность и полноту на настоящей валидации.
+    3. Сделайте **неправильно**: продублируйте гибриды во всей таблице `X_all`, `y_all`, а потом разбейте её 80/20 (`test_size=0.2, random_state=42, stratify=...`). Получите `prec_leaky` — точность на такой «проверке».
+
+    `rng = np.random.default_rng(0)` создаётся заново перед каждым дублированием.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import make_pipeline
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import precision_score, recall_score
+    cars = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'Price']
+    X_all = cars[features]
+    y_all = (cars['Fuel_type'] == 'Hybrid').astype(int)
+    X_temp, X_test, y_temp, y_test = train_test_split(X_all, y_all, test_size=0.2, random_state=42, stratify=y_all)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42, stratify=y_temp)
+  starter: |
+    def oversample_index(y, rng):
+        y = np.asarray(y)
+        pos, neg = np.where(y == 1)[0], np.where(y == 0)[0]
+        extra = rng.choice(pos, size=..., replace=True)
+        return np.concatenate([np.arange(len(y)), extra])
+
+    idx = oversample_index(y_train, np.random.default_rng(0))
+    model = make_pipeline(StandardScaler(), LogisticRegression()).fit(X_train.iloc[idx], y_train.iloc[idx])
+    pred = model.predict(X_valid)
+    prec_honest, rec_honest = precision_score(y_valid, pred), recall_score(y_valid, pred)
+
+    idx_all = oversample_index(y_all, np.random.default_rng(0))
+    Xb, yb = X_all.iloc[idx_all], y_all.iloc[idx_all]
+    Xb_tr, Xb_te, yb_tr, yb_te = train_test_split(...)
+    leaky = make_pipeline(StandardScaler(), LogisticRegression()).fit(Xb_tr, yb_tr)
+    prec_leaky = precision_score(yb_te, leaky.predict(Xb_te))
+    print(round(prec_honest, 3), round(rec_honest, 3), round(prec_leaky, 3))
+  solution: |
+    def oversample_index(y, rng):
+        y = np.asarray(y)
+        pos, neg = np.where(y == 1)[0], np.where(y == 0)[0]
+        extra = rng.choice(pos, size=len(neg) - len(pos), replace=True)
+        return np.concatenate([np.arange(len(y)), extra])
+
+    idx = oversample_index(y_train, np.random.default_rng(0))
+    model = make_pipeline(StandardScaler(), LogisticRegression()).fit(X_train.iloc[idx], y_train.iloc[idx])
+    pred = model.predict(X_valid)
+    prec_honest, rec_honest = precision_score(y_valid, pred), recall_score(y_valid, pred)
+
+    idx_all = oversample_index(y_all, np.random.default_rng(0))
+    Xb, yb = X_all.iloc[idx_all], y_all.iloc[idx_all]
+    Xb_tr, Xb_te, yb_tr, yb_te = train_test_split(Xb, yb, test_size=0.2, random_state=42, stratify=yb)
+    leaky = make_pipeline(StandardScaler(), LogisticRegression()).fit(Xb_tr, yb_tr)
+    prec_leaky = precision_score(yb_te, leaky.predict(Xb_te))
+    print(round(prec_honest, 3), round(rec_honest, 3), round(prec_leaky, 3))
+  explanation: |
+    - Повторов нужно `len(neg) - len(pos)`: тогда объектов класса 1 станет столько же, сколько класса 0.
+    - Честно: дублируем только обучающую часть, проверяем на настоящей валидации. Точность 0,12, полнота 0,80 — почти как с весами классов.
+    - Неправильно: после дублирования всей таблицы «проверка» сбалансирована искусственно, и в ней много копий обучающих гибридов. Точность взлетает до 0,69 — почти в шесть раз выше честной. Это утечка из урока 5.4: сначала разбиение, потом любые изменения обучающей части.
+  hints:
+    - "Повторов — `len(neg) - len(pos)`."
+    - "Неправильное разбиение — `train_test_split(Xb, yb, test_size=0.2, random_state=42, stratify=yb)`."
+    - "Новый `np.random.default_rng(0)` перед каждым дублированием уже в заготовке — так результат повторяется."
+  tests: |
+    import numpy as np
+    f = var('oversample_index')
+    ensure(callable(f), '`oversample_index` должна быть функцией.')
+    got = np.asarray(f(np.array([0, 1, 0, 0, 0]), np.random.default_rng(0)))
+    ensure(len(got) == 8, 'Для y = [0, 1, 0, 0, 0] нужно добавить 3 повтора единицы: всего 8 номеров, а у вас {0}.'.format(len(got)))
+    equal([int(v) for v in got[:5]], [0, 1, 2, 3, 4], 'Сначала идут все исходные номера по порядку.')
+    equal([int(v) for v in got[5:]], [1, 1, 1], 'Повторы — только номера объектов класса 1.')
+    close(var('prec_honest', 'number', 'числом'), ref('prec_honest'), 'Честная точность на валидации — {expected}, а у вас {actual}.')
+    close(var('rec_honest', 'number', 'числом'), ref('rec_honest'), 'Честная полнота на валидации — {expected}, а у вас {actual}.')
+    close(var('prec_leaky', 'number', 'числом'), ref('prec_leaky'), 'Точность после дублирования до разбиения — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def oversample_index(y, rng):
+            y = np.asarray(y)
+            pos, neg = np.where(y == 1)[0], np.where(y == 0)[0]
+            extra = rng.choice(pos, size=len(neg), replace=True)
+            return np.concatenate([np.arange(len(y)), extra])
+        idx = oversample_index(y_train, np.random.default_rng(0))
+        model = make_pipeline(StandardScaler(), LogisticRegression()).fit(X_train.iloc[idx], y_train.iloc[idx])
+        pred = model.predict(X_valid)
+        prec_honest, rec_honest = precision_score(y_valid, pred), recall_score(y_valid, pred)
+        idx_all = oversample_index(y_all, np.random.default_rng(0))
+        Xb, yb = X_all.iloc[idx_all], y_all.iloc[idx_all]
+        Xb_tr, Xb_te, yb_tr, yb_te = train_test_split(Xb, yb, test_size=0.2, random_state=42, stratify=yb)
+        leaky = make_pipeline(StandardScaler(), LogisticRegression()).fit(Xb_tr, yb_tr)
+        prec_leaky = precision_score(yb_te, leaky.predict(Xb_te))
+      expect: добавить 3 повтора
+    - code: |
+        def oversample_index(y, rng):
+            y = np.asarray(y)
+            pos, neg = np.where(y == 1)[0], np.where(y == 0)[0]
+            extra = rng.choice(pos, size=len(neg) - len(pos), replace=True)
+            return np.concatenate([np.arange(len(y)), extra])
+        idx = oversample_index(y_train, np.random.default_rng(0))
+        model = make_pipeline(StandardScaler(), LogisticRegression()).fit(X_train.iloc[idx], y_train.iloc[idx])
+        pred = model.predict(X_train.iloc[idx])
+        prec_honest, rec_honest = precision_score(y_train.iloc[idx], pred), recall_score(y_train.iloc[idx], pred)
+        idx_all = oversample_index(y_all, np.random.default_rng(0))
+        Xb, yb = X_all.iloc[idx_all], y_all.iloc[idx_all]
+        Xb_tr, Xb_te, yb_tr, yb_te = train_test_split(Xb, yb, test_size=0.2, random_state=42, stratify=yb)
+        leaky = make_pipeline(StandardScaler(), LogisticRegression()).fit(Xb_tr, yb_tr)
+        prec_leaky = precision_score(yb_te, leaky.predict(Xb_te))
+      expect: Честная точность на валидации
+
+- id: b1-l3-t5
+  title: Порог вместо весов
+  difficulty: main
+  introduces: []
+  uses: [rebalancing, precision-recall]
+  statement: |
+    Сравните два способа на тестовой части:
+
+    - **сдвиг порога**: модель `plain` без весов, порог — с наибольшим F1 на валидации по кривой `precision_recall_curve(y_valid, p_valid)`;
+    - **веса классов**: модель `balanced` с порогом 0,5.
+
+    Получите `thr_best` — порог, `f1_thr` — F1 на тесте модели `plain` с этим порогом, `f1_bal` — F1 на тесте модели `balanced`. У `precision_recall_curve` точностей и полнот на одну больше, чем порогов: последнюю точку при поиске отбросьте.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import make_pipeline
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import f1_score, precision_recall_curve
+    cars = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'Price']
+    X = cars[features]
+    y = (cars['Fuel_type'] == 'Hybrid').astype(int)
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42, stratify=y_temp)
+    plain = make_pipeline(StandardScaler(), LogisticRegression()).fit(X_train, y_train)
+    balanced = make_pipeline(StandardScaler(), LogisticRegression(class_weight='balanced')).fit(X_train, y_train)
+    p_valid = plain.predict_proba(X_valid)[:, 1]
+  starter: |
+    prec, rec, thr = precision_recall_curve(y_valid, p_valid)
+    f1 = 2 * prec * rec / np.maximum(prec + rec, 1e-12)
+    thr_best = float(thr[int(np.argmax(...))])
+    f1_thr = f1_score(y_test, (plain.predict_proba(X_test)[:, 1] >= thr_best).astype(int))
+    f1_bal = ...
+    print(round(thr_best, 3), round(f1_thr, 3), round(f1_bal, 3))
+  solution: |
+    prec, rec, thr = precision_recall_curve(y_valid, p_valid)
+    f1 = 2 * prec * rec / np.maximum(prec + rec, 1e-12)
+    thr_best = float(thr[int(np.argmax(f1[:-1]))])
+    f1_thr = f1_score(y_test, (plain.predict_proba(X_test)[:, 1] >= thr_best).astype(int))
+    f1_bal = f1_score(y_test, balanced.predict(X_test))
+    print(round(thr_best, 3), round(f1_thr, 3), round(f1_bal, 3))
+  explanation: |
+    - `precision_recall_curve` возвращает точки кривой и пороги к ним; последняя точка (точность 1, полнота 0) порога не имеет, поэтому `f1[:-1]`.
+    - Лучший по F1 порог на валидации — 0,127, и на тесте он даёт F1 0,26. Модель с весами при пороге 0,5 стоит в другой точке той же кривой: полнота выше, точность ниже, F1 0,205.
+    - Сдвиг порога не требует переобучения и позволяет выбрать любую точку кривой под задачу. Веса классов удобны, когда модель потом используют с порогом 0,5 — например, внутри чужого кода. Решение — какой ценой покупать полноту — остаётся за людьми.
+  hints:
+    - "Лучший F1 без последней точки — `np.argmax(f1[:-1])`."
+    - "F1 модели с весами — `f1_score(y_test, balanced.predict(X_test))`: её порог 0,5 и так внутри `predict`."
+    - "`thr_best = float(thr[int(np.argmax(f1[:-1]))])`."
+  tests: |
+    tb = var('thr_best', 'number', 'числом')
+    close(tb, ref('thr_best'), 'Лучший порог по F1 на валидации — {expected}, а у вас {actual}. Последнюю точку кривой при поиске отбросьте: f1[:-1].')
+    close(var('f1_thr', 'number', 'числом'), ref('f1_thr'), 'F1 на тесте при сдвинутом пороге — {expected}, а у вас {actual}.')
+    close(var('f1_bal', 'number', 'числом'), ref('f1_bal'), 'F1 модели с весами на тесте — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        prec, rec, thr = precision_recall_curve(y_valid, p_valid)
+        f1 = 2 * prec * rec / np.maximum(prec + rec, 1e-12)
+        thr_best = float(thr[int(np.argmax(rec[:-1]))])
+        f1_thr = f1_score(y_test, (plain.predict_proba(X_test)[:, 1] >= thr_best).astype(int))
+        f1_bal = f1_score(y_test, balanced.predict(X_test))
+      expect: Лучший порог по F1
+    - code: |
+        prec, rec, thr = precision_recall_curve(y_valid, p_valid)
+        f1 = 2 * prec * rec / np.maximum(prec + rec, 1e-12)
+        thr_best = float(thr[int(np.argmax(f1[:-1]))])
+        f1_thr = f1_score(y_test, (plain.predict_proba(X_test)[:, 1] >= thr_best).astype(int))
+        f1_bal = f1_score(y_test, plain.predict(X_test))
+      expect: F1 модели с весами
+
+- id: b1-l3-t6
+  title: Признаки важнее весов
+  difficulty: star
+  introduces: []
+  uses: [class-imbalance, one-hot-encoding]
+  statement: |
+    Сравните модели по тому, насколько хорошо они ставят гибриды наверх списка.
+
+    - `plain` — логистическая регрессия на четырёх числовых признаках (уже обучена);
+    - `rich` — конвейер: `make_column_transformer` со `StandardScaler` для `features` и `OneHotEncoder(handle_unknown='ignore')` для `['Make', 'Model']`, затем `LogisticRegression(max_iter=3000)`. Обучите его на `X_train`.
+
+    Для валидационной части получите `ap_plain` и `ap_rich` — площадь под кривой «точность — полнота» (`average_precision_score`), а также `top100_plain` и `top100_rich` — сколько настоящих гибридов среди 100 машин с наибольшей вероятностью гибрида у каждой модели.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler, OneHotEncoder
+    from sklearn.compose import make_column_transformer
+    from sklearn.pipeline import make_pipeline
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import average_precision_score
+    cars = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'Price']
+    X = cars[features + ['Make', 'Model']]
+    y = (cars['Fuel_type'] == 'Hybrid').astype(int)
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42, stratify=y_temp)
+    plain = make_pipeline(StandardScaler(), LogisticRegression()).fit(X_train[features], y_train)
+  starter: |
+    rich = make_pipeline(
+        make_column_transformer((StandardScaler(), features), (OneHotEncoder(handle_unknown='ignore'), ['Make', 'Model'])),
+        LogisticRegression(max_iter=3000)).fit(X_train, y_train)
+    p_plain = plain.predict_proba(X_valid[features])[:, 1]
+    p_rich = rich.predict_proba(X_valid)[:, 1]
+    ap_plain, ap_rich = average_precision_score(y_valid, p_plain), average_precision_score(y_valid, p_rich)
+
+    def top100(p):
+        best = np.argsort(-p)[:100]
+        return int(...)
+
+    top100_plain, top100_rich = top100(p_plain), top100(p_rich)
+    print(round(ap_plain, 3), round(ap_rich, 3), top100_plain, top100_rich)
+  solution: |
+    rich = make_pipeline(
+        make_column_transformer((StandardScaler(), features), (OneHotEncoder(handle_unknown='ignore'), ['Make', 'Model'])),
+        LogisticRegression(max_iter=3000)).fit(X_train, y_train)
+    p_plain = plain.predict_proba(X_valid[features])[:, 1]
+    p_rich = rich.predict_proba(X_valid)[:, 1]
+    ap_plain, ap_rich = average_precision_score(y_valid, p_plain), average_precision_score(y_valid, p_rich)
+
+    def top100(p):
+        best = np.argsort(-p)[:100]
+        return int(y_valid.to_numpy()[best].sum())
+
+    top100_plain, top100_rich = top100(p_plain), top100(p_rich)
+    print(round(ap_plain, 3), round(ap_rich, 3), top100_plain, top100_rich)
+  explanation: |
+    - `np.argsort(-p)[:100]` — номера 100 машин с наибольшей вероятностью. Сумма настоящих меток по ним — сколько гибридов попало в верх списка. Это точность среди первых 100, понятная без порогов.
+    - Average precision выросла с 0,16 до 0,75. В первой сотне модели на числах 23 гибрида, а у модели с маркой и моделью — 88: многие гибриды — это несколько конкретных моделей, Prius, Auris, Fusion.
+    - Ни веса, ни дублирование, ни порог такого не дают: они двигают точку по одной кривой. Признак, который отличает редкий класс, поднимает саму кривую.
+  hints:
+    - "Номера 100 лучших — `np.argsort(-p)[:100]`; настоящие метки по ним — `y_valid.to_numpy()[best]`."
+    - "Число гибридов среди них — `.sum()` от этих меток."
+    - "`return int(y_valid.to_numpy()[best].sum())`."
+  tests: |
+    close(var('ap_plain', 'number', 'числом'), ref('ap_plain'), 'Average precision модели на числах — {expected}, а у вас {actual}.')
+    close(var('ap_rich', 'number', 'числом'), ref('ap_rich'), 'Average precision модели с маркой и моделью — {expected}, а у вас {actual}.')
+    t1 = var('top100_plain', 'int', 'целым числом')
+    t2 = var('top100_rich', 'int', 'целым числом')
+    if t1 + t2 > 200 or t1 < 0:
+        fail('Число гибридов в первой сотне не может быть больше 100.')
+    equal((int(t1), int(t2)), (int(ref('top100_plain')), int(ref('top100_rich'))), 'Гибридов среди 100 первых — {expected}, а у вас {actual}. Сортируйте по убыванию вероятности: np.argsort(-p).')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        rich = make_pipeline(
+            make_column_transformer((StandardScaler(), features), (OneHotEncoder(handle_unknown='ignore'), ['Make', 'Model'])),
+            LogisticRegression(max_iter=3000)).fit(X_train, y_train)
+        p_plain = plain.predict_proba(X_valid[features])[:, 1]
+        p_rich = rich.predict_proba(X_valid)[:, 1]
+        ap_plain, ap_rich = average_precision_score(y_valid, p_plain), average_precision_score(y_valid, p_rich)
+        def top100(p):
+            best = np.argsort(p)[:100]
+            return int(y_valid.to_numpy()[best].sum())
+        top100_plain, top100_rich = top100(p_plain), top100(p_rich)
+      expect: по убыванию вероятности
+    - code: |
+        rich = make_pipeline(
+            make_column_transformer((StandardScaler(), features), (OneHotEncoder(handle_unknown='ignore'), ['Make', 'Model'])),
+            LogisticRegression(max_iter=3000)).fit(X_train, y_train)
+        p_plain = plain.predict_proba(X_valid[features])[:, 1]
+        p_rich = rich.predict_proba(X_valid)[:, 1]
+        ap_plain, ap_rich = average_precision_score(y_valid, (p_plain >= 0.5).astype(int)), average_precision_score(y_valid, (p_rich >= 0.5).astype(int))
+        def top100(p):
+            best = np.argsort(-p)[:100]
+            return int(y_valid.to_numpy()[best].sum())
+        top100_plain, top100_rich = top100(p_plain), top100(p_rich)
+      expect: Average precision модели на числах

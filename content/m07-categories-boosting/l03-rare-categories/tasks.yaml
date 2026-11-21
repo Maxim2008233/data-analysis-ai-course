@@ -1,0 +1,413 @@
+- id: m7-l3-t1
+  title: Сколько моделей редкие при разных порогах
+  difficulty: warmup
+  introduces: [infrequent-categories]
+  uses: [pd-value-counts, rare-categories]
+  statement: |
+    По обучающей части посчитайте `share` — долю машин каждой модели (`value_counts` с `normalize=True`). Для каждого порога из `thresholds` найдите число редких моделей (доля строго меньше порога) и долю машин в них. Соберите `rare_table` — DataFrame с индексом-порогом и колонками `rare_models` и `rare_rows`.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    thresholds = [0.001, 0.005, 0.01]
+  starter: |
+    share = ...
+    rows = []
+    for t in thresholds:
+        rare = ...
+        rows.append({'rare_models': ..., 'rare_rows': ...})
+    rare_table = pd.DataFrame(rows, index=thresholds)
+    print(rare_table.round(3))
+  solution: |
+    share = X_train['Model'].value_counts(normalize=True)
+    rows = []
+    for t in thresholds:
+        rare = share < t
+        rows.append({'rare_models': int(rare.sum()), 'rare_rows': share[rare].sum()})
+    rare_table = pd.DataFrame(rows, index=thresholds)
+    print(rare_table.round(3))
+  explanation: |
+    - Доли моделей — `value_counts(normalize=True)`: сумма долей редких моделей — доля машин в них.
+    - При пороге 0,1 % редких моделей 554 (16 % машин), при 1 % — уже 704 (63 % машин): высокий порог превращает в «прочие» большую часть данных.
+  hints:
+    - "Доли — `X_train['Model'].value_counts(normalize=True)`."
+    - "Редкие при пороге t — маска `share < t`; число — её сумма."
+    - "Доля машин — сумма долей по маске: `share[rare].sum()`."
+  tests: |
+    import pandas as pd
+    t = var('rare_table', pd.DataFrame, 'таблицей DataFrame')
+    ensure(list(t.columns) == ['rare_models', 'rare_rows'] and list(t.index) == ref('thresholds'), 'Индекс — пороги из `thresholds`, колонки — rare_models и rare_rows.')
+    same_array(t['rare_models'].to_numpy(dtype=float), ref('rare_table')['rare_models'].to_numpy(dtype=float), 'Число редких моделей не совпадает: редкие — доля **строго меньше** порога.')
+    same_array(t['rare_rows'].to_numpy(dtype=float), ref('rare_table')['rare_rows'].to_numpy(dtype=float), 'Доля машин в редких моделях не совпадает: сумма долей редких моделей.')
+    same_array(alt('rare_table')['rare_rows'].to_numpy(dtype=float), alt_ref('rare_table')['rare_rows'].to_numpy(dtype=float), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        share = X_train['Model'].value_counts(normalize=True)
+        rows = []
+        for t in thresholds:
+            rare = share <= t * 2
+            rows.append({'rare_models': int(rare.sum()), 'rare_rows': share[rare].sum()})
+        rare_table = pd.DataFrame(rows, index=thresholds)
+      expect: Число редких моделей
+    - code: |
+        share = X_train['Model'].value_counts(normalize=True)
+        rows = []
+        for t in thresholds:
+            rare = share < t
+            rows.append({'rare_models': int(rare.sum()), 'rare_rows': rare.mean()})
+        rare_table = pd.DataFrame(rows, index=thresholds)
+      expect: Доля машин
+
+- id: m7-l3-t2
+  title: Редкие модели в OrdinalEncoder
+  difficulty: main
+  introduces: [infrequent-categories]
+  uses: [ordinal-encoding]
+  statement: |
+    Обучите `enc` — `OrdinalEncoder` с кодом −1 для незнакомых и `min_frequency=0.001` — на колонке `Model` обучающей части. Получите `n_infrequent` — число моделей, объединённых в группу редких, `n_codes` — число разных кодов у машин train и `codes` — одномерный массив кодов для таблицы `examples` (частая, редкая и незнакомая модели).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OrdinalEncoder
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    examples = pd.DataFrame({'Model': ['Passat', '106', 'Нет такой']})
+  starter: |
+    enc = OrdinalEncoder(...)
+    enc.fit(X_train[['Model']])
+    n_infrequent = ...
+    n_codes = ...
+    codes = ...
+    print(n_infrequent, n_codes, codes)
+  solution: |
+    enc = OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1, min_frequency=0.001)
+    enc.fit(X_train[['Model']])
+    n_infrequent = len(enc.infrequent_categories_[0])
+    n_codes = len(np.unique(enc.transform(X_train[['Model']])))
+    codes = enc.transform(examples).ravel()
+    print(n_infrequent, n_codes, codes)
+  explanation: |
+    - Редких моделей 554: у каждой меньше 0,1 % машин train (19 машин и меньше). Все они получают один общий код — последний, 171.
+    - Разных кодов у машин train 172: 171 частая модель и группа редких. Незнакомая модель — по-прежнему −1.
+    - Passat (503 машины) получила свой код 118, редкая «106» — код группы 171.
+  hints:
+    - "`OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1, min_frequency=0.001)`."
+    - "Редкие категории кодировщик хранит в `enc.infrequent_categories_[0]`."
+    - "Разные коды train — `np.unique(enc.transform(X_train[['Model']]))`; коды примеров — `enc.transform(examples).ravel()`."
+  tests: |
+    import numpy as np
+    from sklearn.preprocessing import OrdinalEncoder
+    e = var('enc', OrdinalEncoder, 'объектом OrdinalEncoder')
+    ensure(e.min_frequency == 0.001, 'Порог редкости — `min_frequency=0.001` (доля строк train).')
+    ensure(e.handle_unknown == 'use_encoded_value' and e.unknown_value == -1, 'Незнакомые модели должны получать код −1.')
+    equal(var('n_infrequent', 'number', 'числом'), ref('n_infrequent'), 'Редких моделей — {expected}, а у вас {actual}.')
+    equal(var('n_codes', 'number', 'числом'), ref('n_codes'), 'Разных кодов у машин train — {expected}, а у вас {actual}.')
+    same_array(np.asarray(var('codes'), dtype=float).ravel(), np.asarray(ref('codes'), dtype=float), 'Коды примеров не совпадают: Passat — свой код, «106» — код группы редких, незнакомая — −1.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        enc = OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1, min_frequency=20)
+        enc.fit(X_train[['Model']])
+        n_infrequent = len(enc.infrequent_categories_[0])
+        n_codes = len(np.unique(enc.transform(X_train[['Model']])))
+        codes = enc.transform(examples).ravel()
+      expect: "min_frequency=0.001"
+    - code: |
+        enc = OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1, min_frequency=0.001)
+        enc.fit(X_train[['Model']])
+        n_infrequent = len(enc.infrequent_categories_[0])
+        n_codes = len(enc.categories_[0])
+        codes = enc.transform(examples).ravel()
+      expect: Разных кодов
+
+- id: m7-l3-t3
+  title: Сколько стоит объединение редких
+  difficulty: main
+  introduces: [infrequent-categories]
+  uses: [random-forest, sk-pipeline]
+  statement: |
+    Сравните лес при разных порогах редкости. Для каждого значения из `levels` соберите `forest_pipe(features, level)` (функция уже есть: порядковые коды с `min_frequency=level` и лес из 20 деревьев глубины 16), обучите и посчитайте MAE на validation. Получите `level_mae` — Series «порог → MAE» (порог `None` — без объединения) и `best_level`.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OrdinalEncoder
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    def forest_pipe(cols, min_frequency=None):
+        cats = [c for c in cat_cols if c in cols]
+        enc = ColumnTransformer([('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1,
+                                                        min_frequency=min_frequency), cats)], remainder='passthrough')
+        return Pipeline([('enc', enc), ('model', RandomForestRegressor(n_estimators=20, max_depth=16, random_state=42, n_jobs=1))])
+    levels = [None, 0.001, 0.01]
+  starter: |
+    result = {}
+    for level in levels:
+        pipe = ...
+        result[str(level)] = ...
+    level_mae = pd.Series(result)
+    best_level = ...
+    print(level_mae.round(0))
+    print(best_level)
+  solution: |
+    result = {}
+    for level in levels:
+        pipe = forest_pipe(features, level).fit(X_train, y_train)
+        result[str(level)] = mean_absolute_error(y_valid, pipe.predict(X_valid))
+    level_mae = pd.Series(result)
+    best_level = level_mae.idxmin()
+    print(level_mae.round(0))
+    print(best_level)
+  explanation: |
+    - Ключи Series — строки (`str(level)`): `None` как метку индекса неудобно использовать.
+    - Порог 0,1 % почти не меняет MAE, а 1 % заметно её ухудшает: при высоком пороге в одну группу попадают модели, которые сильно различаются по цене.
+    - Лучший порог по validation — повод выбрать именно его, но различия в десятки евро на одном разбиении — не приговор: при близких ошибках разумно взять более простую модель.
+  hints:
+    - "Модель для порога — `forest_pipe(features, level).fit(X_train, y_train)`."
+    - "MAE — по прогнозам для `X_valid`."
+    - "Лучший порог — `level_mae.idxmin()`."
+  tests: |
+    import pandas as pd
+    s = var('level_mae', pd.Series, 'Series')
+    ensure(list(s.index) == ['None', '0.001', '0.01'], 'Индекс `level_mae` — пороги строкой: `str(level)`.')
+    same_array(s.to_numpy(dtype=float), ref('level_mae').to_numpy(dtype=float), 'MAE не совпадают: `forest_pipe(features, level)`, обучение на train, ошибка на validation.')
+    equal(str(var('best_level')), str(ref('best_level')), 'Лучший порог — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        result = {}
+        for level in levels:
+            pipe = forest_pipe(features).fit(X_train, y_train)
+            result[str(level)] = mean_absolute_error(y_valid, pipe.predict(X_valid))
+        level_mae = pd.Series(result)
+        best_level = level_mae.idxmin()
+      expect: MAE не совпадают
+    - code: |
+        result = {}
+        for level in levels:
+            pipe = forest_pipe(features, level).fit(X_train, y_train)
+            result[str(level)] = mean_absolute_error(y_valid, pipe.predict(X_valid))
+        level_mae = pd.Series(result)
+        best_level = level_mae.idxmax()
+      expect: Лучший порог
+
+- id: m7-l3-t4
+  title: Важность признаков с именами колонок
+  difficulty: main
+  introduces: [feature-selection]
+  uses: [feature-importance, column-transformer]
+  statement: |
+    Лес `full` (Pipeline с ColumnTransformer `'enc'` и моделью `'model'`) уже обучен. Получите `importance` — Series важностей, подписанную именами колонок из `get_feature_names_out()`, по убыванию; `least2` — список двух наименее важных признаков (сначала самый неважный) и `model_rank` — место признака `Model` в рейтинге (1 — самый важный).
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OrdinalEncoder
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.ensemble import RandomForestRegressor
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    enc = ColumnTransformer([('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), cat_cols)],
+                            remainder='passthrough', verbose_feature_names_out=False)
+    full = Pipeline([('enc', enc), ('model', RandomForestRegressor(n_estimators=30, max_depth=16, random_state=42, n_jobs=1))]).fit(X_train, y_train)
+  starter: |
+    names = ...
+    importance = ...
+    least2 = ...
+    model_rank = ...
+    print(importance.round(3))
+    print(least2, model_rank)
+  solution: |
+    names = full.named_steps['enc'].get_feature_names_out()
+    importance = pd.Series(full.named_steps['model'].feature_importances_, index=names).sort_values(ascending=False)
+    least2 = list(importance.index[::-1][:2])
+    model_rank = list(importance.index).index('Model') + 1
+    print(importance.round(3))
+    print(least2, model_rank)
+  explanation: |
+    - Порядок важностей совпадает с порядком колонок **после** ColumnTransformer: сначала категории, потом остальные. Поэтому имена берём из `get_feature_names_out()`, а не из `X_train.columns`.
+    - Самые неважные — топливо и кузов. Модель машины — лишь на 5-м месте: её информация делится с объёмом двигателя, годом и маркой.
+  hints:
+    - "Имена — `full.named_steps['enc'].get_feature_names_out()`; важности — `full.named_steps['model'].feature_importances_`."
+    - "Два наименее важных — последние два в отсортированном по убыванию списке, начиная с последнего: `importance.index[::-1][:2]`."
+    - "Место `Model` — позиция в индексе плюс 1."
+  tests: |
+    import pandas as pd
+    s = var('importance', pd.Series, 'Series')
+    ensure(set(s.index) == set(ref('importance').index), 'Индекс `importance` — имена колонок после ColumnTransformer: `get_feature_names_out()`.')
+    same_array(s.sort_index().to_numpy(dtype=float), ref('importance').sort_index().to_numpy(dtype=float), 'Важности не совпадают с именами: подпишите их именами из `get_feature_names_out()`, а не `X_train.columns` — порядок колонок другой.')
+    ensure(list(s.index) == list(ref('importance').index), 'Отсортируйте важности по убыванию.')
+    equal([str(v) for v in var('least2', list, 'списком')], [str(v) for v in ref('least2')], 'Два наименее важных признака — {expected}, а у вас {actual}.')
+    equal(var('model_rank', 'number', 'числом'), ref('model_rank'), 'Место признака Model — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        names = X_train.columns
+        importance = pd.Series(full.named_steps['model'].feature_importances_, index=names).sort_values(ascending=False)
+        least2 = list(importance.index[::-1][:2])
+        model_rank = list(importance.index).index('Model') + 1
+      expect: get_feature_names_out
+    - code: |
+        names = full.named_steps['enc'].get_feature_names_out()
+        importance = pd.Series(full.named_steps['model'].feature_importances_, index=names).sort_values(ascending=False)
+        least2 = list(importance.index[:2])
+        model_rank = list(importance.index).index('Model') + 1
+      expect: наименее важных
+
+- id: m7-l3-t5
+  title: Короткий набор по правилу допуска
+  difficulty: main
+  introduces: [feature-selection]
+  uses: [regression-metrics]
+  statement: |
+    В таблице `results` — MAE и RMSE леса на validation, когда убраны 0, 1, 2 или 3 наименее важных признака (индекс — сколько убрано). Добавьте колонки `mae_change` и `rmse_change` — изменение в процентах относительно полного набора (строка 0). Затем `chosen` — наибольшее число убранных признаков, при котором **обе** метрики выросли не больше чем на 2 %, и `kept` — список оставшихся признаков (`order` — признаки по убыванию важности).
+  prelude: |
+    import pandas as pd
+    order = ['Year', 'Engine', 'Distance', 'km_year', 'Model', 'AutoTransmission', 'Make', 'Style', 'Fuel_type']
+    results = pd.DataFrame({'mae': [2054.9, 2086.5, 2078.3, 2136.5],
+                            'rmse': [4718.5, 4750.3, 4696.1, 4783.9]}, index=[0, 1, 2, 3])
+  starter: |
+    results['mae_change'] = ...
+    results['rmse_change'] = ...
+    ok = ...
+    chosen = ...
+    kept = ...
+    print(results.round(2))
+    print(chosen, kept)
+  solution: |
+    results['mae_change'] = 100 * (results['mae'] / results.loc[0, 'mae'] - 1)
+    results['rmse_change'] = 100 * (results['rmse'] / results.loc[0, 'rmse'] - 1)
+    ok = (results['mae_change'] <= 2) & (results['rmse_change'] <= 2)
+    chosen = int(results.index[ok].max())
+    kept = order[:len(order) - chosen]
+    print(results.round(2))
+    print(chosen, kept)
+  explanation: |
+    - Изменение в процентах — отношение к полному набору минус 1, умноженное на 100.
+    - В допуск укладываются наборы без 1 и без 2 признаков; самый короткий из них — без кузова и топлива, остаётся 7 признаков. Без марки MAE выросла бы на 4 %.
+    - RMSE без двух признаков даже чуть меньше, чем у полного набора: на одном разбиении разница в 1 % — шум, поэтому правило с допуском задают заранее.
+  hints:
+    - "Изменение MAE, % — `100 * (results['mae'] / results.loc[0, 'mae'] - 1)`."
+    - "Обе метрики в допуске — `(mae_change <= 2) & (rmse_change <= 2)`; наибольший индекс среди подходящих — `results.index[ok].max()`."
+    - "Оставшиеся признаки — первые `len(order) - chosen` элементов `order`."
+  tests: |
+    import pandas as pd
+    r = var('results', pd.DataFrame, 'таблицей DataFrame')
+    ensure({'mae_change', 'rmse_change'} <= set(r.columns), 'Добавьте колонки mae_change и rmse_change.')
+    same_array(r['mae_change'].to_numpy(dtype=float), ref('results')['mae_change'].to_numpy(dtype=float), 'Изменение MAE не совпадает: проценты относительно строки 0.')
+    same_array(r['rmse_change'].to_numpy(dtype=float), ref('results')['rmse_change'].to_numpy(dtype=float), 'Изменение RMSE не совпадает.')
+    c = var('chosen', 'number', 'числом')
+    if c == 1:
+        fail('Набор без двух признаков тоже в допуске — по правилу берём самый короткий подходящий набор.')
+    equal(c, ref('chosen'), 'Убрать можно {expected} признака, а у вас {actual}.')
+    equal([str(v) for v in var('kept', list, 'списком')], [str(v) for v in ref('kept')], 'Оставшиеся признаки — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        results['mae_change'] = 100 * (results['mae'] / results.loc[0, 'mae'] - 1)
+        results['rmse_change'] = 100 * (results['rmse'] / results.loc[0, 'rmse'] - 1)
+        ok = (results['mae_change'] <= 2) & (results['rmse_change'] <= 2)
+        chosen = 1
+        kept = order[:len(order) - chosen]
+      expect: самый короткий
+    - code: |
+        results['mae_change'] = results['mae'] / results.loc[0, 'mae'] - 1
+        results['rmse_change'] = results['rmse'] / results.loc[0, 'rmse'] - 1
+        ok = (results['mae_change'] <= 2) & (results['rmse_change'] <= 2)
+        chosen = int(results.index[ok].max())
+        kept = order[:len(order) - chosen]
+      expect: Изменение MAE
+
+- id: m7-l3-t6
+  title: Редкие модели своими руками
+  difficulty: star
+  introduces: [infrequent-categories]
+  uses: [rare-categories, pd-map]
+  statement: |
+    Сделайте то же, что `min_frequency`, средствами pandas. По train найдите `frequent` — множество моделей, у которых не меньше `min_count` машин. Получите колонки `train_grouped` и `valid_grouped`: модель, если она частая, иначе `'Другие'`. Затем `n_groups` — число разных значений в `train_grouped` и `valid_other` — долю машин validation, попавших в `'Другие'`.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    min_count = 20
+  starter: |
+    counts = X_train['Model'].value_counts()
+    frequent = ...
+    train_grouped = ...
+    valid_grouped = ...
+    n_groups = ...
+    valid_other = ...
+    print(len(frequent), n_groups, round(valid_other, 3))
+  solution: |
+    counts = X_train['Model'].value_counts()
+    frequent = set(counts[counts >= min_count].index)
+    train_grouped = X_train['Model'].where(X_train['Model'].isin(frequent), 'Другие')
+    valid_grouped = X_valid['Model'].where(X_valid['Model'].isin(frequent), 'Другие')
+    n_groups = train_grouped.nunique()
+    valid_other = (valid_grouped == 'Другие').mean()
+    print(len(frequent), n_groups, round(valid_other, 3))
+  explanation: |
+    - Частые модели определяются только по train: 171 модель с 20 и больше машинами. Вместе с группой «Другие» — 172 значения, как у кодировщика с `min_frequency=0.001`.
+    - `where(условие, замена)` оставляет значение, где условие истинно, и ставит замену в остальных строках.
+    - В validation в «Другие» попадают и редкие, и незнакомые модели — около 17 % машин. Кодировщик различал бы их (код группы и −1), наше правило их смешивает: это тоже вариант, но решение должно быть осознанным.
+  hints:
+    - "Частые модели — индекс `counts` по маске `counts >= min_count`; удобно сделать множество: `set(...)`."
+    - "Замена редких — `X_train['Model'].where(X_train['Model'].isin(frequent), 'Другие')`; то же для validation по тому же `frequent`."
+    - "`n_groups = train_grouped.nunique()`; `valid_other = (valid_grouped == 'Другие').mean()`."
+  tests: |
+    import pandas as pd
+    f = var('frequent')
+    ensure(len(f) == len(ref('frequent')), 'Частых моделей (не меньше {0} машин в train) — {1}, а у вас {2}.'.format(ref('min_count'), len(ref('frequent')), len(f)))
+    tg = var('train_grouped', pd.Series, 'Series')
+    ensure((tg.to_numpy() == ref('train_grouped').to_numpy()).all(), '`train_grouped` не совпадает: частая модель остаётся, остальные — «Другие».')
+    vg = var('valid_grouped', pd.Series, 'Series')
+    if (vg == 'Другие').mean() < (ref('valid_grouped') == 'Другие').mean() - 1e-9:
+        fail('Частые модели определяются по train: не пересчитывайте частоты по validation — используйте тот же `frequent`.')
+    ensure((vg.to_numpy() == ref('valid_grouped').to_numpy()).all(), '`valid_grouped` не совпадает: правило — по `frequent` из train.')
+    equal(var('n_groups', 'number', 'числом'), ref('n_groups'), 'Разных значений в train — {expected}, а у вас {actual}.')
+    close(var('valid_other', 'number', 'числом'), ref('valid_other'), 'Доля «Других» в validation — {expected}, а у вас {actual}.')
+    close(alt('valid_other'), alt_ref('valid_other'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        counts = X_train['Model'].value_counts()
+        frequent = set(counts[counts >= min_count].index)
+        train_grouped = X_train['Model'].where(X_train['Model'].isin(frequent), 'Другие')
+        vc = X_valid['Model'].value_counts()
+        valid_grouped = X_valid['Model'].where(X_valid['Model'].isin(set(vc[vc >= 7].index)), 'Другие')
+        n_groups = train_grouped.nunique()
+        valid_other = (valid_grouped == 'Другие').mean()
+      expect: определяются по train
+    - code: |
+        counts = X_train['Model'].value_counts()
+        frequent = set(counts[counts > min_count].index)
+        train_grouped = X_train['Model'].where(X_train['Model'].isin(frequent), 'Другие')
+        valid_grouped = X_valid['Model'].where(X_valid['Model'].isin(frequent), 'Другие')
+        n_groups = train_grouped.nunique()
+        valid_other = (valid_grouped == 'Другие').mean()
+      expect: Частых моделей

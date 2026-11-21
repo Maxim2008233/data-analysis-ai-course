@@ -1,0 +1,15 @@
+id: m4
+number: 4
+label: Модуль 4
+title: "Визуализация, BI и Data Story"
+short: Визуализация
+firstLessonIndex: 0
+description: >-
+  Превращаем вопросы аналитика в графики: Matplotlib (Figure и Axes, читаемые столбцы, несколько графиков на рисунке),
+  распределения (гистограммы, логарифмическая шкала, Seaborn, боксплоты, ECDF), сравнение сегментов, совместное поведение
+  признаков и границы фильтрации, интерактивные графики Plotly, компактная BI-панель и дата-история из трёх «слайдов».
+  Мини-проект — история данных из трёх графиков по переписи Adult.
+sources:
+  - Workshops/04_BI_визуализация.ipynb
+  - MLtextbook/Глава_2_EDA_Cars.ipynb
+warmupReviews: [quantiles-iqr, histogram-counts, std-var, mean-median, extremes-argsort]

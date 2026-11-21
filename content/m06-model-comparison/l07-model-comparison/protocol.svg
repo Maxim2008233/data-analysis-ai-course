@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 210" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="Протокол честного сравнения моделей. Все кандидаты обучаются на одной обучающей части, проверяются на одной validation одной метрикой, выбирается лучший по validation. Только выбранная модель один раз проверяется на test, и это число попадает в отчёт">
+  <defs><marker id="pr-a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor" fill-opacity="0.65"/></marker></defs>
+  <rect x="12" y="40" width="128" height="76" rx="8" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="76" y="66" fill="currentColor" text-anchor="middle" font-weight="700">кандидаты</text>
+  <text x="76" y="86" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11">медиана, линейная,</text>
+  <text x="76" y="101" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11">kNN, деревья, лес</text>
+  <path d="M140 78 L162 78" stroke="currentColor" stroke-opacity="0.65" marker-end="url(#pr-a)"/>
+  <rect x="164" y="40" width="128" height="76" rx="8" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="228" y="66" fill="currentColor" text-anchor="middle" font-weight="700">fit на train</text>
+  <text x="228" y="86" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11">одна обучающая часть</text>
+  <text x="228" y="101" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11">для всех моделей</text>
+  <path d="M292 78 L314 78" stroke="currentColor" stroke-opacity="0.65" marker-end="url(#pr-a)"/>
+  <rect x="316" y="40" width="128" height="76" rx="8" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="380" y="66" fill="currentColor" text-anchor="middle" font-weight="700">MAE на validation</text>
+  <text x="380" y="86" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11">одна часть и одна</text>
+  <text x="380" y="101" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11">метрика для всех</text>
+  <path d="M444 78 L466 78" stroke="currentColor" stroke-opacity="0.65" marker-end="url(#pr-a)"/>
+  <rect x="468" y="40" width="128" height="76" rx="8" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="532" y="66" fill="currentColor" text-anchor="middle" font-weight="700">выбор</text>
+  <text x="532" y="86" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11">наименьшая ошибка;</text>
+  <text x="532" y="101" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11">близкие — проверить</text>
+  <path d="M596 78 L618 78" stroke="currentColor" stroke-opacity="0.65" marker-end="url(#pr-a)"/>
+  <rect x="620" y="40" width="128" height="76" rx="8" fill="#c2410c" fill-opacity="0.12" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="684" y="66" fill="currentColor" text-anchor="middle" font-weight="700">test — один раз</text>
+  <text x="684" y="86" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11">только выбранная</text>
+  <text x="684" y="101" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11">модель → отчёт</text>
+  <text x="12" y="24" fill="currentColor" font-weight="700">Честное сравнение: меняется только модель</text>
+  <path d="M532 118 C532 150 380 150 380 122" fill="none" stroke="currentColor" stroke-opacity="0.45" stroke-dasharray="4 4" marker-end="url(#pr-a)"/>
+  <text x="456" y="168" fill="currentColor" fill-opacity="0.85" font-size="11" text-anchor="middle">гиперпараметры и признаки можно менять и проверять снова — по validation</text>
+  <text x="684" y="140" fill="#c2410c" text-anchor="middle" font-size="11" font-weight="700">после test —</text>
+  <text x="684" y="155" fill="#c2410c" text-anchor="middle" font-size="11" font-weight="700">ничего не меняем</text>
+  <text x="12" y="200" fill="currentColor" fill-opacity="0.75">Если выбирать по test или менять модель после него, итоговая ошибка станет оптимистичной.</text>
+</svg>

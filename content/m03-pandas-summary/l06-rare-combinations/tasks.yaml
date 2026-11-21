@@ -1,0 +1,336 @@
+- id: m3-l6-t1
+  title: Сочетания марки и топлива, встреченные один раз
+  difficulty: warmup
+  introduces: [rare-combinations]
+  uses: [pd-crosstab]
+  statement: |
+    Получите `pairs` — Series с числом объявлений для каждой пары «марка, тип топлива» (таблица сочетаний, свёрнутая методом `stack()`), а из неё:
+
+    - `n_present` — сколько сочетаний встречается хотя бы раз;
+    - `single` — список пар (кортежей), которые встречаются **ровно один** раз.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')   # результат модуля 2
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    pairs = ...
+    n_present = ...
+    single = ...
+    print(n_present, single)
+  solution: |
+    pairs = pd.crosstab(df['Make'], df['Fuel_type']).stack()
+    n_present = (pairs > 0).sum()
+    single = pairs[pairs == 1].index.tolist()
+    print(n_present, single)
+  explanation: |
+    - `crosstab` считает объявления каждого сочетания, `stack()` сворачивает таблицу в Series с парами в индексе.
+    - Нули — сочетания, которых нет в данных; `(pairs > 0).sum()` считает присутствующие.
+    - `pairs[pairs == 1].index.tolist()` — пары-одиночки списком кортежей (марка, топливо).
+  hints:
+    - Сначала таблица сочетаний, затем сверните её в Series.
+    - "`pd.crosstab(df['Make'], df['Fuel_type']).stack()`; отбор — `pairs[pairs == 1]`, пары — его индекс."
+    - "`single = pairs[pairs == 1].index.tolist()`."
+  tests: |
+    import pandas as pd
+    p = var('pairs', pd.Series, 'Series — результатом stack()')
+    ensure(p.index.nlevels == 2, 'В индексе `pairs` должны быть пары «марка, топливо» — сверните таблицу методом `stack()`.')
+    same_frame(p, ref('pairs'), 'Числа сочетаний не совпадают.', check_dtype=False)
+    close(var('n_present', 'number', 'числом'), ref('n_present'), 'Присутствующих сочетаний — {expected}, а у вас {actual}. Нули — это отсутствующие сочетания.')
+    s = var('single', list, 'списком пар')
+    equal(sorted(map(tuple, s)), sorted(map(tuple, ref('single'))), 'Пары-одиночки — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        pairs = pd.crosstab(df['Make'], df['Fuel_type']).stack()
+        n_present = len(pairs)
+        single = pairs[pairs == 1].index.tolist()
+      expect: отсутствующие сочетания
+    - code: |
+        pairs = pd.crosstab(df['Make'], df['Fuel_type']).stack()
+        n_present = (pairs > 0).sum()
+        single = pairs[pairs <= 2].index.tolist()
+      expect: Пары-одиночки
+
+- id: m3-l6-t2
+  title: Аналитическая группа кузовов
+  difficulty: main
+  introduces: [rare-combinations]
+  uses: [rare-categories]
+  statement: |
+    Создайте колонку `Style_group`, в которой кузова `'Roadster'`, `'Cabriolet'`, `'Combi'` и `'Coupe'` заменены на `'Rare'`, а остальные остались как есть. Исходную колонку `Style` не меняйте. Получите `n_rare_group` — число объявлений в группе `'Rare'`.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+    rare_styles = ['Roadster', 'Cabriolet', 'Combi', 'Coupe']
+  starter: |
+    df['Style_group'] = ...
+    n_rare_group = ...
+    print(n_rare_group)
+    df['Style_group'].value_counts()
+  solution: |
+    df['Style_group'] = df['Style'].replace({x: 'Rare' for x in rare_styles})
+    n_rare_group = (df['Style_group'] == 'Rare').sum()
+    print(n_rare_group)
+    df['Style_group'].value_counts()
+  explanation: |
+    - `replace(словарь)` заменяет перечисленные значения, а остальные оставляет — в отличие от `map`, который превратил бы их в пропуски.
+    - Генератор словаря `{x: 'Rare' for x in rare_styles}` даёт «каждый редкий кузов → Rare».
+    - Группа пишется в новую колонку: исходный `Style` нужен для анализа конкретных кузовов.
+  alternatives:
+    - |
+      df['Style_group'] = df['Style'].where(~df['Style'].isin(rare_styles), 'Rare')
+      n_rare_group = int(df['Style'].isin(rare_styles).sum())
+    - |
+      df['Style_group'] = df['Style']
+      df.loc[df['Style'].isin(rare_styles), 'Style_group'] = 'Rare'
+      n_rare_group = (df['Style_group'] == 'Rare').sum()
+  hints:
+    - Какой метод заменяет только перечисленные значения и оставляет остальные?
+    - "`df['Style'].replace({x: 'Rare' for x in rare_styles})` — результат в новую колонку."
+    - "`n_rare_group = (df['Style_group'] == 'Rare').sum()`."
+  tests: |
+    import pandas as pd
+    d = var('df', pd.DataFrame, 'таблицей')
+    ensure('Style_group' in d.columns, 'Нет колонки `Style_group`.')
+    if d['Style_group'].isna().any():
+        fail('В `Style_group` появились пропуски — похоже, использован `map`. Он превращает значения, которых нет в словаре, в NaN; нужен `replace`.')
+    same_frame(d['Style'], ref('df')['Style'], 'Исходная колонка Style изменилась — запишите группу в новую колонку.')
+    same_frame(d['Style_group'], ref('df')['Style_group'], 'Колонка Style_group не совпадает: четыре редких кузова → Rare, остальные без изменений.')
+    close(var('n_rare_group', 'number', 'числом'), ref('n_rare_group'), 'В группе Rare — {expected} объявлений, а у вас {actual}.')
+    close(alt('n_rare_group'), alt_ref('n_rare_group'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        df['Style_group'] = df['Style'].map({x: 'Rare' for x in rare_styles})
+        n_rare_group = (df['Style_group'] == 'Rare').sum()
+      expect: replace
+    - code: |
+        df['Style'] = df['Style'].replace({x: 'Rare' for x in rare_styles})
+        df['Style_group'] = df['Style']
+        n_rare_group = (df['Style_group'] == 'Rare').sum()
+      expect: Исходная колонка Style
+
+- id: m3-l6-t3
+  title: Самый частый кузов каждой марки
+  difficulty: main
+  introduces: [rare-combinations]
+  uses: [pd-groupby, pd-value-counts]
+  statement: |
+    Получите `top_style` — самый частый кузов для каждой марки (Series: марка → кузов) и `n_sedan_makes` — у скольких марок самый частый кузов — седан.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    top_style = ...
+    n_sedan_makes = ...
+    print(n_sedan_makes)
+    top_style
+  solution: |
+    top_style = df.groupby('Make')['Style'].agg(lambda s: s.value_counts().index[0])
+    n_sedan_makes = (top_style == 'Sedan').sum()
+    print(n_sedan_makes)
+    top_style
+  explanation: |
+    - `lambda s: s.value_counts().index[0]` получает кузова одной марки и возвращает самый частый.
+    - `agg` применяет её к каждой группе — получается Series «марка → самый частый кузов».
+    - Сравнение со строкой даёт маску, её сумма — число «седанных» марок.
+  alternatives:
+    - |
+      top_style = df.groupby('Make')['Style'].agg(lambda s: s.mode().iloc[0])
+      n_sedan_makes = int((top_style == 'Sedan').sum())
+  hints:
+    - Для каждой марки нужна мода кузова — своя функция внутри `agg`.
+    - "`df.groupby('Make')['Style'].agg(lambda s: s.value_counts().index[0])`."
+    - "`n_sedan_makes = (top_style == 'Sedan').sum()`."
+  tests: |
+    import pandas as pd
+    t = var('top_style', pd.Series, 'Series: марка → кузов')
+    if pd.api.types.is_numeric_dtype(t):
+        fail('В `top_style` числа, а нужны названия кузовов. Возьмите `.index[0]` у `value_counts()` — это метка, а не частота.')
+    same_frame(t, ref('top_style'), 'Самые частые кузова марок не совпадают.')
+    close(var('n_sedan_makes', 'number', 'числом'), ref('n_sedan_makes'), 'Марок с самым частым кузовом «седан» — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        top_style = df.groupby('Make')['Style'].agg(lambda s: s.value_counts().iloc[0])
+        n_sedan_makes = (top_style == 'Sedan').sum()
+      expect: названия кузовов
+    - code: |
+        top_style = df.groupby('Make')['Style'].agg(lambda s: s.value_counts().index[-1])
+        n_sedan_makes = (top_style == 'Sedan').sum()
+      expect: не совпадают
+
+- id: m3-l6-t4
+  title: Заполнить пропуски медианой модели
+  difficulty: main
+  introduces: [group-estimate]
+  uses: [pd-dropna, pd-groupby]
+  statement: |
+    В копии `hidden` часть значений объёма двигателя спрятана (стала `NaN`). Получите:
+
+    - `group_median` — медиану объёма для группы «марка + модель» **каждой строки** (через `transform`);
+    - `filled` — колонку `Engine`, в которой пропуски заменены медианой группы;
+    - `n_left` — сколько пропусков осталось после заполнения.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+    hidden = df.copy()
+    rows = hidden.sample(300, random_state=1).index
+    hidden.loc[rows, 'Engine'] = np.nan            # спрятали 300 известных значений
+  starter: |
+    group_median = ...
+    filled = ...
+    n_left = ...
+    print(n_left)
+  solution: |
+    group_median = hidden.groupby(['Make', 'Model'])['Engine'].transform('median')
+    filled = hidden['Engine'].fillna(group_median)
+    n_left = filled.isna().sum()
+    print(n_left)
+  explanation: |
+    - `transform('median')` считает медиану по известным значениям группы и возвращает её для каждой строки — той же длины, что таблица.
+    - `fillna(group_median)` заменяет каждый пропуск значением из той же строки `group_median`.
+    - Пропуск остался бы, если бы у модели не было ни одного известного объёма.
+  alternatives:
+    - |
+      medians = hidden.groupby(['Make', 'Model'])['Engine'].median()
+      group_median = pd.Series([medians[(mk, md)] for mk, md in zip(hidden['Make'], hidden['Model'])], index=hidden.index)
+      filled = hidden['Engine'].where(hidden['Engine'].notna(), group_median)
+      n_left = int(filled.isna().sum())
+  hints:
+    - Нужна медиана группы для каждой строки — не одна строка на группу. Какой метод группировки это делает?
+    - "`hidden.groupby(['Make', 'Model'])['Engine'].transform('median')`; заполнение — `hidden['Engine'].fillna(...)`."
+    - "`filled = hidden['Engine'].fillna(group_median)`, `n_left = filled.isna().sum()`."
+  tests: |
+    import pandas as pd
+    g = var('group_median', pd.Series, 'Series той же длины, что таблица (transform)')
+    if len(g) != len(ref('hidden')):
+        fail('В `group_median` {0} значений, а строк в таблице {1}. Обычная группировка даёт одно число на группу — нужен `transform(\'median\')`.'.format(len(g), len(ref('hidden'))))
+    same_frame(g, ref('group_median'), 'Медианы групп для строк не совпадают.')
+    f = var('filled', pd.Series, 'колонкой Series')
+    same_frame(f, ref('filled'), 'Заполненная колонка не совпадает.')
+    close(var('n_left', 'number', 'числом'), ref('n_left'), 'Пропусков осталось {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        group_median = hidden.groupby(['Make', 'Model'])['Engine'].median()
+        filled = hidden['Engine'].fillna(group_median)
+        n_left = filled.isna().sum()
+      expect: по индексу
+    - code: |
+        group_median = hidden.groupby(['Make', 'Model'])['Engine'].transform('median')
+        filled = hidden['Engine'].fillna(hidden['Engine'].median())
+        n_left = filled.isna().sum()
+      expect: Заполненная колонка
+
+- id: m3-l6-t5
+  kind: quiz
+  title: Что делать с редким сочетанием
+  difficulty: main
+  introduces: [rare-combinations]
+  uses: []
+  statement: |
+    Для каждой ситуации выберите разумное решение.
+  quiz:
+    - q: Объявление «Mercedes E Class, кабриолет» — единственное среди тысячи E Class.
+      options:
+        - Удалить как ошибку
+        - Оставить — такая модификация существует
+        - Заменить кузов на седан
+      answer: 1
+      explain: Редкое ≠ ошибочное. Кабриолет E Class выпускался.
+    - q: Объявление «Opel Astra, пикап» — единственное среди 784 Astra; на фото в источнике — хэтчбек.
+      options:
+        - Исправить кузов на хэтчбек — ошибка подтверждена источником
+        - Оставить как есть
+        - Удалить все Opel Astra
+      answer: 0
+      explain: Исправляют подтверждённые ошибки; подтверждение здесь — фото в объявлении.
+    - q: Зачем объединять четыре редких кузова в группу Rare?
+      options:
+        - Чтобы исправить ошибки в данных
+        - Чтобы упростить отчёт — это изменение детализации, исходный кузов сохраняется
+        - Чтобы модель всегда стала точнее
+      answer: 1
+      explain: Аналитическая группа — решение об уровне детализации, а не исправление и не гарантия качества модели.
+    - q: Как проверить, хорош ли способ заполнения пропусков?
+      options:
+        - Спрятать известные значения, заполнить их и сравнить с настоящими
+        - Посмотреть, что пропусков не осталось
+        - Сравнить среднее до и после заполнения
+      answer: 0
+      explain: Только на спрятанных известных значениях видно, насколько заполнение ошибается.
+  hints:
+    - Вспомните три решения для редкого сочетания и смысл аналитической группы.
+    - "Настоящая редкая машина — оставить; подтверждённая ошибка — исправить; группа — детализация; заполнение проверяют на спрятанных значениях."
+    - "Ответы: оставить; исправить; детализация отчёта; спрятать и сравнить."
+
+- id: m3-l6-t6
+  title: Медиана модели против общей медианы
+  difficulty: star
+  introduces: [group-estimate]
+  uses: [mean-median]
+  statement: |
+    Проверьте способ заполнения на спрятанных значениях. Для 300 спрятанных строк сравните с настоящими значениями `true_engine`:
+
+    - `err_group` — среднее абсолютное отклонение заполнения медианой группы «марка + модель»;
+    - `err_global` — то же для заполнения одной общей медианой объёма (по известным значениям `hidden`);
+    - `better` — True, если медиана группы ошибается меньше.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+    hidden = df.copy()
+    rows = hidden.sample(300, random_state=1).index
+    true_engine = hidden.loc[rows, 'Engine']        # настоящие значения — для проверки
+    hidden.loc[rows, 'Engine'] = np.nan
+  starter: |
+    group_fill = ...
+    global_fill = ...
+    err_group = ...
+    err_global = ...
+    better = ...
+    print(round(err_group), round(err_global), better)
+  solution: |
+    group_fill = hidden.groupby(['Make', 'Model'])['Engine'].transform('median').loc[rows]
+    global_fill = hidden['Engine'].median()
+    err_group = (group_fill - true_engine).abs().mean()
+    err_global = (global_fill - true_engine).abs().mean()
+    better = err_group < err_global
+    print(round(err_group), round(err_global), better)
+  explanation: |
+    - Медианы считаются по `hidden`, где спрятанных значений нет, — как в реальной ситуации с пропусками.
+    - `.loc[rows]` берёт заполнения только для спрятанных строк; разность с настоящими значениями — ошибки заполнения.
+    - Среднее модулей ошибок показывает, на сколько кубических сантиметров в среднем ошибается каждый способ.
+  hints:
+    - Для каждого способа — значения заполнения для спрятанных строк, затем среднее модулей разностей с `true_engine`.
+    - "Медиана группы — `transform('median')` по `hidden`, затем `.loc[rows]`; общая — `hidden['Engine'].median()`."
+    - "`err_group = (group_fill - true_engine).abs().mean()`."
+  tests: |
+    g = var('err_group', 'number', 'числом')
+    if abs(float(g)) < 1e-9:
+        fail('Ошибка получилась нулевой — похоже, медианы посчитаны по `df`, где спрятанные значения известны. Считайте их по `hidden`.')
+    close(g, ref('err_group'), 'Ошибка заполнения медианой группы — {expected}, а у вас {actual}.')
+    close(var('err_global', 'number', 'числом'), ref('err_global'), 'Ошибка заполнения общей медианой — {expected}, а у вас {actual}.')
+    equal(bool(var('better')), bool(ref('better')), '`better` должно быть {expected}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        group_fill = df.groupby(['Make', 'Model'])['Engine'].transform('median').loc[rows]
+        global_fill = df['Engine'].median()
+        err_group = (group_fill - true_engine).abs().mean()
+        err_global = (global_fill - true_engine).abs().mean()
+        better = err_group < err_global
+      expect: Ошибка заполнения медианой группы
+    - code: |
+        group_fill = hidden.groupby(['Make', 'Model'])['Engine'].transform('median').loc[rows]
+        global_fill = hidden['Engine'].median()
+        err_group = (group_fill - true_engine).mean()
+        err_global = (global_fill - true_engine).mean()
+        better = err_group < err_global
+      expect: Ошибка заполнения

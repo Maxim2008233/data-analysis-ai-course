@@ -1,0 +1,631 @@
+- id: b1-l7-t1
+  title: "Шаг 1. Что лежит в столбце polution"
+  difficulty: main
+  introduces: []
+  uses: [binary-classification, pd-groupby]
+  statement: |
+    Цель lab8 — `polution >= 1.7`. Посмотрим, что лежит в этом столбце.
+
+    1. `n_codes` — сколько разных показателей в `code`, `n_units` — сколько разных единиц в `Uom`.
+    2. `by_unit` — таблица по единицам `Uom`: `rows` — число строк, `median` — медиана `polution`, `dirty` — доля строк с `polution >= 1.7`. Строки — по убыванию `rows`.
+    3. `decided_share` — доля строк всего набора, единица которых даёт почти один ответ: доля «грязных» в ней не меньше 0,99 или не больше 0,01.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    water = pd.read_csv('water_polution.csv').drop(columns='Unnamed: 0')
+  starter: |
+    n_codes = ...
+    n_units = ...
+    water['dirty'] = water['polution'] >= 1.7
+    by_unit = (water.groupby('Uom')
+               .agg(rows=('polution', 'size'), median=('polution', 'median'), dirty=(..., 'mean'))
+               .sort_values(..., ascending=False))
+    decided = by_unit.index[(by_unit['dirty'] >= 0.99) | (by_unit['dirty'] <= 0.01)]
+    decided_share = float(water['Uom'].isin(...).mean())
+    print(n_codes, n_units, list(decided), round(decided_share, 3))
+    by_unit.round(3)
+  solution: |
+    n_codes = water['code'].nunique()
+    n_units = water['Uom'].nunique()
+    water['dirty'] = water['polution'] >= 1.7
+    by_unit = (water.groupby('Uom')
+               .agg(rows=('polution', 'size'), median=('polution', 'median'), dirty=('dirty', 'mean'))
+               .sort_values('rows', ascending=False))
+    decided = by_unit.index[(by_unit['dirty'] >= 0.99) | (by_unit['dirty'] <= 0.01)]
+    decided_share = float(water['Uom'].isin(decided).mean())
+    print(n_codes, n_units, list(decided), round(decided_share, 3))
+    by_unit.round(3)
+  explanation: |
+    - В одном столбце — 182 разных показателя в 19 единицах. Медиана pH — 7,8, температуры — 12 °C, электропроводности — 368 мкСм/см, нитритов — 0,043 мг/л. Сравнивать их с одним порогом 1,7 — всё равно что сравнивать с одним числом рост в сантиметрах и вес в килограммах.
+    - У pH, температуры, электропроводности и показателя в процентах «грязно» всегда или почти всегда, у фосфора и нитритов — почти никогда. Таких единиц 10, и в них 47 % строк: для половины набора ответ предрешён тем, что измеряли.
+    - В остальных единицах тоже смешаны разные показатели: в `mg{N}/L` — 5 показателей азота с медианами от 0,8 до 2,6, по обе стороны порога, а в `ug/L` — 147 разных веществ.
+  hints:
+    - "`nunique()` считает разные значения столбца."
+    - "Доля «грязных» — среднее логического столбца: `dirty=('dirty', 'mean')`; сортировка — `sort_values('rows', ascending=False)`."
+    - "Строки с предрешённым ответом — `water['Uom'].isin(decided)`, их доля — `.mean()`."
+  tests: |
+    equal(var('n_codes', 'int', 'целым числом'), ref('n_codes'), 'Разных показателей — {expected}, а у вас {actual}.')
+    equal(var('n_units', 'int', 'целым числом'), ref('n_units'), 'Разных единиц — {expected}, а у вас {actual}.')
+    bu = var('by_unit', 'DataFrame', 'таблицей')
+    ensure(list(bu.columns) == ['rows', 'median', 'dirty'], 'Столбцы by_unit — rows, median, dirty, а у вас {0}.'.format(list(bu.columns)))
+    if list(bu.index) == sorted(bu.index):
+        fail("Отсортируйте by_unit по убыванию rows: sort_values('rows', ascending=False).")
+    same_frame(bu, ref('by_unit'), 'Таблица by_unit не совпадает с ожидаемой.')
+    ds = var('decided_share', 'number', 'числом')
+    if abs(ds - len(ref('decided')) / ref('n_units')) < 1e-9:
+        fail('Нужна доля строк, а не доля единиц: в разных единицах разное число строк.')
+    close(ds, ref('decided_share'), 'Доля строк с предрешённым ответом — {expected}, а у вас {actual}.')
+    close(alt('decided_share'), alt_ref('decided_share'), HARDCODE_MSG)
+  files: [water_polution.csv]
+  wrong:
+    - code: |
+        n_codes = water['code'].nunique()
+        n_units = water['Uom'].nunique()
+        water['dirty'] = water['polution'] >= 1.7
+        by_unit = (water.groupby('Uom')
+                   .agg(rows=('polution', 'size'), median=('polution', 'median'), dirty=('dirty', 'mean'))
+                   .sort_values('rows', ascending=False))
+        decided = by_unit.index[(by_unit['dirty'] >= 0.99) | (by_unit['dirty'] <= 0.01)]
+        decided_share = len(decided) / n_units
+      expect: доля строк, а не доля единиц
+    - code: |
+        n_codes = water['code'].nunique()
+        n_units = water['Uom'].nunique()
+        water['dirty'] = water['polution'] >= 1.7
+        by_unit = water.groupby('Uom').agg(rows=('polution', 'size'), median=('polution', 'median'), dirty=('dirty', 'mean'))
+        decided = by_unit.index[(by_unit['dirty'] >= 0.99) | (by_unit['dirty'] <= 0.01)]
+        decided_share = float(water['Uom'].isin(decided).mean())
+      expect: по убыванию rows
+
+- id: b1-l7-t2
+  title: "Шаг 2. Шпаргалка по коду показателя"
+  difficulty: main
+  introduces: []
+  uses: [baseline-model, data-leakage, sk-split]
+  statement: |
+    Разделите строки, как в lab8: `train, test = train_test_split(water, test_size=0.3, random_state=42)`. Шпаргалка ничего не знает о воде. Для каждого кода показателя `code` она запоминает по `train`, каких строк больше — «грязных» или «чистых», и так отвечает в `test`. Для кодов, которых в `train` нет, — самый частый класс `train`.
+
+    - `acc_cheat` — доля верных ответов шпаргалки в `test`;
+    - `acc_const` — доля верных ответа «всегда самый частый класс `train`» в `test`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    water = pd.read_csv('water_polution.csv').drop(columns='Unnamed: 0')
+    water['dirty'] = water['polution'] >= 1.7
+  starter: |
+    train, test = train_test_split(water, test_size=0.3, random_state=42)
+    majority = bool(train['dirty'].mean() >= 0.5)          # самый частый класс train
+    rule = ...                                             # Series: код показателя → True или False
+    pred = test['code'].map(rule).fillna(majority).astype(bool)
+    acc_cheat = float(...)
+    acc_const = float(...)
+    print(round(acc_cheat, 4), round(acc_const, 4))
+  solution: |
+    train, test = train_test_split(water, test_size=0.3, random_state=42)
+    majority = bool(train['dirty'].mean() >= 0.5)          # самый частый класс train
+    rule = train.groupby('code')['dirty'].mean() >= 0.5    # Series: код показателя → True или False
+    pred = test['code'].map(rule).fillna(majority).astype(bool)
+    acc_cheat = float((pred == test['dirty']).mean())
+    acc_const = float((test['dirty'] == majority).mean())
+    print(round(acc_cheat, 4), round(acc_const, 4))
+  explanation: |
+    - `train.groupby('code')['dirty'].mean() >= 0.5` — правило из одной строки: код показателя → ответ. О воде, стране и годе шпаргалка не знает ничего.
+    - Она верна в 87,8 % случаев против 52,3 % у постоянного ответа. Это почти как лес на всех признаках из урока (89 %) и близко к лесу и XGBoost из lab8 (91 % и 93 %). Почти всё, что угадывают классификаторы lab8, — знание того, что измеряли.
+    - Правило строится только по `train`. Если взять для него все строки, в правило попадут ответы `test` — это утечка из урока 5.4.
+  hints:
+    - "Доля «грязных» для каждого кода — `train.groupby('code')['dirty'].mean()`; больше половины — значит, ответ «грязно»."
+    - "Доля верных — среднее совпадений: `(pred == test['dirty']).mean()`."
+    - "Постоянный ответ — `majority` для всех строк: `(test['dirty'] == majority).mean()`."
+  tests: |
+    acc = var('acc_cheat', 'number', 'числом')
+    w_, tr_, te_ = ref('water'), ref('train'), ref('test')
+    leak = float((te_['code'].map(w_.groupby('code')['dirty'].mean() >= 0.5) == te_['dirty']).mean())
+    if abs(acc - leak) < 1e-9:
+        fail('Правило строят только по train: в доли по всем строкам попали ответы test — это утечка.')
+    on_train = float((tr_['code'].map(tr_.groupby('code')['dirty'].mean() >= 0.5) == tr_['dirty']).mean())
+    if abs(acc - on_train) < 1e-9:
+        fail('Долю верных считают на test, а не на train: на train правило уже видело ответы.')
+    close(acc, ref('acc_cheat'), 'Доля верных шпаргалки — {expected}, а у вас {actual}.')
+    close(var('acc_const', 'number', 'числом'), ref('acc_const'), 'Доля верных постоянного ответа — {expected}, а у вас {actual}.')
+    close(alt('acc_cheat'), alt_ref('acc_cheat'), HARDCODE_MSG)
+  files: [water_polution.csv]
+  wrong:
+    - code: |
+        train, test = train_test_split(water, test_size=0.3, random_state=42)
+        majority = bool(train['dirty'].mean() >= 0.5)
+        rule = water.groupby('code')['dirty'].mean() >= 0.5
+        pred = test['code'].map(rule).fillna(majority).astype(bool)
+        acc_cheat = float((pred == test['dirty']).mean())
+        acc_const = float((test['dirty'] == majority).mean())
+      expect: только по train
+    - code: |
+        train, test = train_test_split(water, test_size=0.3, random_state=42)
+        majority = bool(train['dirty'].mean() >= 0.5)
+        rule = train.groupby('code')['dirty'].mean() >= 0.5
+        pred = train['code'].map(rule).astype(bool)
+        acc_cheat = float((pred == train['dirty']).mean())
+        acc_const = float((test['dirty'] == majority).mean())
+      expect: считают на test
+
+- id: b1-l7-t3
+  title: "Шаг 3. Честная цель: нитриты выше 0,5 мг/л"
+  difficulty: main
+  introduces: []
+  uses: [class-imbalance, pd-groupby]
+  statement: |
+    Возьмите нитриты — показатель `CAS_14797-65-0` в единицах `mg{NO2}/L`.
+
+    1. `nit` — строки этого показателя без пропусков (`dropna`); `y` — метка превышения: 1, если `polution > 0.5`, иначе 0 (целые числа).
+    2. `n_pos` — сколько превышений, `pos_share` — их доля.
+    3. `by_country` — таблица по странам: `rows` — число измерений, `exceed` — превышений, `share` — их доля. Строки — по убыванию `rows`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    water = pd.read_csv('water_polution.csv').drop(columns='Unnamed: 0')
+  starter: |
+    nit = water[...].dropna()
+    y = ...
+    n_pos = int(y.sum())
+    pos_share = float(...)
+    by_country = (nit.assign(y=y).groupby('Country')
+                  .agg(rows=('y', 'size'), exceed=('y', 'sum'), share=('y', 'mean'))
+                  .sort_values('rows', ascending=False))
+    print(len(nit), n_pos, round(pos_share, 4))
+    by_country.head(8).round(3)
+  solution: |
+    nit = water[water['code'] == 'CAS_14797-65-0'].dropna()
+    y = (nit['polution'] > 0.5).astype(int)
+    n_pos = int(y.sum())
+    pos_share = float(y.mean())
+    by_country = (nit.assign(y=y).groupby('Country')
+                  .agg(rows=('y', 'size'), exceed=('y', 'sum'), share=('y', 'mean'))
+                  .sort_values('rows', ascending=False))
+    print(len(nit), n_pos, round(pos_share, 4))
+    by_country.head(8).round(3)
+  explanation: |
+    - Один показатель — одна единица: все 1263 строки нитритов записаны в `mg{NO2}/L`. 16 строк с пропусками в показателях страны убраны, осталось 1247.
+    - Превышений 34 — 2,7 %. Ответ «превышений нет» верен в 97 % случаев, поэтому доля верных здесь бесполезна. Нужны точность, полнота, AUC и average precision (уроки Б.2–Б.3).
+    - Доли по странам очень разные: в Испании — 11 % (16 из 146), во Франции — 1,5 %, в Великобритании — 1 %. Только эту разницу и могут «увидеть» признаки уровня страны.
+  hints:
+    - "Строки нитритов — `water[water['code'] == 'CAS_14797-65-0']`, пропуски убирает `.dropna()`."
+    - "Метка — `(nit['polution'] > 0.5).astype(int)`."
+    - "Доля превышений — среднее меток: `y.mean()`."
+  tests: |
+    nit_ = var('nit', 'DataFrame', 'таблицей')
+    if set(nit_['Uom']) == {'mg{NO3}/L'}:
+        fail('Это нитраты (NO₃), а нужны нитриты (NO₂): показатель CAS_14797-65-0 в mg{NO2}/L.')
+    ensure(set(nit_['code']) == {'CAS_14797-65-0'}, 'В nit должны быть только строки показателя CAS_14797-65-0.')
+    w_ = ref('water')
+    if len(nit_) == int((w_['code'] == 'CAS_14797-65-0').sum()):
+        fail('Уберите строки с пропусками: .dropna().')
+    equal(len(nit_), len(ref('nit')), 'Строк нитритов без пропусков — {expected}, а у вас {actual}.')
+    yy = var('y')
+    ensure(hasattr(yy, 'dtype') and yy.dtype.kind in 'iu', 'y — целые 0 и 1: добавьте .astype(int).')
+    equal(int(var('n_pos', 'int', 'целым числом')), ref('n_pos'), 'Превышений — {expected}, а у вас {actual}.')
+    close(var('pos_share', 'number', 'числом'), ref('pos_share'), 'Доля превышений — {expected}, а у вас {actual}.')
+    same_frame(var('by_country', 'DataFrame', 'таблицей'), ref('by_country'), 'Таблица by_country не совпадает с ожидаемой.')
+    equal(alt('n_pos'), alt_ref('n_pos'), HARDCODE_MSG)
+  files: [water_polution.csv]
+  wrong:
+    - code: |
+        nit = water[water['code'] == 'CAS_14797-55-8'].dropna()
+        y = (nit['polution'] > 0.5).astype(int)
+        n_pos = int(y.sum())
+        pos_share = float(y.mean())
+        by_country = (nit.assign(y=y).groupby('Country')
+                      .agg(rows=('y', 'size'), exceed=('y', 'sum'), share=('y', 'mean'))
+                      .sort_values('rows', ascending=False))
+      expect: Это нитраты
+    - code: |
+        nit = water[water['code'] == 'CAS_14797-65-0']
+        y = (nit['polution'] > 0.5).astype(int)
+        n_pos = int(y.sum())
+        pos_share = float(y.mean())
+        by_country = (nit.assign(y=y).groupby('Country')
+                      .agg(rows=('y', 'size'), exceed=('y', 'sum'), share=('y', 'mean'))
+                      .sort_values('rows', ascending=False))
+      expect: Уберите строки с пропусками
+
+- id: b1-l7-t4
+  title: "Шаг 4. Признаки — это страна"
+  difficulty: main
+  introduces: []
+  uses: [roc-auc, baseline-model, data-leakage]
+  statement: |
+    Признаки набора — год и показатели страны `feats` (список уже задан).
+
+    1. `n_vectors` — сколько разных строк в таблице `nit[feats]` без столбца `venue`; `n_countries` — сколько стран в `nit`.
+    2. Разделите данные со стратификацией: `nit_tr, nit_te, y_tr, y_te = train_test_split(nit, y, test_size=0.3, random_state=42, stratify=y)`.
+    3. Ориентир «страна»: оценка строки `test` — доля превышений в её стране по `train`; для стран, которых в `train` нет, — общая доля превышений `train`. Найдите `auc_country` и `ap_country` — ROC AUC и average precision этого ориентира на `test`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import roc_auc_score, average_precision_score
+    water = pd.read_csv('water_polution.csv').drop(columns='Unnamed: 0')
+    nit = water[water['code'] == 'CAS_14797-65-0'].dropna()
+    y = (nit['polution'] > 0.5).astype(int)
+    feats = ['population', 'tourists', 'venue', 'rate', 'food', 'glass', 'metal', 'other',
+             'paper', 'plastic', 'leather', 'green_waste', 'waste_recycling']
+  starter: |
+    no_venue = [f for f in feats if f != 'venue']
+    n_vectors = len(...)
+    n_countries = nit['Country'].nunique()
+    nit_tr, nit_te, y_tr, y_te = train_test_split(nit, y, test_size=0.3, random_state=42, stratify=y)
+    country_rate = y_tr.groupby(nit_tr['Country']).mean()      # доля превышений в стране по train
+    score = ...
+    auc_country = float(roc_auc_score(y_te, score))
+    ap_country = float(average_precision_score(y_te, score))
+    print(n_vectors, n_countries, round(auc_country, 3), round(ap_country, 3), round(y_te.mean(), 3))
+  solution: |
+    no_venue = [f for f in feats if f != 'venue']
+    n_vectors = len(nit[no_venue].drop_duplicates())
+    n_countries = nit['Country'].nunique()
+    nit_tr, nit_te, y_tr, y_te = train_test_split(nit, y, test_size=0.3, random_state=42, stratify=y)
+    country_rate = y_tr.groupby(nit_tr['Country']).mean()      # доля превышений в стране по train
+    score = nit_te['Country'].map(country_rate).fillna(y_tr.mean())
+    auc_country = float(roc_auc_score(y_te, score))
+    ap_country = float(average_precision_score(y_te, score))
+    print(n_vectors, n_countries, round(auc_country, 3), round(ap_country, 3), round(y_te.mean(), 3))
+  explanation: |
+    - Разных строк признаков без `venue` — 18, ровно столько, сколько стран: все признаки, кроме года и `venue`, одинаковы внутри страны. По ним модель может узнать страну — и ничего о самой реке.
+    - Поэтому естественный ориентир — доля превышений в стране. Он даёт AUC 0,67: лучше угадывания (0,5), но далеко от хорошего. Average precision — 0,067 при доле превышений в test 0,027. Это в 2,5 раза лучше угадывания, но среди строк с высокой оценкой превышений всё равно мало.
+    - Одна строка `test` — из страны, которой нет в `train`: ей досталась общая доля превышений.
+  hints:
+    - "Разные строки таблицы — `drop_duplicates()`, их число — `len(...)`."
+    - "Оценка строки — доля её страны: `nit_te['Country'].map(country_rate)`."
+    - "Пропуски для новых стран — `.fillna(y_tr.mean())`."
+  tests: |
+    equal(int(var('n_vectors', 'int', 'целым числом')), ref('n_vectors'), 'Разных строк признаков без venue — {expected}, а у вас {actual}.')
+    equal(int(var('n_countries', 'int', 'целым числом')), ref('n_countries'), 'Стран — {expected}, а у вас {actual}.')
+    from sklearn.metrics import roc_auc_score
+    a = var('auc_country', 'number', 'числом')
+    nit_, y_, y_te_, nit_te_ = ref('nit'), ref('y'), ref('y_te'), ref('nit_te')
+    leak = float(roc_auc_score(y_te_, nit_te_['Country'].map(y_.groupby(nit_['Country']).mean())))
+    if abs(a - leak) < 1e-9:
+        fail('Долю превышений в стране считают только по train: доли по всем строкам знают ответы test.')
+    hard = float(roc_auc_score(y_te_, (ref('score') >= 0.5).astype(int)))
+    if abs(a - hard) < 1e-9:
+        fail('AUC считают по оценкам — долям стран, а не по меткам 0/1: от меток на кривой остаётся одна точка.')
+    close(a, ref('auc_country'), 'AUC ориентира «страна» — {expected}, а у вас {actual}.')
+    close(var('ap_country', 'number', 'числом'), ref('ap_country'), 'Average precision ориентира — {expected}, а у вас {actual}.')
+    close(alt('auc_country'), alt_ref('auc_country'), HARDCODE_MSG)
+  files: [water_polution.csv]
+  wrong:
+    - code: |
+        no_venue = [f for f in feats if f != 'venue']
+        n_vectors = len(nit[no_venue].drop_duplicates())
+        n_countries = nit['Country'].nunique()
+        nit_tr, nit_te, y_tr, y_te = train_test_split(nit, y, test_size=0.3, random_state=42, stratify=y)
+        country_rate = y.groupby(nit['Country']).mean()
+        score = nit_te['Country'].map(country_rate).fillna(y_tr.mean())
+        auc_country = float(roc_auc_score(y_te, score))
+        ap_country = float(average_precision_score(y_te, score))
+      expect: только по train
+    - code: |
+        no_venue = [f for f in feats if f != 'venue']
+        n_vectors = len(nit[no_venue].drop_duplicates())
+        n_countries = nit['Country'].nunique()
+        nit_tr, nit_te, y_tr, y_te = train_test_split(nit, y, test_size=0.3, random_state=42, stratify=y)
+        country_rate = y_tr.groupby(nit_tr['Country']).mean()
+        score = (nit_te['Country'].map(country_rate).fillna(y_tr.mean()) >= 0.5).astype(int)
+        auc_country = float(roc_auc_score(y_te, score))
+        ap_country = float(average_precision_score(y_te, score))
+      expect: по оценкам
+
+- id: b1-l7-t5
+  title: "Шаг 5. Логистическая регрессия с весами классов"
+  difficulty: main
+  introduces: []
+  uses: [logistic-regression, rebalancing, precision-recall]
+  statement: |
+    Обучите `model` — Pipeline из `StandardScaler` и `LogisticRegression(class_weight='balanced', max_iter=1000)` — на столбцах `cols = feats + ['year']` части `nit_tr`. На `nit_te` найдите:
+
+    - `auc_lr` и `ap_lr` — ROC AUC и average precision по вероятностям;
+    - `base` — долю превышений в test: average precision угадывания;
+    - при пороге 0,5 — `n_flagged` (сколько строк модель отметила), `precision_lr` и `recall_lr`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import make_pipeline
+    from sklearn.metrics import roc_auc_score, average_precision_score, precision_score, recall_score
+    water = pd.read_csv('water_polution.csv').drop(columns='Unnamed: 0')
+    nit = water[water['code'] == 'CAS_14797-65-0'].dropna()
+    y = (nit['polution'] > 0.5).astype(int)
+    feats = ['population', 'tourists', 'venue', 'rate', 'food', 'glass', 'metal', 'other',
+             'paper', 'plastic', 'leather', 'green_waste', 'waste_recycling']
+    nit_tr, nit_te, y_tr, y_te = train_test_split(nit, y, test_size=0.3, random_state=42, stratify=y)
+  starter: |
+    cols = feats + ['year']
+    model = make_pipeline(StandardScaler(), LogisticRegression(class_weight=..., max_iter=1000)).fit(nit_tr[cols], y_tr)
+    p = model.predict_proba(nit_te[cols])[:, 1]
+    auc_lr = float(roc_auc_score(y_te, ...))
+    ap_lr = float(average_precision_score(y_te, p))
+    base = float(y_te.mean())
+    flag = (p >= 0.5).astype(int)
+    n_flagged = int(flag.sum())
+    precision_lr = float(...)
+    recall_lr = float(...)
+    print(round(auc_lr, 3), round(ap_lr, 3), round(base, 3), n_flagged, round(precision_lr, 3), round(recall_lr, 3))
+  solution: |
+    cols = feats + ['year']
+    model = make_pipeline(StandardScaler(), LogisticRegression(class_weight='balanced', max_iter=1000)).fit(nit_tr[cols], y_tr)
+    p = model.predict_proba(nit_te[cols])[:, 1]
+    auc_lr = float(roc_auc_score(y_te, p))
+    ap_lr = float(average_precision_score(y_te, p))
+    base = float(y_te.mean())
+    flag = (p >= 0.5).astype(int)
+    n_flagged = int(flag.sum())
+    precision_lr = float(precision_score(y_te, flag))
+    recall_lr = float(recall_score(y_te, flag))
+    print(round(auc_lr, 3), round(ap_lr, 3), round(base, 3), n_flagged, round(precision_lr, 3), round(recall_lr, 3))
+  explanation: |
+    - AUC модели 0,65 — меньше, чем у ориентира «доля превышений в стране» (0,67). Average precision — 0,078 против 0,067 у ориентира и 0,027 у угадывания. Модель с 14 признаками почти ничего не добавила к знанию страны.
+    - При пороге 0,5 модель отметила 47 строк из 375, и превышений среди них 5: точность 0,11, полнота 0,5. Девять из десяти отмеченных — ложная тревога, и половина превышений пропущена.
+    - Без весов классов модель не отмечает ни одной строки: при 2,7 % превышений вероятность почти всегда меньше 0,5 (урок Б.3).
+    - Самые большие коэффициенты — у плотности населения и `rate` (1,28 и 1,27), у `plastic` — −1,08. Это не законы природы: признаков 14, а разных стран 18, и коэффициенты подбираются так, чтобы различать страны.
+  hints:
+    - "Веса классов — `class_weight='balanced'` (урок Б.3)."
+    - "AUC — по вероятностям: `roc_auc_score(y_te, p)`."
+    - "Точность и полнота при пороге — `precision_score(y_te, flag)` и `recall_score(y_te, flag)`."
+  tests: |
+    m_ = var('model')
+    ensure(hasattr(m_, 'predict_proba'), 'model — обученный Pipeline с predict_proba.')
+    nf = var('n_flagged', 'int', 'целым числом')
+    if nf == 0:
+        fail("Модель не отметила ни одной строки — добавьте веса классов: class_weight='balanced' (урок Б.3).")
+    from sklearn.metrics import roc_auc_score
+    a = var('auc_lr', 'number', 'числом')
+    hard = float(roc_auc_score(ref('y_te'), ref('model').predict(ref('nit_te')[ref('cols')])))
+    if abs(a - hard) < 1e-9:
+        fail('AUC считают по вероятностям p, а не по меткам model.predict: от меток на кривой остаётся одна точка.')
+    close(a, ref('auc_lr'), 'AUC модели — {expected}, а у вас {actual}.')
+    close(var('ap_lr', 'number', 'числом'), ref('ap_lr'), 'Average precision модели — {expected}, а у вас {actual}.')
+    close(var('base', 'number', 'числом'), ref('base'), 'Доля превышений в test — {expected}, а у вас {actual}.')
+    equal(int(nf), ref('n_flagged'), 'Отмечено строк — {expected}, а у вас {actual}.')
+    close(var('precision_lr', 'number', 'числом'), ref('precision_lr'), 'Точность при пороге 0,5 — {expected}, а у вас {actual}.')
+    close(var('recall_lr', 'number', 'числом'), ref('recall_lr'), 'Полнота при пороге 0,5 — {expected}, а у вас {actual}.')
+    close(alt('auc_lr'), alt_ref('auc_lr'), HARDCODE_MSG)
+  files: [water_polution.csv]
+  wrong:
+    - code: |
+        cols = feats + ['year']
+        model = make_pipeline(StandardScaler(), LogisticRegression(max_iter=1000)).fit(nit_tr[cols], y_tr)
+        p = model.predict_proba(nit_te[cols])[:, 1]
+        auc_lr = float(roc_auc_score(y_te, p))
+        ap_lr = float(average_precision_score(y_te, p))
+        base = float(y_te.mean())
+        flag = (p >= 0.5).astype(int)
+        n_flagged = int(flag.sum())
+        precision_lr = float(precision_score(y_te, flag, zero_division=0))
+        recall_lr = float(recall_score(y_te, flag))
+      expect: добавьте веса классов
+    - code: |
+        cols = feats + ['year']
+        model = make_pipeline(StandardScaler(), LogisticRegression(class_weight='balanced', max_iter=1000)).fit(nit_tr[cols], y_tr)
+        p = model.predict_proba(nit_te[cols])[:, 1]
+        auc_lr = float(roc_auc_score(y_te, model.predict(nit_te[cols])))
+        ap_lr = float(average_precision_score(y_te, p))
+        base = float(y_te.mean())
+        flag = (p >= 0.5).astype(int)
+        n_flagged = int(flag.sum())
+        precision_lr = float(precision_score(y_te, flag))
+        recall_lr = float(recall_score(y_te, flag))
+      expect: по вероятностям p
+
+- id: b1-l7-t6
+  title: "Шаг 6. Насколько можно верить AUC"
+  difficulty: main
+  introduces: []
+  uses: [roc-auc, class-imbalance]
+  statement: |
+    В test всего 10 превышений, и AUC на них — шумная оценка. Повторите шаги 4 и 5 на 30 разбиениях: `random_state` от 0 до 29, `test_size=0.3`, со стратификацией. Для каждого разбиения посчитайте AUC модели из шага 5 и AUC ориентира «страна» из шага 4.
+
+    - `aucs_lr` и `aucs_country` — массивы NumPy из 30 значений;
+    - `lr_min`, `lr_max` — наименьший и наибольший AUC модели;
+    - `lr_wins` — доля разбиений, в которых модель лучше ориентира.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import make_pipeline
+    from sklearn.metrics import roc_auc_score
+    water = pd.read_csv('water_polution.csv').drop(columns='Unnamed: 0')
+    nit = water[water['code'] == 'CAS_14797-65-0'].dropna()
+    y = (nit['polution'] > 0.5).astype(int)
+    feats = ['population', 'tourists', 'venue', 'rate', 'food', 'glass', 'metal', 'other',
+             'paper', 'plastic', 'leather', 'green_waste', 'waste_recycling']
+    cols = feats + ['year']
+  starter: |
+    aucs_lr, aucs_country = [], []
+    for seed in range(30):
+        a, b, ya, yb = train_test_split(nit, y, test_size=0.3, random_state=..., stratify=y)
+        m = make_pipeline(StandardScaler(), LogisticRegression(class_weight='balanced', max_iter=1000)).fit(a[cols], ya)
+        aucs_lr.append(roc_auc_score(yb, m.predict_proba(b[cols])[:, 1]))
+        rate = ya.groupby(a['Country']).mean()
+        aucs_country.append(...)
+    aucs_lr, aucs_country = np.array(aucs_lr), np.array(aucs_country)
+    lr_min, lr_max = float(aucs_lr.min()), float(aucs_lr.max())
+    lr_wins = float(...)
+    print(round(aucs_lr.mean(), 3), round(lr_min, 3), round(lr_max, 3), round(aucs_country.mean(), 3), round(lr_wins, 3))
+  solution: |
+    aucs_lr, aucs_country = [], []
+    for seed in range(30):
+        a, b, ya, yb = train_test_split(nit, y, test_size=0.3, random_state=seed, stratify=y)
+        m = make_pipeline(StandardScaler(), LogisticRegression(class_weight='balanced', max_iter=1000)).fit(a[cols], ya)
+        aucs_lr.append(roc_auc_score(yb, m.predict_proba(b[cols])[:, 1]))
+        rate = ya.groupby(a['Country']).mean()
+        aucs_country.append(roc_auc_score(yb, b['Country'].map(rate).fillna(ya.mean())))
+    aucs_lr, aucs_country = np.array(aucs_lr), np.array(aucs_country)
+    lr_min, lr_max = float(aucs_lr.min()), float(aucs_lr.max())
+    lr_wins = float(np.mean(aucs_lr > aucs_country))
+    print(round(aucs_lr.mean(), 3), round(lr_min, 3), round(lr_max, 3), round(aucs_country.mean(), 3), round(lr_wins, 3))
+  explanation: |
+    - На одних и тех же данных AUC модели — от 0,52 до 0,81, смотря какие 10 превышений попали в test. Число 0,65 из шага 5 — лишь одна точка из этого разброса.
+    - В среднем модель даёт 0,66, ориентир «страна» — 0,67, и модель лучше ориентира только в 11 разбиениях из 30. Разница между ними меньше шума: по этим данным нельзя сказать, что модель полезнее знания страны.
+    - Когда положительных объектов мало, модели сравнивают на многих разбиениях или кросс-валидацией (урок 6.8), а не по одному test.
+  hints:
+    - "Номер разбиения — `random_state=seed`."
+    - "AUC ориентира — `roc_auc_score(yb, b['Country'].map(rate).fillna(ya.mean()))`."
+    - "Доля побед — среднее сравнения массивов: `np.mean(aucs_lr > aucs_country)`."
+  tests: |
+    import numpy as np
+    al = np.asarray(var('aucs_lr'), dtype=float)
+    ac = np.asarray(var('aucs_country'), dtype=float)
+    ensure(al.shape == (30,) and ac.shape == (30,), 'aucs_lr и aucs_country — по 30 значений, а у вас {0} и {1}.'.format(al.shape, ac.shape))
+    if np.ptp(al) < 1e-12:
+        fail('Все 30 AUC одинаковые — передайте в train_test_split random_state=seed, чтобы разбиения менялись.')
+    same_array(al, ref('aucs_lr'), 'AUC модели по разбиениям не совпадают с ожидаемыми. Разбиения — со stratify=y.')
+    same_array(ac, ref('aucs_country'), 'AUC ориентира «страна» по разбиениям не совпадают с ожидаемыми.')
+    close(var('lr_min', 'number', 'числом'), ref('lr_min'), 'Наименьший AUC модели — {expected}, а у вас {actual}.')
+    close(var('lr_max', 'number', 'числом'), ref('lr_max'), 'Наибольший AUC модели — {expected}, а у вас {actual}.')
+    close(var('lr_wins', 'number', 'числом'), ref('lr_wins'), 'Доля разбиений, где модель лучше ориентира, — {expected}, а у вас {actual}.')
+  files: [water_polution.csv]
+  wrong:
+    - code: |
+        aucs_lr, aucs_country = [], []
+        for seed in range(30):
+            a, b, ya, yb = train_test_split(nit, y, test_size=0.3, random_state=42, stratify=y)
+            m = make_pipeline(StandardScaler(), LogisticRegression(class_weight='balanced', max_iter=1000)).fit(a[cols], ya)
+            aucs_lr.append(roc_auc_score(yb, m.predict_proba(b[cols])[:, 1]))
+            rate = ya.groupby(a['Country']).mean()
+            aucs_country.append(roc_auc_score(yb, b['Country'].map(rate).fillna(ya.mean())))
+        aucs_lr, aucs_country = np.array(aucs_lr), np.array(aucs_country)
+        lr_min, lr_max = float(aucs_lr.min()), float(aucs_lr.max())
+        lr_wins = float(np.mean(aucs_lr > aucs_country))
+      expect: Все 30 AUC одинаковые
+    - code: |
+        aucs_lr, aucs_country = [], []
+        for seed in range(30):
+            a, b, ya, yb = train_test_split(nit, y, test_size=0.3, random_state=seed)
+            m = make_pipeline(StandardScaler(), LogisticRegression(class_weight='balanced', max_iter=1000)).fit(a[cols], ya)
+            aucs_lr.append(roc_auc_score(yb, m.predict_proba(b[cols])[:, 1]))
+            rate = ya.groupby(a['Country']).mean()
+            aucs_country.append(roc_auc_score(yb, b['Country'].map(rate).fillna(ya.mean())))
+        aucs_lr, aucs_country = np.array(aucs_lr), np.array(aucs_country)
+        lr_min, lr_max = float(aucs_lr.min()), float(aucs_lr.max())
+        lr_wins = float(np.mean(aucs_lr > aucs_country))
+      expect: со stratify=y
+
+- id: b1-l7-t7
+  title: "Шаг 7. Что помогло бы: аммоний той же реки"
+  difficulty: star
+  introduces: []
+  uses: [roc-auc]
+  statement: |
+    Бактерии превращают аммоний в нитраты через нитриты, поэтому химия самой реки должна подсказывать превышения лучше показателей страны. Аммоний — показатель `CAS_14798-03-9`; в той же реке в тот же год его измеряли не везде.
+
+    1. `amm` — средний аммоний для каждой пары (`id`, `year`): Series с этой парой в индексе и именем `ammonium`.
+    2. `d` — строки `nit` со столбцом `y`, к которым присоединён аммоний той же реки и того же года (`join` по `['id', 'year']`), без строк, где аммония нет.
+    3. `auc_amm` — ROC AUC самого значения аммония как оценки, без всякой модели.
+    4. `top_rows` — сколько строк `d` с аммонием не ниже квантиля 0,9 (10 % самых высоких значений), `top_hits` — сколько среди них превышений нитритов.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.metrics import roc_auc_score
+    water = pd.read_csv('water_polution.csv').drop(columns='Unnamed: 0')
+    nit = water[water['code'] == 'CAS_14797-65-0'].dropna()
+    y = (nit['polution'] > 0.5).astype(int)
+  starter: |
+    amm = ...                                   # средний аммоний по паре (id, year)
+    d = nit.assign(y=y).join(amm, on=['id', 'year']).dropna(subset=['ammonium'])
+    auc_amm = float(...)
+    top = ...
+    top_rows = int(top.sum())
+    top_hits = int(...)
+    print(len(d), int(d['y'].sum()), round(auc_amm, 3), top_rows, top_hits)
+  solution: |
+    amm = water[water['code'] == 'CAS_14798-03-9'].groupby(['id', 'year'])['polution'].mean().rename('ammonium')
+    d = nit.assign(y=y).join(amm, on=['id', 'year']).dropna(subset=['ammonium'])
+    auc_amm = float(roc_auc_score(d['y'], d['ammonium']))
+    top = d['ammonium'] >= d['ammonium'].quantile(0.9)
+    top_rows = int(top.sum())
+    top_hits = int(d.loc[top, 'y'].sum())
+    print(len(d), int(d['y'].sum()), round(auc_amm, 3), top_rows, top_hits)
+  explanation: |
+    - Аммоний той же реки и того же года нашёлся для 403 из 1247 измерений нитритов, превышений среди них 12.
+    - Без всякого обучения значение аммония даёт AUC 0,90 — против 0,65–0,67 у признаков страны. В 10 % строк с самым высоким аммонием (41 строка, от 0,30 мг/л) — 10 из 12 превышений.
+    - Вывод осторожный: превышений всего 12, и аммоний измерен лишь в трети случаев. Но направление ясно: состояние реки предсказывают по данным о самой реке — её химии, стокам, удобрениям на полях вокруг, — а не по составу мусора в стране.
+  hints:
+    - "Средний аммоний по паре — `water[water['code'] == 'CAS_14798-03-9'].groupby(['id', 'year'])['polution'].mean().rename('ammonium')`."
+    - "AUC значения как оценки — `roc_auc_score(d['y'], d['ammonium'])`."
+    - "10 % самых высоких — `d['ammonium'] >= d['ammonium'].quantile(0.9)`; превышения среди них — `d.loc[top, 'y'].sum()`."
+  tests: |
+    am = var('amm')
+    ensure(hasattr(am, 'index') and getattr(am.index, 'nlevels', 1) == 2, "amm — Series с парой (id, year) в индексе: groupby(['id', 'year']).")
+    ensure(am.name == 'ammonium', "Назовите Series amm: .rename('ammonium').")
+    dd = var('d', 'DataFrame', 'таблицей')
+    ensure('ammonium' in dd.columns and 'y' in dd.columns, 'В d нужны столбцы y и ammonium.')
+    if len(dd) == len(ref('nit')):
+        fail("Строки без аммония уберите: .dropna(subset=['ammonium']). Заполнять их нулём нельзя — аммоний там просто не измеряли.")
+    equal(len(dd), len(ref('d')), 'Строк с аммонием — {expected}, а у вас {actual}.')
+    close(var('auc_amm', 'number', 'числом'), ref('auc_amm'), 'AUC аммония — {expected}, а у вас {actual}.')
+    equal(int(var('top_rows', 'int', 'целым числом')), ref('top_rows'), 'Строк в верхних 10 % по аммонию — {expected}, а у вас {actual}.')
+    equal(int(var('top_hits', 'int', 'целым числом')), ref('top_hits'), 'Превышений среди них — {expected}, а у вас {actual}.')
+    close(alt('auc_amm'), alt_ref('auc_amm'), HARDCODE_MSG)
+  files: [water_polution.csv]
+  wrong:
+    - code: |
+        amm = water[water['code'] == 'CAS_14798-03-9'].groupby(['id', 'year'])['polution'].mean().rename('ammonium')
+        d = nit.assign(y=y).join(amm, on=['id', 'year']).fillna({'ammonium': 0})
+        auc_amm = float(roc_auc_score(d['y'], d['ammonium']))
+        top = d['ammonium'] >= d['ammonium'].quantile(0.9)
+        top_rows = int(top.sum())
+        top_hits = int(d.loc[top, 'y'].sum())
+      expect: Строки без аммония уберите
+    - code: |
+        amm = water[water['code'] == 'CAS_14798-03-9'].groupby('id')['polution'].mean().rename('ammonium')
+        d = nit.assign(y=y).join(amm, on='id').dropna(subset=['ammonium'])
+        auc_amm = float(roc_auc_score(d['y'], d['ammonium']))
+        top = d['ammonium'] >= d['ammonium'].quantile(0.9)
+        top_rows = int(top.sum())
+        top_hits = int(d.loc[top, 'y'].sum())
+      expect: парой (id, year)
+
+- id: b1-l7-t8
+  kind: quiz
+  title: "Шаг 8. Выводы"
+  difficulty: main
+  introduces: []
+  uses: [class-imbalance, roc-auc, data-leakage]
+  statement: |
+    Подведите итоги проекта.
+  quiz:
+    - q: Почему классификаторы lab8 угадывали «грязную» воду в 91–93 % случаев?
+      options:
+        - "Цель `polution >= 1.7` почти определяется тем, какой показатель измеряли, а код показателя и единица были среди признаков"
+        - Загрязнение воды хорошо предсказывается составом мусора в стране
+        - Случайный лес и XGBoost на любых данных угадывают больше 90 %
+      answer: 0
+      explain: "Шпаргалка «код показателя → ответ» верна в 87,8 % случаев, а лес без кода и единицы — в 59 % при 52 % у постоянного ответа."
+    - q: Что делает цель честной?
+      options:
+        - "Один показатель в одной единице и порог со смыслом: нитриты выше 0,5 мг/л — предел для питьевой воды в ЕС"
+        - Порог, при котором классы сбалансированы
+        - Как можно больше разных показателей в одной цели
+      answer: 0
+      explain: "Порог 1,7 в lab8 давал классы 52 на 48, но смешивал pH, температуру и концентрации. Баланс классов не делает цель осмысленной."
+    - q: Модель на признаках страны дала AUC 0,65. Что из этого следует?
+      options:
+        - Она не лучше ориентира «доля превышений в стране» — признаки описывают страну, а не реку
+        - Модель хорошая, раз AUC больше 0,5
+        - Нужна модель сложнее, например лес из 1000 деревьев
+      answer: 0
+      explain: "Разных строк признаков — 18, по числу стран. На 30 разбиениях модель лучше ориентира только в 11, а сам её AUC скачет от 0,52 до 0,81."
+    - q: Что показал аммоний той же реки?
+      options:
+        - "Без всякой модели AUC 0,90 и 10 из 12 превышений среди 10 % строк с самым высоким аммонием: нужны данные о самой реке"
+        - Аммоний и нитриты никак не связаны
+        - Аммоний доказывает, что модель шага 5 работает
+      answer: 0
+      explain: "Вывод предварительный: превышений всего 12, а аммоний измерен лишь для трети строк. Но направление ясно — признаки должны быть связаны с самим явлением."
+  hints:
+    - Вспомните шаги 2, 4, 6 и 7.
+    - "Шпаргалка по коду показателя; 18 разных строк признаков; разброс AUC на 30 разбиениях; аммоний той же реки."
+    - "Ответы: первый вариант во всех четырёх вопросах."

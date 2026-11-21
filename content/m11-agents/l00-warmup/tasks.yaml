@@ -1,0 +1,447 @@
+- id: m11-l0-t1
+  title: Сколько разделов в уроке
+  difficulty: warmup
+  introduces: []
+  uses: [py-dicts, py-loops]
+  statement: |
+    Напишите функцию `count_by(docs, key)`: она возвращает словарь «значение поля `key` → сколько документов с таким значением». Например, `count_by(docs, 'module')` — сколько разделов в каждом модуле. Получите:
+
+    - `n_by_lesson` — словарь «номер урока → число разделов» для всех документов `docs`;
+    - `busiest` — номер урока, в котором разделов больше всего (если таких несколько — первый в порядке документов).
+  prelude: |
+    import json
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+  starter: |
+    def count_by(docs, key):
+        counts = {}
+        for d in docs:
+            value = d[key]
+            counts[value] = ...
+        return counts
+
+    n_by_lesson = count_by(docs, 'lesson')
+    busiest = ...
+    print(busiest, n_by_lesson[busiest])
+  solution: |
+    def count_by(docs, key):
+        counts = {}
+        for d in docs:
+            value = d[key]
+            counts[value] = counts.get(value, 0) + 1
+        return counts
+
+    n_by_lesson = count_by(docs, 'lesson')
+    busiest = max(n_by_lesson, key=n_by_lesson.get)
+    print(busiest, n_by_lesson[busiest])
+  explanation: |
+    - `counts.get(value, 0) + 1` — счётчик: если значения ещё нет в словаре, считаем от нуля.
+    - `max(словарь, key=словарь.get)` перебирает ключи и сравнивает их значения. При равенстве побеждает первый ключ: словарь помнит порядок добавления.
+    - Больше всего разделов — по 10 — в уроках 10.2 и 10.4; первый в порядке документов — 10.2. То же даёт `Counter(d['lesson'] for d in docs).most_common(1)`.
+  hints:
+    - "Счётчик в словаре: `counts[value] = counts.get(value, 0) + 1`."
+    - "Ключ с наибольшим значением — `max(n_by_lesson, key=n_by_lesson.get)`."
+    - "Функция не должна знать про уроки: поле берётся из аргумента `key` — `d[key]`."
+  tests: |
+    f = var('count_by')
+    ensure(callable(f), '`count_by` должна быть функцией.')
+    mini = [{'lesson': '1.1', 'module': 1}, {'lesson': '1.2', 'module': 1}, {'lesson': '1.1', 'module': 1}, {'lesson': '2.1', 'module': 2}]
+    equal(f(mini, 'lesson'), {'1.1': 2, '1.2': 1, '2.1': 1}, 'На четырёх документах `count_by(mini, "lesson")` должна дать {expected}, а дала {actual}.')
+    equal(f(mini, 'module'), {1: 3, 2: 1}, 'Поле берётся из аргумента `key`: `count_by(mini, "module")` — {expected}, а у вас {actual}.')
+    equal(f([], 'lesson'), {}, 'Для пустого списка документов — пустой словарь.')
+    equal(var('n_by_lesson', dict, 'словарём'), ref('n_by_lesson'), 'Число разделов по урокам не совпадает с ожидаемым.')
+    equal(var('busiest', str, 'строкой'), ref('busiest'), 'Урок с наибольшим числом разделов — {expected}, а у вас {actual}.')
+  files: [course_docs.json]
+  wrong:
+    - code: |
+        def count_by(docs, key):
+            counts = {}
+            for d in docs:
+                counts[d['lesson']] = counts.get(d['lesson'], 0) + 1
+            return counts
+        n_by_lesson = count_by(docs, 'lesson')
+        busiest = max(n_by_lesson, key=n_by_lesson.get)
+      expect: из аргумента
+    - code: |
+        def count_by(docs, key):
+            counts = {}
+            for d in docs:
+                counts[d[key]] = counts.get(d[key], 0) + 1
+            return counts
+        n_by_lesson = count_by(docs, 'lesson')
+        busiest = max(n_by_lesson)
+      expect: наибольшим числом
+
+- id: m11-l0-t2
+  title: Косинус без деления на ноль
+  difficulty: warmup
+  introduces: []
+  uses: [cosine-similarity]
+  statement: |
+    Напишите функцию `cosine(a, b)` — косинусное сходство двух векторов NumPy: `a @ b / (|a| · |b|)`. Если хотя бы один вектор нулевой (длина 0), функция возвращает `0.0`, а не `nan`. У документа без единого знакомого поиску слова вектор как раз нулевой, и поиск не должен на нём ломаться. Результат — число `float`.
+
+    Получите `chair_wheelchair` — сходство векторов CLIP для «chair» и «wheelchair».
+  prelude: |
+    import numpy as np
+    with np.load('zs_prompts.npz') as data:
+        en = data['variant'] == 'en'
+        names = [str(x) for x in data['prompt'][en]]
+        vecs = data['emb'][en].astype(np.float32)
+  starter: |
+    def cosine(a, b):
+        na, nb = np.linalg.norm(a), np.linalg.norm(b)
+        if ...:
+            return 0.0
+        return float(...)
+
+    chair_wheelchair = cosine(vecs[names.index('chair')], vecs[names.index('wheelchair')])
+    print(round(chair_wheelchair, 3))
+  solution: |
+    def cosine(a, b):
+        na, nb = np.linalg.norm(a), np.linalg.norm(b)
+        if na == 0 or nb == 0:
+            return 0.0
+        return float(a @ b / (na * nb))
+
+    chair_wheelchair = cosine(vecs[names.index('chair')], vecs[names.index('wheelchair')])
+    print(round(chair_wheelchair, 3))
+  explanation: |
+    - `np.linalg.norm` — длина вектора. Если она 0, деление дало бы `nan` и предупреждение, поэтому такой случай отсекаем заранее.
+    - `float(...)` превращает число NumPy в обычное число Python — его удобно сравнивать и печатать.
+    - Сходство «chair» и «wheelchair» — 0,894: среди названий это самый близкий к «chair» вектор.
+  hints:
+    - "Нулевой вектор — `na == 0 or nb == 0`."
+    - "Формула — `a @ b / (na * nb)`."
+    - "Оберните результат в `float(...)`."
+  tests: |
+    import numpy as np
+    f = var('cosine')
+    ensure(callable(f), '`cosine` должна быть функцией.')
+    rng = np.random.default_rng(7)
+    a, b = rng.normal(size=5), rng.normal(size=5)
+    close(f(a, b), float(a @ b / np.linalg.norm(a) / np.linalg.norm(b)), 'Для двух случайных векторов сходство должно быть {expected}, а получилось {actual}.')
+    close(f(np.array([1.0, 2.0]), np.array([2.0, 4.0])), 1.0, 'Векторы одного направления — сходство 1, а у вас {actual}.')
+    close(f(np.array([1.0, 0.0]), np.array([-3.0, 0.0])), -1.0, 'Противоположные векторы — сходство −1, а у вас {actual}.')
+    with np.errstate(all='ignore'):
+        z = f(np.zeros(3), np.array([1.0, 2.0, 3.0]))
+    ensure(z == z, 'Для нулевого вектора функция вернула nan, а должна вернуть 0.0.')
+    equal(z, 0.0, 'Для нулевого вектора сходство — 0.0, а у вас {actual}.')
+    ensure(isinstance(f(a, b), float), '`cosine` должна вернуть число float, а вернула {0}.'.format(type(f(a, b)).__name__))
+    close(var('chair_wheelchair', 'number', 'числом'), ref('chair_wheelchair'), 'Сходство «chair» и «wheelchair» — {expected}, а у вас {actual}.', rtol=1e-4)
+  files: [zs_prompts.npz]
+  wrong:
+    - code: |
+        def cosine(a, b):
+            return float(a @ b / (np.linalg.norm(a) * np.linalg.norm(b)))
+        chair_wheelchair = cosine(vecs[names.index('chair')], vecs[names.index('wheelchair')])
+      expect: nan
+    - code: |
+        def cosine(a, b):
+            na, nb = np.linalg.norm(a), np.linalg.norm(b)
+            if na == 0 or nb == 0:
+                return 0.0
+            return float(a @ b)
+        chair_wheelchair = cosine(vecs[names.index('chair')], vecs[names.index('wheelchair')])
+      expect: случайных векторов
+
+- id: m11-l0-t3
+  title: k ближайших векторов
+  difficulty: main
+  introduces: []
+  uses: [cosine-similarity, word-embedding]
+  statement: |
+    Напишите функцию `nearest(query, matrix, k)`: косинусное сходство вектора `query` с каждой строкой матрицы `matrix` и список из `k` пар `(номер строки, сходство)` по убыванию сходства. При равном сходстве раньше идёт строка с меньшим номером. Строки матрицы могут быть не нормированы — учитывайте их длину сами; у нулевой строки сходство 0. Номер в паре — `int`, сходство — `float`.
+
+    Получите `chair_neighbors` — названия трёх ближайших к «chair» векторов CLIP, не считая самого «chair».
+  prelude: |
+    import numpy as np
+    with np.load('zs_prompts.npz') as data:
+        en = data['variant'] == 'en'
+        names = [str(x) for x in data['prompt'][en]]
+        vecs = data['emb'][en].astype(np.float32)
+  starter: |
+    def nearest(query, matrix, k):
+        norms = np.linalg.norm(matrix, axis=1) * np.linalg.norm(query)
+        scores = np.zeros(len(matrix))
+        ok = norms > 0                          # у нулевых строк сходство остаётся 0
+        scores[ok] = ...
+        order = np.argsort(..., kind='stable')[:k]
+        return [(int(i), float(scores[i])) for i in order]
+
+    pairs = nearest(vecs[names.index('chair')], vecs, 4)
+    chair_neighbors = ...
+    print(pairs)
+    print(chair_neighbors)
+  solution: |
+    def nearest(query, matrix, k):
+        norms = np.linalg.norm(matrix, axis=1) * np.linalg.norm(query)
+        scores = np.zeros(len(matrix))
+        ok = norms > 0                          # у нулевых строк сходство остаётся 0
+        scores[ok] = matrix[ok] @ query / norms[ok]
+        order = np.argsort(-scores, kind='stable')[:k]
+        return [(int(i), float(scores[i])) for i in order]
+
+    pairs = nearest(vecs[names.index('chair')], vecs, 4)
+    chair_neighbors = [names[i] for i, s in pairs if names[i] != 'chair'][:3]
+    print(pairs)
+    print(chair_neighbors)
+  explanation: |
+    - `matrix[ok] @ query` — скалярные произведения со всеми ненулевыми строками сразу; деление на `norms[ok]` превращает их в косинусы.
+    - `np.argsort(-scores, kind='stable')` — номера по убыванию сходства. Устойчивая сортировка (`stable`) при равных значениях сохраняет исходный порядок, то есть меньший номер раньше.
+    - Первое место у самого «chair» — сходство с собой 1. Дальше — «wheelchair», «barrel» и «windsor chair». У CLIP «стул» ближе к «бочке», чем к «виндзорскому стулу», хотя разница меньше тысячной.
+  hints:
+    - "Косинусы со всеми строками: `matrix[ok] @ query / norms[ok]`."
+    - "По убыванию — `np.argsort(-scores, kind='stable')`."
+    - "Ближайший к «chair» — он сам; запросите 4 соседа и уберите его: `[names[i] for i, s in pairs if names[i] != 'chair'][:3]`."
+  tests: |
+    import numpy as np
+    f = var('nearest')
+    ensure(callable(f), '`nearest` должна быть функцией.')
+    M = np.array([[1.0, 0.0], [0.0, 2.0], [1.0, 1.0], [0.0, 0.0], [5.0, 0.0]])
+    q = np.array([1.0, 1.0])
+    with np.errstate(all='ignore'):
+        got = f(q, M, 4)
+    ensure(isinstance(got, list) and len(got) == 4, '`nearest(q, M, 4)` должна вернуть список из 4 пар, а вернула {0}.'.format(got))
+    idx = [int(i) for i, s in got]
+    if idx[0] == 3:
+        fail('Первой стоит самая непохожая (нулевая) строка: сортируйте по убыванию сходства.')
+    if idx[0] != 2:
+        fail('Строка [1, 1] смотрит в ту же сторону, что и запрос [1, 1], — сходство 1, она первая. У вас первая строка {0}: похоже, длина строк не учтена.'.format(idx[0]))
+    equal(idx, [2, 0, 1, 4], 'Порядок строк для запроса [1, 1] — {expected}, а у вас {actual}. При равном сходстве раньше идёт меньший номер.')
+    for (i, s), e in zip(got, [1.0, 2 ** -0.5, 2 ** -0.5, 2 ** -0.5]):
+        close(float(s), e, 'Сходство строки {0} с запросом [1, 1] — {{expected}}, а у вас {{actual}}.'.format(i))
+    ensure(all(type(i) is int and type(s) is float for i, s in got), 'Номер в паре — int, сходство — float.')
+    with np.errstate(all='ignore'):
+        zero = f(np.array([1.0, 0.0]), np.array([[0.0, 0.0], [1.0, 1.0]]), 2)
+    equal([int(i) for i, s in zero], [1, 0], 'Нулевая строка должна получить сходство 0, а не nan.')
+    equal(var('chair_neighbors', list, 'списком'), ref('chair_neighbors'), 'Три ближайших к «chair» — {expected}, а у вас {actual}.')
+  files: [zs_prompts.npz]
+  wrong:
+    - code: |
+        def nearest(query, matrix, k):
+            norms = np.linalg.norm(matrix, axis=1) * np.linalg.norm(query)
+            scores = np.zeros(len(matrix))
+            ok = norms > 0
+            scores[ok] = matrix[ok] @ query / norms[ok]
+            order = np.argsort(scores, kind='stable')[:k]
+            return [(int(i), float(scores[i])) for i in order]
+        pairs = nearest(vecs[names.index('chair')], vecs, 4)
+        chair_neighbors = [names[i] for i, s in pairs if names[i] != 'chair'][:3]
+      expect: по убыванию
+    - code: |
+        def nearest(query, matrix, k):
+            scores = matrix @ query
+            order = np.argsort(-scores, kind='stable')[:k]
+            return [(int(i), float(scores[i])) for i in order]
+        pairs = nearest(vecs[names.index('chair')], vecs, 4)
+        chair_neighbors = [names[i] for i, s in pairs if names[i] != 'chair'][:3]
+      expect: длина строк не учтена
+
+- id: m11-l0-t4
+  title: Повторы в базе векторов
+  difficulty: main
+  introduces: []
+  uses: [cosine-similarity, word-embedding]
+  statement: |
+    Некоторые названия классов встречаются в `names` дважды: картинки пришли из разных наборов данных. У повторов одинаковые векторы — сходство 1, и при поиске они займут места, которые могли бы достаться другим результатам. С базой знаний для RAG бывает то же самое.
+
+    1. `n_repeats` — сколько в `names` лишних копий: `len(names) - len(set(names))`.
+    2. Напишите функцию `most_similar_pair(unit, labels)`: для нормированных векторов `unit` и их названий `labels` она возвращает кортеж `(i, j, сходство)` с `i < j` — пару **разных** названий с наибольшим сходством. Сходство — `float`.
+    3. Нормируйте векторы CLIP на длину 1 (`unit`) и получите `best_pair` — кортеж из двух названий этой пары (сначала `names[i]`) и `best_score` — их сходство.
+  prelude: |
+    import numpy as np
+    with np.load('zs_prompts.npz') as data:
+        en = data['variant'] == 'en'
+        names = [str(x) for x in data['prompt'][en]]
+        vecs = data['emb'][en].astype(np.float32)
+  starter: |
+    n_repeats = ...
+
+    def most_similar_pair(unit, labels):
+        sim = unit @ unit.T
+        best = (None, None, -2.0)
+        for i in range(len(labels)):
+            for j in range(i + 1, len(labels)):
+                if ...:
+                    best = (i, j, float(sim[i, j]))
+        return best
+
+    unit = ...
+    i, j, best_score = most_similar_pair(unit, names)
+    best_pair = (names[i], names[j])
+    print(n_repeats, best_pair, round(best_score, 4))
+  solution: |
+    n_repeats = len(names) - len(set(names))
+
+    def most_similar_pair(unit, labels):
+        sim = unit @ unit.T
+        best = (None, None, -2.0)
+        for i in range(len(labels)):
+            for j in range(i + 1, len(labels)):
+                if labels[i] != labels[j] and sim[i, j] > best[2]:
+                    best = (i, j, float(sim[i, j]))
+        return best
+
+    unit = vecs / np.linalg.norm(vecs, axis=1, keepdims=True)
+    i, j, best_score = most_similar_pair(unit, names)
+    best_pair = (names[i], names[j])
+    print(n_repeats, best_pair, round(best_score, 4))
+  explanation: |
+    - `set(names)` оставляет по одному экземпляру каждого названия; разница длин — число лишних копий.
+    - `keepdims=True` сохраняет у длин форму (349, 1), и деление идёт построчно — каждый вектор делится на свою длину.
+    - Цикл перебирает пары `i < j` и пропускает одинаковые названия: иначе победил бы повтор со сходством 1.
+    - Ближе всех две рыбы-крылатки: «african lionfish» и «red lionfish», сходство 0,947.
+  hints:
+    - "Лишние копии — `len(names) - len(set(names))`."
+    - "Условие в цикле: названия разные и сходство больше лучшего — `labels[i] != labels[j] and sim[i, j] > best[2]`."
+    - "Нормировка — `vecs / np.linalg.norm(vecs, axis=1, keepdims=True)`."
+  tests: |
+    import numpy as np
+    equal(int(var('n_repeats', 'number', 'числом')), int(ref('n_repeats')), 'Лишних копий названий — {expected}, а у вас {actual}.')
+    f = var('most_similar_pair')
+    ensure(callable(f), '`most_similar_pair` должна быть функцией.')
+    U = np.array([[1.0, 0.0], [1.0, 0.0], [0.0, 1.0], [0.8, 0.6]])
+    got = f(U, ['a', 'a', 'b', 'c'])
+    ensure(isinstance(got, tuple) and len(got) == 3, '`most_similar_pair` должна вернуть кортеж (i, j, сходство), а вернула {0}.'.format(got))
+    if tuple(got[:2]) == (0, 1):
+        fail('Победила пара одинаковых названий («a» и «a»): повторы нужно пропускать.')
+    equal((int(got[0]), int(got[1])), (0, 3), 'Для векторов [1,0], [1,0], [0,1], [0.8,0.6] с названиями a, a, b, c ближе всех разные «a» (номер 0) и «c» (номер 3), а у вас {actual}.')
+    close(got[2], 0.8, 'Их сходство — 0.8, а у вас {actual}.')
+    pair = var('best_pair', tuple, 'кортежем')
+    equal(pair, ref('best_pair'), 'Самая похожая пара разных названий — {expected}, а у вас {actual}.')
+    close(var('best_score', 'number', 'числом'), ref('best_score'), 'Сходство этой пары — {expected}, а у вас {actual}.', rtol=1e-4)
+  files: [zs_prompts.npz]
+  wrong:
+    - code: |
+        n_repeats = len(names) - len(set(names))
+        def most_similar_pair(unit, labels):
+            sim = unit @ unit.T
+            best = (None, None, -2.0)
+            for i in range(len(labels)):
+                for j in range(i + 1, len(labels)):
+                    if sim[i, j] > best[2]:
+                        best = (i, j, float(sim[i, j]))
+            return best
+        unit = vecs / np.linalg.norm(vecs, axis=1, keepdims=True)
+        i, j, best_score = most_similar_pair(unit, names)
+        best_pair = (names[i], names[j])
+      expect: повторы нужно пропускать
+    - code: |
+        n_repeats = len(set(names))
+        def most_similar_pair(unit, labels):
+            sim = unit @ unit.T
+            best = (None, None, -2.0)
+            for i in range(len(labels)):
+                for j in range(i + 1, len(labels)):
+                    if labels[i] != labels[j] and sim[i, j] > best[2]:
+                        best = (i, j, float(sim[i, j]))
+            return best
+        unit = vecs / np.linalg.norm(vecs, axis=1, keepdims=True)
+        i, j, best_score = most_similar_pair(unit, names)
+        best_pair = (names[i], names[j])
+      expect: Лишних копий
+
+- id: m11-l0-t5
+  title: Разбор вызова инструмента
+  difficulty: main
+  introduces: []
+  uses: [structured-output]
+  statement: |
+    Модель просит вызвать инструмент строкой JSON вида `{"name": "...", "arguments": {...}}`. Напишите функцию `parse_call(text)`: она возвращает кортеж `(имя, аргументы)` или `None`, если вызов разобрать нельзя:
+
+    - строка — не JSON;
+    - JSON — не словарь;
+    - нет ключа `name` или `arguments`;
+    - `name` — не строка или `arguments` — не словарь.
+
+    Получите `parsed` — список результатов `parse_call` для ответов модели из списка `replies`.
+  prelude: |
+    import json
+    replies = [
+        '{"name": "search_course", "arguments": {"query": "переобучение", "k": 3}}',
+        "{'name': 'search_course', 'arguments': {'query': 'переобучение'}}",
+        'Вызываю {"name": "get_schedule", "arguments": {"day": "завтра"}}',
+        '{"name": "get_schedule", "arguments": "завтра"}',
+        '["get_schedule", {"day": "завтра"}]',
+        '{"name": "get_schedule"}',
+        '{"arguments": {"day": "завтра"}, "name": "get_schedule"}',
+    ]
+  starter: |
+    def parse_call(text):
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError:
+            return None
+        if not isinstance(data, dict):
+            return None
+        name, args = data.get('name'), data.get('arguments')
+        if ...:
+            return None
+        return name, args
+
+    parsed = ...
+    for reply, result in zip(replies, parsed):
+        print(f'{reply[:45]:47} → {result}')
+  solution: |
+    def parse_call(text):
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError:
+            return None
+        if not isinstance(data, dict):
+            return None
+        name, args = data.get('name'), data.get('arguments')
+        if not isinstance(name, str) or not isinstance(args, dict):
+            return None
+        return name, args
+
+    parsed = [parse_call(r) for r in replies]
+    for reply, result in zip(replies, parsed):
+        print(f'{reply[:45]:47} → {result}')
+  explanation: |
+    - `json.loads` падает на одинарных кавычках и на тексте вокруг JSON — это ответы 2 и 3.
+    - `data.get('name')` возвращает `None`, если ключа нет. Поэтому одна проверка `isinstance` ловит сразу и отсутствие ключа, и неверный тип — ответы 4 и 6.
+    - Список (ответ 5) — тоже правильный JSON, но не словарь: для него `data.get` упал бы, поэтому проверка `isinstance(data, dict)` стоит раньше.
+    - Порядок ключей в JSON не важен — последний ответ разбирается. Из семи ответов модели разобрать можно только два: строгий разбор показывает, что формат вызова нужно задавать модели явно и проверять.
+  hints:
+    - "Условие отказа — `not isinstance(name, str) or not isinstance(args, dict)`."
+    - "Если ключа нет, `data.get(...)` вернёт `None` — он не строка и не словарь."
+    - "Список результатов — `[parse_call(r) for r in replies]`."
+  tests: |
+    f = var('parse_call')
+    ensure(callable(f), '`parse_call` должна быть функцией.')
+    equal(f('{"name": "calc", "arguments": {"expression": "2+2"}}'), ('calc', {'expression': '2+2'}), 'Правильный вызов должен разобраться в {expected}, а получилось {actual}.')
+    equal(f('{"name": "calc", "arguments": {}}'), ('calc', {}), 'Пустой словарь аргументов — тоже правильный вызов: {expected}, а у вас {actual}.')
+    equal(f("{'name': 'calc', 'arguments': {}}"), None, 'Одинарные кавычки — не JSON: нужен None.')
+    equal(f('не JSON вовсе'), None, 'Текст без JSON — None.')
+    equal(f('[1, 2]'), None, 'JSON-список — не вызов: нужен None.')
+    equal(f('"calc"'), None, 'JSON-строка — не вызов: нужен None.')
+    equal(f('{"name": 5, "arguments": {}}'), None, 'Имя инструмента — строка; для `"name": 5` нужен None.')
+    equal(f('{"name": "calc", "arguments": "2+2"}'), None, 'Аргументы — словарь; для строки вместо словаря нужен None.')
+    equal(f('{"arguments": {}}'), None, 'Без имени инструмента — None.')
+    equal(var('parsed', list, 'списком'), ref('parsed'), 'Результаты для ответов модели — {expected}, а у вас {actual}.')
+  files: []
+  wrong:
+    - code: |
+        def parse_call(text):
+            try:
+                data = json.loads(text)
+            except json.JSONDecodeError:
+                return None
+            return data['name'], data['arguments']
+        parsed = [parse_call(r) for r in replies]
+      expect: Неподходящий тип
+    - code: |
+        def parse_call(text):
+            try:
+                data = json.loads(text)
+            except json.JSONDecodeError:
+                return None
+            if not isinstance(data, dict):
+                return None
+            name, args = data.get('name'), data.get('arguments')
+            if name is None or args is None:
+                return None
+            return name, args
+        parsed = [parse_call(r) for r in replies]
+      expect: Имя инструмента — строка

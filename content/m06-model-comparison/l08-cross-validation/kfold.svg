@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 244" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="Кросс-валидация на трёх блоках. Обучающая часть делится на три блока. На шаге 1 модель учится на блоках 2 и 3 и проверяется на блоке 1, на шаге 2 — учится на блоках 1 и 3 и проверяется на блоке 2, на шаге 3 — учится на блоках 1 и 2 и проверяется на блоке 3. Итог — среднее трёх ошибок и их разброс. Test в кросс-валидации не участвует">
+  <text x="12" y="24" fill="currentColor" font-weight="700">KFold(n_splits=3): обучающая часть X_train — 19 239 машин</text>
+  <text x="12" y="65" fill="currentColor">шаг 1</text>
+  <rect x="92" y="44" width="150" height="32" rx="5" fill="#c2410c" fill-opacity="0.22" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="167.0" y="65" fill="currentColor" text-anchor="middle" font-weight="700">блок 1: проверка</text>
+  <rect x="246" y="44" width="150" height="32" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="321.0" y="65" fill="currentColor" text-anchor="middle">блок 2: обучение</text>
+  <rect x="400" y="44" width="150" height="32" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="475.0" y="65" fill="currentColor" text-anchor="middle">блок 3: обучение</text>
+  <text x="566" y="65" fill="currentColor">MAE = 2 747</text>
+  <text x="12" y="111" fill="currentColor">шаг 2</text>
+  <rect x="92" y="90" width="150" height="32" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="167.0" y="111" fill="currentColor" text-anchor="middle">блок 1: обучение</text>
+  <rect x="246" y="90" width="150" height="32" rx="5" fill="#c2410c" fill-opacity="0.22" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="321.0" y="111" fill="currentColor" text-anchor="middle" font-weight="700">блок 2: проверка</text>
+  <rect x="400" y="90" width="150" height="32" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="475.0" y="111" fill="currentColor" text-anchor="middle">блок 3: обучение</text>
+  <text x="566" y="111" fill="currentColor">MAE = 2 791</text>
+  <text x="12" y="157" fill="currentColor">шаг 3</text>
+  <rect x="92" y="136" width="150" height="32" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="167.0" y="157" fill="currentColor" text-anchor="middle">блок 1: обучение</text>
+  <rect x="246" y="136" width="150" height="32" rx="5" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="321.0" y="157" fill="currentColor" text-anchor="middle">блок 2: обучение</text>
+  <rect x="400" y="136" width="150" height="32" rx="5" fill="#c2410c" fill-opacity="0.22" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="475.0" y="157" fill="currentColor" text-anchor="middle" font-weight="700">блок 3: проверка</text>
+  <text x="566" y="157" fill="currentColor">MAE = 2 733</text>
+  <line x1="562" y1="174" x2="740" y2="174" stroke="currentColor" stroke-opacity="0.4"/>
+  <text x="566" y="192" fill="currentColor" font-weight="700">среднее 2 757 ± 24</text>
+  <text x="12" y="216" fill="currentColor" fill-opacity="0.85">Каждая машина train один раз проверочная. Итог — среднее трёх MAE и их разброс (kNN, k = 20).</text>
+  <text x="12" y="236" fill="currentColor" fill-opacity="0.75">Test в кросс-валидации не участвует: его открывают один раз, после выбора модели.</text>
+</svg>

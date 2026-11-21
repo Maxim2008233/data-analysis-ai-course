@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 236" font-family="Inter, Arial, sans-serif" font-size="13" role="img" aria-label="У таблицы метки 10, 20, 30 и позиции 0, 1, 2. loc[20] и iloc[1] выбирают одну и ту же строку, а loc[1] даёт KeyError, потому что метки 1 нет">
+  <defs><marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+  <g font-family="JetBrains Mono, monospace" font-size="12" fill="currentColor">
+    <text x="20" y="40" font-family="Inter, Arial, sans-serif" font-weight="700" font-size="12" fill-opacity="0.7">позиция</text>
+    <text x="96" y="40" font-family="Inter, Arial, sans-serif" font-weight="700" font-size="12" fill-opacity="0.7">метка</text>
+    <g font-weight="700"><text x="160" y="40">Make</text><text x="260" y="40">Model</text><text x="380" y="40">Year</text></g>
+    <rect x="86" y="74" width="352" height="26" rx="3" fill="#3d5bd9" fill-opacity="0.15" stroke="#3d5bd9"/>
+    <text x="40" y="66" fill-opacity="0.6">0</text><text x="104" y="66" font-weight="700">10</text><text x="160" y="66">Toyota</text><text x="260" y="66">Prius</text><text x="380" y="66">2011</text>
+    <text x="40" y="92" fill-opacity="0.6">1</text><text x="104" y="92" font-weight="700">20</text><text x="160" y="92">Renault</text><text x="260" y="92">Grand Scenic</text><text x="380" y="92">2014</text>
+    <text x="40" y="118" fill-opacity="0.6">2</text><text x="104" y="118" font-weight="700">30</text><text x="160" y="118">Volkswagen</text><text x="260" y="118">Golf</text><text x="380" y="118">1998</text>
+    <line x1="88" y1="48" x2="88" y2="126" stroke="currentColor" stroke-opacity="0.4"/>
+    <line x1="146" y1="48" x2="146" y2="126" stroke="currentColor" stroke-opacity="0.4"/>
+    <line x1="20" y1="48" x2="440" y2="48" stroke="currentColor" stroke-opacity="0.4"/>
+  </g>
+  <g font-family="JetBrains Mono, monospace" font-size="13">
+    <text x="520" y="60" fill="#3d5bd9" font-weight="700">t.loc[20]</text>
+    <text x="520" y="80" fill="currentColor" fill-opacity="0.75" font-family="Inter, Arial, sans-serif">по метке 20</text>
+    <text x="520" y="112" fill="#3d5bd9" font-weight="700">t.iloc[1]</text>
+    <text x="520" y="132" fill="currentColor" fill-opacity="0.75" font-family="Inter, Arial, sans-serif">по позиции 1 — та же строка</text>
+  </g>
+  <path d="M514 64 C 480 64, 470 86, 444 87" stroke="#3d5bd9" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+  <path d="M514 108 C 480 108, 470 90, 444 89" stroke="#3d5bd9" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+  <text x="20" y="168" fill="#c2410c" font-family="JetBrains Mono, monospace" font-weight="700">t.loc[1] → KeyError: 1</text>
+  <text x="230" y="168" fill="currentColor">— метки 1 в индексе нет; вторую по счёту строку выбирает <tspan font-family="JetBrains Mono, monospace">iloc[1]</tspan></text>
+  <text x="20" y="198" fill="currentColor"><tspan font-family="JetBrains Mono, monospace" font-weight="700">loc[a:b]</tspan> — метки от a до b <tspan font-weight="700">включительно</tspan>;</text>
+  <text x="20" y="220" fill="currentColor"><tspan font-family="JetBrains Mono, monospace" font-weight="700">iloc[a:b]</tspan> — позиции от a до b − 1, как срезы списков и массивов NumPy</text>
+</svg>

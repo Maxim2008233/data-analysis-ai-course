@@ -1,0 +1,340 @@
+- id: m5-l7-t1
+  title: Обучить scaler на обучающей части
+  difficulty: warmup
+  introduces: [standard-scaler]
+  uses: [data-leakage, std-var]
+  statement: |
+    Создайте `scaler` — `StandardScaler` — и обучите его **только** на `X_train`. Получите `means` и `scales` — выученные средние и стандартные отклонения признаков (атрибуты `mean_` и `scale_`).
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    df = pd.read_csv('cars_processed.csv')
+    X = df[['Year', 'Distance', 'Engine', 'km_year']]
+    y = df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    scaler = ...
+    scaler.fit(...)
+    means = ...
+    scales = ...
+    print(means.round(1), scales.round(1))
+  solution: |
+    scaler = StandardScaler()
+    scaler.fit(X_train)
+    means = scaler.mean_
+    scales = scaler.scale_
+    print(means.round(1), scales.round(1))
+  explanation: |
+    - Scaler «учится» так же, как модель: `fit` узнаёт среднее и σ каждого признака — только по train.
+    - `mean_` совпадает с `X_train.mean()`, а `scale_` — со стандартным отклонением с `ddof=0` (урок 1.7).
+  hints:
+    - "Создать `StandardScaler()` и вызвать `fit` на обучающих признаках; ответы не нужны."
+    - "`scaler.fit(X_train)`."
+    - "`means = scaler.mean_`; `scales = scaler.scale_`."
+  tests: |
+    import numpy as np
+    from sklearn.preprocessing import StandardScaler
+    s = var('scaler', StandardScaler, 'объектом StandardScaler')
+    ensure(hasattr(s, 'mean_'), 'Scaler не обучен — вызовите `scaler.fit(X_train)`.')
+    m = np.asarray(var('means', None, 'массивом'))
+    allx = ref('X')
+    if np.allclose(m, allx.mean().to_numpy()) and not np.allclose(m, ref('means')):
+        fail('Scaler обучен на всех данных — это утечка. `fit` только на `X_train`.')
+    same_array(m, ref('means'), 'Средние не совпадают со средними обучающей части.')
+    same_array(np.asarray(var('scales', None, 'массивом')), ref('scales'), 'Стандартные отклонения не совпадают.')
+    close(alt('means')[0], alt_ref('means')[0], HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        scaler = StandardScaler()
+        scaler.fit(X)
+        means = scaler.mean_
+        scales = scaler.scale_
+      expect: утечка
+    - code: |
+        scaler = StandardScaler()
+        scaler.fit(X_valid)
+        means = scaler.mean_
+        scales = scaler.scale_
+      expect: обучающей части
+
+- id: m5-l7-t2
+  title: transform для train и validation
+  difficulty: main
+  introduces: [standard-scaler]
+  uses: [data-leakage, broadcasting]
+  statement: |
+    Обученный на train `scaler` есть. Получите `X_train_s` и `X_valid_s` — стандартизированные признаки обеих частей, — а также `train_means` и `valid_means` — средние по столбцам после преобразования (массивы).
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    df = pd.read_csv('cars_processed.csv')
+    X = df[['Year', 'Distance', 'Engine', 'km_year']]
+    y = df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)       # задание 5.7.1
+  starter: |
+    X_train_s = ...
+    X_valid_s = ...
+    train_means = ...
+    valid_means = ...
+    print(train_means.round(3), valid_means.round(3))
+  solution: |
+    X_train_s = scaler.transform(X_train)
+    X_valid_s = scaler.transform(X_valid)
+    train_means = X_train_s.mean(axis=0)
+    valid_means = X_valid_s.mean(axis=0)
+    print(train_means.round(3), valid_means.round(3))
+  explanation: |
+    - Один и тот же scaler с μ и σ из train преобразует обе части.
+    - На train средние — нули (с точностью до округления), на validation — близкие к нулю, но нет: так и должно быть.
+    - Если бы validation прошла через свой `fit`, её средние тоже стали бы нулями — признак ошибки.
+  hints:
+    - "`transform` у обученного scaler — для каждой части; средние по столбцам — `axis=0`."
+    - "`X_valid_s = scaler.transform(X_valid)`."
+    - "`train_means = X_train_s.mean(axis=0)`."
+  tests: |
+    import numpy as np
+    xs = var('X_valid_s', np.ndarray, 'массивом NumPy — результатом transform')
+    vm = np.asarray(var('valid_means', None, 'массивом'))
+    if np.allclose(vm, 0, atol=1e-9):
+        fail('Средние validation ровно нулевые — похоже, scaler заново обучен на validation (`fit_transform`). Нужен `transform` обученным на train scaler.')
+    same_array(xs, ref('X_valid_s'), 'Стандартизированная validation не совпадает: `scaler.transform(X_valid)`.')
+    same_array(var('X_train_s', np.ndarray, 'массивом NumPy'), ref('X_train_s'), 'Стандартизированный train не совпадает.')
+    same_array(np.asarray(var('train_means', None, 'массивом')), ref('train_means'), 'Средние train после стандартизации — нули.', atol=1e-6)
+    same_array(vm, ref('valid_means'), 'Средние validation после стандартизации не совпадают.', atol=1e-9)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        X_train_s = scaler.transform(X_train)
+        X_valid_s = StandardScaler().fit_transform(X_valid)
+        train_means = X_train_s.mean(axis=0)
+        valid_means = X_valid_s.mean(axis=0)
+      expect: заново обучен
+    - code: |
+        X_train_s = scaler.transform(X_train)
+        X_valid_s = scaler.transform(X_valid)
+        train_means = X_train_s.mean()
+        valid_means = X_valid_s.mean(axis=0)
+      expect: Средние train
+
+- id: m5-l7-t3
+  title: Модель по четырём признакам
+  difficulty: main
+  introduces: [standard-scaler]
+  uses: [linear-regression, overfitting]
+  statement: |
+    Обучите `model` — `LinearRegression` на стандартизированных обучающих признаках `X_train_s` — и получите `mae_train`, `mae_valid` (MAE на обеих частях) и `gap` = `mae_valid - mae_train`.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X = df[['Year', 'Distance', 'Engine', 'km_year']]
+    y = df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s, X_valid_s = scaler.transform(X_train), scaler.transform(X_valid)
+  starter: |
+    model = ...
+    mae_train = ...
+    mae_valid = ...
+    gap = ...
+    print(round(mae_train), round(mae_valid), round(gap))
+  solution: |
+    model = LinearRegression().fit(X_train_s, y_train)
+    mae_train = mean_absolute_error(y_train, model.predict(X_train_s))
+    mae_valid = mean_absolute_error(y_valid, model.predict(X_valid_s))
+    gap = mae_valid - mae_train
+    print(round(mae_train), round(mae_valid), round(gap))
+  explanation: |
+    - Модель обучается и предсказывает на **стандартизированных** признаках — одной и той же «системе координат».
+    - Разрыв между train и validation — около 10 евро: переобучения нет. Ошибка ≈ 4 270 объясняется видом модели (прямая) и набором признаков.
+  hints:
+    - "Обучение — на `X_train_s` и `y_train`; MAE — на каждой части её признаками и ответами."
+    - "`model = LinearRegression().fit(X_train_s, y_train)`."
+    - "`mae_valid = mean_absolute_error(y_valid, model.predict(X_valid_s))`; `gap = mae_valid - mae_train`."
+  tests: |
+    from sklearn.linear_model import LinearRegression
+    m = var('model', LinearRegression, 'моделью LinearRegression')
+    ensure(hasattr(m, 'coef_') and len(m.coef_) == 4, 'Обучите модель на всех четырёх стандартизированных признаках `X_train_s`.')
+    close(var('mae_train', 'number', 'числом'), ref('mae_train'), 'MAE на train — {expected}, а у вас {actual}.')
+    close(var('mae_valid', 'number', 'числом'), ref('mae_valid'), 'MAE на validation — {expected}, а у вас {actual}.')
+    close(var('gap', 'number', 'числом'), ref('gap'), 'Разрыв — {expected}, а у вас {actual}.')
+    close(alt('mae_valid'), alt_ref('mae_valid'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        model = LinearRegression().fit(X_train_s, y_train)
+        mae_train = mean_absolute_error(y_train, model.predict(X_train_s))
+        mae_valid = mean_absolute_error(y_valid, model.predict(X_valid))
+        gap = mae_valid - mae_train
+      expect: MAE на validation
+    - code: |
+        model = LinearRegression().fit(X_valid_s, y_valid)
+        mae_train = mean_absolute_error(y_train, model.predict(X_train_s))
+        mae_valid = mean_absolute_error(y_valid, model.predict(X_valid_s))
+        gap = mae_valid - mae_train
+      expect: MAE на train
+
+- id: m5-l7-t4
+  kind: quiz
+  title: Масштабирование без утечки
+  difficulty: main
+  introduces: [standard-scaler]
+  uses: [data-leakage]
+  statement: |
+    Выберите верный порядок действий.
+  quiz:
+    - q: Какой порядок правильный?
+      options:
+        - "Разделить → `scaler.fit(X_train)` → `transform` для train, validation, test → обучить модель на train"
+        - "`scaler.fit(X)` на всех данных → разделить → обучить модель"
+        - "Разделить → обучить модель → `scaler.fit(X_test)`"
+      answer: 0
+      explain: Всё, что учится (scaler и модель), учится только на train.
+    - q: "Для прогноза цены **нового** объявления нужно:"
+      options:
+        - Обучить новый scaler на этом объявлении
+        - Применить тот же обученный scaler (`transform`) и ту же модель (`predict`)
+        - Передать в модель исходные признаки без преобразования
+      answer: 1
+      explain: Новый объект проходит ту же подготовку, что и обучающие данные, с теми же μ и σ.
+    - q: "У стандартизированного признака на validation среднее 0,02, а не 0. Это ошибка?"
+      options:
+        - Да, scaler сломан
+        - Нет — μ и σ взяты из train, и у validation среднее чуть другое
+      answer: 1
+      explain: Ровно нулевое среднее у validation как раз подозрительно — значит, scaler обучали на ней.
+  hints:
+    - Вспомните правило «всё, что учится, учится только на train» и что делать с новыми объектами.
+    - "Разделить → fit на train → transform для всех; новый объект — тот же scaler; ненулевое среднее validation — норма."
+    - "Ответы: первый вариант; тот же scaler и модель; не ошибка."
+
+- id: m5-l7-t5
+  title: Какой признак весит больше
+  difficulty: main
+  introduces: [standard-scaler]
+  uses: [linear-regression]
+  statement: |
+    Модель на стандартизированных признаках обучена. Получите `coefs` — Series коэффициентов с индексом-названиями признаков (`features`), отсортированную по **модулю** коэффициента по убыванию (`sort_values(key=abs, ascending=False)`), и `top_feature` — признак с наибольшим по модулю коэффициентом. Какой признак уменьшает прогноз?
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X = df[features]
+    y = df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    model = LinearRegression().fit(scaler.transform(X_train), y_train)
+  starter: |
+    coefs = pd.Series(..., index=...)
+    coefs = coefs.sort_values(...)
+    top_feature = ...
+    print(coefs.round(0))
+  solution: |
+    coefs = pd.Series(model.coef_, index=features)
+    coefs = coefs.sort_values(key=abs, ascending=False)
+    top_feature = coefs.index[0]
+    print(coefs.round(0))
+  explanation: |
+    - Коэффициенты на стандартизированных признаках сравнимы: изменение прогноза при изменении признака на одно σ.
+    - `sort_values(key=abs, ...)` сортирует по модулю: важен размер влияния, а не знак (урок 2.2).
+    - Год выпуска и объём двигателя повышают прогноз сильнее всего; пробег — единственный признак с отрицательным коэффициентом. Это описание модели, а не причин цены.
+  hints:
+    - "Series из `model.coef_` с индексом `features`; сортировка по модулю — `key=abs`."
+    - "`coefs = pd.Series(model.coef_, index=features).sort_values(key=abs, ascending=False)`."
+    - "`top_feature = coefs.index[0]`."
+  tests: |
+    import pandas as pd
+    c = var('coefs', pd.Series, 'Series')
+    ensure(set(c.index) == set(ref('features')), 'Индекс `coefs` — названия четырёх признаков.')
+    if list(c.index) == list(ref('coefs').sort_values(ascending=False).index) and list(c.index) != list(ref('coefs').index):
+        fail('Отсортировано по значению, а нужно по модулю: `sort_values(key=abs, ascending=False)`.')
+    same_frame(c, ref('coefs'), 'Коэффициенты или их порядок не совпадают.')
+    equal(var('top_feature', str, 'строкой'), ref('top_feature'), 'Наибольший по модулю коэффициент — у {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        coefs = pd.Series(model.coef_, index=features)
+        coefs = coefs.sort_values(ascending=False)
+        top_feature = coefs.index[0]
+      expect: по модулю
+    - code: |
+        coefs = pd.Series(model.coef_, index=features[::-1])
+        coefs = coefs.sort_values(key=abs, ascending=False)
+        top_feature = coefs.index[0]
+      expect: не совпадают
+
+- id: m5-l7-t6
+  title: Масштаб и коэффициенты линейной регрессии
+  difficulty: star
+  introduces: [standard-scaler]
+  uses: [linear-regression, broadcasting]
+  statement: |
+    Обучите `raw_model` — `LinearRegression` на **исходных** обучающих признаках — и сравните с моделью `model` на стандартизированных. Получите `same_predictions` — `True`, если прогнозы на validation совпадают (`np.allclose`), и `recovered` — коэффициенты исходной модели, восстановленные из стандартизированной: `model.coef_ / scaler.scale_`. Убедитесь, что `recovered` совпадает с `raw_model.coef_`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    df = pd.read_csv('cars_processed.csv')
+    X = df[['Year', 'Distance', 'Engine', 'km_year']]
+    y = df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    model = LinearRegression().fit(scaler.transform(X_train), y_train)
+  starter: |
+    raw_model = ...
+    same_predictions = ...
+    recovered = ...
+    print(same_predictions, recovered.round(4), raw_model.coef_.round(4))
+  solution: |
+    raw_model = LinearRegression().fit(X_train, y_train)
+    same_predictions = np.allclose(raw_model.predict(X_valid), model.predict(scaler.transform(X_valid)))
+    recovered = model.coef_ / scaler.scale_
+    print(same_predictions, recovered.round(4), raw_model.coef_.round(4))
+  explanation: |
+    - Стандартизация — линейная замена переменных z = (x − μ) / σ. Прямая w·z + b — это та же прямая в исходных единицах с коэффициентами w / σ.
+    - Поэтому прогнозы совпадают, а коэффициенты отличаются ровно в σ раз: деление массива на массив поэлементное (урок 1.10).
+    - Вывод: для линейной регрессии масштаб влияет на интерпретацию, а не на качество.
+  hints:
+    - "Модель на исходных признаках — `fit(X_train, y_train)`; прогнозы стандартизированной модели — через `scaler.transform(X_valid)`."
+    - "`same_predictions = np.allclose(raw_model.predict(X_valid), model.predict(scaler.transform(X_valid)))`."
+    - "`recovered = model.coef_ / scaler.scale_`."
+  tests: |
+    import numpy as np
+    from sklearn.linear_model import LinearRegression
+    rm = var('raw_model', LinearRegression, 'моделью LinearRegression')
+    ensure(hasattr(rm, 'coef_'), 'Обучите `raw_model` на исходных признаках `X_train`.')
+    ensure(np.allclose(rm.coef_, ref('raw_model').coef_, rtol=1e-6), 'Коэффициенты `raw_model` не совпадают: модель на **исходных** обучающих признаках.')
+    equal(bool(var('same_predictions', None, 'логическим значением')), True, 'Прогнозы двух моделей совпадают — `same_predictions` должно быть {expected}.')
+    r = np.asarray(var('recovered', None, 'массивом'))
+    if np.allclose(r, ref('model').coef_ * ref('scaler').scale_, rtol=1e-6):
+        fail('Нужно делить на σ, а не умножать: `model.coef_ / scaler.scale_`.')
+    same_array(r, ref('raw_model').coef_, 'Восстановленные коэффициенты должны совпасть с `raw_model.coef_`.', rtol=1e-5)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        raw_model = LinearRegression().fit(X_train, y_train)
+        same_predictions = np.allclose(raw_model.predict(X_valid), model.predict(scaler.transform(X_valid)))
+        recovered = model.coef_ * scaler.scale_
+      expect: делить на σ
+    - code: |
+        raw_model = LinearRegression().fit(scaler.transform(X_train), y_train)
+        same_predictions = True
+        recovered = model.coef_ / scaler.scale_
+      expect: исходных

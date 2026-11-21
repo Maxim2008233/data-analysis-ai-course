@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 262" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="Дата-история из трёх слайдов: где сосредоточены записи — топ-5 марок охватывают 44,7 процента; насколько различаются цены — между марками и внутри них; что предлагаем — оценивать цену с учётом модели, года и пробега и проверить точность на отложенных данных">
+  <defs><marker id="sa" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor" fill-opacity="0.6"/></marker></defs>
+  <g fill="#3d5bd9" fill-opacity="0.07" stroke="#3d5bd9" stroke-opacity="0.55">
+    <rect x="12" y="12" width="224" height="170" rx="10"/><rect x="268" y="12" width="224" height="170" rx="10"/><rect x="524" y="12" width="224" height="170" rx="10"/>
+  </g>
+  <path d="M238 97 L264 97" stroke="currentColor" stroke-opacity="0.6" marker-end="url(#sa)"/>
+  <path d="M494 97 L520 97" stroke="currentColor" stroke-opacity="0.6" marker-end="url(#sa)"/>
+  <g fill="currentColor">
+    <text x="24" y="34" font-size="11" fill-opacity="0.7">СЛАЙД 1 · ВОПРОС</text>
+    <text x="24" y="52" font-weight="700">Где сосредоточены записи?</text>
+    <text x="280" y="34" font-size="11" fill-opacity="0.7">СЛАЙД 2 · ВОПРОС</text>
+    <text x="280" y="52" font-weight="700">Насколько различаются цены?</text>
+    <text x="536" y="34" font-size="11" fill-opacity="0.7">СЛАЙД 3 · ВОПРОС</text>
+    <text x="536" y="52" font-weight="700">Что предлагаем сервису?</text>
+  </g>
+  <g fill="#3d5bd9" fill-opacity="0.7">
+    <rect x="24" y="64" width="120" height="9"/><rect x="24" y="77" width="106" height="9"/><rect x="24" y="90" width="105" height="9"/><rect x="24" y="103" width="90" height="9"/><rect x="24" y="116" width="82" height="9"/>
+  </g>
+  <rect x="24" y="129" width="200" height="9" fill="currentColor" fill-opacity="0.25"/>
+  <g stroke="#3d5bd9" stroke-width="1.4" fill="#3d5bd9" fill-opacity="0.15">
+    <rect x="290" y="86" width="22" height="30"/><rect x="330" y="78" width="22" height="34"/><rect x="370" y="74" width="22" height="40"/><rect x="410" y="96" width="22" height="22"/><rect x="450" y="90" width="22" height="26"/>
+  </g>
+  <g stroke="#3d5bd9" stroke-width="1.4">
+    <line x1="301" y1="86" x2="301" y2="68"/><line x1="301" y1="116" x2="301" y2="134"/><line x1="341" y1="78" x2="341" y2="64"/><line x1="341" y1="112" x2="341" y2="130"/>
+    <line x1="381" y1="74" x2="381" y2="62"/><line x1="381" y1="114" x2="381" y2="134"/><line x1="421" y1="96" x2="421" y2="84"/><line x1="421" y1="118" x2="421" y2="134"/>
+    <line x1="461" y1="90" x2="461" y2="76"/><line x1="461" y1="116" x2="461" y2="134"/>
+  </g>
+  <g fill="#3d5bd9" fill-opacity="0.35">
+    <ellipse cx="575" cy="112" rx="26" ry="14"/><ellipse cx="640" cy="100" rx="22" ry="18"/><ellipse cx="702" cy="90" rx="24" ry="22"/>
+  </g>
+  <g fill="currentColor" font-size="11.5">
+    <text x="24" y="158">Вывод: топ-5 марок —</text>
+    <text x="24" y="174">44,7 % записей</text>
+    <text x="280" y="158">Вывод: различия и между</text>
+    <text x="280" y="174">марками, и внутри них</text>
+    <text x="536" y="158">Вывод: марки и года мало —</text>
+    <text x="536" y="174">«пятна» широкие</text>
+  </g>
+  <rect x="12" y="196" width="736" height="58" rx="10" fill="#c2410c" fill-opacity="0.08" stroke="#c2410c" stroke-opacity="0.55"/>
+  <g fill="currentColor" font-size="12">
+    <text x="26" y="219"><tspan font-weight="700" fill="#c2410c">Действие:</tspan> оценивать цену по похожим машинам — с учётом модели, года и пробега.</text>
+    <text x="26" y="241"><tspan font-weight="700" fill="#c2410c">Следующий шаг:</tspan> проверить точность оценки на отложенных данных. <tspan fill-opacity="0.75">Границы: это объявления, не сделки.</tspan></text>
+  </g>
+</svg>

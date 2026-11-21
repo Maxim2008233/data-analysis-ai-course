@@ -1,0 +1,339 @@
+- id: m3-l4-t1
+  title: Сводная «марка × топливо»
+  difficulty: warmup
+  introduces: [pd-pivot-table]
+  uses: [pd-groupby]
+  statement: |
+    Получите `pivot_fuel` — сводную таблицу числа объявлений: марки по строкам, типы топлива по колонкам, пустые сочетания — нули. Затем `toyota_hybrids` — число гибридов (`'Hybrid'`) Toyota.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')   # результат модуля 2
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    pivot_fuel = ...
+    toyota_hybrids = ...
+    print(toyota_hybrids)
+    pivot_fuel.head()
+  solution: |
+    pivot_fuel = pd.pivot_table(df, index='Make', columns='Fuel_type', aggfunc='size', fill_value=0)
+    toyota_hybrids = pivot_fuel.loc['Toyota', 'Hybrid']
+    print(toyota_hybrids)
+    pivot_fuel.head()
+  explanation: |
+    - `index='Make'`, `columns='Fuel_type'` — марки по строкам, топливо по колонкам.
+    - `aggfunc='size'` считает объявления, `fill_value=0` заменяет отсутствующие сочетания нулём.
+    - `pivot_fuel.loc['Toyota', 'Hybrid']` — значение ячейки по меткам строки и колонки.
+  alternatives:
+    - |
+      pivot_fuel = df.pivot_table(index='Make', columns='Fuel_type', values='Price', aggfunc='count', fill_value=0)
+      toyota_hybrids = int(pivot_fuel.loc['Toyota', 'Hybrid'])
+  hints:
+    - "Нужны `pd.pivot_table` с указанием строк, колонок и того, что считать."
+    - "`pd.pivot_table(df, index='Make', columns='Fuel_type', aggfunc='size', fill_value=0)`; ячейка — `.loc['Toyota', 'Hybrid']`."
+    - "`toyota_hybrids = pivot_fuel.loc['Toyota', 'Hybrid']`."
+  tests: |
+    import pandas as pd
+    p = var('pivot_fuel', pd.DataFrame, 'таблицей DataFrame — сводной таблицей')
+    if p.shape == ref('pivot_fuel').shape[::-1]:
+        fail('Строки и колонки перепутаны: марки должны быть по строкам (`index=\'Make\'`), топливо — по колонкам.')
+    if p.isna().any().any():
+        fail('В сводной есть пропуски — для количеств заполните их нулём: `fill_value=0`.')
+    same_frame(p, ref('pivot_fuel'), 'Сводная таблица не совпадает.', check_dtype=False)
+    close(var('toyota_hybrids', 'number', 'числом'), ref('toyota_hybrids'), 'Гибридов Toyota — {expected}, а у вас {actual}.')
+    close(alt('toyota_hybrids'), alt_ref('toyota_hybrids'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        pivot_fuel = pd.pivot_table(df, index='Fuel_type', columns='Make', aggfunc='size', fill_value=0)
+        toyota_hybrids = pivot_fuel.loc['Hybrid', 'Toyota']
+      expect: перепутаны
+    - code: |
+        pivot_fuel = pd.pivot_table(df, index='Make', columns='Fuel_type', aggfunc='size')
+        toyota_hybrids = pivot_fuel.loc['Toyota', 'Hybrid']
+      expect: fill_value=0
+
+- id: m3-l4-t2
+  title: Итоги по сводной таблице
+  difficulty: main
+  introduces: [pd-pivot-table]
+  uses: [axis, pd-sort-values]
+  statement: |
+    По сводной `pivot_fuel` получите:
+
+    - `fuel_totals` — общее число объявлений каждого типа топлива (суммы по колонкам), по убыванию;
+    - `make_totals` — общее число объявлений каждой марки (суммы по строкам);
+    - `most_hybrids` — марку с наибольшим числом гибридов.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+    pivot_fuel = pd.pivot_table(df, index='Make', columns='Fuel_type', aggfunc='size', fill_value=0)   # задание 3.4.1
+  starter: |
+    fuel_totals = ...
+    make_totals = ...
+    most_hybrids = ...
+    print(most_hybrids)
+    fuel_totals
+  solution: |
+    fuel_totals = pivot_fuel.sum(axis=0).sort_values(ascending=False)
+    make_totals = pivot_fuel.sum(axis=1)
+    most_hybrids = pivot_fuel['Hybrid'].idxmax()
+    print(most_hybrids)
+    fuel_totals
+  explanation: |
+    - `sum(axis=0)` складывает вдоль строк — получается сумма каждой колонки (топлива).
+    - `sum(axis=1)` складывает вдоль колонок — сумма каждой строки (марки).
+    - Колонка `'Hybrid'` сводной — Series по маркам; `idxmax()` возвращает марку с максимумом.
+  hints:
+    - "Какой `axis` даёт сумму по каждой колонке, а какой — по каждой строке (урок 1.10)?"
+    - "`pivot_fuel.sum(axis=0)` — по топливу, `pivot_fuel.sum(axis=1)` — по маркам; марка-лидер — `pivot_fuel['Hybrid'].idxmax()`."
+    - "`fuel_totals = pivot_fuel.sum(axis=0).sort_values(ascending=False)`."
+  tests: |
+    import pandas as pd
+    f = var('fuel_totals', pd.Series, 'Series')
+    m = var('make_totals', pd.Series, 'Series')
+    if len(f) == len(ref('make_totals')) and len(m) == len(ref('fuel_totals')):
+        fail('Суммы перепутаны: по топливу нужна `sum(axis=0)`, по маркам — `sum(axis=1)`.')
+    ensure(f.is_monotonic_decreasing, '`fuel_totals` нужно отсортировать по убыванию.')
+    same_frame(f, ref('fuel_totals'), 'Суммы по типам топлива не совпадают.', check_dtype=False)
+    same_frame(m, ref('make_totals'), 'Суммы по маркам не совпадают.', check_dtype=False)
+    equal(var('most_hybrids'), ref('most_hybrids'), 'Больше всего гибридов у {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        fuel_totals = pivot_fuel.sum(axis=1).sort_values(ascending=False)
+        make_totals = pivot_fuel.sum(axis=0)
+        most_hybrids = pivot_fuel['Hybrid'].idxmax()
+      expect: перепутаны
+    - code: |
+        fuel_totals = pivot_fuel.sum(axis=0).sort_values(ascending=False)
+        make_totals = pivot_fuel.sum(axis=1)
+        most_hybrids = pivot_fuel['Hybrid'].max()
+      expect: Больше всего гибридов
+
+- id: m3-l4-t3
+  title: Насколько автомат дороже механики
+  difficulty: main
+  introduces: [pd-pivot-table]
+  uses: [pd-new-column, group-size-caution]
+  statement: |
+    Получите `price_pivot` — сводную медианных цен: марки по строкам, тип коробки (`Transmission`) по колонкам. Пустые сочетания оставьте пропусками. Добавьте колонку `premium` — разницу медиан `Automatic − Manual` и получите `max_premium_make` — марку с наибольшей разницей.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    price_pivot = ...
+    price_pivot['premium'] = ...
+    max_premium_make = ...
+    print(max_premium_make)
+    price_pivot.sort_values('premium', ascending=False).head().round(0)
+  solution: |
+    price_pivot = df.pivot_table(index='Make', columns='Transmission', values='Price', aggfunc='median')
+    price_pivot['premium'] = price_pivot['Automatic'] - price_pivot['Manual']
+    max_premium_make = price_pivot['premium'].idxmax()
+    print(max_premium_make)
+    price_pivot.sort_values('premium', ascending=False).head().round(0)
+  explanation: |
+    - `values='Price'`, `aggfunc='median'` — в ячейках медианные цены.
+    - `fill_value` не задаём: «нет машин с механикой» не равно «цена 0».
+    - Разница колонок — «надбавка» автомата в выборке; она описывает данные, а не стоимость коробки: машины с автоматом ещё и новее.
+  hints:
+    - В ячейках нужны медианные цены — укажите `values` и `aggfunc`.
+    - "`df.pivot_table(index='Make', columns='Transmission', values='Price', aggfunc='median')`; разность колонок `Automatic` и `Manual`."
+    - "`max_premium_make = price_pivot['premium'].idxmax()`."
+  tests: |
+    import pandas as pd
+    p = var('price_pivot', pd.DataFrame, 'таблицей DataFrame')
+    ensure('Automatic' in p.columns and 'Manual' in p.columns, 'Колонки сводной должны быть типами коробки: `columns=\'Transmission\'`.')
+    e = ref('price_pivot')
+    if abs(float(p.loc['Toyota', 'Automatic']) - float(ref('df').loc[(ref('df')['Make'] == 'Toyota') & (ref('df')['Transmission'] == 'Automatic'), 'Price'].mean())) < 1e-6:
+        fail('В ячейках средние, а нужны медианы: `aggfunc=\'median\'`.')
+    same_frame(p[['Automatic', 'Manual']], e[['Automatic', 'Manual']], 'Медианные цены в сводной не совпадают.')
+    ensure('premium' in p.columns, 'Нет колонки `premium`.')
+    same_frame(p['premium'], e['premium'], 'Колонка premium должна быть разностью `Automatic - Manual`.')
+    equal(var('max_premium_make'), ref('max_premium_make'), 'Наибольшая разница — у {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        price_pivot = df.pivot_table(index='Make', columns='Transmission', values='Price', aggfunc='mean')
+        price_pivot['premium'] = price_pivot['Automatic'] - price_pivot['Manual']
+        max_premium_make = price_pivot['premium'].idxmax()
+      expect: медианы
+    - code: |
+        price_pivot = df.pivot_table(index='Make', columns='Transmission', values='Price', aggfunc='median')
+        price_pivot['premium'] = price_pivot['Manual'] - price_pivot['Automatic']
+        max_premium_make = price_pivot['premium'].idxmax()
+      expect: premium
+
+- id: m3-l4-t4
+  title: Составной индекс «марка — год»
+  difficulty: main
+  introduces: [pd-multiindex]
+  uses: [pd-groupby, pd-loc-iloc]
+  statement: |
+    Получите `by_make_year` — медианную цену для каждой пары «марка, год выпуска» (Series с составным индексом). Из неё:
+
+    - `bmw_2015` — медианную цену BMW 2015 года;
+    - `bmw_years` — Series медианных цен BMW по годам;
+    - `n_bmw_years` — сколько разных годов выпуска у BMW.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    by_make_year = ...
+    bmw_2015 = ...
+    bmw_years = ...
+    n_bmw_years = ...
+    print(bmw_2015, n_bmw_years)
+    bmw_years.tail()
+  solution: |
+    by_make_year = df.groupby(['Make', 'Year'])['Price'].median()
+    bmw_2015 = by_make_year.loc[('BMW', 2015)]
+    bmw_years = by_make_year.loc['BMW']
+    n_bmw_years = len(bmw_years)
+    print(bmw_2015, n_bmw_years)
+    bmw_years.tail()
+  explanation: |
+    - Группировка по списку из двух колонок даёт составной индекс: метка — пара (марка, год).
+    - `by_make_year.loc[('BMW', 2015)]` — одно значение по паре меток.
+    - `by_make_year.loc['BMW']` — все годы BMW: первый уровень выбран, второй (годы) стал индексом.
+  alternatives:
+    - |
+      by_make_year = df.groupby(['Make', 'Year'])['Price'].median()
+      bmw_2015 = df.loc[(df['Make'] == 'BMW') & (df['Year'] == 2015), 'Price'].median()
+      bmw_years = by_make_year.loc['BMW']
+      n_bmw_years = bmw_years.shape[0]
+  hints:
+    - Группируйте сразу по двум колонкам — списком.
+    - "`df.groupby(['Make', 'Year'])['Price'].median()`; одна группа — `.loc[('BMW', 2015)]`, все годы марки — `.loc['BMW']`."
+    - "`n_bmw_years = len(bmw_years)`."
+  tests: |
+    import pandas as pd
+    s = var('by_make_year', pd.Series, 'Series с составным индексом')
+    ensure(s.index.nlevels == 2, 'У `by_make_year` должно быть два уровня индекса — группируйте по списку `[\'Make\', \'Year\']`.')
+    same_frame(s, ref('by_make_year'), 'Медианы по парам «марка, год» не совпадают.')
+    close(var('bmw_2015', 'number', 'числом'), ref('bmw_2015'), 'Медиана BMW 2015 года — {expected}, а у вас {actual}.')
+    b = var('bmw_years', pd.Series, 'Series годов BMW: `by_make_year.loc[\'BMW\']`')
+    same_frame(b, ref('bmw_years'), 'Series годов BMW не совпадает.')
+    equal(int(var('n_bmw_years', 'number', 'числом')), int(ref('n_bmw_years')), 'Годов выпуска у BMW — {expected}, а у вас {actual}.')
+    close(alt('bmw_2015'), alt_ref('bmw_2015'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        by_make_year = df.groupby('Make')['Price'].median()
+        bmw_2015 = 0
+        bmw_years = by_make_year
+        n_bmw_years = 0
+      expect: два уровня
+    - code: |
+        by_make_year = df.groupby(['Make', 'Year'])['Price'].mean()
+        bmw_2015 = by_make_year.loc[('BMW', 2015)]
+        bmw_years = by_make_year.loc['BMW']
+        n_bmw_years = len(bmw_years)
+      expect: Медианы по парам
+
+- id: m3-l4-t5
+  kind: predict
+  title: Предскажите результат работы со сводной
+  difficulty: main
+  introduces: [pd-pivot-table, pd-multiindex]
+  uses: []
+  statement: |
+    Не запуская код, ответьте на вопросы. Сводная `p` — число объявлений, марки по строкам, кузова по колонкам:
+
+    | Make | SUV | Sedan |
+    |---|---:|---:|
+    | BMW | 305 | 1520 |
+    | Toyota | 284 | 658 |
+  quiz:
+    - q: Что выведет код?
+      code: |
+        print(p.sum(axis=1)['Toyota'])
+      options:
+        - "942"
+        - "589"
+        - "2767"
+      answer: 0
+      explain: "`axis=1` — сумма по строке Toyota: 284 + 658 = 942."
+    - q: Что выведет код?
+      code: |
+        print(p['SUV'].idxmax())
+      options:
+        - "305"
+        - "BMW"
+        - "SUV"
+      answer: 1
+      explain: "`idxmax` возвращает метку строки с максимумом, а не само число."
+    - q: "`s = df.groupby(['Make', 'Style']).size()`. Что сделает `s.unstack()`?"
+      options:
+        - Перенесёт кузова в колонки — получится таблица, как `p`
+        - Удалит составной индекс и потеряет кузова
+        - Отсортирует марки по числу объявлений
+      answer: 0
+      explain: "`unstack` переносит последний уровень индекса (Style) в колонки."
+  hints:
+    - "Вспомните, вдоль чего суммирует `axis=1`, и что возвращает `idxmax`."
+    - "`axis=1` — сумма по каждой строке; `idxmax` — метка; `unstack` — последний уровень индекса в колонки."
+    - "Ответы: 942; BMW; таблица как p."
+
+- id: m3-l4-t6
+  title: Год, когда седанов Toyota больше всего
+  difficulty: star
+  introduces: [pd-multiindex]
+  uses: [pd-groupby]
+  statement: |
+    Постройте `pivot_my` — сводную числа объявлений с **двумя** уровнями строк: марка и год выпуска (`index=['Make', 'Year']`), кузова — по колонкам, пустые сочетания — нули. Затем:
+
+    - `toyota_sedans` — Series числа седанов Toyota по годам;
+    - `best_year` — год, в котором у Toyota больше всего седанов.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    pivot_my = ...
+    toyota_sedans = ...
+    best_year = ...
+    print(best_year)
+    toyota_sedans.tail()
+  solution: |
+    pivot_my = pd.pivot_table(df, index=['Make', 'Year'], columns='Style', aggfunc='size', fill_value=0)
+    toyota_sedans = pivot_my.loc['Toyota', 'Sedan']
+    best_year = toyota_sedans.idxmax()
+    print(best_year)
+    toyota_sedans.tail()
+  explanation: |
+    - Список в `index` даёт составной индекс строк сводной: (марка, год).
+    - `pivot_my.loc['Toyota', 'Sedan']` — строки первого уровня Toyota и колонка Sedan: Series по годам.
+    - `idxmax()` возвращает год с наибольшим числом седанов.
+  alternatives:
+    - |
+      pivot_my = df.groupby(['Make', 'Year', 'Style']).size().unstack(fill_value=0)
+      toyota_sedans = pivot_my.loc['Toyota']['Sedan']
+      best_year = int(toyota_sedans.idxmax())
+  hints:
+    - "В `index` можно передать список колонок — получатся два уровня строк."
+    - "`pd.pivot_table(df, index=['Make', 'Year'], columns='Style', aggfunc='size', fill_value=0)`; затем `.loc['Toyota', 'Sedan']`."
+    - "`best_year = toyota_sedans.idxmax()`."
+  tests: |
+    import pandas as pd
+    p = var('pivot_my', pd.DataFrame, 'таблицей DataFrame')
+    ensure(p.index.nlevels == 2, 'У сводной должно быть два уровня строк: `index=[\'Make\', \'Year\']`.')
+    same_frame(p, ref('pivot_my'), 'Сводная не совпадает.', check_dtype=False)
+    t = var('toyota_sedans', pd.Series, 'Series по годам')
+    same_frame(t, ref('toyota_sedans'), 'Число седанов Toyota по годам не совпадает.', check_dtype=False)
+    equal(int(var('best_year', 'number', 'числом')), int(ref('best_year')), 'Больше всего седанов Toyota — в {expected} году, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        pivot_my = pd.pivot_table(df, index='Make', columns='Style', aggfunc='size', fill_value=0)
+        toyota_sedans = pivot_my.loc['Toyota']
+        best_year = 0
+      expect: два уровня
+    - code: |
+        pivot_my = pd.pivot_table(df, index=['Make', 'Year'], columns='Style', aggfunc='size', fill_value=0)
+        toyota_sedans = pivot_my.loc['Toyota', 'Sedan']
+        best_year = toyota_sedans.max()
+      expect: Больше всего седанов

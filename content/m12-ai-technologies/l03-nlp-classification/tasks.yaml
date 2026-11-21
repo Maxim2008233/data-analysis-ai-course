@@ -1,0 +1,435 @@
+- id: m12-l3-t1
+  title: Формы одного слова
+  difficulty: warmup
+  introduces: [nlp-tasks]
+  uses: [py-dicts]
+  statement: |
+    Напишите функцию `count_forms(texts, stem, endings)`: сколько раз в текстах встречается каждая форма слова `stem + окончание` для окончаний из списка `endings`. Слова — последовательности русских букв в нижнем регистре (`re.findall(r'[а-яё]+', текст.lower())`). Результат — словарь «форма → число» с формами в порядке `endings`, включая формы, которых в текстах нет (число 0).
+
+    Получите `forms_model` для слова «модель» (основа `'модел'`, окончания `ь, и, ей, ью, ям, ями, ях`) и `share_top` — долю самой частой формы среди всех упоминаний.
+  prelude: |
+    import json
+    import re
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    texts = [d['section'] + '. ' + d['text'] for d in docs]
+  starter: |
+    def count_forms(texts, stem, endings):
+        counts = {stem + e: 0 for e in endings}
+        for t in texts:
+            for w in re.findall(r'[а-яё]+', t.lower()):
+                if ...:
+                    counts[w] += 1
+        return counts
+
+    forms_model = count_forms(texts, 'модел', ['ь', 'и', 'ей', 'ью', 'ям', 'ями', 'ях'])
+    share_top = max(forms_model.values()) / sum(forms_model.values())
+    print(forms_model, round(share_top, 3))
+  solution: |
+    def count_forms(texts, stem, endings):
+        counts = {stem + e: 0 for e in endings}
+        for t in texts:
+            for w in re.findall(r'[а-яё]+', t.lower()):
+                if w in counts:
+                    counts[w] += 1
+        return counts
+
+    forms_model = count_forms(texts, 'модел', ['ь', 'и', 'ей', 'ью', 'ям', 'ями', 'ях'])
+    share_top = max(forms_model.values()) / sum(forms_model.values())
+    print(forms_model, round(share_top, 3))
+  explanation: |
+    - Словарь заполняется нулями заранее — для всех форм из списка. Поэтому проверка `w in counts` сразу отбрасывает и чужие слова, и однокоренные вроде «моделирование».
+    - Самая частая форма «модель» — меньше 60 % всех упоминаний: больше 40 % текста о моделях попадает в другие формы. Для мешка слов это разные столбцы, и поиск или классификатор, обученный на одной форме, не узнает другую.
+    - Формы «моделям» в курсе нет вовсе — а в вопросе пользователя она может встретиться. Это ещё одна причина искать по кусочкам слов (урок 11.2).
+  hints:
+    - "Проверка формы — `w in counts`: в словаре только нужные формы."
+    - "`re.findall(r'[а-яё]+', t.lower())` — слова текста в нижнем регистре."
+    - "Доля — `max(forms_model.values()) / sum(forms_model.values())`."
+  tests: |
+    f = var('count_forms')
+    ensure(callable(f), '`count_forms` должна быть функцией.')
+    got = f(['Кот и кота. КОТУ — котом!', 'котик и кот'], 'кот', ['', 'а', 'у', 'ом', 'ы'])
+    if 'котик' in got:
+        fail('В словаре должны быть только формы stem + окончание из списка: «котик» — другое слово.')
+    equal(got, {'кот': 2, 'кота': 1, 'коту': 1, 'котом': 1, 'коты': 0}, 'Для двух текстов про кота ожидалось {expected}, а у вас {actual}. Регистр не важен, формы без упоминаний — с числом 0.')
+    equal(list(got), ['кот', 'кота', 'коту', 'котом', 'коты'], 'Формы — в порядке окончаний из списка.')
+    equal(var('forms_model', dict, 'словарём'), ref('forms_model'), 'Формы слова «модель» — {expected}, а у вас {actual}.')
+    close(var('share_top', 'number', 'числом'), ref('share_top'), 'Доля самой частой формы — {expected}, а у вас {actual}.')
+  files: [course_docs.json]
+  wrong:
+    - code: |
+        def count_forms(texts, stem, endings):
+            counts = {}
+            for t in texts:
+                for w in re.findall(r'[а-яё]+', t.lower()):
+                    if w.startswith(stem):
+                        counts[w] = counts.get(w, 0) + 1
+            return counts
+        forms_model = count_forms(texts, 'модел', ['ь', 'и', 'ей', 'ью', 'ям', 'ями', 'ях'])
+        share_top = max(forms_model.values()) / sum(forms_model.values())
+      expect: другое слово
+    - code: |
+        def count_forms(texts, stem, endings):
+            counts = {stem + e: 0 for e in endings}
+            for t in texts:
+                for w in re.findall(r'[а-яё]+', t):
+                    if w in counts:
+                        counts[w] += 1
+            return counts
+        forms_model = count_forms(texts, 'модел', ['ь', 'и', 'ей', 'ью', 'ям', 'ями', 'ях'])
+        share_top = max(forms_model.values()) / sum(forms_model.values())
+      expect: Регистр не важен
+
+- id: m12-l3-t2
+  title: Разбиение по урокам
+  difficulty: main
+  introduces: []
+  uses: [train-valid-test, data-leakage]
+  statement: |
+    Напишите функцию `group_test_mask(groups, every=4)`: `groups` — номера уроков вида `'10.2'` у каждого текста. Уроки упорядочиваются **как числа**, по модулю и номеру урока (`'1.10'` идёт после `'1.9'`, а не перед `'1.2'`). В проверку уходит каждый `every`-й урок, начиная с первого: уроки с позициями 0, `every`, 2·`every`, … Функция возвращает логический массив NumPy: `True` у текстов из проверочных уроков.
+
+    Получите `is_test` для разделов курса и `n_test_lessons` — сколько уроков попало в проверку.
+  prelude: |
+    import json
+    import numpy as np
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    groups = [d['lesson'] for d in docs]
+  starter: |
+    def group_test_mask(groups, every=4):
+        key = lambda g: tuple(int(p) for p in g.split('.'))
+        ordered = sorted(set(groups), key=...)
+        test = set(ordered[::every])
+        return np.array([...])
+
+    is_test = group_test_mask(groups)
+    n_test_lessons = len({g for g, t in zip(groups, is_test) if t})
+    print(is_test.sum(), 'разделов в проверке из', len(groups), '| уроков:', n_test_lessons)
+  solution: |
+    def group_test_mask(groups, every=4):
+        key = lambda g: tuple(int(p) for p in g.split('.'))
+        ordered = sorted(set(groups), key=key)
+        test = set(ordered[::every])
+        return np.array([g in test for g in groups])
+
+    is_test = group_test_mask(groups)
+    n_test_lessons = len({g for g, t in zip(groups, is_test) if t})
+    print(is_test.sum(), 'разделов в проверке из', len(groups), '| уроков:', n_test_lessons)
+  explanation: |
+    - Ключ сортировки превращает `'10.2'` в кортеж `(10, 2)`. Кортежи сравниваются по числам, поэтому урок 1.10 идёт после 1.9. Строки сравнивались бы по буквам, и `'1.10'` встал бы перед `'1.2'`, а `'10.1'` — перед `'2.1'`.
+    - `ordered[::every]` — каждый четвёртый урок начиная с первого. Все разделы урока попадают в одну и ту же часть: проверочные уроки модель не видела ни одним разделом.
+    - В проверку ушли 25 уроков из 97, 189 разделов из 729 — около четверти, как и задумано.
+  hints:
+    - "Сортировка как чисел — `sorted(set(groups), key=key)`."
+    - "Каждый `every`-й, начиная с первого, — срез `ordered[::every]`."
+    - "Маска — `np.array([g in test for g in groups])`."
+  tests: |
+    import numpy as np
+    f = var('group_test_mask')
+    ensure(callable(f), '`group_test_mask` должна быть функцией.')
+    g = ['1.2', '1.10', '1.10', '1.9', '2.1', '1.2', '10.1']
+    got = np.asarray(f(g, every=2))
+    ensure(got.dtype == bool and got.shape == (7,), 'Нужен логический массив той же длины, что groups.')
+    if [bool(x) for x in got] == [False, True, True, True, True, False, False]:
+        fail('Уроки отсортированы как строки: «1.10» оказался перед «1.2», а «10.1» — перед «2.1». Сортируйте как числа — ключом (модуль, урок).')
+    equal([bool(x) for x in got], [True, True, True, False, False, True, True], 'Уроки по порядку — 1.2, 1.9, 1.10, 2.1, 10.1. При every=2 в проверку уходят 1.2, 1.10 и 10.1 (позиции 0, 2 и 4) — у всех их разделов.')
+    equal([bool(x) for x in f(['3.1', '3.1'], every=4)], [True, True], 'Единственный урок — позиция 0 — уходит в проверку целиком.')
+    same_array(np.asarray(var('is_test')), ref('is_test'), 'Маска проверочных разделов не совпадает с ожидаемой.')
+    equal(int(var('n_test_lessons', 'number', 'числом')), int(ref('n_test_lessons')), 'Уроков в проверке — {expected}, а у вас {actual}.')
+  files: [course_docs.json]
+  wrong:
+    - code: |
+        def group_test_mask(groups, every=4):
+            ordered = sorted(set(groups))
+            test = set(ordered[::every])
+            return np.array([g in test for g in groups])
+        is_test = group_test_mask(groups)
+        n_test_lessons = len({g for g, t in zip(groups, is_test) if t})
+      expect: как строки
+    - code: |
+        def group_test_mask(groups, every=4):
+            return np.array([i % every == 0 for i in range(len(groups))])
+        is_test = group_test_mask(groups)
+        n_test_lessons = len({g for g, t in zip(groups, is_test) if t})
+      expect: у всех их разделов
+
+- id: m12-l3-t3
+  title: Классификатор и ориентир
+  difficulty: main
+  introduces: [text-classification]
+  uses: [tf-idf, baseline-model]
+  statement: |
+    Напишите функцию `fit_and_score(train_texts, train_y, test_texts, test_y)`. Она обучает на обучающих текстах конвейер `TfidfVectorizer()` + `LogisticRegression(max_iter=1000)` и возвращает кортеж `(доля верных классификатора, доля верных ориентира)`. Ориентир всегда отвечает самым частым классом **обучающей** части. Обе доли считаются на проверочной части, числа — `float`.
+
+    Получите `acc` и `baseline` для разделов курса с маской проверки `is_test` (каждый четвёртый урок) и `lift` — во сколько раз классификатор лучше ориентира.
+  prelude: |
+    import json
+    from collections import Counter
+    import numpy as np
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import make_pipeline
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    texts = np.array([d['section'] + '. ' + d['text'] for d in docs], dtype=object)
+    modules = np.array([d['module'] for d in docs])
+    key = lambda g: tuple(int(p) for p in g.split('.'))
+    test_lessons = set(sorted({d['lesson'] for d in docs}, key=key)[::4])
+    is_test = np.array([d['lesson'] in test_lessons for d in docs])
+  starter: |
+    def fit_and_score(train_texts, train_y, test_texts, test_y):
+        model = make_pipeline(TfidfVectorizer(), LogisticRegression(max_iter=1000))
+        model.fit(list(train_texts), list(train_y))
+        acc = float(model.score(list(test_texts), list(test_y)))
+        majority = Counter(...).most_common(1)[0][0]
+        baseline = float(np.mean(np.asarray(test_y) == majority))
+        return acc, baseline
+
+    acc, baseline = fit_and_score(texts[~is_test], modules[~is_test], texts[is_test], modules[is_test])
+    lift = acc / baseline
+    print(round(acc, 3), round(baseline, 3), round(lift, 1))
+  solution: |
+    def fit_and_score(train_texts, train_y, test_texts, test_y):
+        model = make_pipeline(TfidfVectorizer(), LogisticRegression(max_iter=1000))
+        model.fit(list(train_texts), list(train_y))
+        acc = float(model.score(list(test_texts), list(test_y)))
+        majority = Counter(train_y).most_common(1)[0][0]
+        baseline = float(np.mean(np.asarray(test_y) == majority))
+        return acc, baseline
+
+    acc, baseline = fit_and_score(texts[~is_test], modules[~is_test], texts[is_test], modules[is_test])
+    lift = acc / baseline
+    print(round(acc, 3), round(baseline, 3), round(lift, 1))
+  explanation: |
+    - `Counter(train_y).most_common(1)[0][0]` — самый частый класс обучающей части. Именно обучающей: брать его по проверочной части — подглядывать в ответы.
+    - Конвейер обучает векторизатор и модель только на обучающих текстах, а проверочные лишь переводит в векторы теми же словами.
+    - Классификатор верен в 74,6 % разделов новых уроков, ориентир — в 11,1 %: в 6,7 раза лучше. Для 11 классов это хороший результат простой модели.
+  hints:
+    - "Самый частый класс — `Counter(train_y).most_common(1)[0][0]`."
+    - "Доля верных ориентира — `np.mean(np.asarray(test_y) == majority)`."
+    - "`lift = acc / baseline`."
+  tests: |
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import make_pipeline
+    f = var('fit_and_score')
+    ensure(callable(f), '`fit_and_score` должна быть функцией.')
+    tr_t = ['кошка мяукает', 'кошка спит', 'кошка ест', 'собака лает', 'собака бегает', 'рыба плавает']
+    tr_y = ['кот', 'кот', 'кот', 'пёс', 'пёс', 'рыба']
+    te_t = ['собака лает громко', 'рыба плавает быстро', 'кошка мяукает тихо', 'собака бегает']
+    te_y = ['пёс', 'рыба', 'кот', 'пёс']
+    got = f(tr_t, tr_y, te_t, te_y)
+    ensure(isinstance(got, tuple) and len(got) == 2, '`fit_and_score` должна вернуть кортеж (классификатор, ориентир), а вернула {0}.'.format(got))
+    if abs(got[1] - 0.5) < 1e-9:
+        fail('Ориентир взят по проверочной части («пёс»). Самый частый класс нужно брать по обучающей части — там это «кот».')
+    close(got[1], 0.25, 'Ориентир «всегда кот» (самый частый в обучении) верен в 1 проверочном тексте из 4: 0.25, а у вас {actual}.')
+    exp = make_pipeline(TfidfVectorizer(), LogisticRegression(max_iter=1000)).fit(tr_t, tr_y).score(te_t, te_y)
+    close(got[0], exp, 'Доля верных классификатора на маленьком примере — {expected}, а у вас {actual}. Её считают на проверочных текстах.')
+    close(var('acc', 'number', 'числом'), ref('acc'), 'Доля верных классификатора — {expected}, а у вас {actual}.')
+    close(var('baseline', 'number', 'числом'), ref('baseline'), 'Доля верных ориентира — {expected}, а у вас {actual}.')
+    close(var('lift', 'number', 'числом'), ref('lift'), 'Классификатор лучше ориентира в {expected} раза, а у вас {actual}.')
+  files: [course_docs.json]
+  wrong:
+    - code: |
+        def fit_and_score(train_texts, train_y, test_texts, test_y):
+            model = make_pipeline(TfidfVectorizer(), LogisticRegression(max_iter=1000))
+            model.fit(list(train_texts), list(train_y))
+            acc = float(model.score(list(test_texts), list(test_y)))
+            majority = Counter(test_y).most_common(1)[0][0]
+            baseline = float(np.mean(np.asarray(test_y) == majority))
+            return acc, baseline
+        acc, baseline = fit_and_score(texts[~is_test], modules[~is_test], texts[is_test], modules[is_test])
+        lift = acc / baseline
+      expect: по обучающей части
+    - code: |
+        def fit_and_score(train_texts, train_y, test_texts, test_y):
+            model = make_pipeline(TfidfVectorizer(), LogisticRegression(max_iter=1000))
+            model.fit(list(train_texts), list(train_y))
+            acc = float(model.score(list(train_texts), list(train_y)))
+            majority = Counter(train_y).most_common(1)[0][0]
+            baseline = float(np.mean(np.asarray(test_y) == majority))
+            return acc, baseline
+        acc, baseline = fit_and_score(texts[~is_test], modules[~is_test], texts[is_test], modules[is_test])
+        lift = acc / baseline
+      expect: Доля верных классификатора
+
+- id: m12-l3-t4
+  title: Сколько добавляет утечка
+  difficulty: main
+  introduces: []
+  uses: [data-leakage, text-classification]
+  statement: |
+    Сравните честную оценку с оценкой при случайном разбиении по отдельным разделам. Разбейте номера разделов функцией `train_test_split(np.arange(len(docs)), test_size=n_test, random_state=0, stratify=modules)`, где `n_test` — столько же разделов, сколько в честной проверке. Обучите тот же конвейер на обучающих разделах.
+
+    Получите `acc_random` — долю верных на проверочных разделах и `inflation` — на сколько процентных пунктов она выше честной `acc_group` (уже посчитана).
+  prelude: |
+    import json
+    import numpy as np
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import make_pipeline
+    from sklearn.model_selection import train_test_split
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    texts = np.array([d['section'] + '. ' + d['text'] for d in docs], dtype=object)
+    modules = np.array([d['module'] for d in docs])
+    key = lambda g: tuple(int(p) for p in g.split('.'))
+    test_lessons = set(sorted({d['lesson'] for d in docs}, key=key)[::4])
+    is_test = np.array([d['lesson'] in test_lessons for d in docs])
+    honest = make_pipeline(TfidfVectorizer(), LogisticRegression(max_iter=1000)).fit(list(texts[~is_test]), modules[~is_test])
+    acc_group = float(honest.score(list(texts[is_test]), modules[is_test]))
+    n_test = int(is_test.sum())
+  starter: |
+    tr, te = train_test_split(np.arange(len(docs)), test_size=n_test, random_state=0, stratify=modules)
+    leaky = make_pipeline(TfidfVectorizer(), LogisticRegression(max_iter=1000))
+    leaky.fit(...)
+    acc_random = float(...)
+    inflation = (acc_random - acc_group) * 100
+    print(round(acc_group, 3), round(acc_random, 3), round(inflation, 1))
+  solution: |
+    tr, te = train_test_split(np.arange(len(docs)), test_size=n_test, random_state=0, stratify=modules)
+    leaky = make_pipeline(TfidfVectorizer(), LogisticRegression(max_iter=1000))
+    leaky.fit(list(texts[tr]), modules[tr])
+    acc_random = float(leaky.score(list(texts[te]), modules[te]))
+    inflation = (acc_random - acc_group) * 100
+    print(round(acc_group, 3), round(acc_random, 3), round(inflation, 1))
+  explanation: |
+    - `train_test_split` перемешивает разделы по одному: разделы одного урока оказываются и в обучении, и в проверке. `stratify=modules` сохраняет доли модулей в обеих частях.
+    - Доля верных выросла почти на 14 пунктов — до 88,4 %. Модель не стала умнее. Она узнаёт урок по общим словам — «бэггинг», «Seaborn», «GigaChat», — которые видела в соседних разделах того же урока.
+    - Какую оценку сообщать? Ту, что отвечает настоящему применению: если классификатор будет размечать разделы новых уроков, честна оценка по урокам — 74,6 %.
+  hints:
+    - "Обучение — `leaky.fit(list(texts[tr]), modules[tr])`."
+    - "Проверка — `leaky.score(list(texts[te]), modules[te])`."
+    - "Пункты — разница долей, умноженная на 100."
+  tests: |
+    close(var('acc_random', 'number', 'числом'), ref('acc_random'), 'Доля верных при случайном разбиении — {expected}, а у вас {actual}. Разбейте ровно так, как в условии.')
+    close(var('inflation', 'number', 'числом'), ref('inflation'), 'Завышение — {expected} пунктов, а у вас {actual}.')
+  files: [course_docs.json]
+  wrong:
+    - code: |
+        tr, te = train_test_split(np.arange(len(docs)), test_size=n_test, random_state=0)
+        leaky = make_pipeline(TfidfVectorizer(), LogisticRegression(max_iter=1000))
+        leaky.fit(list(texts[tr]), modules[tr])
+        acc_random = float(leaky.score(list(texts[te]), modules[te]))
+        inflation = (acc_random - acc_group) * 100
+      expect: ровно так, как в условии
+    - code: |
+        tr, te = train_test_split(np.arange(len(docs)), test_size=n_test, random_state=0, stratify=modules)
+        leaky = make_pipeline(TfidfVectorizer(), LogisticRegression(max_iter=1000))
+        leaky.fit(list(texts[tr]), modules[tr])
+        acc_random = float(leaky.score(list(texts[te]), modules[te]))
+        inflation = acc_random - acc_group
+      expect: Завышение
+
+- id: m12-l3-t5
+  title: Матрица ошибок
+  difficulty: star
+  introduces: []
+  uses: [text-classification]
+  statement: |
+    Одно число — доля верных — не говорит, какие классы модель путает. Напишите функцию `confusion(y_true, y_pred, n_classes)` без циклов: матрица `n_classes × n_classes` из целых чисел, где в строке `i`, столбце `j` — сколько текстов класса `i` модель отнесла к классу `j` (подсказка — `np.add.at`).
+
+    Для проверочных разделов (`y_true`, `y_pred` уже посчитаны) получите:
+
+    - `cm` — матрицу ошибок для 11 модулей;
+    - `per_module` — долю верных для каждого модуля: диагональ, делённая на сумму строки (массив из 11 чисел);
+    - `worst` — номер модуля с наименьшей долей верных;
+    - `top_pair` — самую частую ошибку: кортеж (настоящий модуль, предсказанный) с наибольшим числом вне диагонали. Если таких клеток несколько, нужна первая при обходе матрицы по строкам — так её и находит `np.argmax`.
+  prelude: |
+    import json
+    import numpy as np
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import make_pipeline
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    texts = np.array([d['section'] + '. ' + d['text'] for d in docs], dtype=object)
+    modules = np.array([d['module'] for d in docs])
+    key = lambda g: tuple(int(p) for p in g.split('.'))
+    test_lessons = set(sorted({d['lesson'] for d in docs}, key=key)[::4])
+    is_test = np.array([d['lesson'] in test_lessons for d in docs])
+    model = make_pipeline(TfidfVectorizer(), LogisticRegression(max_iter=1000)).fit(list(texts[~is_test]), modules[~is_test])
+    y_true = modules[is_test]
+    y_pred = model.predict(list(texts[is_test]))
+  starter: |
+    def confusion(y_true, y_pred, n_classes):
+        cm = np.zeros((n_classes, n_classes), dtype=int)
+        np.add.at(cm, (..., ...), 1)
+        return cm
+
+    cm = confusion(y_true, y_pred, 11)
+    per_module = np.diag(cm) / cm.sum(axis=1)
+    worst = int(np.argmin(per_module))
+    off = cm.copy()
+    np.fill_diagonal(off, 0)
+    r, c = np.unravel_index(..., off.shape)
+    top_pair = (int(r), int(c))
+    print(cm)
+    print(np.round(per_module, 2), worst, top_pair)
+  solution: |
+    def confusion(y_true, y_pred, n_classes):
+        cm = np.zeros((n_classes, n_classes), dtype=int)
+        np.add.at(cm, (np.asarray(y_true), np.asarray(y_pred)), 1)
+        return cm
+
+    cm = confusion(y_true, y_pred, 11)
+    per_module = np.diag(cm) / cm.sum(axis=1)
+    worst = int(np.argmin(per_module))
+    off = cm.copy()
+    np.fill_diagonal(off, 0)
+    r, c = np.unravel_index(np.argmax(off), off.shape)
+    top_pair = (int(r), int(c))
+    print(cm)
+    print(np.round(per_module, 2), worst, top_pair)
+  explanation: |
+    - `np.add.at(cm, (строки, столбцы), 1)` прибавляет 1 в клетку (настоящий, предсказанный) для каждой пары. В отличие от `cm[строки, столбцы] += 1`, повторяющиеся пары он не теряет: обычное присваивание засчитало бы одну и ту же клетку лишь однажды.
+    - Хуже всех узнаётся модуль 0 «Знакомство» — 6 разделов из 14. Его разделы об истории ИИ, устройстве тренажёра и основах Python похожи на многое понемногу: ошибки разбросаны по пяти модулям. Лучше всех — модуль 8 о нейросетях, 8 из 8: у него свой словарь.
+    - Самых частых ошибок две, по 5 разделов: модуль 1 (NumPy) принят за модуль 4 (визуализация), а модуль 9 (языковые модели) — за модуль 10 (промпты). `np.argmax` возвращает первую — (1, 4).
+    - Четыре ошибки из первой пары — разделы урока 1.7 о квантилях и частотах по интервалам: о том же гистограммы и боксплоты модуля 4. Четыре из второй — урок 9.1 о генерации текста, близкий к модулю 10. Матрица ошибок показывает, где темы правда пересекаются, а где модели нужны другие признаки или больше примеров.
+  hints:
+    - "Индексы для `np.add.at` — `(np.asarray(y_true), np.asarray(y_pred))`."
+    - "Самая частая ошибка — `np.argmax(off)` по матрице без диагонали; `np.unravel_index(номер, off.shape)` превращает номер клетки в (строка, столбец)."
+    - "Доля верных модуля — `np.diag(cm) / cm.sum(axis=1)`."
+  tests: |
+    import numpy as np
+    f = var('confusion')
+    ensure(callable(f), '`confusion` должна быть функцией.')
+    no_loops('Матрицу ошибок соберите без циклов: np.add.at прибавляет 1 сразу во все нужные клетки.')
+    got = np.asarray(f([0, 0, 1, 1, 1, 2], [0, 1, 1, 1, 2, 2], 3))
+    if got[1, 1] == 1:
+        fail('Повторяющиеся пары (1, 1) засчитаны один раз: `cm[i, j] += 1` теряет повторы, нужен np.add.at.')
+    if np.array_equal(got, np.array([[1, 0, 0], [1, 2, 0], [0, 1, 1]])):
+        fail('Строки и столбцы перепутаны: строка — настоящий класс, столбец — предсказанный.')
+    same_array(got, np.array([[1, 1, 0], [0, 2, 1], [0, 0, 1]]), 'Для y_true = [0, 0, 1, 1, 1, 2] и y_pred = [0, 1, 1, 1, 2, 2] матрица — [[1, 1, 0], [0, 2, 1], [0, 0, 1]].')
+    same_array(np.asarray(var('cm')), ref('cm'), 'Матрица ошибок для модулей не совпадает с ожидаемой.')
+    same_array(np.asarray(var('per_module'), dtype=float), ref('per_module'), 'Доли верных по модулям не совпадают с ожидаемыми.')
+    equal(int(var('worst', 'number', 'числом')), int(ref('worst')), 'Хуже всех узнаётся модуль {expected}, а у вас {actual}.')
+    equal(var('top_pair', tuple, 'кортежем'), ref('top_pair'), 'Самая частая ошибка — {expected}, а у вас {actual}.')
+  files: [course_docs.json]
+  wrong:
+    - code: |
+        def confusion(y_true, y_pred, n_classes):
+            cm = np.zeros((n_classes, n_classes), dtype=int)
+            cm[np.asarray(y_true), np.asarray(y_pred)] += 1
+            return cm
+        cm = confusion(y_true, y_pred, 11)
+        per_module = np.diag(cm) / cm.sum(axis=1)
+        worst = int(np.argmin(per_module))
+        off = cm.copy()
+        np.fill_diagonal(off, 0)
+        r, c = np.unravel_index(np.argmax(off), off.shape)
+        top_pair = (int(r), int(c))
+      expect: теряет повторы
+    - code: |
+        def confusion(y_true, y_pred, n_classes):
+            cm = np.zeros((n_classes, n_classes), dtype=int)
+            np.add.at(cm, (np.asarray(y_pred), np.asarray(y_true)), 1)
+            return cm
+        cm = confusion(y_true, y_pred, 11)
+        per_module = np.diag(cm) / cm.sum(axis=1)
+        worst = int(np.argmin(per_module))
+        off = cm.copy()
+        np.fill_diagonal(off, 0)
+        r, c = np.unravel_index(np.argmax(off), off.shape)
+        top_pair = (int(r), int(c))
+      expect: перепутаны

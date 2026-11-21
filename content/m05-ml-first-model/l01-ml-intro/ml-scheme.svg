@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 250" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="Схема обучения с учителем: обучающие примеры — пары признаки и известная цена — поступают в алгоритм обучения, он подбирает модель f; затем для нового автомобиля с известными признаками модель выдаёт оценку цены">
+  <defs><marker id="ma" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor" fill-opacity="0.6"/></marker></defs>
+  <text x="12" y="22" fill="currentColor" font-weight="700">Обучение</text>
+  <rect x="12" y="34" width="250" height="104" rx="8" fill="#3d5bd9" fill-opacity="0.07" stroke="#3d5bd9" stroke-opacity="0.55"/>
+  <g font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor">
+    <text x="24" y="54" font-weight="700">Year  Distance  …  │ Price</text>
+    <text x="24" y="74">2011  195000    …  │  7750</text>
+    <text x="24" y="92">2014  135000    …  │  8550</text>
+    <text x="24" y="110">2012  110000    …  │ 12900</text>
+  </g>
+  <text x="24" y="130" fill="currentColor" font-size="11" fill-opacity="0.75">признаки x (известны)   ответ y (известен)</text>
+  <path d="M264 86 L320 86" stroke="currentColor" stroke-opacity="0.6" marker-end="url(#ma)"/>
+  <rect x="324" y="58" width="150" height="56" rx="8" fill="currentColor" fill-opacity="0.06" stroke="currentColor" stroke-opacity="0.4"/>
+  <text x="399" y="82" text-anchor="middle" fill="currentColor" font-weight="700">алгоритм</text>
+  <text x="399" y="100" text-anchor="middle" fill="currentColor" font-size="11.5">подбирает параметры</text>
+  <path d="M476 86 L532 86" stroke="currentColor" stroke-opacity="0.6" marker-end="url(#ma)"/>
+  <rect x="536" y="58" width="210" height="56" rx="8" fill="#c2410c" fill-opacity="0.08" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="641" y="82" text-anchor="middle" fill="currentColor" font-weight="700">модель ŷ = f(x)</text>
+  <text x="641" y="100" text-anchor="middle" fill="currentColor" font-size="11.5">например, w₀ + w₁·Year + …</text>
+  <text x="12" y="170" fill="currentColor" font-weight="700">Прогноз</text>
+  <rect x="12" y="182" width="250" height="52" rx="8" fill="#3d5bd9" fill-opacity="0.07" stroke="#3d5bd9" stroke-opacity="0.55"/>
+  <g font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor">
+    <text x="24" y="202">2016  90000     …  │   ?</text>
+  </g>
+  <text x="24" y="224" fill="currentColor" font-size="11" fill-opacity="0.75">новый автомобиль: цены ещё нет</text>
+  <path d="M264 208 L532 208" stroke="currentColor" stroke-opacity="0.6" marker-end="url(#ma)"/>
+  <path d="M641 116 L641 186" stroke="#c2410c" stroke-opacity="0.6" stroke-dasharray="4 3" marker-end="url(#ma)"/>
+  <rect x="536" y="186" width="210" height="44" rx="8" fill="#c2410c" fill-opacity="0.12" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="641" y="213" text-anchor="middle" fill="currentColor" font-weight="700">оценка ŷ ≈ 13 400 €</text>
+</svg>

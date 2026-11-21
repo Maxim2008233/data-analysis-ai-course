@@ -1,0 +1,773 @@
+- id: m8-l8-t1
+  title: "Шаг 1. Признаки, ответ и отложенный test"
+  difficulty: main
+  introduces: []
+  uses: [binary-classification, sk-split]
+  statement: |
+    Соберите `X` — колонки из списков `num` и `cat` (сначала числовые, потом категориальные) — и ответ `y` — колонку `Survived`. Отложите 20 % пассажиров в test: `train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)` → `X_temp, X_test, y_temp, y_test`. Получите:
+
+    - `shares` — словарь `{'temp': ..., 'test': ...}`: доля выживших в каждой части;
+    - `missing` — Series: число пропусков в каждой колонке `X_temp`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    tit = pd.read_csv('titanic.csv')
+    num = ['Age', 'SibSp', 'Parch', 'Fare']
+    cat = ['Pclass', 'Sex', 'Embarked']
+  starter: |
+    X = ...
+    y = ...
+    X_temp, X_test, y_temp, y_test = train_test_split(..., ..., test_size=0.2, random_state=42, stratify=...)
+    shares = {'temp': ..., 'test': ...}
+    missing = ...
+    print(X_temp.shape, X_test.shape, {k: round(v, 3) for k, v in shares.items()})
+    print(missing)
+  solution: |
+    X = tit[num + cat]
+    y = tit['Survived']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    shares = {'temp': y_temp.mean(), 'test': y_test.mean()}
+    missing = X_temp.isna().sum()
+    print(X_temp.shape, X_test.shape, {k: round(v, 3) for k, v in shares.items()})
+    print(missing)
+  explanation: |
+    - В train 712 пассажиров, в test 179. Благодаря `stratify=y` доля выживших в обеих частях одинаковая — 38 %. Без стратификации на 179 пассажирах она могла бы заметно отличаться.
+    - Пропуски — в возрасте (137 в train) и в порту посадки (2). Их заполним внутри Pipeline на шаге 3.
+    - Test откладываем сразу и до самого конца не трогаем.
+  hints:
+    - "`X = tit[num + cat]`, `y = tit['Survived']`."
+    - "В `train_test_split` передайте `X, y` и `stratify=y`."
+    - "Доля выживших — `y_temp.mean()`; пропуски — `X_temp.isna().sum()`."
+  tests: |
+    import pandas as pd
+    Xs = var('X', pd.DataFrame, 'таблицей DataFrame')
+    ensure(list(Xs.columns) == ref('num') + ref('cat'), 'Колонки `X` — сначала `num`, потом `cat`: `tit[num + cat]`.')
+    xt = var('X_temp', pd.DataFrame, 'таблицей DataFrame')
+    ensure(len(xt) == len(ref('X_temp')), '`X_temp` — 80 % пассажиров ({0} строк), а у вас {1}.'.format(len(ref('X_temp')), len(xt)))
+    ensure(list(xt.index) == list(ref('X_temp').index), 'Состав `X_temp` не совпадает: `train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)`.')
+    s = var('shares', dict, 'словарём')
+    ensure(set(s) == {'temp', 'test'}, 'Ключи `shares` — temp и test.')
+    close(s['temp'], ref('shares')['temp'], 'Доля выживших в train — {expected}, а у вас {actual}.')
+    close(s['test'], ref('shares')['test'], 'Доля выживших в test — {expected}, а у вас {actual}.')
+    m = var('missing', pd.Series, 'Series')
+    same_array(m.reindex(ref('missing').index).to_numpy(dtype=float), ref('missing').to_numpy(dtype=float), '`missing` — число пропусков по колонкам `X_temp`: `X_temp.isna().sum()`.')
+    close(alt('shares')['temp'], alt_ref('shares')['temp'], HARDCODE_MSG)
+  files: [titanic.csv]
+  wrong:
+    - code: |
+        X = tit[num + cat]
+        y = tit['Survived']
+        X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        shares = {'temp': y_temp.mean(), 'test': y_test.mean()}
+        missing = X_temp.isna().sum()
+      expect: stratify=y
+    - code: |
+        X = tit[num + cat]
+        y = tit['Survived']
+        X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+        shares = {'temp': y_temp.mean(), 'test': y_test.mean()}
+        missing = tit.isna().sum()
+      expect: "`X_temp.isna().sum()`"
+
+- id: m8-l8-t2
+  title: "Шаг 2. Ориентиры"
+  difficulty: main
+  introduces: []
+  uses: [k-fold-cv, binary-classification, model-comparison]
+  statement: |
+    Блоки кросс-валидации уже заданы: `cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)` — как KFold из урока 6.8, только в каждом блоке сохраняется доля выживших. Посчитайте accuracy по пяти блокам двух ориентиров:
+
+    - `dummy_folds` — `DummyClassifier(strategy='most_frequent')`: всем предсказывает самый частый класс (`cross_val_score` с `scoring='accuracy'`);
+    - `rule_folds` — правило «женщины выжили, мужчины нет» на проверочной части каждого блока (обучать нечего: правило не смотрит на train).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
+    from sklearn.dummy import DummyClassifier
+    tit = pd.read_csv('titanic.csv')
+    num = ['Age', 'SibSp', 'Parch', 'Fare']
+    cat = ['Pclass', 'Sex', 'Embarked']
+    X, y = tit[num + cat], tit['Survived']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+  starter: |
+    dummy_folds = cross_val_score(..., X_temp, y_temp, cv=cv, scoring='accuracy')
+    rule_folds = []
+    for train_idx, valid_idx in cv.split(X_temp, y_temp):
+        part = X_temp.iloc[valid_idx]
+        pred = ...
+        rule_folds.append(...)
+    rule_folds = np.array(rule_folds)
+    print(dummy_folds.round(3), round(dummy_folds.mean(), 3))
+    print(rule_folds.round(3), round(rule_folds.mean(), 3))
+  solution: |
+    dummy_folds = cross_val_score(DummyClassifier(strategy='most_frequent'), X_temp, y_temp, cv=cv, scoring='accuracy')
+    rule_folds = []
+    for train_idx, valid_idx in cv.split(X_temp, y_temp):
+        part = X_temp.iloc[valid_idx]
+        pred = (part['Sex'] == 'female').astype(int)
+        rule_folds.append((pred == y_temp.iloc[valid_idx]).mean())
+    rule_folds = np.array(rule_folds)
+    print(dummy_folds.round(3), round(dummy_folds.mean(), 3))
+    print(rule_folds.round(3), round(rule_folds.mean(), 3))
+  explanation: |
+    - «Все погибли» — самый частый класс — угадывает 61,7 % пассажиров. Модель хуже этого бесполезна.
+    - Одно правило «женщины выжили» даёт 78,9 % — планка уже высокая. Модели нужно найти что-то сверх пола: детей, класс билета, большие семьи.
+    - Разброс правила между блоками — от 75,5 до 82,4 %: на 142 пассажирах блока оценка шумит на несколько процентов. Это мера того, какие различия между моделями считать случайными.
+  hints:
+    - "`DummyClassifier(strategy='most_frequent')` — первый аргумент `cross_val_score`."
+    - "Прогноз правила — `(part['Sex'] == 'female').astype(int)`."
+    - "Accuracy блока — `(pred == y_temp.iloc[valid_idx]).mean()`."
+  tests: |
+    import numpy as np
+    d = np.asarray(var('dummy_folds'), dtype=float)
+    ensure(d.shape == (5,), '`dummy_folds` — пять чисел, по одному на блок.')
+    same_array(d, ref('dummy_folds'), '`dummy_folds` не совпадает: `cross_val_score(DummyClassifier(strategy=\'most_frequent\'), ...)`.')
+    r = np.asarray(var('rule_folds'), dtype=float)
+    ensure(r.shape == (5,), '`rule_folds` — пять чисел, по одному на блок.')
+    if np.allclose(r, 1 - ref('rule_folds')):
+        fail('Правило: женщины выжили (1), мужчины — нет (0). Похоже, классы перепутаны.')
+    same_array(r, ref('rule_folds'), '`rule_folds` не совпадает: accuracy правила на проверочной части каждого блока.')
+    same_array(np.asarray(alt('rule_folds'), dtype=float), np.asarray(alt_ref('rule_folds'), dtype=float), HARDCODE_MSG)
+  files: [titanic.csv]
+  wrong:
+    - code: |
+        dummy_folds = cross_val_score(DummyClassifier(strategy='most_frequent'), X_temp, y_temp, cv=cv, scoring='accuracy')
+        rule_folds = []
+        for train_idx, valid_idx in cv.split(X_temp, y_temp):
+            part = X_temp.iloc[valid_idx]
+            pred = (part['Sex'] == 'male').astype(int)
+            rule_folds.append((pred == y_temp.iloc[valid_idx]).mean())
+        rule_folds = np.array(rule_folds)
+      expect: перепутаны
+    - code: |
+        dummy_folds = cross_val_score(DummyClassifier(strategy='most_frequent'), X_temp, y_temp, cv=cv, scoring='accuracy')
+        rule_folds = []
+        for train_idx, valid_idx in cv.split(X_temp, y_temp):
+            part = X_temp.iloc[train_idx]
+            pred = (part['Sex'] == 'female').astype(int)
+            rule_folds.append((pred == y_temp.iloc[train_idx]).mean())
+        rule_folds = np.array(rule_folds)
+      expect: проверочной части
+
+- id: m8-l8-t3
+  title: "Шаг 3. Подготовка признаков в Pipeline"
+  difficulty: main
+  introduces: []
+  uses: [column-transformer, one-hot-encoding, sk-pipeline]
+  statement: |
+    Соберите `prep` — `ColumnTransformer` из двух частей:
+
+    - `'num'` для колонок `num`: `Pipeline` из `SimpleImputer(strategy='median')` и `StandardScaler()`;
+    - `'cat'` для колонок `cat`: `Pipeline` из `SimpleImputer(strategy='most_frequent')` и `OneHotEncoder(handle_unknown='ignore')`.
+
+    Обучите его на `X_temp` и получите `Z` — преобразованную таблицу train, `names` — имена её колонок (`get_feature_names_out()`, списком) и `age_fill` — медиану возраста, которой заполнены пропуски.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler, OneHotEncoder
+    from sklearn.impute import SimpleImputer
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    tit = pd.read_csv('titanic.csv')
+    num = ['Age', 'SibSp', 'Parch', 'Fare']
+    cat = ['Pclass', 'Sex', 'Embarked']
+    X, y = tit[num + cat], tit['Survived']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+  starter: |
+    prep = ColumnTransformer([
+        ('num', Pipeline([('impute', ...), ('scale', ...)]), num),
+        ('cat', Pipeline([('impute', ...), ('onehot', ...)]), cat),
+    ])
+    Z = prep.fit_transform(...)
+    names = ...
+    age_fill = prep.named_transformers_['num'].named_steps['impute'].statistics_[0]
+    print(Z.shape, age_fill)
+    print(names)
+  solution: |
+    prep = ColumnTransformer([
+        ('num', Pipeline([('impute', SimpleImputer(strategy='median')), ('scale', StandardScaler())]), num),
+        ('cat', Pipeline([('impute', SimpleImputer(strategy='most_frequent')), ('onehot', OneHotEncoder(handle_unknown='ignore'))]), cat),
+    ])
+    Z = prep.fit_transform(X_temp)
+    names = list(prep.get_feature_names_out())
+    age_fill = prep.named_transformers_['num'].named_steps['impute'].statistics_[0]
+    print(Z.shape, age_fill)
+    print(names)
+  explanation: |
+    - Из 7 колонок получилось 12 признаков: 4 числовых после масштабирования и 8 столбцов One-Hot — по три для класса и порта, два для пола.
+    - Пропущенный возраст заменён медианой train — 28,5 года. В кросс-валидации Pipeline посчитает медиану заново по обучающей части каждого блока, и проверочная часть в неё не попадёт.
+    - `Pclass` закодирован One-Hot, а не числом 1–3: так модель сама решает, насколько различаются классы, а не считает разницу между первым и вторым такой же, как между вторым и третьим.
+  hints:
+    - "Числовая часть — `SimpleImputer(strategy='median')`, затем `StandardScaler()`."
+    - "Категориальная — `SimpleImputer(strategy='most_frequent')`, затем `OneHotEncoder(handle_unknown='ignore')`."
+    - "`Z = prep.fit_transform(X_temp)`, `names = list(prep.get_feature_names_out())`."
+  tests: |
+    import numpy as np
+    Zs = var('Z')
+    ensure(hasattr(Zs, 'shape'), '`Z` — результат `prep.fit_transform(X_temp)`.')
+    ensure(Zs.shape == ref('Z').shape, '`Z` — таблица {0}, а у вас {1}: 4 числовых признака и 8 столбцов One-Hot.'.format(ref('Z').shape, Zs.shape))
+    Za = Zs.toarray() if hasattr(Zs, 'toarray') else np.asarray(Zs)
+    Zr = ref('Z').toarray() if hasattr(ref('Z'), 'toarray') else np.asarray(ref('Z'))
+    ensure(np.isfinite(Za).all(), 'В `Z` остались пропуски: заполните их `SimpleImputer` в обеих частях.')
+    if not np.allclose(Za[:, :4].std(axis=0), 1, atol=1e-6):
+        fail('Числовые признаки нужно масштабировать: `StandardScaler()` после `SimpleImputer`.')
+    same_array(Za, Zr, '`Z` не совпадает с ожидаемой подготовкой: медиана и StandardScaler для чисел, самое частое значение и One-Hot для категорий.')
+    nm = var('names', list, 'списком')
+    ensure(nm == list(ref('names')), 'Имена признаков — `list(prep.get_feature_names_out())`.')
+    close(var('age_fill', 'number', 'числом'), ref('age_fill'), 'Пропуски возраста заполнены медианой {expected}, а у вас {actual}.')
+    close(alt('age_fill'), alt_ref('age_fill'), HARDCODE_MSG)
+  files: [titanic.csv]
+  wrong:
+    - code: |
+        prep = ColumnTransformer([
+            ('num', Pipeline([('impute', SimpleImputer(strategy='median'))]), num),
+            ('cat', Pipeline([('impute', SimpleImputer(strategy='most_frequent')), ('onehot', OneHotEncoder(handle_unknown='ignore'))]), cat),
+        ])
+        Z = prep.fit_transform(X_temp)
+        names = list(prep.get_feature_names_out())
+        age_fill = prep.named_transformers_['num'].named_steps['impute'].statistics_[0]
+      expect: масштабировать
+    - code: |
+        prep = ColumnTransformer([
+            ('num', Pipeline([('impute', SimpleImputer(strategy='mean')), ('scale', StandardScaler())]), num),
+            ('cat', Pipeline([('impute', SimpleImputer(strategy='most_frequent')), ('onehot', OneHotEncoder(handle_unknown='ignore'))]), cat),
+        ])
+        Z = prep.fit_transform(X_temp)
+        names = list(prep.get_feature_names_out())
+        age_fill = prep.named_transformers_['num'].named_steps['impute'].statistics_[0]
+      expect: не совпадает
+
+- id: m8-l8-t4
+  title: "Шаг 4. Логистическая регрессия"
+  difficulty: main
+  introduces: []
+  uses: [binary-classification, cross-validate, sk-pipeline]
+  statement: |
+    `make_prep()` возвращает новую подготовку из шага 3. Оцените кросс-валидацией `Pipeline([('prep', make_prep()), ('model', LogisticRegression(max_iter=1000))])`: функция `cross_validate` с `scoring=['accuracy', 'neg_log_loss']`. Получите `lr_folds` — accuracy по пяти блокам и `lr_logloss` — среднюю логистическую потерю (в `cross_validate` она со знаком минус).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split, StratifiedKFold, cross_validate
+    from sklearn.preprocessing import StandardScaler, OneHotEncoder
+    from sklearn.impute import SimpleImputer
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.linear_model import LogisticRegression
+    tit = pd.read_csv('titanic.csv')
+    num = ['Age', 'SibSp', 'Parch', 'Fare']
+    cat = ['Pclass', 'Sex', 'Embarked']
+    X, y = tit[num + cat], tit['Survived']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+    def make_prep():
+        return ColumnTransformer([
+            ('num', Pipeline([('impute', SimpleImputer(strategy='median')), ('scale', StandardScaler())]), num),
+            ('cat', Pipeline([('impute', SimpleImputer(strategy='most_frequent')), ('onehot', OneHotEncoder(handle_unknown='ignore'))]), cat)])
+  starter: |
+    model = Pipeline([('prep', make_prep()), ('model', LogisticRegression(max_iter=1000))])
+    res = cross_validate(model, X_temp, y_temp, cv=cv, scoring=...)
+    lr_folds = ...
+    lr_logloss = ...
+    print(lr_folds.round(3), round(lr_folds.mean(), 3), round(lr_logloss, 3))
+  solution: |
+    model = Pipeline([('prep', make_prep()), ('model', LogisticRegression(max_iter=1000))])
+    res = cross_validate(model, X_temp, y_temp, cv=cv, scoring=['accuracy', 'neg_log_loss'])
+    lr_folds = res['test_accuracy']
+    lr_logloss = -res['test_neg_log_loss'].mean()
+    print(lr_folds.round(3), round(lr_folds.mean(), 3), round(lr_logloss, 3))
+  explanation: |
+    - Логистическая регрессия угадывает 80,2 % пассажиров (± 1,4 % между блоками) — на 1,3 процентного пункта лучше правила «женщины выжили». Сверх пола она учитывает класс, возраст и семью.
+    - Логистическая потеря — 0,445. Для сравнения, прогноз «вероятность 0,5 для всех» даёт ln 2 ≈ 0,693.
+    - `cross_validate` возвращает словарь с ключами `test_<метрика>`. Метрики потерь scikit-learn отдаёт со знаком минус («чем больше, тем лучше»), поэтому минус нужно вернуть.
+  hints:
+    - "`scoring=['accuracy', 'neg_log_loss']`."
+    - "Accuracy по блокам — `res['test_accuracy']`."
+    - "Потеря — `-res['test_neg_log_loss'].mean()`."
+  tests: |
+    import numpy as np
+    f = np.asarray(var('lr_folds'), dtype=float)
+    ensure(f.shape == (5,), '`lr_folds` — accuracy по пяти блокам.')
+    same_array(f, ref('lr_folds'), '`lr_folds` не совпадает: `res[\'test_accuracy\']`.')
+    ll = var('lr_logloss', 'number', 'числом')
+    if ll < 0:
+        fail('`neg_log_loss` хранит потерю со знаком минус — верните знак: `-res[\'test_neg_log_loss\'].mean()`.')
+    close(ll, ref('lr_logloss'), 'Средняя логистическая потеря — {expected}, а у вас {actual}.')
+    close(alt('lr_logloss'), alt_ref('lr_logloss'), HARDCODE_MSG)
+  files: [titanic.csv]
+  wrong:
+    - code: |
+        model = Pipeline([('prep', make_prep()), ('model', LogisticRegression(max_iter=1000))])
+        res = cross_validate(model, X_temp, y_temp, cv=cv, scoring=['accuracy', 'neg_log_loss'])
+        lr_folds = res['test_accuracy']
+        lr_logloss = res['test_neg_log_loss'].mean()
+      expect: знак
+    - code: |
+        model = Pipeline([('prep', make_prep()), ('model', LogisticRegression(max_iter=1000))])
+        res = cross_validate(model, X_temp, y_temp, cv=cv, scoring=['accuracy', 'neg_log_loss'])
+        lr_folds = res['train_accuracy'] if 'train_accuracy' in res else res['fit_time']
+        lr_logloss = -res['test_neg_log_loss'].mean()
+      expect: "test_accuracy"
+
+- id: m8-l8-t5
+  title: "Шаг 5. Сеть: подбор штрафа"
+  difficulty: main
+  introduces: []
+  uses: [mlp, early-stopping, cross-validate]
+  statement: |
+    Сеть — `MLPClassifier(hidden_layer_sizes=(16,), alpha=alpha, max_iter=500, random_state=42)` после той же подготовки. Для каждого `alpha` из `alphas` оцените её кросс-валидацией (`scoring=['accuracy', 'neg_log_loss']`). Получите:
+
+    - `net_table` — DataFrame: индекс — `alpha`, колонки `'accuracy'` (средняя по блокам) и `'logloss'` (средняя потеря, со знаком плюс);
+    - `best_alpha` — штраф с наибольшей средней accuracy;
+    - `net_folds` — accuracy по пяти блокам для `best_alpha`.
+  prelude: |
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split, StratifiedKFold, cross_validate
+    from sklearn.preprocessing import StandardScaler, OneHotEncoder
+    from sklearn.impute import SimpleImputer
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.neural_network import MLPClassifier
+    from sklearn.exceptions import ConvergenceWarning
+    warnings.filterwarnings('ignore', category=ConvergenceWarning)
+    tit = pd.read_csv('titanic.csv')
+    num = ['Age', 'SibSp', 'Parch', 'Fare']
+    cat = ['Pclass', 'Sex', 'Embarked']
+    X, y = tit[num + cat], tit['Survived']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+    def make_prep():
+        return ColumnTransformer([
+            ('num', Pipeline([('impute', SimpleImputer(strategy='median')), ('scale', StandardScaler())]), num),
+            ('cat', Pipeline([('impute', SimpleImputer(strategy='most_frequent')), ('onehot', OneHotEncoder(handle_unknown='ignore'))]), cat)])
+
+    alphas = [0.0001, 0.1, 1.0]
+  starter: |
+    rows, folds = {}, {}
+    for alpha in alphas:
+        model = Pipeline([('prep', make_prep()),
+                          ('model', MLPClassifier(hidden_layer_sizes=(16,), alpha=alpha, max_iter=500, random_state=42))])
+        res = cross_validate(model, X_temp, y_temp, cv=cv, scoring=['accuracy', 'neg_log_loss'])
+        folds[alpha] = res['test_accuracy']
+        rows[alpha] = {'accuracy': ..., 'logloss': ...}
+    net_table = pd.DataFrame(rows).T
+    best_alpha = ...
+    net_folds = ...
+    print(net_table.round(4))
+    print(best_alpha, net_folds.round(3))
+  solution: |
+    rows, folds = {}, {}
+    for alpha in alphas:
+        model = Pipeline([('prep', make_prep()),
+                          ('model', MLPClassifier(hidden_layer_sizes=(16,), alpha=alpha, max_iter=500, random_state=42))])
+        res = cross_validate(model, X_temp, y_temp, cv=cv, scoring=['accuracy', 'neg_log_loss'])
+        folds[alpha] = res['test_accuracy']
+        rows[alpha] = {'accuracy': res['test_accuracy'].mean(), 'logloss': -res['test_neg_log_loss'].mean()}
+    net_table = pd.DataFrame(rows).T
+    best_alpha = net_table['accuracy'].idxmax()
+    net_folds = folds[best_alpha]
+    print(net_table.round(4))
+    print(best_alpha, net_folds.round(3))
+  explanation: |
+    - Почти без штрафа сеть угадывает 82,0 %, с `alpha=0.1` — 82,3 %, с `alpha=1` — снова 82,0 %. По accuracy лучший штраф — 0.1.
+    - Логистическая потеря с ростом штрафа падает: 0,429 → 0,427 → 0,422. Штраф делает сеть менее самоуверенной, и уверенные ошибки стоят меньше (урок 8.7). По потере лучшим был бы `alpha=1`: выбор зависит от метрики, поэтому её фиксируют заранее.
+    - Все три варианта различаются меньше чем на полпроцентного пункта — это меньше одного пассажира в блоке. Подбор штрафа здесь почти ничего не меняет.
+  hints:
+    - "Средняя accuracy — `res['test_accuracy'].mean()`, потеря — `-res['test_neg_log_loss'].mean()`."
+    - "Лучший штраф — `net_table['accuracy'].idxmax()`: accuracy — чем больше, тем лучше."
+    - "`net_folds = folds[best_alpha]`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    t = var('net_table', pd.DataFrame, 'таблицей DataFrame')
+    ensure([float(a) for a in t.index] == [float(a) for a in ref('alphas')], 'Индекс `net_table` — значения `alpha` из `alphas`.')
+    ensure({'accuracy', 'logloss'} <= set(t.columns), 'Колонки `net_table` — `accuracy` и `logloss`.')
+    if (t['logloss'].to_numpy(dtype=float) < 0).all():
+        fail('Потерю верните со знаком плюс: `-res[\'test_neg_log_loss\'].mean()`.')
+    same_array(t['accuracy'].to_numpy(dtype=float), ref('net_table')['accuracy'].to_numpy(dtype=float), 'Средняя accuracy не совпадает.', rtol=1e-4)
+    same_array(t['logloss'].to_numpy(dtype=float), ref('net_table')['logloss'].to_numpy(dtype=float), 'Средняя логистическая потеря не совпадает.', rtol=1e-4)
+    ba = float(var('best_alpha', 'number', 'числом'))
+    if ba == float(ref('net_table')['accuracy'].idxmin()):
+        fail('Accuracy — чем больше, тем лучше: `idxmax()`.')
+    equal(ba, float(ref('best_alpha')), 'Лучший штраф — {expected}, а у вас {actual}.')
+    same_array(np.asarray(var('net_folds'), dtype=float), np.asarray(ref('net_folds'), dtype=float), '`net_folds` — accuracy по блокам для лучшего штрафа.', rtol=1e-4)
+  files: [titanic.csv]
+  wrong:
+    - code: |
+        rows, folds = {}, {}
+        for alpha in alphas:
+            model = Pipeline([('prep', make_prep()),
+                              ('model', MLPClassifier(hidden_layer_sizes=(16,), alpha=alpha, max_iter=500, random_state=42))])
+            res = cross_validate(model, X_temp, y_temp, cv=cv, scoring=['accuracy', 'neg_log_loss'])
+            folds[alpha] = res['test_accuracy']
+            rows[alpha] = {'accuracy': res['test_accuracy'].mean(), 'logloss': -res['test_neg_log_loss'].mean()}
+        net_table = pd.DataFrame(rows).T
+        best_alpha = net_table['logloss'].idxmax()
+        net_folds = folds[best_alpha]
+      expect: чем больше, тем лучше
+    - code: |
+        rows, folds = {}, {}
+        for alpha in alphas:
+            model = Pipeline([('prep', make_prep()),
+                              ('model', MLPClassifier(hidden_layer_sizes=(16,), alpha=alpha, max_iter=500, random_state=42))])
+            res = cross_validate(model, X_temp, y_temp, cv=cv, scoring=['accuracy', 'neg_log_loss'])
+            folds[alpha] = res['test_accuracy']
+            rows[alpha] = {'accuracy': res['test_accuracy'].mean(), 'logloss': res['test_neg_log_loss'].mean()}
+        net_table = pd.DataFrame(rows).T
+        best_alpha = net_table['accuracy'].idxmax()
+        net_folds = folds[best_alpha]
+      expect: со знаком плюс
+
+- id: m8-l8-t6
+  title: "Шаг 6. Случайный лес"
+  difficulty: main
+  introduces: []
+  uses: [random-forest, cross-validate]
+  statement: |
+    Оцените кросс-валидацией лес `RandomForestClassifier(n_estimators=100, min_samples_leaf=3, random_state=42)` после той же подготовки. Получите `rf_folds` — accuracy по пяти блокам, `rf_logloss` — среднюю логистическую потерю и `rf_spread` — разницу между лучшим и худшим блоком.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split, StratifiedKFold, cross_validate
+    from sklearn.preprocessing import StandardScaler, OneHotEncoder
+    from sklearn.impute import SimpleImputer
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.ensemble import RandomForestClassifier
+    tit = pd.read_csv('titanic.csv')
+    num = ['Age', 'SibSp', 'Parch', 'Fare']
+    cat = ['Pclass', 'Sex', 'Embarked']
+    X, y = tit[num + cat], tit['Survived']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+    def make_prep():
+        return ColumnTransformer([
+            ('num', Pipeline([('impute', SimpleImputer(strategy='median')), ('scale', StandardScaler())]), num),
+            ('cat', Pipeline([('impute', SimpleImputer(strategy='most_frequent')), ('onehot', OneHotEncoder(handle_unknown='ignore'))]), cat)])
+  starter: |
+    model = Pipeline([('prep', make_prep()),
+                      ('model', RandomForestClassifier(n_estimators=100, min_samples_leaf=3, random_state=42))])
+    res = ...
+    rf_folds = ...
+    rf_logloss = ...
+    rf_spread = ...
+    print(rf_folds.round(3), round(rf_folds.mean(), 3), round(rf_logloss, 3), round(rf_spread, 3))
+  solution: |
+    model = Pipeline([('prep', make_prep()),
+                      ('model', RandomForestClassifier(n_estimators=100, min_samples_leaf=3, random_state=42))])
+    res = cross_validate(model, X_temp, y_temp, cv=cv, scoring=['accuracy', 'neg_log_loss'])
+    rf_folds = res['test_accuracy']
+    rf_logloss = -res['test_neg_log_loss'].mean()
+    rf_spread = rf_folds.max() - rf_folds.min()
+    print(rf_folds.round(3), round(rf_folds.mean(), 3), round(rf_logloss, 3), round(rf_spread, 3))
+  explanation: |
+    - Лес угадывает в среднем 81,3 % — между логистической регрессией (80,2) и сетью (82,3). Логистическая потеря у него даже чуть меньше, чем у сети: 0,422.
+    - Но от блока к блоку лес скачет сильнее всех: от 76,9 до 87,3 %, разброс 10 процентных пунктов против 3–4 у других моделей. Деревья чувствительны к тому, какие 570 пассажиров попали в обучение.
+    - Масштабирование лесу не нужно, но и не мешает. Общая подготовка позволяет сравнивать модели на одинаковых признаках.
+  hints:
+    - "`res = cross_validate(model, X_temp, y_temp, cv=cv, scoring=['accuracy', 'neg_log_loss'])`."
+    - "Accuracy — `res['test_accuracy']`, потеря — `-res['test_neg_log_loss'].mean()`."
+    - "Разброс — `rf_folds.max() - rf_folds.min()`."
+  tests: |
+    import numpy as np
+    f = np.asarray(var('rf_folds'), dtype=float)
+    ensure(f.shape == (5,), '`rf_folds` — accuracy по пяти блокам.')
+    same_array(f, ref('rf_folds'), '`rf_folds` не совпадает: лес с `n_estimators=100, min_samples_leaf=3, random_state=42`.')
+    ll = var('rf_logloss', 'number', 'числом')
+    if ll < 0:
+        fail('Верните потере знак плюс: `-res[\'test_neg_log_loss\'].mean()`.')
+    close(ll, ref('rf_logloss'), 'Средняя потеря леса — {expected}, а у вас {actual}.')
+    close(var('rf_spread', 'number', 'числом'), ref('rf_spread'), 'Разброс между блоками — {expected}, а у вас {actual}: `rf_folds.max() - rf_folds.min()`.')
+    close(alt('rf_logloss'), alt_ref('rf_logloss'), HARDCODE_MSG)
+  files: [titanic.csv]
+  wrong:
+    - code: |
+        model = Pipeline([('prep', make_prep()),
+                          ('model', RandomForestClassifier(n_estimators=100, min_samples_leaf=3, random_state=42))])
+        res = cross_validate(model, X_temp, y_temp, cv=cv, scoring=['accuracy', 'neg_log_loss'])
+        rf_folds = res['test_accuracy']
+        rf_logloss = -res['test_neg_log_loss'].mean()
+        rf_spread = rf_folds.std()
+      expect: Разброс между блоками
+    - code: |
+        model = Pipeline([('prep', make_prep()),
+                          ('model', RandomForestClassifier(n_estimators=100, random_state=42))])
+        res = cross_validate(model, X_temp, y_temp, cv=cv, scoring=['accuracy', 'neg_log_loss'])
+        rf_folds = res['test_accuracy']
+        rf_logloss = -res['test_neg_log_loss'].mean()
+        rf_spread = rf_folds.max() - rf_folds.min()
+      expect: min_samples_leaf=3
+
+- id: m8-l8-t7
+  title: "Шаг 7. Таблица кандидатов и выбор"
+  difficulty: main
+  introduces: []
+  uses: [model-comparison, cross-validate]
+  statement: |
+    В словаре `folds` — accuracy по пяти блокам для четырёх кандидатов (результаты шагов 2–6). Постройте `table` — DataFrame с индексом-кандидатом и колонками `'cv_acc'` (средняя accuracy) и `'cv_std'` (разброс по блокам), отсортированный по `cv_acc` **по убыванию**. Получите `best` — выбранного кандидата, `second` — второго и `wins` — в скольких блоках лучший точнее второго.
+  prelude: |
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
+    from sklearn.preprocessing import StandardScaler, OneHotEncoder
+    from sklearn.impute import SimpleImputer
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.neural_network import MLPClassifier
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.exceptions import ConvergenceWarning
+    warnings.filterwarnings('ignore', category=ConvergenceWarning)
+    tit = pd.read_csv('titanic.csv')
+    num = ['Age', 'SibSp', 'Parch', 'Fare']
+    cat = ['Pclass', 'Sex', 'Embarked']
+    X, y = tit[num + cat], tit['Survived']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+    def make_prep():
+        return ColumnTransformer([
+            ('num', Pipeline([('impute', SimpleImputer(strategy='median')), ('scale', StandardScaler())]), num),
+            ('cat', Pipeline([('impute', SimpleImputer(strategy='most_frequent')), ('onehot', OneHotEncoder(handle_unknown='ignore'))]), cat)])
+
+    rule = np.array([((X_temp.iloc[va]['Sex'] == 'female').astype(int) == y_temp.iloc[va]).mean() for _, va in cv.split(X_temp, y_temp)])
+    candidates = {
+        'Логистическая регрессия': LogisticRegression(max_iter=1000),
+        'Сеть (16,), alpha=0.1': MLPClassifier(hidden_layer_sizes=(16,), alpha=0.1, max_iter=500, random_state=42),
+        'Лес, лист ≥ 3': RandomForestClassifier(n_estimators=100, min_samples_leaf=3, random_state=42),
+    }
+    folds = {'Правило «женщины выжили»': rule}
+    for name, model in candidates.items():
+        folds[name] = cross_val_score(Pipeline([('prep', make_prep()), ('model', model)]), X_temp, y_temp, cv=cv, scoring='accuracy')
+  starter: |
+    table = pd.DataFrame({'cv_acc': ..., 'cv_std': ...}).sort_values(...)
+    best = ...
+    second = ...
+    wins = ...
+    print(table.round(3))
+    print(best, '| второй:', second, '| побед по блокам:', wins)
+  solution: |
+    table = pd.DataFrame({'cv_acc': {n: f.mean() for n, f in folds.items()},
+                          'cv_std': {n: f.std() for n, f in folds.items()}}).sort_values('cv_acc', ascending=False)
+    best = table.index[0]
+    second = table.index[1]
+    wins = int((folds[best] > folds[second]).sum())
+    print(table.round(3))
+    print(best, '| второй:', second, '| побед по блокам:', wins)
+  explanation: |
+    - Лидер — сеть (82,3 ± 1,4 %), за ней лес (81,3 ± 4,1), логистическая регрессия (80,2 ± 1,4) и правило (78,9 ± 2,2).
+    - Сеть точнее леса в трёх блоках из пяти, а логистической регрессии — в четырёх. Перевес есть, но небольшой: 1–2 процентных пункта — это 1–3 пассажира в блоке из 142.
+    - По правилам выбираем сеть. Насколько выбор надёжен, покажет test, но решение мы уже приняли: если test не подтвердит, перевыбирать по нему нельзя.
+  hints:
+    - "Средние и разбросы — словари `{имя: f.mean()}` и `{имя: f.std()}` по `folds`."
+    - "Сортировка по убыванию — `sort_values('cv_acc', ascending=False)`."
+    - "Победы — `(folds[best] > folds[second]).sum()`."
+  tests: |
+    import pandas as pd
+    t = var('table', pd.DataFrame, 'таблицей DataFrame')
+    ensure({'cv_acc', 'cv_std'} <= set(t.columns), 'Колонки `table` — cv_acc и cv_std.')
+    if list(t.index) == list(ref('table').index)[::-1]:
+        fail('Accuracy — чем больше, тем лучше: сортируйте по убыванию, `ascending=False`.')
+    ensure(list(t.index) == list(ref('table').index), 'Строки — кандидаты по убыванию `cv_acc`.')
+    same_array(t['cv_acc'].to_numpy(dtype=float), ref('table')['cv_acc'].to_numpy(dtype=float), 'Средние не совпадают.', rtol=1e-4)
+    same_array(t['cv_std'].to_numpy(dtype=float), ref('table')['cv_std'].to_numpy(dtype=float), 'Разбросы не совпадают: `.std()` по блокам.', rtol=1e-4)
+    equal(var('best', str, 'строкой'), ref('best'), 'Выбранный кандидат — «{expected}», а у вас «{actual}».')
+    equal(var('second', str, 'строкой'), ref('second'), 'Второй кандидат — «{expected}», а у вас «{actual}».')
+    equal(int(var('wins', 'number', 'числом')), int(ref('wins')), 'Блоков, где лучший точнее второго, — {expected}, а у вас {actual}.')
+    close(float(alt('table')['cv_acc'].iloc[0]), float(alt_ref('table')['cv_acc'].iloc[0]), HARDCODE_MSG, rtol=1e-4)
+  files: [titanic.csv]
+  wrong:
+    - code: |
+        table = pd.DataFrame({'cv_acc': {n: f.mean() for n, f in folds.items()},
+                              'cv_std': {n: f.std() for n, f in folds.items()}}).sort_values('cv_acc')
+        best = table.index[0]
+        second = table.index[1]
+        wins = int((folds[best] > folds[second]).sum())
+      expect: по убыванию
+    - code: |
+        table = pd.DataFrame({'cv_acc': {n: f.mean() for n, f in folds.items()},
+                              'cv_std': {n: f.std() for n, f in folds.items()}}).sort_values('cv_acc', ascending=False)
+        best = table.index[0]
+        second = table.index[1]
+        wins = int((folds[best] < folds[second]).sum())
+      expect: Блоков, где лучший
+
+- id: m8-l8-t8
+  title: "Шаг 8. Итог на test и разбор по полу"
+  difficulty: main
+  introduces: []
+  uses: [error-contribution, binary-classification, model-comparison]
+  statement: |
+    Выбрана сеть. Обучите `final` — Pipeline с подготовкой и `MLPClassifier(hidden_layer_sizes=(16,), alpha=0.1, max_iter=500, random_state=42)` — на всех `X_temp`, `y_temp` и один раз проверьте на test. Получите:
+
+    - `test_acc` — accuracy сети на test и `rule_acc` — accuracy правила «женщины выжили» на test;
+    - `by_sex` — DataFrame с индексом `['female', 'male']` и колонками `'n'` (пассажиров test), `'net'` и `'rule'` (accuracy в группе), `'share'` (доля группы) и `'contribution'` (вклад группы в разницу accuracy «сеть − правило»: доля × разница в группе).
+  prelude: |
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler, OneHotEncoder
+    from sklearn.impute import SimpleImputer
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.neural_network import MLPClassifier
+    from sklearn.exceptions import ConvergenceWarning
+    warnings.filterwarnings('ignore', category=ConvergenceWarning)
+    tit = pd.read_csv('titanic.csv')
+    num = ['Age', 'SibSp', 'Parch', 'Fare']
+    cat = ['Pclass', 'Sex', 'Embarked']
+    X, y = tit[num + cat], tit['Survived']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+
+    def make_prep():
+        return ColumnTransformer([
+            ('num', Pipeline([('impute', SimpleImputer(strategy='median')), ('scale', StandardScaler())]), num),
+            ('cat', Pipeline([('impute', SimpleImputer(strategy='most_frequent')), ('onehot', OneHotEncoder(handle_unknown='ignore'))]), cat)])
+  starter: |
+    final = Pipeline([('prep', make_prep()),
+                      ('model', MLPClassifier(hidden_layer_sizes=(16,), alpha=0.1, max_iter=500, random_state=42))])
+    final.fit(..., ...)
+    pred_net = final.predict(X_test)
+    pred_rule = (X_test['Sex'] == 'female').astype(int).to_numpy()
+    test_acc = ...
+    rule_acc = ...
+    rows = {}
+    for sex in ['female', 'male']:
+        mask = (X_test['Sex'] == sex).to_numpy()
+        rows[sex] = {'n': mask.sum(), 'net': ..., 'rule': ...}
+    by_sex = pd.DataFrame(rows).T
+    by_sex['share'] = ...
+    by_sex['contribution'] = ...
+    print(round(test_acc, 4), round(rule_acc, 4))
+    print(by_sex.round(3))
+  solution: |
+    final = Pipeline([('prep', make_prep()),
+                      ('model', MLPClassifier(hidden_layer_sizes=(16,), alpha=0.1, max_iter=500, random_state=42))])
+    final.fit(X_temp, y_temp)
+    pred_net = final.predict(X_test)
+    pred_rule = (X_test['Sex'] == 'female').astype(int).to_numpy()
+    test_acc = (pred_net == y_test.to_numpy()).mean()
+    rule_acc = (pred_rule == y_test.to_numpy()).mean()
+    rows = {}
+    for sex in ['female', 'male']:
+        mask = (X_test['Sex'] == sex).to_numpy()
+        rows[sex] = {'n': mask.sum(),
+                     'net': (pred_net[mask] == y_test.to_numpy()[mask]).mean(),
+                     'rule': (pred_rule[mask] == y_test.to_numpy()[mask]).mean()}
+    by_sex = pd.DataFrame(rows).T
+    by_sex['share'] = by_sex['n'] / len(X_test)
+    by_sex['contribution'] = by_sex['share'] * (by_sex['net'] - by_sex['rule'])
+    print(round(test_acc, 4), round(rule_acc, 4))
+    print(by_sex.round(3))
+  explanation: |
+    - На test сеть угадала 142 пассажира из 179 (79,3 %), правило — 139 (77,7 %). Выигрыш над правилом — 3 пассажира, а не 6, как обещала кросс-валидация.
+    - Вклады: женщины +2,8 пункта (сеть верно отправила в погибшие часть женщин третьего класса: 82 % верных против 74 % у правила), мужчины −1,1 (сеть пыталась угадать выживших мужчин — мальчиков угадала, а взрослых нет). Сумма — ровно разница 1,7 пункта.
+    - Ради урока мы посчитали и то, чего в работе не делают: логистическая регрессия на этом test угадала бы 144 пассажира, лес — 145. Выбор по кросс-валидации на test не подтвердился, но это 2–3 пассажира из 179 — в пределах шума. Перевыбирать модель по test нельзя: его оценка перестанет быть честной.
+  hints:
+    - "Обучение — `final.fit(X_temp, y_temp)`; accuracy — `(pred_net == y_test.to_numpy()).mean()`."
+    - "В группе: `(pred_net[mask] == y_test.to_numpy()[mask]).mean()`, то же для `pred_rule`."
+    - "`share` — `by_sex['n'] / len(X_test)`; вклад — `share * (net - rule)`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    close(var('test_acc', 'number', 'числом'), ref('test_acc'), 'Accuracy сети на test — {expected}, а у вас {actual}. Обучайте на всех `X_temp`, `y_temp`.', rtol=1e-4)
+    close(var('rule_acc', 'number', 'числом'), ref('rule_acc'), 'Accuracy правила на test — {expected}, а у вас {actual}.')
+    b = var('by_sex', pd.DataFrame, 'таблицей DataFrame')
+    ensure(list(b.index) == ['female', 'male'], 'Индекс `by_sex` — female и male.')
+    ensure({'n', 'net', 'rule', 'share', 'contribution'} <= set(b.columns), 'Колонки `by_sex` — n, net, rule, share и contribution.')
+    r = ref('by_sex')
+    same_array(b['n'].to_numpy(dtype=float), r['n'].to_numpy(dtype=float), 'Число пассажиров в группах не совпадает.')
+    same_array(b['net'].to_numpy(dtype=float), r['net'].to_numpy(dtype=float), 'Accuracy сети по группам не совпадает.', rtol=1e-4)
+    same_array(b['rule'].to_numpy(dtype=float), r['rule'].to_numpy(dtype=float), 'Accuracy правила по группам не совпадает.')
+    same_array(b['share'].to_numpy(dtype=float), r['share'].to_numpy(dtype=float), '`share` — доля группы среди пассажиров test.')
+    ct = b['contribution'].to_numpy(dtype=float)
+    if np.allclose(ct, (r['net'] - r['rule']).to_numpy(dtype=float), rtol=1e-4):
+        fail('Вклад — разница accuracy в группе, умноженная на долю группы.')
+    same_array(ct, r['contribution'].to_numpy(dtype=float), '`contribution` — `share * (net - rule)`.', rtol=1e-4)
+    ensure(abs(ct.sum() - (ref('test_acc') - ref('rule_acc'))) < 1e-6, 'Сумма вкладов должна совпасть с разницей accuracy «сеть − правило».')
+    close(alt('test_acc'), alt_ref('test_acc'), HARDCODE_MSG, rtol=1e-4)
+  files: [titanic.csv]
+  wrong:
+    - code: |
+        final = Pipeline([('prep', make_prep()),
+                          ('model', MLPClassifier(hidden_layer_sizes=(16,), alpha=0.1, max_iter=500, random_state=42))])
+        final.fit(X_test, y_test)
+        pred_net = final.predict(X_test)
+        pred_rule = (X_test['Sex'] == 'female').astype(int).to_numpy()
+        test_acc = (pred_net == y_test.to_numpy()).mean()
+        rule_acc = (pred_rule == y_test.to_numpy()).mean()
+        rows = {}
+        for sex in ['female', 'male']:
+            mask = (X_test['Sex'] == sex).to_numpy()
+            rows[sex] = {'n': mask.sum(), 'net': (pred_net[mask] == y_test.to_numpy()[mask]).mean(), 'rule': (pred_rule[mask] == y_test.to_numpy()[mask]).mean()}
+        by_sex = pd.DataFrame(rows).T
+        by_sex['share'] = by_sex['n'] / len(X_test)
+        by_sex['contribution'] = by_sex['share'] * (by_sex['net'] - by_sex['rule'])
+      expect: "Обучайте на всех `X_temp`"
+    - code: |
+        final = Pipeline([('prep', make_prep()),
+                          ('model', MLPClassifier(hidden_layer_sizes=(16,), alpha=0.1, max_iter=500, random_state=42))])
+        final.fit(X_temp, y_temp)
+        pred_net = final.predict(X_test)
+        pred_rule = (X_test['Sex'] == 'female').astype(int).to_numpy()
+        test_acc = (pred_net == y_test.to_numpy()).mean()
+        rule_acc = (pred_rule == y_test.to_numpy()).mean()
+        rows = {}
+        for sex in ['female', 'male']:
+            mask = (X_test['Sex'] == sex).to_numpy()
+            rows[sex] = {'n': mask.sum(), 'net': (pred_net[mask] == y_test.to_numpy()[mask]).mean(), 'rule': (pred_rule[mask] == y_test.to_numpy()[mask]).mean()}
+        by_sex = pd.DataFrame(rows).T
+        by_sex['share'] = by_sex['n'] / len(X_test)
+        by_sex['contribution'] = by_sex['net'] - by_sex['rule']
+      expect: умноженная на долю
+
+- id: m8-l8-t9
+  kind: quiz
+  title: "Шаг 9. Выводы"
+  difficulty: main
+  introduces: []
+  uses: []
+  statement: |
+    Сформулируйте выводы проекта.
+  quiz:
+    - q: По кросс-валидации сеть точнее логистической регрессии на 2,1 пункта, а на test — на 1,1 пункта хуже. Что это значит?
+      options:
+        - Модели почти равны — разница в пару пассажиров тонет в шуме маленьких данных
+        - Кросс-валидация ошиблась, нужно выбрать модель по test
+        - Сеть переобучилась на test
+      answer: 0
+      explain: На test 1 пассажир — 0,56 пункта. Выбор сделан по правилам, а по test не перевыбирают.
+    - q: Правило «женщины выжили» угадывает 78,9 %. Как это использовать?
+      options:
+        - Как ориентир — модель должна заметно его обогнать, иначе она не нужна
+        - Никак, правила хуже моделей
+        - Заменить им все модели
+      answer: 0
+      explain: Все модели обгоняют правило лишь на 1–3,5 пункта — пол объясняет большую часть ответа.
+    - q: Где сеть выиграла у правила на test?
+      options:
+        - На женщинах — она верно отнесла к погибшим часть женщин третьего класса
+        - На мужчинах — угадала всех выживших
+        - Одинаково в обеих группах
+      answer: 0
+      explain: Вклад женщин +2,8 пункта, мужчин −1,1. Разбор по группам показывает, что именно добавила модель.
+    - q: Почему сеть на «Титанике» не стала заметно лучше простых моделей?
+      options:
+        - Данных мало (712 пассажиров) и признаков немного — сложной модели почти нечего найти сверх пола, класса и возраста
+        - Нейросети не умеют классифицировать
+        - Нужно было больше эпох
+      answer: 0
+      explain: Так же было с машинами (урок 8.6) — на небольших таблицах сеть сравнивают с сильными простыми моделями и не ждут чуда.
+  hints:
+    - Сравните разницу между моделями с ценой одного пассажира на test и с разбросом по блокам.
+    - Вспомните таблицу вкладов по полу из шага 8 и ориентиры из шага 2.
+    - "Ответы: первый вариант во всех четырёх вопросах."

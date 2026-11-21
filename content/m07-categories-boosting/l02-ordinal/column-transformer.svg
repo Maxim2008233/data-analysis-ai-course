@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 236" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="ColumnTransformer внутри Pipeline. Таблица признаков делится по колонкам: текстовые Make, Model, Style и Fuel_type идут в OrdinalEncoder и становятся номерами категорий, числовые колонки и коробка передач проходят без изменений. Результаты склеиваются в одну числовую матрицу: сначала закодированные колонки, затем остальные, — и она передаётся модели">
+  <defs><marker id="ct-a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor" fill-opacity="0.65"/></marker></defs>
+  <rect x="12" y="62" width="150" height="110" rx="6" fill="currentColor" fill-opacity="0.06" stroke="currentColor" stroke-opacity="0.4"/>
+  <text x="87" y="84" fill="currentColor" text-anchor="middle" font-weight="700">X_train</text>
+  <text x="87" y="104" fill="currentColor" text-anchor="middle" font-size="11">Make, Model, Style,</text>
+  <text x="87" y="120" fill="currentColor" text-anchor="middle" font-size="11">Fuel_type — текст</text>
+  <text x="87" y="142" fill="currentColor" text-anchor="middle" font-size="11">Year, Distance, Engine,</text>
+  <text x="87" y="158" fill="currentColor" text-anchor="middle" font-size="11">AutoTransmission, km_year</text>
+
+  <rect x="210" y="16" width="300" height="196" rx="10" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-dasharray="6 4"/>
+  <text x="222" y="34" fill="currentColor" font-weight="700">ColumnTransformer</text>
+  <path d="M162 100 C190 100 196 74 230 74" fill="none" stroke="currentColor" stroke-opacity="0.6" marker-end="url(#ct-a)"/>
+  <path d="M162 140 C190 140 196 160 230 160" fill="none" stroke="currentColor" stroke-opacity="0.6" marker-end="url(#ct-a)"/>
+  <rect x="232" y="48" width="160" height="52" rx="6" fill="#3d5bd9" fill-opacity="0.14" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="312" y="68" fill="currentColor" text-anchor="middle" font-weight="700">'cat': OrdinalEncoder</text>
+  <text x="312" y="86" fill="currentColor" text-anchor="middle" font-size="11">Mitsubishi → 11, Lancer → 395</text>
+  <rect x="232" y="134" width="160" height="52" rx="6" fill="currentColor" fill-opacity="0.07" stroke="currentColor" stroke-opacity="0.45"/>
+  <text x="312" y="154" fill="currentColor" text-anchor="middle" font-weight="700">remainder='passthrough'</text>
+  <text x="312" y="172" fill="currentColor" text-anchor="middle" font-size="11">числа — без изменений</text>
+  <path d="M392 74 C430 74 432 110 456 112" fill="none" stroke="currentColor" stroke-opacity="0.6" marker-end="url(#ct-a)"/>
+  <path d="M392 160 C430 160 432 124 456 122" fill="none" stroke="currentColor" stroke-opacity="0.6" marker-end="url(#ct-a)"/>
+  <rect x="458" y="96" width="40" height="40" rx="6" fill="currentColor" fill-opacity="0.1" stroke="currentColor" stroke-opacity="0.4"/>
+  <text x="478" y="121" fill="currentColor" text-anchor="middle" font-weight="700">+</text>
+
+  <path d="M510 116 L548 116" stroke="currentColor" stroke-opacity="0.6" marker-end="url(#ct-a)"/>
+  <rect x="550" y="70" width="198" height="92" rx="6" fill="#c2410c" fill-opacity="0.1" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="649" y="92" fill="currentColor" text-anchor="middle" font-weight="700">матрица чисел</text>
+  <text x="649" y="112" fill="currentColor" text-anchor="middle" font-size="11">сначала 4 закодированные колонки,</text>
+  <text x="649" y="128" fill="currentColor" text-anchor="middle" font-size="11">затем 5 остальных</text>
+  <text x="649" y="148" fill="currentColor" text-anchor="middle" font-size="11">→ модель (лес)</text>
+  <text x="12" y="230" fill="currentColor" fill-opacity="0.8">В Pipeline весь ColumnTransformer учится только на train; модель получает уже числа.</text>
+</svg>

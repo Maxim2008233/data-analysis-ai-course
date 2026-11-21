@@ -1,0 +1,806 @@
+- id: k1-t1
+  title: "1. Дорогие машины среди новых (NumPy)"
+  difficulty: main
+  introduces: []
+  uses: [bool-mask, mask-combine]
+  statement: |
+    Числовые столбцы `cars.csv` загружены функцией `load_numeric()` в массивы `year` и `price`. Получите `n_new` — число машин **2015 года выпуска и новее** и `share_expensive` — долю машин дороже **20 000** евро **среди них** (число от 0 до 1).
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, names = load_numeric()          # урок 1.1
+    year, price = X[:, 0], X[:, 3]
+  starter: |
+    new = ...
+    n_new = ...
+    share_expensive = ...
+    print(n_new, round(share_expensive, 3))
+  solution: |
+    new = year >= 2015
+    n_new = int(new.sum())
+    share_expensive = ((price > 20_000) & new).sum() / n_new
+    print(n_new, round(share_expensive, 3))
+  explanation: |
+    - Маска `year >= 2015` отмечает новые машины; её сумма — их число (урок 1.5).
+    - «Дорогие **и** новые» — объединение масок через `&`; делим на число новых, а не на все машины: доля считается **среди новых**.
+  alternatives:
+    - |
+      new = year >= 2015
+      n_new = int(new.sum())
+      share_expensive = (price[new] > 20_000).mean()
+  hints:
+    - Сначала маска новых машин; доля — среди них, значит, знаменатель — число новых.
+    - "`new = year >= 2015`; дорогие среди новых — `(price > 20_000) & new`."
+    - "`share_expensive = ((price > 20_000) & new).sum() / n_new` или `(price[new] > 20_000).mean()`."
+  tests: |
+    close(var('n_new', 'number', 'числом'), ref('n_new'), 'Машин 2015 года и новее — {expected}, а у вас {actual}.')
+    s = var('share_expensive', 'number', 'числом')
+    ensure(0 <= s <= 1, 'Доля должна быть числом от 0 до 1, а у вас {0}.'.format(s))
+    p, y = ref('price'), ref('year')
+    if abs(s - ((p > 20_000) & (y >= 2015)).sum() / len(p)) < 1e-9:
+        fail('Доля посчитана от всех машин. Нужна доля **среди новых**: делите на `n_new`.')
+    close(s, ref('share_expensive'), 'Доля дорогих среди новых — {expected}, а у вас {actual}.')
+    close(alt('share_expensive'), alt_ref('share_expensive'), HARDCODE_MSG)
+  files: [cars.csv]
+  wrong:
+    - code: |
+        new = year >= 2015
+        n_new = int(new.sum())
+        share_expensive = ((price > 20_000) & new).sum() / len(price)
+      expect: среди новых
+    - code: |
+        new = year > 2015
+        n_new = int(new.sum())
+        share_expensive = ((price > 20_000) & new).sum() / n_new
+      expect: 2015 года и новее
+
+- id: k1-t2
+  title: "2. Квартили пробега машин 2010–2014 годов (NumPy)"
+  difficulty: main
+  introduces: []
+  uses: [quantiles-iqr, joint-mask]
+  statement: |
+    Для машин **2010–2014** годов выпуска (обе границы включительно) получите квартили пробега `q1`, `q3` и межквартильный размах `iqr`.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, names = load_numeric()
+    year, distance = X[:, 0], X[:, 1]
+  starter: |
+    mask = ...
+    q1, q3 = ...
+    iqr = ...
+    print(q1, q3, iqr)
+  solution: |
+    mask = (year >= 2010) & (year <= 2014)
+    q1, q3 = np.quantile(distance[mask], [0.25, 0.75])
+    iqr = q3 - q1
+    print(q1, q3, iqr)
+  explanation: |
+    - Диапазон годов — две маски через `&`, обе границы включены (урок 1.8).
+    - `np.quantile(значения, [0.25, 0.75])` — оба квартиля сразу (урок 1.7); IQR — их разность: ширина центральной половины пробегов.
+  hints:
+    - Отберите пробеги машин нужных лет общей маской, затем квартили.
+    - "`mask = (year >= 2010) & (year <= 2014)`; `np.quantile(distance[mask], [0.25, 0.75])`."
+    - "`iqr = q3 - q1`."
+  tests: |
+    close(var('q1', 'number', 'числом'), ref('q1'), 'Q1 пробега — {expected}, а у вас {actual}.')
+    close(var('q3', 'number', 'числом'), ref('q3'), 'Q3 пробега — {expected}, а у вас {actual}.')
+    close(var('iqr', 'number', 'числом'), ref('iqr'), 'IQR — {expected}, а у вас {actual}.')
+    close(alt('iqr'), alt_ref('iqr'), HARDCODE_MSG)
+  files: [cars.csv]
+  wrong:
+    - code: |
+        mask = (year > 2010) & (year < 2014)
+        q1, q3 = np.quantile(distance[mask], [0.25, 0.75])
+        iqr = q3 - q1
+      expect: Q1 пробега
+    - code: |
+        mask = (year >= 2010) & (year <= 2014)
+        q1, q3 = np.quantile(distance[mask], [0.25, 0.75])
+        iqr = q3 + q1
+      expect: IQR
+
+- id: k1-t3
+  title: "3. Насколько «прыгает» медиана выборки (NumPy)"
+  difficulty: main
+  introduces: []
+  uses: [rng-sample, sampling-variability, mean-median]
+  statement: |
+    Генератор `rng = np.random.default_rng(0)` уже создан. 300 раз выберите **без повторов** 200 случайных цен из `price` (`rng.choice(price, 200, replace=False)`) и посчитайте медиану каждой выборки — массив `medians`. Получите `spread` — стандартное отклонение этих медиан и `full_median` — медиану всех цен.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, names = load_numeric()
+    price = X[:, 3]
+    rng = np.random.default_rng(0)
+  starter: |
+    medians = np.array([... for _ in range(300)])
+    spread = ...
+    full_median = ...
+    print(round(spread), full_median)
+  solution: |
+    medians = np.array([np.median(rng.choice(price, 200, replace=False)) for _ in range(300)])
+    spread = medians.std()
+    full_median = np.median(price)
+    print(round(spread), full_median)
+  explanation: |
+    - Каждая случайная выборка даёт свою медиану — это выборочная изменчивость (урок 1.9).
+    - Цикл в квадратных скобках собирает 300 медиан в список, `np.array` превращает его в массив.
+    - Разброс медиан выборок по 200 машин — около 500 евро: медиана небольшой выборки может отличаться от медианы всех цен на несколько сотен евро.
+  hints:
+    - "В каждой из 300 итераций — новая выборка `rng.choice(price, 200, replace=False)` и её медиана."
+    - "`np.median(rng.choice(price, 200, replace=False))` внутри `[... for _ in range(300)]`."
+    - "`spread = medians.std()`; `full_median = np.median(price)`."
+  tests: |
+    import numpy as np
+    m = var('medians', np.ndarray, 'массивом NumPy')
+    ensure(len(m) == 300, 'Медиан должно быть 300 — по одной на выборку, а у вас {0}.'.format(len(m)))
+    if np.allclose(m, m[0]):
+        fail('Все медианы одинаковые: выборку нужно брать заново на каждой итерации — `rng.choice(...)` внутри цикла.')
+    same_array(m, ref('medians'), 'Медианы выборок не совпадают: используйте генератор `rng` ровно так, как в условии (`rng.choice(price, 200, replace=False)`).')
+    close(var('spread', 'number', 'числом'), ref('spread'), 'Разброс медиан — {expected}, а у вас {actual}.')
+    close(var('full_median', 'number', 'числом'), ref('full_median'), 'Медиана всех цен — {expected}, а у вас {actual}.')
+    close(alt('spread'), alt_ref('spread'), HARDCODE_MSG)
+  files: [cars.csv]
+  wrong:
+    - code: |
+        sample = rng.choice(price, 200, replace=False)
+        medians = np.array([np.median(sample) for _ in range(300)])
+        spread = medians.std()
+        full_median = np.median(price)
+      expect: заново на каждой итерации
+    - code: |
+        medians = np.array([np.mean(rng.choice(price, 200, replace=False)) for _ in range(300)])
+        spread = medians.std()
+        full_median = np.median(price)
+      expect: Медианы выборок
+
+- id: k1-t4
+  title: "4. Осмотр сырой таблицы (Pandas)"
+  difficulty: main
+  introduces: []
+  uses: [pd-read-csv, pd-isna-duplicated]
+  statement: |
+    Прочитайте сырой файл `cars.csv` в `raw` и получите `missing` — число пропусков **только в тех колонках, где они есть** (Series), и `n_dup` — число точных повторов строк.
+  prelude: |
+    import pandas as pd
+  starter: |
+    raw = ...
+    na = raw.isna().sum()
+    missing = ...
+    n_dup = ...
+    print(missing)
+    print(n_dup)
+  solution: |
+    raw = pd.read_csv('cars.csv')
+    na = raw.isna().sum()
+    missing = na[na > 0]
+    n_dup = int(raw.duplicated().sum())
+    print(missing)
+    print(n_dup)
+  explanation: |
+    - `isna().sum()` — пропуски по каждой колонке (урок 2.3); фильтр `na[na > 0]` оставляет только колонки с пропусками.
+    - `duplicated()` отмечает строки, полностью повторяющие более раннюю; сумма — число повторов.
+    - Пропуски в четырёх колонках (по 205) — это одни и те же неполные строки; их и повторы удаляют на подготовке (урок 2.6).
+  hints:
+    - Пропуски по колонкам — `isna().sum()`; оставьте только ненулевые значения.
+    - "`missing = na[na > 0]`; повторы — `raw.duplicated().sum()`."
+    - "`raw = pd.read_csv('cars.csv')`."
+  tests: |
+    import pandas as pd
+    m = var('missing', pd.Series, 'Series')
+    if (m == 0).any():
+        fail('В `missing` есть колонки без пропусков. Оставьте только те, где пропуски есть: `na[na > 0]`.')
+    same_frame(m, ref('missing'), 'Пропуски по колонкам не совпадают.')
+    close(var('n_dup', 'number', 'числом'), ref('n_dup'), 'Точных повторов {expected}, а у вас {actual}.')
+    close(alt('n_dup'), alt_ref('n_dup'), HARDCODE_MSG)
+  files: [cars.csv]
+  wrong:
+    - code: |
+        raw = pd.read_csv('cars.csv')
+        na = raw.isna().sum()
+        missing = na
+        n_dup = int(raw.duplicated().sum())
+      expect: без пропусков
+    - code: |
+        raw = pd.read_csv('cars.csv')
+        na = raw.isna().sum()
+        missing = na[na > 0]
+        n_dup = int(raw.duplicated(keep=False).sum())
+      expect: Точных повторов
+
+- id: k1-t5
+  title: "5. Подготовка таблицы (Pandas)"
+  difficulty: main
+  introduces: []
+  uses: [pd-drop-duplicates, pd-rename-drop, pd-new-column]
+  statement: |
+    Подготовьте `table` из сырого `raw`: удалите точные повторы и строки с пропусками, переименуйте `'Price(euro)'` в `'Price'` и `'Engine_capacity(cm3)'` в `'Engine'`, добавьте возраст `Age` = 2022 − `Year` и пробег в год `km_year` = `Distance` / `Age`. Исходную `raw` не меняйте.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+  starter: |
+    table = ...
+    table = table.rename(columns=...)
+    table['Age'] = ...
+    table['km_year'] = ...
+    print(table.shape)
+    table.head(3)
+  solution: |
+    table = raw.drop_duplicates().dropna()
+    table = table.rename(columns={'Price(euro)': 'Price', 'Engine_capacity(cm3)': 'Engine'})
+    table['Age'] = 2022 - table['Year']
+    table['km_year'] = table['Distance'] / table['Age']
+    print(table.shape)
+    table.head(3)
+  explanation: |
+    - `drop_duplicates()` и `dropna()` возвращают новые таблицы — `raw` не меняется (урок 2.6).
+    - `rename(columns={старое: новое})` — короткие имена колонок (урок 2.8).
+    - Новые признаки считаются сразу по всей колонке; в данных нет машин 2022 года, поэтому деления на ноль не будет.
+  hints:
+    - "Цепочка: `drop_duplicates()`, затем `dropna()`; переименование — словарь в `rename(columns=...)`."
+    - "`table.rename(columns={'Price(euro)': 'Price', 'Engine_capacity(cm3)': 'Engine'})`."
+    - "`table['Age'] = 2022 - table['Year']`; `table['km_year'] = table['Distance'] / table['Age']`."
+  tests: |
+    import pandas as pd
+    t = var('table', pd.DataFrame, 'таблицей DataFrame')
+    ensure(len(var('raw', pd.DataFrame, 'таблицей')) == len(ref('raw')), 'Исходную таблицу `raw` менять не нужно: результат — новая таблица `table`.')
+    for c in ['Price', 'Engine', 'Age', 'km_year']:
+        ensure(c in t.columns, 'В `table` нет колонки `{0}`.'.format(c))
+    ensure(t.isna().sum().sum() == 0, 'В `table` остались пропуски — удалите неполные строки: `dropna()`.')
+    if t.drop(columns=['Age', 'km_year']).duplicated().any():
+        fail('В `table` остались точные повторы — удалите их: `drop_duplicates()`.')
+    ensure(len(t) == len(ref('table')), 'В `table` должно быть {0} строк, а у вас {1}.'.format(len(ref('table')), len(t)))
+    same_frame(t[['Age', 'km_year']], ref('table')[['Age', 'km_year']], 'Признаки `Age` и `km_year` не совпадают.')
+    close(len(alt('table')), len(alt_ref('table')), HARDCODE_MSG)
+  files: [cars.csv]
+  wrong:
+    - code: |
+        table = raw.dropna()
+        table = table.rename(columns={'Price(euro)': 'Price', 'Engine_capacity(cm3)': 'Engine'})
+        table['Age'] = 2022 - table['Year']
+        table['km_year'] = table['Distance'] / table['Age']
+      expect: повторы
+    - code: |
+        table = raw.drop_duplicates().dropna()
+        table = table.rename(columns={'Price(euro)': 'Price', 'Engine_capacity(cm3)': 'Engine'})
+        table['Age'] = 2022 - table['Year']
+        table['km_year'] = table['Age'] / table['Distance']
+      expect: "`km_year`"
+
+- id: k1-t6
+  title: "6. Самые дешёвые новые SUV с автоматом (Pandas)"
+  difficulty: main
+  introduces: []
+  uses: [pd-bool-filter, pd-sort-values, pd-select-columns]
+  statement: |
+    Получите `cheapest` — пять самых дешёвых объявлений `SUV` с автоматом **2015 года выпуска и новее**: колонки `source_row_id`, `Make`, `Model`, `Year`, `Distance`, `Price` (в этом порядке), строки — по возрастанию цены.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    columns = ['source_row_id', 'Make', 'Model', 'Year', 'Distance', 'Price']
+    suv = ...
+    cheapest = ...
+    cheapest
+  solution: |
+    columns = ['source_row_id', 'Make', 'Model', 'Year', 'Distance', 'Price']
+    suv = df[(df['Style'] == 'SUV') & (df['Transmission'] == 'Automatic') & (df['Year'] >= 2015)]
+    cheapest = suv.sort_values('Price')[columns].head(5)
+    cheapest
+  explanation: |
+    - Три условия в скобках через `&` (урок 2.5).
+    - Сортировка по возрастанию цены и пять первых строк (урок 2.2); список колонок — урок 2.4.
+    - Такой список — кандидаты на проверку: SUV 2015+ дешевле 6 000 евро выглядит подозрительно дёшево.
+  hints:
+    - Три условия одновременно, затем сортировка по цене и первые пять строк.
+    - "`df[(df['Style'] == 'SUV') & (df['Transmission'] == 'Automatic') & (df['Year'] >= 2015)]`."
+    - "`cheapest = suv.sort_values('Price')[columns].head(5)`."
+  tests: |
+    import pandas as pd
+    c = var('cheapest', pd.DataFrame, 'таблицей DataFrame')
+    cols = ['source_row_id', 'Make', 'Model', 'Year', 'Distance', 'Price']
+    ensure(list(c.columns) == cols, 'Колонки должны быть {0}, а у вас {1}.'.format(cols, list(c.columns)))
+    ensure(len(c) == 5, 'Нужно пять объявлений, а у вас {0}.'.format(len(c)))
+    ensure(list(c['Price']) == sorted(c['Price']), 'Строки должны идти по возрастанию цены.')
+    same_frame(c, ref('cheapest'), 'Список не совпадает: SUV, автомат, 2015 год и новее, пять самых дешёвых.')
+    same_frame(alt('cheapest'), alt_ref('cheapest'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        columns = ['source_row_id', 'Make', 'Model', 'Year', 'Distance', 'Price']
+        suv = df[(df['Style'] == 'SUV') & (df['Year'] >= 2015)]
+        cheapest = suv.sort_values('Price')[columns].head(5)
+      expect: автомат
+    - code: |
+        columns = ['source_row_id', 'Make', 'Model', 'Year', 'Distance', 'Price']
+        suv = df[(df['Style'] == 'SUV') & (df['Transmission'] == 'Automatic') & (df['Year'] >= 2015)]
+        cheapest = suv.sort_values('Price', ascending=False)[columns].head(5)
+      expect: по возрастанию
+
+- id: k1-t7
+  title: "7. Класс двигателя через apply (Pandas)"
+  difficulty: main
+  introduces: []
+  uses: [pd-apply, pd-value-counts, py-functions]
+  statement: |
+    Напишите функцию `engine_class(volume)`: объём **меньше 1 400** см³ — `'малый'`, от 1 400 до 2 000 **включительно** — `'средний'`, больше 2 000 — `'большой'`. Добавьте колонку `engine_class` через `apply` и получите `class_share` — доли классов (Series по убыванию).
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    def engine_class(volume):
+        ...
+
+    df['engine_class'] = ...
+    class_share = ...
+    print(class_share.round(3))
+  solution: |
+    def engine_class(volume):
+        if volume < 1400:
+            return 'малый'
+        if volume <= 2000:
+            return 'средний'
+        return 'большой'
+
+    df['engine_class'] = df['Engine'].apply(engine_class)
+    class_share = df['engine_class'].value_counts(normalize=True)
+    print(class_share.round(3))
+  explanation: |
+    - Функция с условиями (урок 0.8): границы проверяются по порядку, поэтому второе условие уже знает, что объём не меньше 1 400.
+    - `apply` применяет функцию к каждому значению колонки (урок 2.9); `value_counts(normalize=True)` — доли (урок 2.3).
+    - Две трети объявлений — средние двигатели 1,4–2,0 литра.
+  hints:
+    - Цепочка `if`, которая возвращает название класса; затем `apply` к колонке `Engine`.
+    - "`df['engine_class'] = df['Engine'].apply(engine_class)`; доли — `value_counts(normalize=True)`."
+    - "Граница 2 000 включительно: `if volume <= 2000: return 'средний'`."
+  tests: |
+    import pandas as pd
+    f = var('engine_class')
+    ensure(callable(f), '`engine_class` должна быть функцией.')
+    for v, want in [(1000, 'малый'), (1399, 'малый'), (1400, 'средний'), (2000, 'средний'), (2001, 'большой'), (4000, 'большой')]:
+        equal(f(v), want, 'engine_class({0}) должна вернуть «{1}», а вернула «{{actual}}».'.format(v, want))
+    s = var('class_share', pd.Series, 'Series')
+    ensure(s.max() <= 1, 'Нужны доли от 0 до 1: `value_counts(normalize=True)`.')
+    same_frame(s, ref('class_share'), 'Доли классов двигателя не совпадают.')
+    same_frame(alt('class_share'), alt_ref('class_share'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def engine_class(volume):
+            if volume < 1400:
+                return 'малый'
+            if volume < 2000:
+                return 'средний'
+            return 'большой'
+
+        df['engine_class'] = df['Engine'].apply(engine_class)
+        class_share = df['engine_class'].value_counts(normalize=True)
+      expect: engine_class(2000)
+    - code: |
+        def engine_class(volume):
+            if volume < 1400:
+                return 'малый'
+            if volume <= 2000:
+                return 'средний'
+            return 'большой'
+
+        df['engine_class'] = df['Engine'].apply(engine_class)
+        class_share = df['engine_class'].value_counts()
+      expect: доли от 0 до 1
+
+- id: k1-t8
+  title: "8. Автомат или механика: разница медиан по надёжным кузовам"
+  difficulty: main
+  introduces: []
+  uses: [pd-pivot-table, group-size-caution, pd-new-column]
+  statement: |
+    Оставьте типы кузова **не менее чем с 500** объявлениями и получите `price_pivot` — медианную цену: кузова по строкам, `Automatic` и `Manual` по колонкам — с новой колонкой `diff` = `Automatic` − `Manual`. Затем `max_diff_style` — кузов с наибольшей разницей.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    counts = df['Style'].value_counts()
+    big = ...
+    price_pivot = ...
+    price_pivot['diff'] = ...
+    max_diff_style = ...
+    print(price_pivot.round(0))
+    print(max_diff_style)
+  solution: |
+    counts = df['Style'].value_counts()
+    big = counts[counts >= 500].index
+    price_pivot = df[df['Style'].isin(big)].pivot_table(index='Style', columns='Transmission', values='Price', aggfunc='median')
+    price_pivot['diff'] = price_pivot['Automatic'] - price_pivot['Manual']
+    max_diff_style = price_pivot['diff'].idxmax()
+    print(price_pivot.round(0))
+    print(max_diff_style)
+  explanation: |
+    - Частоты кузовов и фильтр `>= 500` — только надёжные группы (урок 3.3); `isin(big)` оставляет их объявления.
+    - Сводная медиан (урок 3.4) и колонка-разность (урок 2.8); `idxmax()` — кузов с наибольшей разницей.
+    - Помните оговорку: автоматы в среднем новее, поэтому разница медиан — не «стоимость коробки».
+  hints:
+    - "Сначала названия кузовов с 500+ объявлениями, затем сводная только по ним."
+    - "`big = counts[counts >= 500].index`; `df[df['Style'].isin(big)].pivot_table(index='Style', columns='Transmission', values='Price', aggfunc='median')`."
+    - "`price_pivot['diff'] = price_pivot['Automatic'] - price_pivot['Manual']`; `max_diff_style = price_pivot['diff'].idxmax()`."
+  tests: |
+    import pandas as pd
+    p = var('price_pivot', pd.DataFrame, 'таблицей DataFrame')
+    if len(p) > len(ref('price_pivot')):
+        fail('В сводной есть кузова меньше чем с 500 объявлениями — отфильтруйте их до сводной.')
+    ensure('diff' in p.columns, 'Добавьте колонку `diff` = Automatic − Manual.')
+    same_frame(p, ref('price_pivot'), 'Сводная медианных цен не совпадает.', check_like=True)
+    equal(var('max_diff_style', str, 'строкой — названием кузова'), ref('max_diff_style'), 'Наибольшая разница — у кузова {expected}, а у вас {actual}.')
+    close(alt('price_pivot')['diff'].max(), alt_ref('price_pivot')['diff'].max(), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        counts = df['Style'].value_counts()
+        price_pivot = df.pivot_table(index='Style', columns='Transmission', values='Price', aggfunc='median')
+        price_pivot['diff'] = price_pivot['Automatic'] - price_pivot['Manual']
+        max_diff_style = price_pivot['diff'].idxmax()
+      expect: меньше чем с 500
+    - code: |
+        counts = df['Style'].value_counts()
+        big = counts[counts >= 500].index
+        price_pivot = df[df['Style'].isin(big)].pivot_table(index='Style', columns='Transmission', values='Price', aggfunc='mean')
+        price_pivot['diff'] = price_pivot['Automatic'] - price_pivot['Manual']
+        max_diff_style = price_pivot['diff'].idxmax()
+      expect: медианных цен
+
+- id: k1-t9
+  title: "9. Больше всего автоматов: по числу и по доле"
+  difficulty: main
+  introduces: []
+  uses: [pd-crosstab, count-vs-share, group-size-caution]
+  statement: |
+    Ответьте на два разных вопроса про тип топлива:
+
+    - `most_auto_count` — у какого топлива **больше всего** объявлений с автоматом (по числу);
+    - `most_auto_share` — у какого топлива **самая большая доля** автоматов среди типов топлива **не менее чем с 300** объявлениями.
+
+    Таблицы: `auto_counts` — `crosstab` числа объявлений (топливо × коробка), `auto_share` — доли внутри топлива (`normalize='index'`).
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    auto_counts = ...
+    auto_share = ...
+    sizes = df['Fuel_type'].value_counts()
+    most_auto_count = ...
+    most_auto_share = ...
+    print(most_auto_count, most_auto_share)
+  solution: |
+    auto_counts = pd.crosstab(df['Fuel_type'], df['Transmission'])
+    auto_share = pd.crosstab(df['Fuel_type'], df['Transmission'], normalize='index')
+    sizes = df['Fuel_type'].value_counts()
+    most_auto_count = auto_counts['Automatic'].idxmax()
+    most_auto_share = auto_share.loc[sizes[sizes >= 300].index, 'Automatic'].idxmax()
+    print(most_auto_count, most_auto_share)
+  explanation: |
+    - Число и доля — разные вопросы (урок 3.5): больше всего автоматов среди дизелей (их просто больше всего), а самая большая **доля** — у подключаемых гибридов.
+    - Доля считается внутри топлива (`normalize='index'`), а малые группы (электромобили — 31 объявление) отбрасываются: их доля ненадёжна (урок 3.3).
+  hints:
+    - "Две таблицы сочетаний: с количествами и с долями по строкам; для доли сначала отберите типы топлива с 300+ объявлениями."
+    - "`most_auto_count = auto_counts['Automatic'].idxmax()`."
+    - "`most_auto_share = auto_share.loc[sizes[sizes >= 300].index, 'Automatic'].idxmax()`."
+  tests: |
+    import pandas as pd
+    same_frame(var('auto_counts', pd.DataFrame, 'таблицей DataFrame'), ref('auto_counts'), 'Таблица количеств не совпадает: `pd.crosstab(df[\'Fuel_type\'], df[\'Transmission\'])`.', check_like=True)
+    sh = var('auto_share', pd.DataFrame, 'таблицей DataFrame')
+    ensure(((sh.sum(axis=1) - 1).abs() < 1e-6).all(), 'В `auto_share` сумма строки должна быть 1: `normalize=\'index\'`.')
+    equal(var('most_auto_count', str, 'строкой'), ref('most_auto_count'), 'Больше всего автоматов по числу — у {expected}, а у вас {actual}.')
+    got = var('most_auto_share', str, 'строкой')
+    if got == 'Hybrid' and ref('most_auto_share') != 'Hybrid':
+        fail('Проверьте все типы топлива с 300+ объявлениями: доля автоматов у одного из них ещё выше.')
+    equal(got, ref('most_auto_share'), 'Самая большая доля автоматов (среди групп с 300+ объявлениями) — у {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        auto_counts = pd.crosstab(df['Fuel_type'], df['Transmission'])
+        auto_share = pd.crosstab(df['Fuel_type'], df['Transmission'], normalize='index')
+        sizes = df['Fuel_type'].value_counts()
+        most_auto_count = auto_share['Automatic'].idxmax()
+        most_auto_share = auto_share.loc[sizes[sizes >= 300].index, 'Automatic'].idxmax()
+      expect: по числу
+    - code: |
+        auto_counts = pd.crosstab(df['Fuel_type'], df['Transmission'])
+        auto_share = pd.crosstab(df['Fuel_type'], df['Transmission'], normalize='index')
+        sizes = df['Fuel_type'].value_counts()
+        most_auto_count = auto_counts['Automatic'].idxmax()
+        most_auto_share = auto_counts['Automatic'].idxmax()
+      expect: Самая большая доля
+
+- id: k1-t10
+  title: "10. Оценка по похожим машинам и её ошибка"
+  difficulty: main
+  introduces: []
+  uses: [group-estimate, metric-mae-mape]
+  statement: |
+    Оцените цену каждой машины медианой цены машин **той же марки и того же года** (`estimate`, Series той же длины, что `df`) и посчитайте ошибки оценки: `mae` — средняя абсолютная ошибка в евро, `mape` — средняя ошибка в процентах от фактической цены.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    estimate = ...
+    mae = ...
+    mape = ...
+    print(round(mae), round(mape, 1))
+  solution: |
+    estimate = df.groupby(['Make', 'Year'])['Price'].transform('median')
+    mae = (df['Price'] - estimate).abs().mean()
+    mape = ((df['Price'] - estimate).abs() / df['Price']).mean() * 100
+    print(round(mae), round(mape, 1))
+  explanation: |
+    - `transform('median')` возвращает для каждой строки медиану её группы — той же длины, что таблица (урок 3.6).
+    - MAE — среднее модуля ошибки, MAPE — среднее относительной ошибки × 100 (урок 3.7).
+    - Ошибка около 3 000 евро и 36 % — оценка по марке и году грубая; это мы и увидели на слайде 3 дата-истории (урок 4.12). Помните: на тех же данных это не качество прогноза.
+  hints:
+    - "Медиана группы для каждой строки — `transform`, а не `median()` с группировкой."
+    - "`estimate = df.groupby(['Make', 'Year'])['Price'].transform('median')`."
+    - "`mae = (df['Price'] - estimate).abs().mean()`; `mape = ((df['Price'] - estimate).abs() / df['Price']).mean() * 100`."
+  tests: |
+    import pandas as pd
+    e = var('estimate', pd.Series, 'Series')
+    ensure(len(e) == len(ref('df')), '`estimate` должна быть той же длины, что таблица: `transform(\'median\')`, а не `median()`.')
+    same_frame(e, ref('estimate'), 'Оценки не совпадают: медиана цены той же марки и того же года.')
+    close(var('mae', 'number', 'числом'), ref('mae'), 'MAE — {expected}, а у вас {actual}.')
+    m = var('mape', 'number', 'числом')
+    if m < 1:
+        fail('MAPE должна быть в процентах: умножьте на 100.')
+    close(m, ref('mape'), 'MAPE — {expected} %, а у вас {actual}.')
+    close(alt('mae'), alt_ref('mae'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        estimate = df.groupby(['Make', 'Year'])['Price'].transform('mean')
+        mae = (df['Price'] - estimate).abs().mean()
+        mape = ((df['Price'] - estimate).abs() / df['Price']).mean() * 100
+      expect: медиана цены
+    - code: |
+        estimate = df.groupby(['Make', 'Year'])['Price'].transform('median')
+        mae = (df['Price'] - estimate).mean()
+        mape = ((df['Price'] - estimate).abs() / df['Price']).mean() * 100
+      expect: MAE
+
+- id: k1-t11
+  kind: plot
+  title: "11. Слайд: доля автоматов растёт с годом выпуска"
+  difficulty: main
+  introduces: []
+  uses: [pd-groupby, mpl-fig-ax, takeaway-title]
+  statement: |
+    Получите `auto_share` — долю автоматов в процентах по году выпуска для машин **2000–2021** годов и нарисуйте её линией с маркерами. Заголовок-вывод — ровно `f'Доля автоматов выросла с {a:.0f}% в 2000 году до {b:.0f}% в 2021 году'`, где `a` и `b` — доли 2000 и 2021 годов. Подпишите оси.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    recent = ...
+    auto_share = ...
+    a, b = auto_share[2000], auto_share[2021]
+    fig, ax = plt.subplots(figsize=(10, 3.5))
+    ax.plot(...)
+    ax.set(title=..., xlabel=..., ylabel=...)
+    plt.show()
+  solution: |
+    recent = df[df['Year'].between(2000, 2021)]
+    auto_share = 100 * (recent['Transmission'] == 'Automatic').groupby(recent['Year']).mean()
+    a, b = auto_share[2000], auto_share[2021]
+    fig, ax = plt.subplots(figsize=(10, 3.5))
+    ax.plot(auto_share.index, auto_share.values, 'o-')
+    ax.set(title=f'Доля автоматов выросла с {a:.0f}% в 2000 году до {b:.0f}% в 2021 году',
+           xlabel='Год выпуска', ylabel='Доля автоматов, %')
+    plt.show()
+  explanation: |
+    - Маска «автомат», сгруппированная по году, — доля автоматов в каждом году (урок 3.2); × 100 — проценты.
+    - Линия — для упорядоченного признака (урок 4.2), заголовок-вывод с числами из данных (урок 4.12).
+  hints:
+    - "Отберите годы 2000–2021; доля — среднее маски `Transmission == 'Automatic'` по годам."
+    - "`auto_share = 100 * (recent['Transmission'] == 'Automatic').groupby(recent['Year']).mean()`."
+    - "`ax.plot(auto_share.index, auto_share.values, 'o-')`; заголовок — f-строка из условия."
+  tests: |
+    import pandas as pd
+    s = var('auto_share', pd.Series, 'Series')
+    if s.max() <= 1:
+        fail('Доля должна быть в процентах: умножьте на 100.')
+    ensure(s.index.min() == 2000 and s.index.max() == 2021, 'Нужны годы с 2000 по 2021.')
+    same_frame(s, ref('auto_share'), 'Доли автоматов по годам не совпадают.')
+    ax = axes()
+    ensure(len(ax.get_lines()) >= 1, 'Нарисуйте линию: `ax.plot(...)`.')
+    same_array(ax.get_lines()[0].get_ydata(), ref('auto_share').values, 'Линия должна показывать доли по годам.')
+    want = 'Доля автоматов выросла с {0:.0f}% в 2000 году до {1:.0f}% в 2021 году'.format(ref('a'), ref('b'))
+    equal(ax.get_title(), want, 'Заголовок должен быть «{expected}», а у вас «{actual}».')
+    ensure(ax.get_xlabel().strip() != '' and ax.get_ylabel().strip() != '', 'Подпишите обе оси.')
+    close(alt('b'), alt_ref('b'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        recent = df[df['Year'].between(2000, 2021)]
+        auto_share = (recent['Transmission'] == 'Automatic').groupby(recent['Year']).mean()
+        a, b = auto_share[2000], auto_share[2021]
+        fig, ax = plt.subplots()
+        ax.plot(auto_share.index, auto_share.values, 'o-')
+        ax.set(title=f'Доля автоматов выросла с {a:.0f}% в 2000 году до {b:.0f}% в 2021 году', xlabel='Год', ylabel='Доля')
+        plt.show()
+      expect: в процентах
+    - code: |
+        recent = df[df['Year'].between(2000, 2021)]
+        auto_share = 100 * (recent['Transmission'] == 'Automatic').groupby(recent['Year']).mean()
+        a, b = auto_share[2000], auto_share[2021]
+        fig, ax = plt.subplots()
+        ax.plot(auto_share.index, auto_share.values, 'o-')
+        ax.set(title='Доля автоматов по годам', xlabel='Год', ylabel='Доля, %')
+        plt.show()
+      expect: Заголовок должен быть
+
+- id: k1-t12
+  kind: plot
+  title: "12. Пробег по типу кузова: боксплоты"
+  difficulty: main
+  introduces: []
+  uses: [conditional-dist, boxplot-rule, sns-basics]
+  statement: |
+    Нарисуйте боксплоты **пробега** (`Distance`) по типу кузова для пяти самых частых кузовов (`top5`, в порядке частоты), без точек за усами. Добавьте заголовок и подпись оси Y с единицами `км`.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    top5 = ...
+    fig, ax = plt.subplots(figsize=(10, 3.5))
+    sns.boxplot(...)
+    ax.set(title=..., xlabel='Тип кузова', ylabel=...)
+    plt.show()
+  solution: |
+    top5 = df['Style'].value_counts().head(5).index
+    fig, ax = plt.subplots(figsize=(10, 3.5))
+    sns.boxplot(data=df[df['Style'].isin(top5)], x='Style', y='Distance', order=top5, showfliers=False, ax=ax)
+    ax.set(title='Пробег по типу кузова: больше всего у универсалов и седанов', xlabel='Тип кузова', ylabel='Пробег, км')
+    plt.show()
+  explanation: |
+    - Пять самых частых кузовов — `value_counts().head(5).index`; `order=top5` — порядок ящиков (урок 4.7).
+    - `showfliers=False` прячет точки за усами (квартили считаются по всем записям, урок 4.6).
+    - Условное распределение пробега: у универсалов и седанов медианный пробег больше, у кроссоверов и SUV — меньше (они в среднем новее).
+  hints:
+    - "Пять кузовов — `value_counts().head(5).index`; боксплоты — `sns.boxplot` с `order=top5`."
+    - "`sns.boxplot(data=df[df['Style'].isin(top5)], x='Style', y='Distance', order=top5, showfliers=False, ax=ax)`."
+    - "`ax.set(title=..., ylabel='Пробег, км')`."
+  tests: |
+    import numpy as np
+    ax = axes()
+    top5 = [str(x) for x in ref('top5')]
+    labels = [t.get_text() for t in ax.get_xticklabels()]
+    ensure(labels == top5, 'Ящики должны идти в порядке частоты кузовов: {0}, а у вас {1}.'.format(top5, labels))
+    boxes = [p for p in ax.patches if type(p).__name__ == 'PathPatch']
+    ensure(len(boxes) == 5, 'Должно быть пять ящиков.')
+    d = ref('df')
+    meds = [d.loc[d['Style'] == s, 'Distance'].median() for s in top5]
+    hl = [l.get_ydata()[0] for l in ax.get_lines() if len(l.get_ydata()) == 2 and l.get_ydata()[0] == l.get_ydata()[1]]
+    ensure(all(any(np.isclose(m, h) for h in hl) for m in meds), 'Боксплоты должны показывать пробег (`y=\'Distance\'`).')
+    fliers = [l for l in ax.get_lines() if l.get_marker() not in (None, 'None', '') and len(l.get_xdata()) > 0]
+    ensure(len(fliers) == 0, 'Спрячьте точки за усами: `showfliers=False`.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+    ensure('км' in ax.get_ylabel().lower(), 'Подпишите ось Y с единицами: `ylabel=\'Пробег, км\'`.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        top5 = df['Style'].value_counts().head(5).index
+        fig, ax = plt.subplots()
+        sns.boxplot(data=df[df['Style'].isin(top5)], x='Style', y='Distance', showfliers=False, ax=ax)
+        ax.set(title='Пробег', ylabel='Пробег, км')
+        plt.show()
+      expect: порядке частоты
+    - code: |
+        top5 = df['Style'].value_counts().head(5).index
+        fig, ax = plt.subplots()
+        sns.boxplot(data=df[df['Style'].isin(top5)], x='Style', y='Price', order=top5, showfliers=False, ax=ax)
+        ax.set(title='Пробег', ylabel='Пробег, км')
+        plt.show()
+      expect: "`y='Distance'`"
+
+- id: k1-t13
+  title: "13. Граница фильтрации для Toyota"
+  difficulty: main
+  introduces: []
+  uses: [filter-boundary, pd-bool-filter, pd-sort-values]
+  statement: |
+    Для объявлений **Toyota** проведите границу от **60 000 €** при нулевом пробеге до нуля при **500 000 км**. Получите `review` — записи Toyota выше границы с колонками `source_row_id`, `Model`, `Year`, `Distance`, `Price` по убыванию цены — и `n_review` — их число.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    toyota = ...
+    limit = ...
+    review = ...
+    n_review = ...
+    print(n_review)
+    review.head()
+  solution: |
+    toyota = df[df['Make'] == 'Toyota']
+    limit = 60_000 * (1 - toyota['Distance'] / 500_000)
+    review = toyota[toyota['Price'] > limit][['source_row_id', 'Model', 'Year', 'Distance', 'Price']].sort_values('Price', ascending=False)
+    n_review = len(review)
+    print(n_review)
+    review.head()
+  explanation: |
+    - Прямая через (0; 60 000) и (500 000; 0) — `60_000 * (1 - x / 500_000)` (урок 4.8); граница своя у каждой записи.
+    - Сверху списка — Land Cruiser Prado 2012 года за 200 000 евро (похоже на ошибку), а дальше — новые Land Cruiser: дорогие, но настоящие. Поэтому список идёт в журнал проверки, а не на удаление.
+  hints:
+    - "Сначала объявления Toyota, затем граница для каждого из них и маска «цена выше границы»."
+    - "`limit = 60_000 * (1 - toyota['Distance'] / 500_000)`; `toyota[toyota['Price'] > limit]`."
+    - "Колонки списком и `sort_values('Price', ascending=False)`; `n_review = len(review)`."
+  tests: |
+    import pandas as pd
+    r = var('review', pd.DataFrame, 'таблицей DataFrame')
+    cols = ['source_row_id', 'Model', 'Year', 'Distance', 'Price']
+    ensure(list(r.columns) == cols, 'Колонки должны быть {0}, а у вас {1}.'.format(cols, list(r.columns)))
+    ensure(list(r['Price']) == sorted(r['Price'], reverse=True), 'Строки должны идти по убыванию цены.')
+    same_frame(r, ref('review'), 'Список записей выше границы не совпадает: граница 60 000 · (1 − пробег / 500 000), только Toyota.')
+    close(var('n_review', 'number', 'числом'), ref('n_review'), 'Записей выше границы {expected}, а у вас {actual}.')
+    close(alt('n_review'), alt_ref('n_review'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        toyota = df[df['Make'] == 'Toyota']
+        limit = 60_000 * (1 - toyota['Distance'] / 600_000)
+        review = toyota[toyota['Price'] > limit][['source_row_id', 'Model', 'Year', 'Distance', 'Price']].sort_values('Price', ascending=False)
+        n_review = len(review)
+      expect: граница 60 000
+    - code: |
+        toyota = df[df['Make'] == 'Toyota']
+        limit = 60_000 * (1 - toyota['Distance'] / 500_000)
+        review = toyota[toyota['Price'] > limit][['source_row_id', 'Model', 'Year', 'Distance', 'Price']].sort_values('Price')
+        n_review = len(review)
+      expect: по убыванию
+
+- id: k1-t14
+  kind: quiz
+  title: "14. Вопросы на понимание"
+  difficulty: main
+  introduces: []
+  uses: [mean-median, count-vs-share, chart-choice]
+  statement: |
+    Пять вопросов по модулям 1–4.
+  quiz:
+    - q: "У цен длинный правый хвост: несколько машин стоят сотни тысяч евро. Какая статистика лучше описывает «типичную» цену?"
+      options:
+        - Среднее
+        - Медиана
+        - Максимум
+      answer: 1
+      explain: Медиана устойчива к редким очень большим значениям (урок 1.6).
+    - q: "«У какой марки больше всего дизелей» и «у какой марки дизели составляют наибольшую долю» — это…"
+      options:
+        - один и тот же вопрос
+        - "разные вопросы: число и доля внутри марки; ответы могут различаться"
+        - вопросы, на которые нельзя ответить по объявлениям
+      answer: 1
+      explain: Число зависит от размера марки, доля — нет (урок 3.5).
+    - q: Какой график для вопроса «как цена связана с пробегом» на 32 тысячах объявлений?
+      options:
+        - Круговая диаграмма
+        - Диаграмма рассеяния с прозрачностью или hexbin
+        - Столбцы по маркам
+      answer: 1
+      explain: Два числовых признака — scatter; при наложении точек — прозрачность или hexbin (урок 4.8).
+    - q: "Медиана группы «Pickup» — самая высокая, но в группе 124 объявления. Как подписать вывод?"
+      options:
+        - Пикапы — самые дорогие машины на рынке
+        - У пикапов в выборке самая высокая медиана, но группа мала — оценка ненадёжна
+        - Удалить пикапы из данных
+      answer: 1
+      explain: У малых групп статистики ненадёжны (урок 3.3).
+    - q: Что можно утверждать по таблице объявлений?
+      options:
+        - Какие машины лучше продаются
+        - Сколько обычно просят за машины разных сегментов
+        - Какова выручка продавцов
+      answer: 1
+      explain: В данных цены предложения, а не сделки (урок 4.1).
+  hints:
+    - Вспомните устойчивость медианы, разницу числа и доли, выбор графика и границы выводов.
+    - "Хвост — медиана; число ≠ доля; два числа — scatter/hexbin; малая группа — ненадёжно; объявления — не продажи."
+    - "Ответы: медиана; разные вопросы; scatter или hexbin; группа мала; сколько обычно просят."

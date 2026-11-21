@@ -1,0 +1,737 @@
+- id: m11-l5-t1
+  title: Инструмент из функции
+  difficulty: warmup
+  introduces: [langchain-tools]
+  uses: [function-calling]
+  statement: |
+    Сделайте два инструмента LangChain.
+
+    1. `word_count(text: str, unique: bool = False) -> int` с декоратором `@tool`: число слов в тексте (`text.split()`), а при `unique=True` — число разных слов без учёта регистра. Строка документации — описание инструмента (хотя бы 20 символов).
+    2. `lesson_minutes(lessons: int, length: int = 90) -> int` с декоратором `@tool(parse_docstring=True)`: сколько минут займут `lessons` занятий по `length` минут. Строка документации — в стиле Google: описание, пустая строка, раздел `Args:` с описанием обоих аргументов.
+
+    Получите `schema` — описание `lesson_minutes` для модели: `convert_to_openai_tool(lesson_minutes)`.
+  prelude: |
+    from langchain_core.tools import tool
+    from langchain_core.utils.function_calling import convert_to_openai_tool
+  starter: |
+    @tool
+    def word_count(text: str, unique: bool = False) -> int:
+        """..."""
+        words = text.lower().split()
+        return ...
+
+    @tool(parse_docstring=True)
+    def lesson_minutes(lessons: int, length: int = 90) -> int:
+        """...
+
+        Args:
+            lessons: ...
+            length: ...
+        """
+        return lessons * length
+
+    schema = convert_to_openai_tool(lesson_minutes)
+    print(word_count.args)
+    print(schema)
+    print(word_count.invoke({'text': 'Модель учится, модель ошибается'}), lesson_minutes.invoke({'lessons': 3}))
+  solution: |
+    @tool
+    def word_count(text: str, unique: bool = False) -> int:
+        """Число слов в тексте. Если unique=True — число разных слов без учёта регистра."""
+        words = text.lower().split()
+        return len(set(words)) if unique else len(words)
+
+    @tool(parse_docstring=True)
+    def lesson_minutes(lessons: int, length: int = 90) -> int:
+        """Сколько минут займут занятия.
+
+        Args:
+            lessons: число занятий
+            length: длина одного занятия в минутах
+        """
+        return lessons * length
+
+    schema = convert_to_openai_tool(lesson_minutes)
+    print(word_count.args)
+    print(schema)
+    print(word_count.invoke({'text': 'Модель учится, модель ошибается'}), lesson_minutes.invoke({'lessons': 3}))
+  explanation: |
+    - Схема аргументов строится из подсказок типов: `str` → `string`, `bool` → `boolean`, `int` → `integer`. У аргумента со значением по умолчанию есть `default`, и он не входит в `required`.
+    - `parse_docstring=True` разбирает строку документации: текст до `Args:` — описание инструмента, строки «аргумент: описание» — описания аргументов. В схеме для модели они станут полями `description`.
+    - `word_count.invoke({'text': ...})` сначала проверяет аргументы по схеме, потом вызывает функцию. Вызвать инструмент как обычную функцию — `word_count('…')` — нельзя: это инструмент, а не функция.
+  hints:
+    - "Разные слова — `len(set(words))`, все — `len(words)`."
+    - "Строка документации — первая строка в теле функции: `\"\"\"Число слов в тексте…\"\"\"`."
+    - "Для `parse_docstring=True` нужен формат: описание, пустая строка, `Args:`, строки «имя: описание» с отступом."
+  tests: |
+    from langchain_core.tools import BaseTool
+    from langchain_core.utils.function_calling import convert_to_openai_tool
+    wc = var('word_count')
+    ensure(isinstance(wc, BaseTool), '`word_count` должен быть инструментом: поставьте над функцией декоратор `@tool`.')
+    ensure(len(wc.description) >= 20 and wc.description != '...', 'Нужно описание `word_count` в строке документации — хотя бы 20 символов: модель узнаёт об инструменте только из него.')
+    equal(wc.args, {'text': {'title': 'Text', 'type': 'string'}, 'unique': {'default': False, 'title': 'Unique', 'type': 'boolean'}}, 'Схема аргументов `word_count` — {expected}, а у вас {actual}. Проверьте подсказки типов и значение по умолчанию.')
+    equal(wc.invoke({'text': 'Да да нет'}), 3, 'Слов в «Да да нет» — 3, а у вас {actual}.')
+    equal(wc.invoke({'text': 'Да да нет', 'unique': True}), 2, 'Разных слов без учёта регистра в «Да да нет» — 2, а у вас {actual}.')
+    lm = var('lesson_minutes')
+    ensure(isinstance(lm, BaseTool), '`lesson_minutes` должен быть инструментом: `@tool(parse_docstring=True)`.')
+    equal(lm.invoke({'lessons': 2}), 180, 'Два занятия по 90 минут — {expected}, а у вас {actual}.')
+    equal(lm.invoke({'lessons': 2, 'length': 45}), 90, 'Два занятия по 45 минут — {expected}, а у вас {actual}.')
+    props = lm.args
+    ensure(all(len(props[a].get('description', '')) >= 3 and props[a].get('description') != '...' for a in ['lessons', 'length']), 'У обоих аргументов `lesson_minutes` нужны описания в разделе `Args:` строки документации.')
+    ensure(len(lm.description) >= 10 and 'Args' not in lm.description, 'Описание `lesson_minutes` — текст до раздела `Args:`, хотя бы 10 символов.')
+    sc = var('schema', dict, 'словарём')
+    equal(sc, convert_to_openai_tool(lm), '`schema` должна быть результатом `convert_to_openai_tool(lesson_minutes)`.')
+    equal(sc['function']['parameters']['required'], ['lessons'], 'Обязательный аргумент — только `lessons`, у `length` есть значение по умолчанию.')
+  files: []
+  wrong:
+    - code: |
+        def word_count(text: str, unique: bool = False) -> int:
+            """Число слов в тексте. Если unique=True — число разных слов без учёта регистра."""
+            words = text.lower().split()
+            return len(set(words)) if unique else len(words)
+        @tool(parse_docstring=True)
+        def lesson_minutes(lessons: int, length: int = 90) -> int:
+            """Сколько минут займут занятия.
+
+            Args:
+                lessons: число занятий
+                length: длина одного занятия в минутах
+            """
+            return lessons * length
+        schema = convert_to_openai_tool(lesson_minutes)
+      expect: декоратор `@tool`
+    - code: |
+        @tool
+        def word_count(text, unique=False):
+            """Число слов в тексте. Если unique=True — число разных слов без учёта регистра."""
+            words = text.lower().split()
+            return len(set(words)) if unique else len(words)
+        @tool(parse_docstring=True)
+        def lesson_minutes(lessons: int, length: int = 90) -> int:
+            """Сколько минут займут занятия.
+
+            Args:
+                lessons: число занятий
+                length: длина одного занятия в минутах
+            """
+            return lessons * length
+        schema = convert_to_openai_tool(lesson_minutes)
+      expect: подсказки типов
+
+- id: m11-l5-t2
+  title: Агент на tool_calls
+  difficulty: main
+  introduces: []
+  uses: [langchain-tools, react-loop]
+  statement: |
+    Напишите цикл агента `run_tool_agent(question, model, tools, max_steps=5)`. `tools` — словарь «имя → инструмент LangChain». Функция возвращает кортеж `(ответ, messages)`:
+
+    1. `messages` начинается с `HumanMessage(question)`; на каждом шаге модель получает весь список, её ответ (`AIMessage`) добавляется в него;
+    2. если вызовов нет (`ai.tool_calls` пуст) — ответ `ai.content`, конец;
+    3. каждый вызов выполняется, и в `messages` добавляется `ToolMessage` с его `tool_call_id`. Агент не падает: для неизвестного инструмента содержимое — `'Ошибка: инструмента {имя} нет. Есть: {имена через запятую и пробел}.'`, для исключения при вызове (в том числе неверных аргументов) — `'Ошибка: {текст исключения}'`;
+    4. если за `max_steps` шагов ответа нет — `'Не удалось ответить за отведённое число шагов.'`.
+
+    Получите `answer` и `messages` для тестовой модели `model`: она просит два инструмента сразу, а потом ошибается в имени аргумента.
+  prelude: |
+    from langchain_core.tools import tool
+    from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+    from langchain_core.language_models import FakeMessagesListChatModel
+
+    @tool
+    def get_schedule(day: str) -> str:
+        """Расписание занятий пользователя на день: «сегодня» или «завтра»."""
+        table = {'сегодня': '16:00 — Анализ данных', 'завтра': '9:00 — История; 11:00 — Мировая культура; 14:00 — Консультация'}
+        return table.get(day.strip().lower(), f'Нет расписания на «{day}».')
+
+    @tool
+    def lesson_minutes(lessons: int, length: int = 90) -> int:
+        """Сколько минут займут lessons занятий по length минут."""
+        return lessons * length
+
+    TOOLS = {t.name: t for t in [get_schedule, lesson_minutes]}
+    model = FakeMessagesListChatModel(responses=[
+        AIMessage(content='', tool_calls=[{'name': 'get_schedule', 'args': {'day': 'сегодня'}, 'id': 'c1'},
+                                          {'name': 'get_schedule', 'args': {'day': 'завтра'}, 'id': 'c2'}]),
+        AIMessage(content='', tool_calls=[{'name': 'lesson_minutes', 'args': {'count': 4}, 'id': 'c3'}]),
+        AIMessage(content='', tool_calls=[{'name': 'lesson_minutes', 'args': {'lessons': 4}, 'id': 'c4'}]),
+        AIMessage(content='Сегодня и завтра у вас четыре занятия — 360 минут.'),
+    ])
+  starter: |
+    def run_tool_agent(question, model, tools, max_steps=5):
+        messages = [HumanMessage(question)]
+        for _ in range(max_steps):
+            ai = model.invoke(messages)
+            messages.append(ai)
+            if not ai.tool_calls:
+                return ai.content, messages
+            for call in ai.tool_calls:
+                if call['name'] not in tools:
+                    result = ToolMessage(content=..., tool_call_id=call['id'])
+                else:
+                    try:
+                        result = ...
+                    except Exception as e:
+                        result = ToolMessage(content=f'Ошибка: {e}', tool_call_id=call['id'])
+                messages.append(result)
+        return 'Не удалось ответить за отведённое число шагов.', messages
+
+    answer, messages = run_tool_agent('Сколько минут занятий у меня сегодня и завтра?', model, TOOLS)
+    print(answer)
+    for m in messages:
+        print(type(m).__name__, getattr(m, 'tool_call_id', ''), m.content[:70].replace('\n', ' '))
+  solution: |
+    def run_tool_agent(question, model, tools, max_steps=5):
+        messages = [HumanMessage(question)]
+        for _ in range(max_steps):
+            ai = model.invoke(messages)
+            messages.append(ai)
+            if not ai.tool_calls:
+                return ai.content, messages
+            for call in ai.tool_calls:
+                if call['name'] not in tools:
+                    result = ToolMessage(content=f'Ошибка: инструмента {call["name"]} нет. Есть: {", ".join(tools)}.',
+                                         tool_call_id=call['id'])
+                else:
+                    try:
+                        result = tools[call['name']].invoke(call)
+                    except Exception as e:
+                        result = ToolMessage(content=f'Ошибка: {e}', tool_call_id=call['id'])
+                messages.append(result)
+        return 'Не удалось ответить за отведённое число шагов.', messages
+
+    answer, messages = run_tool_agent('Сколько минут занятий у меня сегодня и завтра?', model, TOOLS)
+    print(answer)
+    for m in messages:
+        print(type(m).__name__, getattr(m, 'tool_call_id', ''), m.content[:70].replace('\n', ' '))
+  explanation: |
+    - `tools[call['name']].invoke(call)` выполняет вызов и сразу возвращает `ToolMessage` с правильным `tool_call_id`.
+    - На первом шаге модель попросила два вызова сразу. Оба выполняются, и каждый результат приходит со своим номером — `c1` и `c2`.
+    - На втором шаге модель перепутала аргумент: `count` вместо `lessons`. Схема инструмента это поймала, агент вернул модели текст ошибки, и на третьем шаге модель исправилась. Агент не упал ни на одной ошибке.
+  hints:
+    - "Нет инструмента — `f'Ошибка: инструмента {call[\"name\"]} нет. Есть: {\", \".join(tools)}.'`."
+    - "Вызов — `tools[call['name']].invoke(call)`: результат уже `ToolMessage`."
+    - "Исключения ловятся вокруг `invoke` — и ошибка в аргументах, и сбой внутри функции."
+  tests: |
+    from langchain_core.tools import tool
+    from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+    from langchain_core.language_models import FakeMessagesListChatModel
+    f = var('run_tool_agent')
+    ensure(callable(f), '`run_tool_agent` должна быть функцией.')
+    @tool
+    def double(x: int) -> int:
+        """Удваивает число x."""
+        return 2 * x
+    reg = {'double': double}
+    m = FakeMessagesListChatModel(responses=[
+        AIMessage(content='', tool_calls=[{'name': 'double', 'args': {'x': 2}, 'id': 'a'}, {'name': 'triple', 'args': {'x': 2}, 'id': 'b'}]),
+        AIMessage(content='', tool_calls=[{'name': 'double', 'args': {'y': 2}, 'id': 'c'}]),
+        AIMessage(content='готово')])
+    try:
+        ans, msgs = f('вопрос', m, reg)
+    except Exception as e:
+        fail('Агент упал с {0}: {1}. Неизвестный инструмент и неверные аргументы — повод вернуть ошибку в ToolMessage, а не падать.'.format(type(e).__name__, e))
+    equal(ans, 'готово', 'Ответ — содержимое последнего AIMessage без вызовов: {expected}, а у вас {actual}.')
+    kinds = [type(x).__name__ for x in msgs]
+    equal(kinds, ['HumanMessage', 'AIMessage', 'ToolMessage', 'ToolMessage', 'AIMessage', 'ToolMessage', 'AIMessage'], 'Порядок сообщений — {expected}, а у вас {actual}.')
+    tm = [x for x in msgs if isinstance(x, ToolMessage)]
+    equal([x.tool_call_id for x in tm], ['a', 'b', 'c'], 'У каждого ToolMessage — tool_call_id своего вызова: {expected}, а у вас {actual}.')
+    equal(tm[0].content, '4', 'Результат double(2) — «4», а у вас {actual}.')
+    equal(tm[1].content, 'Ошибка: инструмента triple нет. Есть: double.', 'Для неизвестного инструмента ожидалось {expected}, а у вас {actual}.')
+    ensure(tm[2].content.startswith('Ошибка: '), 'Неверные аргументы — ToolMessage с текстом «Ошибка: …», а у вас {0!r}.'.format(tm[2].content))
+    equal(len(m.calls), 3, 'Модель вызывается 3 раза, а у вас {actual}.')
+    ensure(len(m.calls[1]) == 4, 'На втором шаге модель должна получить всю историю: вопрос, свой ответ и два результата — 4 сообщения, а получила {0}.'.format(len(m.calls[1])))
+    m2 = FakeMessagesListChatModel(responses=[AIMessage(content='', tool_calls=[{'name': 'double', 'args': {'x': 1}, 'id': 'z'}])])
+    ans2, _ = f('вопрос', m2, reg, max_steps=2)
+    equal(ans2, 'Не удалось ответить за отведённое число шагов.', 'Если ответа нет за max_steps шагов — {expected}, а у вас {actual}.')
+    equal(var('answer', str, 'строкой'), ref('answer'), 'Ответ агента — {expected}, а у вас {actual}.')
+  files: []
+  wrong:
+    - code: |
+        def run_tool_agent(question, model, tools, max_steps=5):
+            messages = [HumanMessage(question)]
+            for _ in range(max_steps):
+                ai = model.invoke(messages)
+                messages.append(ai)
+                if not ai.tool_calls:
+                    return ai.content, messages
+                for call in ai.tool_calls:
+                    messages.append(tools[call['name']].invoke(call))
+            return 'Не удалось ответить за отведённое число шагов.', messages
+        answer, messages = run_tool_agent('Сколько минут занятий у меня сегодня и завтра?', model, TOOLS)
+      expect: Неподходящее значение
+    - code: |
+        def run_tool_agent(question, model, tools, max_steps=5):
+            messages = [HumanMessage(question)]
+            for _ in range(max_steps):
+                ai = model.invoke(messages)
+                messages.append(ai)
+                if not ai.tool_calls:
+                    return ai.content, messages
+                call = ai.tool_calls[0]
+                if call['name'] not in tools:
+                    result = ToolMessage(content=f'Ошибка: инструмента {call["name"]} нет. Есть: {", ".join(tools)}.', tool_call_id=call['id'])
+                else:
+                    try:
+                        result = tools[call['name']].invoke(call)
+                    except Exception as e:
+                        result = ToolMessage(content=f'Ошибка: {e}', tool_call_id=call['id'])
+                messages.append(result)
+            return 'Не удалось ответить за отведённое число шагов.', messages
+        answer, messages = run_tool_agent('Сколько минут занятий у меня сегодня и завтра?', model, TOOLS)
+      expect: Порядок сообщений
+
+- id: m11-l5-t3
+  title: "MCP-сервер: список инструментов"
+  difficulty: main
+  introduces: [mcp]
+  uses: [function-calling, structured-output]
+  statement: |
+    Начните свой MCP-сервер. Напишите функцию `handle(request, registry)`: она принимает запрос JSON-RPC (словарь) и реестр инструментов `{'имя': {'description': ..., 'inputSchema': ..., 'func': ...}}` и возвращает ответ:
+
+    - у любого ответа есть `'jsonrpc': '2.0'` и тот же `'id'`, что у запроса;
+    - метод `tools/list` → `'result': {'tools': [...]}` — для каждого инструмента словарь с ключами `name`, `description`, `inputSchema` (функцию `func` наружу не отдавать) в порядке реестра;
+    - любой другой метод → `'error': {'code': -32601, 'message': 'Method not found: {метод}'}`.
+
+    Получите `listing` — ответ сервера на запрос `{'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'}` с реестром `REGISTRY`.
+  prelude: |
+    SCHEDULE = {'сегодня': ['16:00 — Анализ данных, ауд. 301'],
+                'завтра': ['9:00 — История, ауд. 203', '11:00 — Мировая культура, онлайн']}
+    REGISTRY = {
+        'get_schedule': {
+            'description': 'Расписание занятий пользователя на день.',
+            'inputSchema': {'type': 'object', 'properties': {'day': {'type': 'string', 'description': '«сегодня» или «завтра»'}},
+                            'required': ['day']},
+            'func': lambda args: '; '.join(SCHEDULE[args['day']]),
+        },
+        'lesson_minutes': {
+            'description': 'Сколько минут займут занятия.',
+            'inputSchema': {'type': 'object', 'properties': {'lessons': {'type': 'integer'}, 'length': {'type': 'integer'}},
+                            'required': ['lessons']},
+            'func': lambda args: str(args['lessons'] * args.get('length', 90)),
+        },
+    }
+  starter: |
+    def handle(request, registry):
+        response = {'jsonrpc': '2.0', 'id': request.get('id')}
+        if request.get('method') == 'tools/list':
+            response['result'] = {'tools': [...]}
+        else:
+            response['error'] = ...
+        return response
+
+    listing = handle({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'}, REGISTRY)
+    print(listing)
+    print(handle({'jsonrpc': '2.0', 'id': 2, 'method': 'resources/list'}, REGISTRY))
+  solution: |
+    def handle(request, registry):
+        response = {'jsonrpc': '2.0', 'id': request.get('id')}
+        if request.get('method') == 'tools/list':
+            response['result'] = {'tools': [{'name': name, 'description': t['description'], 'inputSchema': t['inputSchema']}
+                                            for name, t in registry.items()]}
+        else:
+            response['error'] = {'code': -32601, 'message': f'Method not found: {request.get("method")}'}
+        return response
+
+    listing = handle({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'}, REGISTRY)
+    print(listing)
+    print(handle({'jsonrpc': '2.0', 'id': 2, 'method': 'resources/list'}, REGISTRY))
+  explanation: |
+    - Ответ всегда несёт `id` запроса: клиент может отправить несколько запросов подряд и сопоставляет ответы по номеру.
+    - Наружу уходят только имя, описание и схема входа. Сама функция — внутреннее дело сервера: клиент и модель видят инструмент только через описание.
+    - `resources/list` — настоящий метод MCP (данные для контекста), но наш сервер его не поддерживает. Код −32601 — стандартная ошибка JSON-RPC «метод не найден».
+  hints:
+    - "Описание инструмента — `{'name': name, 'description': t['description'], 'inputSchema': t['inputSchema']}`."
+    - "Перебор реестра по порядку — `for name, t in registry.items()`."
+    - "Ошибка — `{'code': -32601, 'message': f'Method not found: {request.get(\"method\")}'}`."
+  tests: |
+    import json
+    f = var('handle')
+    ensure(callable(f), '`handle` должна быть функцией.')
+    reg = {'b': {'description': 'инструмент b', 'inputSchema': {'type': 'object', 'properties': {}}, 'func': lambda a: 'B'},
+           'a': {'description': 'инструмент a', 'inputSchema': {'type': 'object', 'properties': {'x': {'type': 'string'}}, 'required': ['x']}, 'func': lambda a: 'A'}}
+    got = f({'jsonrpc': '2.0', 'id': 7, 'method': 'tools/list'}, reg)
+    ensure(isinstance(got, dict), '`handle` должна вернуть словарь, а вернула {0}.'.format(type(got).__name__))
+    equal(got.get('jsonrpc'), '2.0', 'В ответе нужен ключ `jsonrpc` со значением «2.0».')
+    equal(got.get('id'), 7, 'В ответе нужен тот же `id`, что в запросе (7), а у вас {actual}.')
+    tools = got.get('result', {}).get('tools')
+    ensure(isinstance(tools, list), 'Ответ на tools/list — `result` со списком `tools`.')
+    if tools and 'func' in tools[0]:
+        fail('Функцию инструмента (`func`) наружу не отдают: в описании только name, description и inputSchema.')
+    equal(tools, [{'name': 'b', 'description': 'инструмент b', 'inputSchema': {'type': 'object', 'properties': {}}},
+                  {'name': 'a', 'description': 'инструмент a', 'inputSchema': {'type': 'object', 'properties': {'x': {'type': 'string'}}, 'required': ['x']}}],
+          'Описания инструментов в порядке реестра — {expected}, а у вас {actual}.')
+    json.dumps(got)
+    err = f({'jsonrpc': '2.0', 'id': 'q', 'method': 'prompts/list'}, reg)
+    equal(err, {'jsonrpc': '2.0', 'id': 'q', 'error': {'code': -32601, 'message': 'Method not found: prompts/list'}}, 'Неизвестный метод — ошибка −32601: ожидалось {expected}, а у вас {actual}.')
+    equal(var('listing', dict, 'словарём'), ref('listing'), 'Ответ на tools/list для REGISTRY — {expected}, а у вас {actual}.')
+  files: []
+  wrong:
+    - code: |
+        def handle(request, registry):
+            response = {'jsonrpc': '2.0', 'id': request.get('id')}
+            if request.get('method') == 'tools/list':
+                response['result'] = {'tools': [dict(t, name=name) for name, t in registry.items()]}
+            else:
+                response['error'] = {'code': -32601, 'message': f'Method not found: {request.get("method")}'}
+            return response
+        listing = handle({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'}, REGISTRY)
+      expect: наружу не отдают
+    - code: |
+        def handle(request, registry):
+            response = {'jsonrpc': '2.0', 'id': 1}
+            if request.get('method') == 'tools/list':
+                response['result'] = {'tools': [{'name': name, 'description': t['description'], 'inputSchema': t['inputSchema']} for name, t in registry.items()]}
+            else:
+                response['error'] = {'code': -32601, 'message': f'Method not found: {request.get("method")}'}
+            return response
+        listing = handle({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'}, REGISTRY)
+      expect: тот же `id`
+
+- id: m11-l5-t4
+  title: "MCP-сервер: вызов инструмента"
+  difficulty: main
+  introduces: []
+  uses: [mcp, function-calling]
+  statement: |
+    Добавьте в сервер метод `tools/call`. Функция `handle_call(request, registry)` получает запрос с `params` = `{'name': ..., 'arguments': {...}}` и возвращает ответ JSON-RPC (`jsonrpc` и `id`, как в прошлом задании):
+
+    - инструмента нет → ошибка протокола: `'error': {'code': -32602, 'message': 'Unknown tool: {имя}'}`;
+    - не хватает обязательных аргументов из `inputSchema['required']` → тоже ошибка протокола: `'error': {'code': -32602, 'message': 'Missing required arguments: {имена через запятую и пробел}'}`;
+    - функция выбросила исключение → ошибка инструмента: `'result': {'content': [{'type': 'text', 'text': '{тип}: {сообщение}'}], 'isError': True}`;
+    - иначе → `'result': {'content': [{'type': 'text', 'text': str(результат)}], 'isError': False}`.
+
+    Получите `responses` — ответы сервера на запросы из списка `requests`.
+  prelude: |
+    SCHEDULE = {'сегодня': ['16:00 — Анализ данных, ауд. 301'],
+                'завтра': ['9:00 — История, ауд. 203', '11:00 — Мировая культура, онлайн']}
+    REGISTRY = {
+        'get_schedule': {
+            'description': 'Расписание занятий пользователя на день.',
+            'inputSchema': {'type': 'object', 'properties': {'day': {'type': 'string'}}, 'required': ['day']},
+            'func': lambda args: '; '.join(SCHEDULE[args['day']]),
+        },
+        'lesson_minutes': {
+            'description': 'Сколько минут займут занятия.',
+            'inputSchema': {'type': 'object', 'properties': {'lessons': {'type': 'integer'}, 'length': {'type': 'integer'}},
+                            'required': ['lessons']},
+            'func': lambda args: args['lessons'] * args.get('length', 90),
+        },
+    }
+    requests = [
+        {'jsonrpc': '2.0', 'id': 1, 'method': 'tools/call', 'params': {'name': 'get_schedule', 'arguments': {'day': 'завтра'}}},
+        {'jsonrpc': '2.0', 'id': 2, 'method': 'tools/call', 'params': {'name': 'lesson_minutes', 'arguments': {'lessons': 3}}},
+        {'jsonrpc': '2.0', 'id': 3, 'method': 'tools/call', 'params': {'name': 'get_schedule', 'arguments': {'day': 'вчера'}}},
+        {'jsonrpc': '2.0', 'id': 4, 'method': 'tools/call', 'params': {'name': 'get_schedule', 'arguments': {}}},
+        {'jsonrpc': '2.0', 'id': 5, 'method': 'tools/call', 'params': {'name': 'delete_schedule', 'arguments': {'day': 'завтра'}}},
+    ]
+  starter: |
+    def handle_call(request, registry):
+        response = {'jsonrpc': '2.0', 'id': request.get('id')}
+        name = request['params']['name']
+        args = request['params'].get('arguments', {})
+        if name not in registry:
+            response['error'] = ...
+            return response
+        missing = [a for a in registry[name]['inputSchema'].get('required', []) if a not in args]
+        if missing:
+            response['error'] = ...
+            return response
+        try:
+            text, failed = str(registry[name]['func'](args)), False
+        except Exception as e:
+            text, failed = ...
+        response['result'] = {'content': [{'type': 'text', 'text': text}], 'isError': failed}
+        return response
+
+    responses = [handle_call(r, REGISTRY) for r in requests]
+    for r in responses:
+        print(r)
+  solution: |
+    def handle_call(request, registry):
+        response = {'jsonrpc': '2.0', 'id': request.get('id')}
+        name = request['params']['name']
+        args = request['params'].get('arguments', {})
+        if name not in registry:
+            response['error'] = {'code': -32602, 'message': f'Unknown tool: {name}'}
+            return response
+        missing = [a for a in registry[name]['inputSchema'].get('required', []) if a not in args]
+        if missing:
+            response['error'] = {'code': -32602, 'message': 'Missing required arguments: ' + ', '.join(missing)}
+            return response
+        try:
+            text, failed = str(registry[name]['func'](args)), False
+        except Exception as e:
+            text, failed = f'{type(e).__name__}: {e}', True
+        response['result'] = {'content': [{'type': 'text', 'text': text}], 'isError': failed}
+        return response
+
+    responses = [handle_call(r, REGISTRY) for r in requests]
+    for r in responses:
+        print(r)
+  explanation: |
+    - Неизвестный инструмент и пропущенные обязательные аргументы — ошибки протокола: запрос составлен неверно, вызывать нечего. Сервер проверяет это по описанию инструмента, ещё не запуская его.
+    - Исключение внутри функции — ошибка инструмента: запрос верный, но выполнить не удалось. Такой ответ — обычный `result` с `isError: True`. Его текст «KeyError: 'вчера'» клиент передаст модели, и та сможет попросить другой день.
+    - Результат всегда превращается в текст (`str`): у `lesson_minutes` это число 270. Контент MCP-ответа — список блоков, у нас один текстовый.
+    - Запрос «delete_schedule» отклонён: такого инструмента на сервере нет. Чего нет на сервере, того агент не сделает, — это тоже защита (урок 11.6).
+  hints:
+    - "Неизвестный инструмент — `{'code': -32602, 'message': f'Unknown tool: {name}'}`."
+    - "Пропущенные аргументы — `'Missing required arguments: ' + ', '.join(missing)`."
+    - "Исключение — `text, failed = f'{type(e).__name__}: {e}', True`."
+  tests: |
+    f = var('handle_call')
+    ensure(callable(f), '`handle_call` должна быть функцией.')
+    def boom(args):
+        raise ValueError('сбой')
+    reg = {'echo': {'description': 'повтор', 'inputSchema': {'type': 'object', 'properties': {'x': {'type': 'string'}, 'y': {'type': 'string'}}, 'required': ['x', 'y']}, 'func': lambda a: a['x'] + a['y']},
+           'boom': {'description': 'падает', 'inputSchema': {'type': 'object', 'properties': {}}, 'func': boom},
+           'num': {'description': 'число', 'inputSchema': {'type': 'object', 'properties': {}}, 'func': lambda a: 5}}
+    def req(i, name, args):
+        return {'jsonrpc': '2.0', 'id': i, 'method': 'tools/call', 'params': {'name': name, 'arguments': args}}
+    equal(f(req(1, 'echo', {'x': 'а', 'y': 'б'}), reg), {'jsonrpc': '2.0', 'id': 1, 'result': {'content': [{'type': 'text', 'text': 'аб'}], 'isError': False}}, 'Успешный вызов: ожидалось {expected}, а у вас {actual}.')
+    equal(f(req(2, 'nope', {}), reg), {'jsonrpc': '2.0', 'id': 2, 'error': {'code': -32602, 'message': 'Unknown tool: nope'}}, 'Неизвестный инструмент: ожидалось {expected}, а у вас {actual}.')
+    got = f(req(3, 'echo', {'y': 'б'}), reg)
+    if 'result' in got:
+        fail('Без обязательного аргумента x инструмент запускать нельзя: это ошибка протокола (−32602), а не результат.')
+    equal(got, {'jsonrpc': '2.0', 'id': 3, 'error': {'code': -32602, 'message': 'Missing required arguments: x'}}, 'Пропущен обязательный аргумент: ожидалось {expected}, а у вас {actual}.')
+    equal(f(req(4, 'echo', {}), reg)['error']['message'], 'Missing required arguments: x, y', 'Все пропущенные аргументы через запятую: ожидалось {expected}, а у вас {actual}.')
+    got = f(req(5, 'boom', {}), reg)
+    if 'error' in got:
+        fail('Сбой внутри инструмента — не ошибка протокола: верните `result` с текстом ошибки и `isError: True`, чтобы её увидела модель.')
+    equal(got, {'jsonrpc': '2.0', 'id': 5, 'result': {'content': [{'type': 'text', 'text': 'ValueError: сбой'}], 'isError': True}}, 'Ошибка инструмента: ожидалось {expected}, а у вас {actual}.')
+    equal(f(req(6, 'num', {}), reg)['result']['content'][0]['text'], '5', 'Результат-число превращается в текст «5».')
+    equal(var('responses', list, 'списком'), ref('responses'), 'Ответы сервера на запросы — {expected}, а у вас {actual}.')
+  files: []
+  wrong:
+    - code: |
+        def handle_call(request, registry):
+            response = {'jsonrpc': '2.0', 'id': request.get('id')}
+            name = request['params']['name']
+            args = request['params'].get('arguments', {})
+            if name not in registry:
+                response['error'] = {'code': -32602, 'message': f'Unknown tool: {name}'}
+                return response
+            try:
+                text, failed = str(registry[name]['func'](args)), False
+            except Exception as e:
+                text, failed = f'{type(e).__name__}: {e}', True
+            response['result'] = {'content': [{'type': 'text', 'text': text}], 'isError': failed}
+            return response
+        responses = [handle_call(r, REGISTRY) for r in requests]
+      expect: ошибка протокола (−32602)
+    - code: |
+        def handle_call(request, registry):
+            response = {'jsonrpc': '2.0', 'id': request.get('id')}
+            name = request['params']['name']
+            args = request['params'].get('arguments', {})
+            if name not in registry:
+                response['error'] = {'code': -32602, 'message': f'Unknown tool: {name}'}
+                return response
+            missing = [a for a in registry[name]['inputSchema'].get('required', []) if a not in args]
+            if missing:
+                response['error'] = {'code': -32602, 'message': 'Missing required arguments: ' + ', '.join(missing)}
+                return response
+            try:
+                response['result'] = {'content': [{'type': 'text', 'text': str(registry[name]['func'](args))}], 'isError': False}
+            except Exception as e:
+                response['error'] = {'code': -32603, 'message': str(e)}
+            return response
+        responses = [handle_call(r, REGISTRY) for r in requests]
+      expect: не ошибка протокола
+
+- id: m11-l5-t5
+  title: Инструменты MCP-сервера в агенте
+  difficulty: star
+  introduces: []
+  uses: [mcp, langchain-tools, function-calling]
+  statement: |
+    Подключите MCP-сервер к агенту на `tool_calls`. Сервер — функция `server(request)` (как в уроке). Напишите:
+
+    1. `tools_for_model(server)` — запрос `tools/list` и список описаний для модели в формате `{'type': 'function', 'function': {'name', 'description', 'parameters'}}`, где `parameters` — `inputSchema` инструмента. Их передают модели через `bind_tools`.
+    2. `call_via_mcp(server, call, request_id)` — выполняет вызов из `AIMessage.tool_calls` запросом `tools/call` (номер запроса — `request_id`) и возвращает `ToolMessage` с `tool_call_id` вызова:
+       - ответ с `error` → содержимое `'Ошибка протокола: {message}'`;
+       - результат с `isError` → `'Ошибка инструмента: {текст}'`;
+       - иначе — текст результата (тексты всех блоков контента подряд, через перенос строки).
+
+    Затем запустите цикл агента с тестовой моделью `model` (номера запросов — 1, 2, 3, … по порядку вызовов) и получите `answer` и `log` — содержимое всех `ToolMessage`.
+  prelude: |
+    from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+    from langchain_core.language_models import FakeMessagesListChatModel
+    SCHEDULE = {'завтра': ['9:00 — История, ауд. 203', '11:00 — Мировая культура, онлайн',
+                           '14:00 — Консультация с группой Б-21, ауд. 105']}
+    TOOLS = {
+        'get_schedule': {'description': 'Расписание занятий пользователя на день.',
+                         'inputSchema': {'type': 'object', 'properties': {'day': {'type': 'string'}}, 'required': ['day']},
+                         'func': lambda args: '; '.join(SCHEDULE[args['day']])},
+    }
+    seen_ids = []
+
+    def server(request):
+        seen_ids.append(request.get('id'))
+        rid = request.get('id')
+        if request['method'] == 'tools/list':
+            return {'jsonrpc': '2.0', 'id': rid, 'result': {'tools': [
+                {'name': n, 'description': t['description'], 'inputSchema': t['inputSchema']} for n, t in TOOLS.items()]}}
+        name, args = request['params']['name'], request['params'].get('arguments', {})
+        if name not in TOOLS:
+            return {'jsonrpc': '2.0', 'id': rid, 'error': {'code': -32602, 'message': f'Unknown tool: {name}'}}
+        try:
+            return {'jsonrpc': '2.0', 'id': rid, 'result': {'content': [{'type': 'text', 'text': TOOLS[name]['func'](args)}], 'isError': False}}
+        except Exception as e:
+            return {'jsonrpc': '2.0', 'id': rid, 'result': {'content': [{'type': 'text', 'text': f'{type(e).__name__}: {e}'}], 'isError': True}}
+
+    model = FakeMessagesListChatModel(responses=[
+        AIMessage(content='', tool_calls=[{'name': 'get_schedule', 'args': {'day': 'послезавтра'}, 'id': 'c1'}]),
+        AIMessage(content='', tool_calls=[{'name': 'get_calendar', 'args': {'day': 'завтра'}, 'id': 'c2'}]),
+        AIMessage(content='', tool_calls=[{'name': 'get_schedule', 'args': {'day': 'завтра'}, 'id': 'c3'}]),
+        AIMessage(content='Завтра три занятия: история, мировая культура и консультация.'),
+    ])
+  starter: |
+    def tools_for_model(server):
+        listing = server({'jsonrpc': '2.0', 'id': 0, 'method': 'tools/list'})
+        return [{'type': 'function', 'function': {'name': t['name'], 'description': t['description'], 'parameters': ...}}
+                for t in listing['result']['tools']]
+
+    def call_via_mcp(server, call, request_id):
+        response = server({'jsonrpc': '2.0', 'id': request_id, 'method': 'tools/call',
+                           'params': {'name': call['name'], 'arguments': call['args']}})
+        if 'error' in response:
+            content = ...
+        else:
+            text = '\n'.join(block['text'] for block in response['result']['content'] if block['type'] == 'text')
+            content = ...
+        return ToolMessage(content=content, tool_call_id=call['id'])
+
+    schemas = tools_for_model(server)
+    messages = [HumanMessage('Что у меня завтра?')]
+    request_id = 0
+    for _ in range(5):
+        ai = model.invoke(messages)
+        messages.append(ai)
+        if not ai.tool_calls:
+            break
+        for call in ai.tool_calls:
+            request_id += 1
+            messages.append(call_via_mcp(server, call, request_id))
+    answer = messages[-1].content
+    log = [m.content for m in messages if isinstance(m, ToolMessage)]
+    print(schemas)
+    print(answer)
+    for line in log:
+        print(line)
+  solution: |
+    def tools_for_model(server):
+        listing = server({'jsonrpc': '2.0', 'id': 0, 'method': 'tools/list'})
+        return [{'type': 'function', 'function': {'name': t['name'], 'description': t['description'], 'parameters': t['inputSchema']}}
+                for t in listing['result']['tools']]
+
+    def call_via_mcp(server, call, request_id):
+        response = server({'jsonrpc': '2.0', 'id': request_id, 'method': 'tools/call',
+                           'params': {'name': call['name'], 'arguments': call['args']}})
+        if 'error' in response:
+            content = 'Ошибка протокола: ' + response['error']['message']
+        else:
+            text = '\n'.join(block['text'] for block in response['result']['content'] if block['type'] == 'text')
+            content = 'Ошибка инструмента: ' + text if response['result'].get('isError') else text
+        return ToolMessage(content=content, tool_call_id=call['id'])
+
+    schemas = tools_for_model(server)
+    messages = [HumanMessage('Что у меня завтра?')]
+    request_id = 0
+    for _ in range(5):
+        ai = model.invoke(messages)
+        messages.append(ai)
+        if not ai.tool_calls:
+            break
+        for call in ai.tool_calls:
+            request_id += 1
+            messages.append(call_via_mcp(server, call, request_id))
+    answer = messages[-1].content
+    log = [m.content for m in messages if isinstance(m, ToolMessage)]
+    print(schemas)
+    print(answer)
+    for line in log:
+        print(line)
+  explanation: |
+    - `inputSchema` из MCP — тот же JSON Schema, что `parameters` в описании функции для модели. Поэтому инструменты любого MCP-сервера подключаются к любой модели с вызовом функций: клиент только перекладывает поля. В LangChain это делает пакет `langchain-mcp-adapters`.
+    - Два вида ошибок доходят до модели по-разному подписанными: «Ошибка инструмента: KeyError: 'послезавтра'» — вызов был верным, но данных нет; «Ошибка протокола: Unknown tool: get_calendar» — такого инструмента нет вовсе. Модель исправилась на третьем шаге.
+    - Номер запроса растёт с каждым вызовом: по `id` клиент сопоставляет ответы сервера с запросами, когда их отправлено несколько.
+  hints:
+    - "Описание для модели — `'parameters': t['inputSchema']`."
+    - "Ошибка протокола — `'Ошибка протокола: ' + response['error']['message']`."
+    - "Ошибка инструмента — по полю `response['result'].get('isError')`."
+  tests: |
+    from langchain_core.messages import ToolMessage
+    tf = var('tools_for_model')
+    cv = var('call_via_mcp')
+    ensure(callable(tf) and callable(cv), '`tools_for_model` и `call_via_mcp` должны быть функциями.')
+    def srv(request):
+        rid = request['id']
+        if request['method'] == 'tools/list':
+            return {'jsonrpc': '2.0', 'id': rid, 'result': {'tools': [{'name': 'x', 'description': 'инструмент x', 'inputSchema': {'type': 'object', 'properties': {'q': {'type': 'string'}}, 'required': ['q']}}]}}
+        p = request['params']
+        if p['name'] == 'bad':
+            return {'jsonrpc': '2.0', 'id': rid, 'error': {'code': -32602, 'message': 'Unknown tool: bad'}}
+        if p['arguments'].get('q') == 'fail':
+            return {'jsonrpc': '2.0', 'id': rid, 'result': {'content': [{'type': 'text', 'text': 'сломалось'}], 'isError': True}}
+        return {'jsonrpc': '2.0', 'id': rid, 'result': {'content': [{'type': 'text', 'text': 'раз'}, {'type': 'text', 'text': 'два'}], 'isError': False}}
+    equal(tf(srv), [{'type': 'function', 'function': {'name': 'x', 'description': 'инструмент x', 'parameters': {'type': 'object', 'properties': {'q': {'type': 'string'}}, 'required': ['q']}}}], 'Описание для модели: ожидалось {expected}, а у вас {actual}.')
+    ok = cv(srv, {'name': 'x', 'args': {'q': 'a'}, 'id': 'k1', 'type': 'tool_call'}, 10)
+    ensure(isinstance(ok, ToolMessage), '`call_via_mcp` должна вернуть ToolMessage.')
+    equal(ok.tool_call_id, 'k1', 'У ToolMessage — tool_call_id вызова: {expected}, а у вас {actual}.')
+    equal(ok.content, 'раз\nдва', 'Тексты блоков контента — через перенос строки: ожидалось {expected}, а у вас {actual}.')
+    equal(cv(srv, {'name': 'bad', 'args': {}, 'id': 'k2'}, 11).content, 'Ошибка протокола: Unknown tool: bad', 'Ответ с error: ожидалось {expected}, а у вас {actual}.')
+    equal(cv(srv, {'name': 'x', 'args': {'q': 'fail'}, 'id': 'k3'}, 12).content, 'Ошибка инструмента: сломалось', 'Результат с isError: ожидалось {expected}, а у вас {actual}.')
+    equal(var('log', list, 'списком'), ref('log'), 'Содержимое ToolMessage в работе агента — {expected}, а у вас {actual}.')
+    equal(var('answer', str, 'строкой'), ref('answer'), 'Ответ агента — {expected}, а у вас {actual}.')
+    equal(var('seen_ids', list, 'списком'), ref('seen_ids'), 'Номера запросов к серверу — {expected}, а у вас {actual}: tools/list — 0, вызовы — 1, 2, 3.')
+  files: []
+  wrong:
+    - code: |
+        def tools_for_model(server):
+            listing = server({'jsonrpc': '2.0', 'id': 0, 'method': 'tools/list'})
+            return [{'type': 'function', 'function': {'name': t['name'], 'description': t['description'], 'parameters': t['inputSchema']}} for t in listing['result']['tools']]
+        def call_via_mcp(server, call, request_id):
+            response = server({'jsonrpc': '2.0', 'id': request_id, 'method': 'tools/call', 'params': {'name': call['name'], 'arguments': call['args']}})
+            if 'error' in response:
+                content = 'Ошибка протокола: ' + response['error']['message']
+            else:
+                content = response['result']['content'][0]['text']
+            return ToolMessage(content=content, tool_call_id=call['id'])
+        schemas = tools_for_model(server)
+        messages = [HumanMessage('Что у меня завтра?')]
+        request_id = 0
+        for _ in range(5):
+            ai = model.invoke(messages)
+            messages.append(ai)
+            if not ai.tool_calls:
+                break
+            for call in ai.tool_calls:
+                request_id += 1
+                messages.append(call_via_mcp(server, call, request_id))
+        answer = messages[-1].content
+        log = [m.content for m in messages if isinstance(m, ToolMessage)]
+      expect: через перенос строки
+    - code: |
+        def tools_for_model(server):
+            listing = server({'jsonrpc': '2.0', 'id': 0, 'method': 'tools/list'})
+            return [{'type': 'function', 'function': {'name': t['name'], 'description': t['description'], 'parameters': t['inputSchema']}} for t in listing['result']['tools']]
+        def call_via_mcp(server, call, request_id):
+            response = server({'jsonrpc': '2.0', 'id': request_id, 'method': 'tools/call', 'params': {'name': call['name'], 'arguments': call['args']}})
+            if 'error' in response:
+                content = 'Ошибка протокола: ' + response['error']['message']
+            else:
+                text = '\n'.join(block['text'] for block in response['result']['content'] if block['type'] == 'text')
+                content = 'Ошибка инструмента: ' + text if response['result'].get('isError') else text
+            return ToolMessage(content=content, tool_call_id=call['id'])
+        schemas = tools_for_model(server)
+        messages = [HumanMessage('Что у меня завтра?')]
+        for _ in range(5):
+            ai = model.invoke(messages)
+            messages.append(ai)
+            if not ai.tool_calls:
+                break
+            for call in ai.tool_calls:
+                messages.append(call_via_mcp(server, call, 1))
+        answer = messages[-1].content
+        log = [m.content for m in messages if isinstance(m, ToolMessage)]
+      expect: Номера запросов

@@ -1,0 +1,315 @@
+- id: m1-l8-t1
+  title: Общая маска для года и пробега
+  difficulty: warmup
+  introduces: [joint-mask]
+  uses: [nan-inf, mask-combine]
+  statement: |
+    Создайте общую маску `known_year_distance` — строки, где **и год, и пробег** конечны, — и посчитайте `n_known` — число таких строк.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]
+  starter: |
+    known_year_distance = ...
+    n_known = ...
+    print(n_known)
+  solution: |
+    known_year_distance = np.isfinite(year) & np.isfinite(distance)
+    n_known = known_year_distance.sum()
+    print(n_known)
+  explanation: |
+    - Две маски `np.isfinite` объединены через `&`: строка подходит, только если пригодны оба признака.
+  hints:
+    - Нужна одна маска из двух условий «конечно», соединённых «и».
+    - "`np.isfinite(year) & np.isfinite(distance)`; число строк — `.sum()`."
+    - "`known_year_distance = np.isfinite(year) & np.isfinite(distance)`"
+  tests: |
+    import numpy as np
+    m = var('known_year_distance', 'ndarray', 'массивом NumPy (маской)')
+    ensure(m.dtype == bool, 'Нужна логическая маска True/False, а тип %s.' % m.dtype)
+    ensure(m.shape == ref('known_year_distance').shape, 'Маска должна иметь длину, равную числу записей в X (общая маска, а не отфильтрованный вектор).')
+    same_array(m, ref('known_year_distance'), 'Маска не совпадает: нужны строки, где конечны и год, и пробег.')
+    close(var('n_known', 'number', 'числом'), ref('n_known'), 'n_known должно быть {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        known_year_distance = np.isfinite(year) & np.isfinite(engine)
+        n_known = known_year_distance.sum()
+      expect: Маска не совпадает
+    - code: |
+        known_year_distance = distance[np.isfinite(distance)]
+        n_known = len(known_year_distance)
+      expect: логическая маска
+
+- id: m1-l8-t2
+  title: Медианы двух групп
+  difficulty: main
+  introduces: [group-compare]
+  uses: [joint-mask, mean-median]
+  statement: |
+    Разделите объявления с конечными годом и ценой на группы **до 2010** (`year < 2010`) и **2010 и позже**. Получите размеры групп `n_old`, `n_new` и медианные цены `median_old`, `median_new`.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]
+  starter: |
+    known = np.isfinite(year) & np.isfinite(price)
+    old = ...
+    new = ...
+    n_old, n_new = ...
+    median_old = ...
+    median_new = ...
+    print(n_old, n_new, median_old, median_new)
+  solution: |
+    known = np.isfinite(year) & np.isfinite(price)
+    old = known & (year < 2010)
+    new = known & (year >= 2010)
+    n_old, n_new = old.sum(), new.sum()
+    median_old = np.median(price[old])
+    median_new = np.median(price[new])
+    print(n_old, n_new, median_old, median_new)
+  explanation: |
+    - Маска группы = общая маска `&` условие группы.
+    - Границы не пересекаются: `< 2010` и `>= 2010`.
+    - Размеры — суммы масок, медианы — по ценам, отобранным масками.
+  hints:
+    - Каждая группа — общая маска плюс условие на год; границы не должны пересекаться.
+    - "`old = known & (year < 2010)`, `new = known & (year >= 2010)`; медиана — `np.median(price[маска])`."
+    - "`n_old, n_new = old.sum(), new.sum()`, `median_old = np.median(price[old])`."
+  tests: |
+    no, nn = var('n_old', 'number', 'числом'), var('n_new', 'number', 'числом')
+    if no + nn > ref('known').sum():
+        fail('Сумма размеров групп больше числа строк — границы пересекаются. Используйте < 2010 и >= 2010.')
+    close(no, ref('n_old'), 'n_old должно быть {expected}, а у вас {actual}.')
+    close(nn, ref('n_new'), 'n_new должно быть {expected}, а у вас {actual}.')
+    close(var('median_old', 'number', 'числом'), ref('median_old'), 'median_old должна быть {expected}, а у вас {actual}.')
+    close(var('median_new', 'number', 'числом'), ref('median_new'), 'median_new должна быть {expected}, а у вас {actual}.')
+    close(alt('median_new'), alt_ref('median_new'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        known = np.isfinite(year) & np.isfinite(price)
+        old = known & (year <= 2010)
+        new = known & (year >= 2010)
+        n_old, n_new = old.sum(), new.sum()
+        median_old = np.median(price[old])
+        median_new = np.median(price[new])
+      expect: пересекаются
+    - code: |
+        known = np.isfinite(year) & np.isfinite(price)
+        old = known & (year < 2010)
+        new = known & (year >= 2010)
+        n_old, n_new = old.sum(), new.sum()
+        median_old = np.mean(price[old])
+        median_new = np.mean(price[new])
+      expect: median_old
+
+- id: m1-l8-t3
+  title: Чем ещё отличаются группы
+  difficulty: main
+  introduces: [group-compare]
+  uses: [joint-mask, mean-median]
+  statement: |
+    Проверим, что группы по году отличаются не только ценой. Для групп **до 2015** и **2015 и позже** (маски `older` и `newer` готовы) получите:
+
+    - `median_ratio` — во сколько раз медианная цена новых больше медианной цены старых;
+    - `distance_old`, `distance_new` — медианные пробеги групп (только конечные пробеги внутри группы).
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]
+    known = np.isfinite(year) & np.isfinite(price)
+    older = known & (year < 2015)
+    newer = known & (year >= 2015)
+  starter: |
+    median_ratio = ...
+    distance_old = ...
+    distance_new = ...
+    print(round(median_ratio, 2), distance_old, distance_new)
+  solution: |
+    median_ratio = np.median(price[newer]) / np.median(price[older])
+    distance_old = np.median(distance[older & np.isfinite(distance)])
+    distance_new = np.median(distance[newer & np.isfinite(distance)])
+    print(round(median_ratio, 2), distance_old, distance_new)
+  explanation: |
+    - Отношение медиан ≈ 2.84: новые машины в этом наборе заметно дороже.
+    - Но и пробег у них вдвое меньше (93 000 км против 188 000 км) — группы различаются сразу несколькими признаками, поэтому разницу цен нельзя приписать одному году.
+  hints:
+    - Отношение — деление медианы новых на медиану старых; для пробега добавьте к маске группы условие «пробег конечен».
+    - "`np.median(price[newer]) / np.median(price[older])`; пробег: `distance[older & np.isfinite(distance)]`."
+    - "`distance_old = np.median(distance[older & np.isfinite(distance)])`, аналогично для newer."
+  tests: |
+    r = var('median_ratio', 'number', 'числом')
+    if r < 1:
+        fail('median_ratio меньше 1 — делите медиану новых на медиану старых.')
+    close(r, ref('median_ratio'), 'median_ratio должно быть {expected}, а у вас {actual}.')
+    close(var('distance_old', 'number', 'числом'), ref('distance_old'), 'Медианный пробег старых должен быть {expected}, а у вас {actual}.')
+    close(var('distance_new', 'number', 'числом'), ref('distance_new'), 'Медианный пробег новых должен быть {expected}, а у вас {actual}.')
+    close(alt('median_ratio'), alt_ref('median_ratio'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        median_ratio = np.median(price[older]) / np.median(price[newer])
+        distance_old = np.median(distance[older])
+        distance_new = np.median(distance[newer])
+      expect: делите медиану новых
+    - code: |
+        median_ratio = np.median(price[newer]) / np.median(price[older])
+        distance_old = np.median(distance[newer])
+        distance_new = np.median(distance[older])
+      expect: старых
+
+- id: m1-l8-t4
+  kind: quiz
+  title: Как правильно сформулировать вывод
+  difficulty: main
+  introduces: []
+  uses: [group-compare, joint-mask]
+  statement: |
+    Аналитик сравнил группы: у машин с объёмом двигателя от 2000 см³ медианная цена 9 800 € (n = 15 961), у машин до 1400 см³ — 4 900 € (n = 4 992). Ответьте на вопросы.
+  quiz:
+    - q: Какая формулировка корректна?
+      options:
+        - Большой двигатель вдвое увеличивает цену автомобиля
+        - В этом наборе объявлений у машин с объёмом от 2000 см³ медианная цена вдвое выше, чем у машин до 1400 см³
+        - Покупатели готовы платить вдвое больше за мощность
+      answer: 1
+      explain: Описательное сравнение показывает связь в имеющихся данных, но не причину и не мотивы покупателей.
+    - q: Какие различия между группами могут объяснять разницу цен? Выберите все правдоподобные.
+      options:
+        - Марки и классы автомобилей (большие двигатели чаще у дорогих моделей)
+        - Год выпуска
+        - Тип кузова (внедорожники)
+        - Номер строки в файле
+      answer: [0, 1, 2]
+      explain: Группы различаются многими признаками. Номер строки — служебный и смысла не несёт.
+  hints:
+    - Отличайте описание данных от утверждения о причине.
+    - Подумайте, какие ещё характеристики машин связаны с объёмом двигателя.
+    - "Корректна описательная формулировка «в этом наборе…»; объяснять могут марка, год, кузов."
+
+- id: m1-l8-t5
+  kind: bug
+  title: "Найдите ошибку: группы больше, чем данных"
+  difficulty: main
+  introduces: []
+  uses: [group-compare, mask-combine]
+  statement: |
+    В коде ниже сумма размеров групп больше общего числа строк. Исправьте границы, чтобы каждая машина попала ровно в одну группу: «до 2015» и «2015 и позже».
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]
+    known = np.isfinite(year) & np.isfinite(price)
+  starter: |
+    older = known & (year <= 2015)
+    newer = known & (year >= 2015)
+    n_older, n_newer = older.sum(), newer.sum()
+    print(n_older, n_newer, n_older + n_newer, known.sum())
+  solution: |
+    older = known & (year < 2015)
+    newer = known & (year >= 2015)
+    n_older, n_newer = older.sum(), newer.sum()
+    print(n_older, n_newer, n_older + n_newer, known.sum())
+  explanation: |
+    - `year <= 2015` и `year >= 2015` обе включают 2015 год — такие машины посчитаны дважды.
+    - «До 2015» — строго меньше: `year < 2015`.
+  hints:
+    - Какие машины попадают в обе группы одновременно?
+    - "Обе маски включают 2015 год. Одна из границ должна быть строгой."
+    - "`older = known & (year < 2015)`"
+  tests: |
+    o = var('older', 'ndarray', 'маской')
+    n = var('newer', 'ndarray', 'маской')
+    ensure(not (o & n).any(), 'Группы всё ещё пересекаются: %d машин в обеих. Сделайте одну из границ строгой.' % (o & n).sum())
+    ensure((o | n).sum() == ref('known').sum(), 'Группы должны покрывать все строки с конечными годом и ценой.')
+    same_array(o, ref('older'), 'older должна быть «до 2015» (year < 2015).')
+    same_array(n, ref('newer'), 'newer должна быть «2015 и позже» (year >= 2015).')
+  wrong:
+    - code: |
+        older = known & (year <= 2015)
+        newer = known & (year >= 2015)
+      expect: пересекаются
+    - code: |
+        older = known & (year <= 2015)
+        newer = known & (year > 2015)
+      expect: older должна быть
+
+- id: m1-l8-t6
+  title: Медианы по классам объёма
+  difficulty: star
+  introduces: []
+  uses: [group-compare, joint-mask, mean-median]
+  statement: |
+    Даны границы классов объёма двигателя `edges = [0, 1200, 1600, 2000, 3000, np.inf]`. Для каждого интервала `[левая, правая)` по строкам с конечными объёмом и ценой получите:
+
+    - `class_counts` — массив размеров классов;
+    - `class_medians` — массив медианных цен.
+
+    Цикл по классам допустим — он перебирает группы, а статистики считает NumPy.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]
+  starter: |
+    edges = [0, 1200, 1600, 2000, 3000, np.inf]
+    known = np.isfinite(engine) & np.isfinite(price)
+    counts, medians = [], []
+    for low, high in zip(edges[:-1], edges[1:]):
+        ...
+    class_counts = np.array(counts)
+    class_medians = np.array(medians)
+    print(class_counts, class_medians)
+  solution: |
+    edges = [0, 1200, 1600, 2000, 3000, np.inf]
+    known = np.isfinite(engine) & np.isfinite(price)
+    counts, medians = [], []
+    for low, high in zip(edges[:-1], edges[1:]):
+        mask = known & (engine >= low) & (engine < high)
+        counts.append(mask.sum())
+        medians.append(np.median(price[mask]))
+    class_counts = np.array(counts)
+    class_medians = np.array(medians)
+    print(class_counts, class_medians)
+  explanation: |
+    - `zip(edges[:-1], edges[1:])` даёт пары соседних границ.
+    - Маска класса — общая маска и интервал `[low, high)`; размер и медиана добавляются в списки, затем превращаются в массивы.
+  hints:
+    - Внутри цикла постройте маску класса, затем добавьте в списки размер и медиану.
+    - "Маска: `known & (engine >= low) & (engine < high)`; `counts.append(mask.sum())`, `medians.append(np.median(price[mask]))`."
+    - "`mask = known & (engine >= low) & (engine < high)` и две строки с `append`."
+  tests: |
+    import numpy as np
+    c = var('class_counts', 'ndarray', 'массивом NumPy')
+    m = var('class_medians', 'ndarray', 'массивом NumPy')
+    ensure(c.shape == (5,), 'Классов 5 — в class_counts должно быть 5 чисел, а форма %s.' % (c.shape,))
+    if c.sum() > ref('known').sum():
+        fail('Сумма размеров классов больше числа строк — интервалы пересекаются. Используйте >= low и < high.')
+    same_array(c, ref('class_counts'), 'Размеры классов не совпадают — интервалы [левая, правая): engine >= low и engine < high.')
+    same_array(m, ref('class_medians'), 'Медианы классов не совпадают.')
+    same_array(alt('class_medians'), alt_ref('class_medians'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        edges = [0, 1200, 1600, 2000, 3000, np.inf]
+        known = np.isfinite(engine) & np.isfinite(price)
+        counts, medians = [], []
+        for low, high in zip(edges[:-1], edges[1:]):
+            mask = known & (engine >= low) & (engine <= high)
+            counts.append(mask.sum())
+            medians.append(np.median(price[mask]))
+        class_counts = np.array(counts)
+        class_medians = np.array(medians)
+      expect: пересекаются
+    - code: |
+        edges = [0, 1200, 1600, 2000, 3000, np.inf]
+        known = np.isfinite(engine) & np.isfinite(price)
+        counts, medians = [], []
+        for low, high in zip(edges[:-1], edges[1:]):
+            mask = known & (engine >= low) & (engine < high)
+            counts.append(mask.sum())
+            medians.append(np.mean(price[mask]))
+        class_counts = np.array(counts)
+        class_medians = np.array(medians)
+      expect: Медианы классов

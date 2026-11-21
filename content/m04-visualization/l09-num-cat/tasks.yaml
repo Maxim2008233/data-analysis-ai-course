@@ -1,0 +1,394 @@
+- id: m4-l9-t1
+  kind: plot
+  title: Цвет по типу коробки
+  difficulty: warmup
+  introduces: [hue-channel]
+  uses: [sns-basics, overplotting]
+  statement: |
+    Нарисуйте функцией `sns.scatterplot` облако «год выпуска — цена» для всех объявлений с цветом по типу коробки (`hue='Transmission'`): маленькие точки (`s=6`) и прозрачность `alpha` не больше 0,5. Сделайте ось цены логарифмической, добавьте заголовок и подписи осей.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    fig, ax = plt.subplots(figsize=(10, 4))
+    sns.scatterplot(...)
+    ax.set(title=..., xlabel=..., ylabel=..., yscale=...)
+    plt.show()
+  solution: |
+    fig, ax = plt.subplots(figsize=(10, 4))
+    sns.scatterplot(data=df, x='Year', y='Price', hue='Transmission', s=6, alpha=0.3, ax=ax)
+    ax.set(title='Цена и год выпуска: автомат и механика', xlabel='Год выпуска', ylabel='Цена, евро', yscale='log')
+    plt.show()
+  explanation: |
+    - `hue='Transmission'` раскрашивает точки по коробке и добавляет легенду.
+    - `s=6, alpha=0.3` — против наложения точек (урок 4.8); `yscale='log'` в `ax.set` — логарифмическая ось цены.
+    - Видно, что автоматы в основном новее и дороже — две группы занимают разные части облака.
+  hints:
+    - "Функция `sns.scatterplot` принимает таблицу, имена колонок X и Y и колонку для цвета `hue`."
+    - "`sns.scatterplot(data=df, x='Year', y='Price', hue='Transmission', s=6, alpha=0.3, ax=ax)`."
+    - "`ax.set(title=..., xlabel='Год выпуска', ylabel='Цена, евро', yscale='log')`."
+  tests: |
+    import numpy as np
+    ax = axes()
+    pts = [c for c in ax.collections if type(c).__name__ == 'PathCollection']
+    ensure(len(pts) >= 1, 'Нарисуйте облако точек: `sns.scatterplot(...)`.')
+    n = sum(len(c.get_offsets()) for c in pts)
+    ensure(n == len(ref('df')), 'Точек должно быть столько же, сколько объявлений ({0}), а у вас {1}.'.format(len(ref('df')), n))
+    leg = ax.get_legend()
+    ensure(leg is not None and {'Automatic', 'Manual'} <= set(t.get_text() for t in leg.get_texts()), 'Раскрасьте точки по коробке передач: `hue=\'Transmission\'`.')
+    alpha = pts[0].get_alpha()
+    ensure(alpha is not None and alpha <= 0.5, 'Сделайте точки полупрозрачными: `alpha` не больше 0,5.')
+    ensure(ax.get_yscale() == 'log', 'Сделайте ось цены логарифмической: `yscale=\'log\'`.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+    ensure(ax.get_xlabel() != 'Year' and ax.get_ylabel() != 'Price', 'Подпишите оси по-русски: Seaborn по умолчанию ставит имена колонок.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        fig, ax = plt.subplots()
+        sns.scatterplot(data=df, x='Year', y='Price', s=6, alpha=0.3, ax=ax)
+        ax.set(title='Цена', xlabel='Год выпуска', ylabel='Цена, евро', yscale='log')
+        plt.show()
+      expect: hue
+    - code: |
+        fig, ax = plt.subplots()
+        sns.scatterplot(data=df, x='Year', y='Price', hue='Transmission', s=6, alpha=0.3, ax=ax)
+        ax.set(title='Цена', yscale='log')
+        plt.show()
+      expect: по-русски
+
+- id: m4-l9-t2
+  kind: plot
+  title: Три панели по типу топлива
+  difficulty: main
+  introduces: [shared-scales]
+  uses: [pd-isin-between, overplotting]
+  statement: |
+    Для объявлений с топливом `Diesel`, `Hybrid` и `Petrol` (`fuels`) нарисуйте три панели в одну строку с **общими** шкалами (`sharex=True, sharey=True`): на каждой — облако «год выпуска — цена» своей группы (`s=3`, `alpha=0.1`) и заголовок вида `'Diesel: n=15141'`. Группы перебирайте циклом `for ax, (name, group) in zip(axes, fuels.groupby('Fuel_type'))`. Ось цены — логарифмическая.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    fuels = ...
+    fig, axes = plt.subplots(1, 3, figsize=(14, 4), sharex=True, sharey=True)
+    for ax, (name, group) in zip(axes, fuels.groupby('Fuel_type')):
+        ax.scatter(...)
+        ax.set(title=..., xlabel='Год выпуска', yscale='log')
+    axes[0].set_ylabel('Цена, евро')
+    plt.show()
+  solution: |
+    fuels = df[df['Fuel_type'].isin(['Diesel', 'Hybrid', 'Petrol'])]
+    fig, axes = plt.subplots(1, 3, figsize=(14, 4), sharex=True, sharey=True)
+    for ax, (name, group) in zip(axes, fuels.groupby('Fuel_type')):
+        ax.scatter(group['Year'], group['Price'], s=3, alpha=0.1)
+        ax.set(title=f'{name}: n={len(group)}', xlabel='Год выпуска', yscale='log')
+    axes[0].set_ylabel('Цена, евро')
+    plt.show()
+  explanation: |
+    - `isin([...])` оставляет три типа топлива (урок 2.5).
+    - Цикл перебирает пары «ось, (название группы, таблица группы)»; группы идут по алфавиту: Diesel, Hybrid, Petrol.
+    - Общие шкалы делают панели сравнимыми, а `n` в заголовке объясняет, почему облако дизелей гуще.
+  hints:
+    - "Отберите три типа топлива через `isin`; в цикле рисуйте `group`, а не всю таблицу."
+    - "`ax.scatter(group['Year'], group['Price'], s=3, alpha=0.1)`; заголовок — `f'{name}: n={len(group)}'`."
+    - "`fuels = df[df['Fuel_type'].isin(['Diesel', 'Hybrid', 'Petrol'])]`."
+  tests: |
+    fig = figures()[-1]
+    axs = plot_axes(fig)
+    ensure(len(axs) == 3, 'Нужны три панели: `plt.subplots(1, 3, ...)`, а у вас {0}.'.format(len(axs)))
+    ensure(axs[0].get_shared_x_axes().joined(axs[0], axs[2]) and axs[0].get_shared_y_axes().joined(axs[0], axs[2]), 'Сделайте шкалы общими: `sharex=True, sharey=True`.')
+    sizes = ref('fuels').groupby('Fuel_type').size()
+    for ax, (name, n) in zip(axs, sizes.items()):
+        pts = [c for c in ax.collections if type(c).__name__ == 'PathCollection']
+        ensure(len(pts) >= 1, 'На панели {0} нет точек.'.format(name))
+        got = len(pts[0].get_offsets())
+        if got == len(ref('fuels')):
+            fail('На каждой панели все три группы: рисуйте `group[...]`, а не `fuels[...]`.')
+        ensure(got == n, 'На панели {0} должно быть {1} точек, а у вас {2}.'.format(name, n, got))
+        t = ax.get_title()
+        ensure(name in t and str(n) in t, 'Заголовок панели должен содержать название группы и её размер: `{0}: n={1}`.'.format(name, n))
+        ensure(ax.get_yscale() == 'log', 'Сделайте ось цены логарифмической: `yscale=\'log\'`.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        fuels = df[df['Fuel_type'].isin(['Diesel', 'Hybrid', 'Petrol'])]
+        fig, axes = plt.subplots(1, 3)
+        for ax, (name, group) in zip(axes, fuels.groupby('Fuel_type')):
+            ax.scatter(group['Year'], group['Price'], s=3, alpha=0.1)
+            ax.set(title=f'{name}: n={len(group)}', yscale='log')
+        plt.show()
+      expect: общими
+    - code: |
+        fuels = df[df['Fuel_type'].isin(['Diesel', 'Hybrid', 'Petrol'])]
+        fig, axes = plt.subplots(1, 3, sharex=True, sharey=True)
+        for ax, (name, group) in zip(axes, fuels.groupby('Fuel_type')):
+            ax.scatter(fuels['Year'], fuels['Price'], s=3, alpha=0.1)
+            ax.set(title=f'{name}: n={len(group)}', yscale='log')
+        plt.show()
+      expect: "`group[...]`"
+
+- id: m4-l9-t3
+  kind: plot
+  title: Одна шкала цвета для двух hexbin
+  difficulty: main
+  introduces: [shared-scales]
+  uses: [overplotting]
+  statement: |
+    Код рисует два hexbin «год выпуска — цена» — для дизеля и бензина. Сделайте шкалу цвета **общей**: найдите `vmax` — наибольшее число записей в ячейке среди обеих панелей (`hb.get_array().max()`), создайте `norm = LogNorm(vmin=1, vmax=vmax)`, примените её к каждой панели (`hb.set_norm(norm)`) и нарисуйте **одну** цветовую шкалу на весь рисунок: `fig.colorbar(plots[0], ax=axes.tolist(), label=...)`.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import LogNorm
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    two = df[df['Fuel_type'].isin(['Diesel', 'Petrol'])]
+    extent = (two['Year'].min(), two['Year'].max(), two['Price'].min(), two['Price'].max())
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4), sharex=True, sharey=True, layout='constrained')
+    plots = []
+    for ax, (name, group) in zip(axes, two.groupby('Fuel_type')):
+        hb = ax.hexbin(group['Year'], group['Price'], gridsize=35, extent=extent, mincnt=1)
+        plots.append(hb)
+        ax.set(title=f'{name}: n={len(group)}', xlabel='Год выпуска')
+    vmax = ...
+    norm = ...
+    for hb in plots:
+        ...
+    fig.colorbar(...)
+    plt.show()
+  solution: |
+    two = df[df['Fuel_type'].isin(['Diesel', 'Petrol'])]
+    extent = (two['Year'].min(), two['Year'].max(), two['Price'].min(), two['Price'].max())
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4), sharex=True, sharey=True, layout='constrained')
+    plots = []
+    for ax, (name, group) in zip(axes, two.groupby('Fuel_type')):
+        hb = ax.hexbin(group['Year'], group['Price'], gridsize=35, extent=extent, mincnt=1)
+        plots.append(hb)
+        ax.set(title=f'{name}: n={len(group)}', xlabel='Год выпуска')
+    vmax = max(hb.get_array().max() for hb in plots)
+    norm = LogNorm(vmin=1, vmax=vmax)
+    for hb in plots:
+        hb.set_norm(norm)
+    fig.colorbar(plots[0], ax=axes.tolist(), label='Число записей в ячейке (лог. шкала)')
+    plt.show()
+  explanation: |
+    - `hb.get_array()` — числа записей в ячейках одной панели; максимум по обеим панелям — верхняя граница общей шкалы.
+    - `LogNorm(vmin=1, vmax=vmax)` — логарифмическая шкала от 1 до максимума; `set_norm` применяет её к каждой панели.
+    - Одна цветовая шкала `ax=axes.tolist()` относится к обеим осям: одинаковый цвет — одинаковое число записей.
+  hints:
+    - Максимум ищите по всем панелям сразу; нормировку задайте одну и примените в цикле.
+    - "`vmax = max(hb.get_array().max() for hb in plots)`; `norm = LogNorm(vmin=1, vmax=vmax)`."
+    - "В цикле — `hb.set_norm(norm)`; шкала — `fig.colorbar(plots[0], ax=axes.tolist(), label='Число записей в ячейке')`."
+  tests: |
+    import numpy as np
+    fig = figures()[-1]
+    axs = plot_axes(fig)
+    ensure(len(axs) == 2, 'На рисунке должно быть две панели.')
+    polys = [[c for c in a.collections if type(c).__name__ == 'PolyCollection'][0] for a in axs]
+    norms = [p.norm for p in polys]
+    ensure(all(type(nm).__name__ == 'LogNorm' for nm in norms), 'Задайте панелям логарифмическую нормировку: `hb.set_norm(LogNorm(...))`.')
+    vmax = max(np.asarray(p.get_array()).max() for p in polys)
+    ensure(norms[0] is norms[1] or (np.isclose(norms[0].vmax, norms[1].vmax) and np.isclose(norms[0].vmin, norms[1].vmin)), 'У панелей должна быть одна и та же шкала цвета — примените одну `norm` к обеим.')
+    ensure(np.isclose(norms[0].vmin, 1) and np.isclose(norms[0].vmax, vmax), 'Шкала должна идти от 1 до наибольшего числа записей в ячейке среди обеих панелей ({0:.0f}).'.format(vmax))
+    bars = [a for a in fig.axes if a.get_label() == '<colorbar>']
+    ensure(len(bars) == 1, 'Нужна одна цветовая шкала на весь рисунок, а у вас {0}.'.format(len(bars)))
+    ensure(bars[0].get_ylabel().strip() != '', 'Подпишите цветовую шкалу: `label=...`.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        two = df[df['Fuel_type'].isin(['Diesel', 'Petrol'])]
+        extent = (two['Year'].min(), two['Year'].max(), two['Price'].min(), two['Price'].max())
+        fig, axes = plt.subplots(1, 2, figsize=(12, 4), sharex=True, sharey=True, layout='constrained')
+        plots = []
+        for ax, (name, group) in zip(axes, two.groupby('Fuel_type')):
+            hb = ax.hexbin(group['Year'], group['Price'], gridsize=35, extent=extent, mincnt=1)
+            plots.append(hb)
+        for hb in plots:
+            hb.set_norm(LogNorm(vmin=1, vmax=hb.get_array().max()))
+        fig.colorbar(plots[0], ax=axes.tolist(), label='Число записей')
+        plt.show()
+      expect: одна и та же шкала
+    - code: |
+        two = df[df['Fuel_type'].isin(['Diesel', 'Petrol'])]
+        extent = (two['Year'].min(), two['Year'].max(), two['Price'].min(), two['Price'].max())
+        fig, axes = plt.subplots(1, 2, figsize=(12, 4), sharex=True, sharey=True, layout='constrained')
+        plots = []
+        for ax, (name, group) in zip(axes, two.groupby('Fuel_type')):
+            hb = ax.hexbin(group['Year'], group['Price'], gridsize=35, extent=extent, mincnt=1)
+            plots.append(hb)
+        vmax = max(hb.get_array().max() for hb in plots)
+        norm = LogNorm(vmin=1, vmax=vmax)
+        for hb in plots:
+            hb.set_norm(norm)
+        for hb, ax in zip(plots, axes):
+            fig.colorbar(hb, ax=ax, label='Число записей')
+        plt.show()
+      expect: одна цветовая шкала
+
+- id: m4-l9-t4
+  title: Строгая граница для механики
+  difficulty: main
+  introduces: [shared-scales]
+  uses: [filter-boundary, pd-bool-filter]
+  statement: |
+    Кроме общей границы (от 130 000 € при нулевом пробеге до нуля при 600 000 км), для **механики** введите строгую: от **50 000 €** при нулевом пробеге до нуля при 600 000 км. Получите маски `above_all` (выше общей границы), `above_manual` (механика выше строгой границы), `suspect` (выше общей **или** механика выше строгой), число подозрительных `n_suspect` и `n_extra` — сколько записей добавила строгая граница сверх общей.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    manual = df['Transmission'] == 'Manual'
+    above_all = ...
+    above_manual = ...
+    suspect = ...
+    n_suspect = ...
+    n_extra = ...
+    print(n_suspect, n_extra)
+  solution: |
+    manual = df['Transmission'] == 'Manual'
+    above_all = df['Price'] > 130_000 * (1 - df['Distance'] / 600_000)
+    above_manual = manual & (df['Price'] > 50_000 * (1 - df['Distance'] / 600_000))
+    suspect = above_all | above_manual
+    n_suspect = int(suspect.sum())
+    n_extra = int((above_manual & ~above_all).sum())
+    print(n_suspect, n_extra)
+  explanation: |
+    - Каждая граница — своя прямая `a * (1 - x / b)` (урок 4.8); строгая применяется только к механике — через `&` с маской `manual`.
+    - «Выше общей или механика выше строгой» — `|`; «добавила сверх общей» — строгая **и не** общая: `above_manual & ~above_all`.
+    - Строгая граница для механики оправдана тем, что на панелях облако механики ниже и уже.
+  hints:
+    - "Две прямые одного вида с разными `a`; для механики добавьте условие `manual`."
+    - "`above_manual = manual & (df['Price'] > 50_000 * (1 - df['Distance'] / 600_000))`; `suspect = above_all | above_manual`."
+    - "`n_extra = int((above_manual & ~above_all).sum())`."
+  tests: |
+    import pandas as pd
+    am = var('above_manual', pd.Series, 'Series — маской')
+    d = ref('df')
+    if int(am.sum()) == int((d['Price'] > 50_000 * (1 - d['Distance'] / 600_000)).sum()) and int(am.sum()) != int(ref('above_manual').sum()):
+        fail('Строгая граница должна применяться только к механике: добавьте `manual & (...)`.')
+    same_frame(am, ref('above_manual'), 'Маска `above_manual` не совпадает: механика с ценой выше строгой границы 50 000 · (1 − пробег / 600 000).')
+    same_frame(var('suspect', pd.Series, 'Series — маской'), ref('suspect'), 'Маска `suspect` не совпадает: выше общей границы **или** механика выше строгой — оператор `|`.')
+    close(var('n_suspect', 'number', 'числом'), ref('n_suspect'), 'Подозрительных записей {expected}, а у вас {actual}.')
+    close(var('n_extra', 'number', 'числом'), ref('n_extra'), 'Строгая граница добавила {expected} записей, а у вас {actual}. Нужны записи выше строгой и не выше общей: `above_manual & ~above_all`.')
+    close(alt('n_suspect'), alt_ref('n_suspect'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        manual = df['Transmission'] == 'Manual'
+        above_all = df['Price'] > 130_000 * (1 - df['Distance'] / 600_000)
+        above_manual = df['Price'] > 50_000 * (1 - df['Distance'] / 600_000)
+        suspect = above_all | above_manual
+        n_suspect = int(suspect.sum())
+        n_extra = int((above_manual & ~above_all).sum())
+      expect: только к механике
+    - code: |
+        manual = df['Transmission'] == 'Manual'
+        above_all = df['Price'] > 130_000 * (1 - df['Distance'] / 600_000)
+        above_manual = manual & (df['Price'] > 50_000 * (1 - df['Distance'] / 600_000))
+        suspect = above_all & above_manual
+        n_suspect = int(suspect.sum())
+        n_extra = int((above_manual & ~above_all).sum())
+      expect: "`|`"
+
+- id: m4-l9-t5
+  kind: quiz
+  title: Цвет, панели и шкалы
+  difficulty: main
+  introduces: [hue-channel, shared-scales]
+  uses: []
+  statement: |
+    Выберите верное решение.
+  quiz:
+    - q: Нужно сравнить облака «пробег — цена» для 12 типов кузова. Что выбрать?
+      options:
+        - Один scatter с 12 цветами
+        - Панели по кузовам с общими шкалами (или несколько главных кузовов цветом)
+        - Круговую диаграмму
+      answer: 1
+      explain: Двенадцать цветов не различить, а точки одних групп закроют другие.
+    - q: "На двух hexbin-панелях одинаково тёмные ячейки. У каждой панели своя шкала цвета. Значит…"
+      options:
+        - в этих ячейках одинаковое число записей
+        - "сравнивать нельзя: одинаковый цвет на разных шкалах означает разное число записей"
+        - на обеих панелях ячейки пустые
+      answer: 1
+      explain: Для сравнения нужна общая нормировка цвета и одна шкала.
+    - q: "Зачем писать `n=…` в заголовке панели?"
+      options:
+        - "Чтобы читатель понимал: густое облако может означать просто большую группу"
+        - Это номер панели
+        - Так требует Matplotlib
+      answer: 0
+      explain: Размер группы объясняет густоту облака и надёжность выводов.
+  hints:
+    - Вспомните, сколько цветов можно различить и что делает общая шкала.
+    - "Много групп — панели; разные шкалы цвета — нельзя сравнивать; `n` — размер группы."
+    - "Ответы: панели с общими шкалами; сравнивать нельзя; густота облака зависит от размера группы."
+
+- id: m4-l9-t6
+  title: Отфильтрованный набор и сводка по коробке
+  difficulty: star
+  introduces: []
+  uses: [filter-boundary, pd-value-counts, pd-new-column]
+  statement: |
+    Подготовьте отфильтрованный набор по правилу урока (общая граница 130 000 € и строгая 60 000 € для механики) и проверьте, не исказил ли фильтр состав данных:
+
+    - `df_filtered` — копия `df` без подозрительных записей;
+    - `summary` — таблица с индексом `Automatic`, `Manual` и колонками `до` (число объявлений в `df`), `после` (в `df_filtered`) и `убрано, %` — доля убранных объявлений группы в процентах.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    manual = df['Transmission'] == 'Manual'
+    above_all = df['Price'] > 130_000 * (1 - df['Distance'] / 600_000)
+    above_manual = manual & (df['Price'] > 60_000 * (1 - df['Distance'] / 600_000))
+    df_filtered = ...
+    summary = pd.DataFrame({'до': ..., 'после': ...})
+    summary['убрано, %'] = ...
+    summary.round(2)
+  solution: |
+    manual = df['Transmission'] == 'Manual'
+    above_all = df['Price'] > 130_000 * (1 - df['Distance'] / 600_000)
+    above_manual = manual & (df['Price'] > 60_000 * (1 - df['Distance'] / 600_000))
+    df_filtered = df[~(above_all | above_manual)].copy()
+    summary = pd.DataFrame({'до': df['Transmission'].value_counts(),
+                            'после': df_filtered['Transmission'].value_counts()})
+    summary['убрано, %'] = 100 * (summary['до'] - summary['после']) / summary['до']
+    summary.round(2)
+  explanation: |
+    - `~(above_all | above_manual)` — записи, не попавшие ни под одно правило; `copy()` — отдельная таблица, исходная `df` не меняется.
+    - `value_counts()` до и после фильтра — две Series с одинаковыми метками; `pd.DataFrame({...})` ставит их колонками рядом (урок 2.1).
+    - Доля убранных — новая колонка из двух других (урок 2.8). Убрано меньше 1 % каждой группы: фильтр не меняет состав данных, но механики убрано больше — из-за строгой границы.
+  hints:
+    - "Отфильтрованная копия — отрицание объединённой маски; число объявлений по группам — `value_counts()`."
+    - "`df_filtered = df[~(above_all | above_manual)].copy()`; колонки `до` и `после` — `value_counts()` у `df` и у `df_filtered`."
+    - "`summary['убрано, %'] = 100 * (summary['до'] - summary['после']) / summary['до']`."
+  tests: |
+    import pandas as pd
+    f = var('df_filtered', pd.DataFrame, 'таблицей DataFrame')
+    ensure(len(var('df', pd.DataFrame, 'таблицей')) == len(ref('df')), 'Исходную таблицу `df` менять не нужно — фильтруйте в копию `df_filtered`.')
+    ensure(len(f) == len(ref('df_filtered')), 'В `df_filtered` должно остаться {0} записей, а у вас {1}. Уберите записи выше общей **или** строгой границы.'.format(len(ref('df_filtered')), len(f)))
+    s = var('summary', pd.DataFrame, 'таблицей DataFrame')
+    ensure(list(s.columns) == ['до', 'после', 'убрано, %'], 'Колонки `summary` должны быть `до`, `после`, `убрано, %`, а у вас {0}.'.format(list(s.columns)))
+    if s['убрано, %'].max() < 0.1:
+        fail('Доля убранных должна быть в процентах: умножьте на 100.')
+    same_frame(s, ref('summary'), 'Сводка не совпадает.', check_like=True)
+    same_frame(alt('summary'), alt_ref('summary'), HARDCODE_MSG, check_like=True)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        manual = df['Transmission'] == 'Manual'
+        above_all = df['Price'] > 130_000 * (1 - df['Distance'] / 600_000)
+        above_manual = manual & (df['Price'] > 60_000 * (1 - df['Distance'] / 600_000))
+        df_filtered = df[~above_all].copy()
+        summary = pd.DataFrame({'до': df['Transmission'].value_counts(), 'после': df_filtered['Transmission'].value_counts()})
+        summary['убрано, %'] = 100 * (summary['до'] - summary['после']) / summary['до']
+      expect: строгой границы
+    - code: |
+        manual = df['Transmission'] == 'Manual'
+        above_all = df['Price'] > 130_000 * (1 - df['Distance'] / 600_000)
+        above_manual = manual & (df['Price'] > 60_000 * (1 - df['Distance'] / 600_000))
+        df_filtered = df[~(above_all | above_manual)].copy()
+        summary = pd.DataFrame({'до': df['Transmission'].value_counts(), 'после': df_filtered['Transmission'].value_counts()})
+        summary['убрано, %'] = (summary['до'] - summary['после']) / summary['до']
+      expect: в процентах

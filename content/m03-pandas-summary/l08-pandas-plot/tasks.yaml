@@ -1,0 +1,314 @@
+- id: m3-l8-t1
+  kind: plot
+  title: Медианная цена по году выпуска
+  difficulty: warmup
+  introduces: [pd-plot]
+  uses: [pd-groupby]
+  statement: |
+    Получите `median_by_year` — медианную цену по годам выпуска и нарисуйте её **линией** с маркерами. Добавьте заголовок и подписи осей; в подписи оси Y укажите единицы — `евро`.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')   # результат модуля 2
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    median_by_year = ...
+    median_by_year.plot(...)
+    plt.show()
+  solution: |
+    median_by_year = df.groupby('Year')['Price'].median()
+    median_by_year.plot(marker='o', figsize=(10, 3), grid=True,
+                        title='Медианная цена по году выпуска',
+                        xlabel='Год выпуска', ylabel='Медианная цена, евро')
+    plt.show()
+  explanation: |
+    - Группировка по году даёт Series: индекс — годы (ось X), значения — медианы (ось Y).
+    - `marker='o'` показывает настоящие точки, `title`, `xlabel`, `ylabel` — подписи; единицы в подписи оси Y.
+  hints:
+    - Сначала группировка, потом метод `plot` у результата.
+    - "`df.groupby('Year')['Price'].median()`; `plot(marker='o', title=..., xlabel=..., ylabel=...)`."
+    - "`median_by_year.plot(marker='o', title='Медианная цена по году выпуска', xlabel='Год выпуска', ylabel='Медианная цена, евро')`."
+  tests: |
+    ax = axes()
+    lines = ax.get_lines()
+    ensure(len(lines) >= 1, 'На графике нет линии — нарисуйте `median_by_year.plot(...)` без `kind=\'bar\'`.')
+    exp = ref('df').groupby('Year')['Price'].median()
+    ys = lines[0].get_ydata()
+    ensure(len(ys) == len(exp), 'На линии {0} точек, а лет выпуска {1}. Рисуйте медианы по годам.'.format(len(ys), len(exp)))
+    same_array(ys, exp.values, 'Значения линии должны быть медианными ценами по годам.')
+    ensure(lines[0].get_marker() not in (None, 'None', ''), 'Добавьте маркеры точек: `marker=\'o\'`.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок графика: `title=...`.')
+    ensure(ax.get_xlabel().strip() != '', 'Подпишите ось X: `xlabel=...`.')
+    ensure('евро' in ax.get_ylabel().lower() or '€' in ax.get_ylabel(), 'В подписи оси Y укажите единицы: например, `ylabel=\'Медианная цена, евро\'`.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        median_by_year = df.groupby('Year')['Price'].median()
+        median_by_year.plot(marker='o', title='Медианная цена по году выпуска', xlabel='Год выпуска', ylabel='Цена')
+        plt.show()
+      expect: единицы
+    - code: |
+        median_by_year = df.groupby('Year')['Price'].mean()
+        median_by_year.plot(marker='o', title='Цена по году', xlabel='Год выпуска', ylabel='Цена, евро')
+        plt.show()
+      expect: медианными ценами
+    - code: |
+        median_by_year = df.groupby('Year')['Price'].median()
+        median_by_year.plot(title='Медианная цена по году выпуска', xlabel='Год выпуска', ylabel='Медианная цена, евро')
+        plt.show()
+      expect: marker
+
+- id: m3-l8-t2
+  kind: plot
+  title: Пять самых частых марок столбцами
+  difficulty: main
+  introduces: [pd-plot]
+  uses: [pd-value-counts]
+  statement: |
+    Нарисуйте **столбчатую** диаграмму числа объявлений пяти самых частых марок (по убыванию). Добавьте заголовок и подпись оси Y `Число объявлений`.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    top5 = ...
+    top5.plot(...)
+    plt.show()
+  solution: |
+    top5 = df['Make'].value_counts().head(5)
+    top5.plot(kind='bar', rot=0, title='Пять самых частых марок', xlabel='Марка', ylabel='Число объявлений')
+    plt.show()
+  explanation: |
+    - `value_counts().head(5)` — пять самых частых марок, уже по убыванию.
+    - `kind='bar'` рисует столбцы — для категорий; `rot=0` оставляет подписи горизонтальными.
+  hints:
+    - Частоты марок дают `value_counts`; нужный тип графика задаёт параметр `kind`.
+    - "`df['Make'].value_counts().head(5)`; `plot(kind='bar', title=..., ylabel='Число объявлений')`."
+    - "`top5.plot(kind='bar', title='Пять самых частых марок', ylabel='Число объявлений')`."
+  tests: |
+    ax = axes()
+    bars = [p for p in ax.patches if type(p).__name__ == 'Rectangle']
+    ensure(len(bars) > 0, 'На графике нет столбцов — нужен `kind=\'bar\'`.')
+    ensure(len(bars) == 5, 'Столбцов должно быть 5, а у вас {0}.'.format(len(bars)))
+    heights = [round(b.get_height()) for b in bars]
+    exp = [int(x) for x in ref('df')['Make'].value_counts().head(5)]
+    ensure(sorted(heights) == sorted(exp), 'Высоты столбцов должны быть числами объявлений пяти самых частых марок: {0}.'.format(exp))
+    ensure(heights == sorted(heights, reverse=True), 'Столбцы должны идти по убыванию — так, как их возвращает `value_counts()`.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок: `title=...`.')
+    ensure('объявлен' in ax.get_ylabel().lower(), 'Подпишите ось Y: `ylabel=\'Число объявлений\'`.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        top5 = df['Make'].value_counts().head(5)
+        top5.plot(title='Пять самых частых марок', ylabel='Число объявлений')
+        plt.show()
+      expect: нет столбцов
+    - code: |
+        top5 = df['Make'].value_counts().head(5).sort_values()
+        top5.plot(kind='bar', title='Пять самых частых марок', ylabel='Число объявлений')
+        plt.show()
+      expect: по убыванию
+
+- id: m3-l8-t3
+  kind: plot
+  title: Логарифмическая шкала для цен Toyota
+  difficulty: main
+  introduces: [pd-plot]
+  uses: [pd-bool-filter, pd-groupby]
+  statement: |
+    Нарисуйте линией среднюю цену **Toyota** по годам выпуска на **логарифмической** шкале Y. В заголовке упомяните, что шкала логарифмическая (слово «логарифм…»).
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    toyota_by_year = ...
+    toyota_by_year.plot(...)
+    plt.show()
+  solution: |
+    toyota_by_year = df[df['Make'] == 'Toyota'].groupby('Year')['Price'].mean()
+    toyota_by_year.plot(marker='o', logy=True, grid=True,
+                        title='Средняя цена Toyota по годам выпуска (логарифмическая шкала)',
+                        xlabel='Год выпуска', ylabel='Средняя цена, евро')
+    plt.show()
+  explanation: |
+    - Фильтр по марке, затем группировка по году — средняя цена Toyota для каждого года выпуска.
+    - `logy=True` — логарифмическая шкала Y: равные расстояния означают равные отношения цен.
+    - Шкалу подписывают в заголовке, чтобы читатель не принял расстояния за разности.
+  hints:
+    - Отберите Toyota, сгруппируйте по году и включите логарифмическую шкалу параметром `plot`.
+    - "`df[df['Make'] == 'Toyota'].groupby('Year')['Price'].mean()`; `plot(logy=True, title='… (логарифмическая шкала)')`."
+    - "`toyota_by_year.plot(marker='o', logy=True, title='Средняя цена Toyota по годам выпуска (логарифмическая шкала)')`."
+  tests: |
+    ax = axes()
+    lines = ax.get_lines()
+    ensure(len(lines) >= 1, 'На графике нет линии.')
+    exp = ref('df')[ref('df')['Make'] == 'Toyota'].groupby('Year')['Price'].mean()
+    same_array(lines[0].get_ydata(), exp.values, 'Значения линии должны быть средними ценами Toyota по годам.')
+    ensure(ax.get_yscale() == 'log', 'Шкала оси Y не логарифмическая — добавьте `logy=True`.')
+    ensure('логарифм' in ax.get_title().lower(), 'Упомяните в заголовке, что шкала логарифмическая.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        toyota_by_year = df[df['Make'] == 'Toyota'].groupby('Year')['Price'].mean()
+        toyota_by_year.plot(marker='o', title='Средняя цена Toyota (логарифмическая шкала)')
+        plt.show()
+      expect: logy=True
+    - code: |
+        toyota_by_year = df.groupby('Year')['Price'].mean()
+        toyota_by_year.plot(marker='o', logy=True, title='Средняя цена (логарифмическая шкала)')
+        plt.show()
+      expect: Toyota
+
+- id: m3-l8-t4
+  kind: plot
+  title: Автомат и механика по типам топлива
+  difficulty: main
+  introduces: [pd-plot]
+  uses: [pd-pivot-table]
+  statement: |
+    Постройте `price_pivot` — сводную медианных цен: типы топлива по строкам, тип коробки по колонкам — и нарисуйте её **сгруппированными столбцами** (`kind='bar'`) с заголовком и подписью оси Y с единицами `евро`.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    price_pivot = ...
+    price_pivot.plot(...)
+    plt.show()
+  solution: |
+    price_pivot = df.pivot_table(index='Fuel_type', columns='Transmission', values='Price', aggfunc='median')
+    price_pivot.plot(kind='bar', rot=30, title='Медианная цена по топливу и коробке',
+                     xlabel='Тип топлива', ylabel='Медианная цена, евро')
+    plt.show()
+  explanation: |
+    - Сводная с двумя колонками (Automatic, Manual) — два ряда; `plot(kind='bar')` рисует их парами столбцов с легендой.
+    - Пустая ячейка (у подключаемых гибридов нет механики) остаётся пропуском — на графике там просто нет столбца.
+  hints:
+    - Сначала сводная таблица, затем `plot` у неё — каждая колонка станет своим рядом столбцов.
+    - "`df.pivot_table(index='Fuel_type', columns='Transmission', values='Price', aggfunc='median')`; `plot(kind='bar', ...)`."
+    - "`price_pivot.plot(kind='bar', title='Медианная цена по топливу и коробке', ylabel='Медианная цена, евро')`."
+  tests: |
+    import pandas as pd
+    p = var('price_pivot', pd.DataFrame, 'таблицей DataFrame — сводной')
+    same_frame(p, ref('price_pivot'), 'Сводная медианных цен не совпадает: топливо по строкам, коробка по колонкам.')
+    ax = axes()
+    bars = [b for b in ax.patches if type(b).__name__ == 'Rectangle']
+    ensure(len(bars) > 0, 'На графике нет столбцов — нужен `kind=\'bar\'`.')
+    labels = set(ax.get_legend_handles_labels()[1])
+    ensure({'Automatic', 'Manual'} <= labels, 'На графике должны быть два ряда — Automatic и Manual (рисуйте всю сводную).')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+    ensure('евро' in ax.get_ylabel().lower(), 'Подпишите ось Y с единицами: `ylabel=\'Медианная цена, евро\'`.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        price_pivot = df.pivot_table(index='Fuel_type', columns='Transmission', values='Price', aggfunc='median')
+        price_pivot['Automatic'].plot(kind='bar', title='Медианная цена', ylabel='Медианная цена, евро')
+        plt.show()
+      expect: два ряда
+    - code: |
+        price_pivot = df.pivot_table(index='Fuel_type', columns='Transmission', values='Price', aggfunc='mean')
+        price_pivot.plot(kind='bar', title='Средняя цена', ylabel='Цена, евро')
+        plt.show()
+      expect: Сводная медианных цен
+
+- id: m3-l8-t5
+  kind: quiz
+  title: Какой график выбрать
+  difficulty: main
+  introduces: [pd-plot]
+  uses: []
+  statement: |
+    Для каждого вопроса выберите подходящий график.
+  quiz:
+    - q: Как меняется медианная цена в зависимости от года выпуска?
+      options:
+        - Линия с маркерами по годам
+        - Столбцы, отсортированные по цене
+        - Круговая диаграмма
+      answer: 0
+      explain: Год — упорядоченный признак; линия показывает форму зависимости.
+    - q: Сравнить число объявлений восьми типов кузова
+      options:
+        - Линия
+        - Столбцы, отсортированные по убыванию
+        - Логарифмическая линия
+      answer: 1
+      explain: Кузова — категории; отсортированные столбцы читаются лучше всего.
+    - q: Средние цены по годам различаются от 500 до 60 000 евро, и рост в старых годах не виден. Что поможет?
+      options:
+        - Логарифмическая шкала Y (logy=True) с подписью в заголовке
+        - Удалить старые годы
+        - Перейти на столбцы
+      answer: 0
+      explain: На логарифмической шкале равные расстояния — равные отношения, и мелкие значения не тонут.
+  hints:
+    - Упорядоченный признак — линия, категории — столбцы, разброс в десятки раз — логарифм.
+    - "Год → линия; кузова → столбцы по убыванию; от 500 до 60 000 → `logy=True`."
+    - "Ответы: линия; столбцы по убыванию; логарифмическая шкала."
+
+- id: m3-l8-t6
+  kind: plot
+  title: Медианная цена по кузовам — только надёжные группы
+  difficulty: star
+  introduces: [pd-plot]
+  uses: [pd-agg, group-size-caution]
+  statement: |
+    Получите `style_stats` — для каждого кузова число объявлений `n` и медианную цену `median_price`; оставьте кузова **не менее чем со 100** объявлениями и нарисуйте медианную цену столбцами **по убыванию**. Добавьте заголовок и подпись оси Y с единицами `евро`.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    style_stats = ...
+    reliable = ...
+    reliable['median_price'].sort_values(ascending=False).plot(...)
+    plt.show()
+  solution: |
+    style_stats = df.groupby('Style').agg(n=('Price', 'size'), median_price=('Price', 'median'))
+    reliable = style_stats[style_stats['n'] >= 100]
+    reliable['median_price'].sort_values(ascending=False).plot(
+        kind='bar', rot=45, title='Медианная цена по типу кузова (100+ объявлений)',
+        xlabel='Тип кузова', ylabel='Медианная цена, евро')
+    plt.show()
+  explanation: |
+    - Именованная агрегация даёт размер группы и медиану (урок 3.2); фильтр по `n` убирает малые группы (урок 3.3).
+    - Сортировка по убыванию до `plot` — столбцы идут от самого дорогого кузова.
+    - В заголовке указан порог — читатель знает, какие кузова не показаны.
+  hints:
+    - Сначала таблица по кузовам с `n` и медианой, затем фильтр по `n`, затем сортировка и столбцы.
+    - "`df.groupby('Style').agg(n=('Price', 'size'), median_price=('Price', 'median'))`; фильтр `style_stats['n'] >= 100`."
+    - "`reliable['median_price'].sort_values(ascending=False).plot(kind='bar', title=..., ylabel='Медианная цена, евро')`."
+  tests: |
+    import pandas as pd
+    s = var('style_stats', pd.DataFrame, 'таблицей DataFrame')
+    ensure({'n', 'median_price'} <= set(s.columns), 'В `style_stats` должны быть колонки n и median_price.')
+    ax = axes()
+    bars = [b for b in ax.patches if type(b).__name__ == 'Rectangle']
+    exp = ref('reliable')['median_price'].sort_values(ascending=False)
+    ensure(len(bars) > 0, 'На графике нет столбцов — нужен `kind=\'bar\'`.')
+    if len(bars) == len(ref('style_stats')):
+        fail('На графике все кузова, включая малые группы. Оставьте кузова с `n >= 100`.')
+    ensure(len(bars) == len(exp), 'Столбцов должно быть {0} — кузова со 100+ объявлениями, а у вас {1}.'.format(len(exp), len(bars)))
+    heights = [b.get_height() for b in bars]
+    same_array(heights, exp.values, 'Высоты столбцов должны быть медианными ценами по убыванию.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+    ensure('евро' in ax.get_ylabel().lower(), 'Подпишите ось Y с единицами.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        style_stats = df.groupby('Style').agg(n=('Price', 'size'), median_price=('Price', 'median'))
+        reliable = style_stats
+        reliable['median_price'].sort_values(ascending=False).plot(kind='bar', title='Медианная цена по кузову', ylabel='Медианная цена, евро')
+        plt.show()
+      expect: малые группы
+    - code: |
+        style_stats = df.groupby('Style').agg(n=('Price', 'size'), median_price=('Price', 'median'))
+        reliable = style_stats[style_stats['n'] >= 100]
+        reliable['median_price'].plot(kind='bar', title='Медианная цена по кузову', ylabel='Медианная цена, евро')
+        plt.show()
+      expect: по убыванию

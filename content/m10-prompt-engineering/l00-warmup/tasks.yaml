@@ -1,0 +1,362 @@
+- id: m10-l0-t1
+  title: Варианты ответа из строки
+  difficulty: warmup
+  introduces: []
+  uses: [py-functions]
+  statement: |
+    Напишите функцию `parse_options(s)`: она превращает строку с вариантами ответа в список. Сначала пробует `json.loads`, а если строка не JSON — `ast.literal_eval`. Если не получилось ни так, ни так или результат не список, функция возвращает `None`. Получите:
+
+    - `n_not_json` — сколько строк столбца `варианты` не читается через `json.loads`;
+    - `n_options` — Series: сколько вопросов с каждым числом вариантов (`value_counts` от длины списков).
+  prelude: |
+    import ast
+    import json
+    import warnings
+    import pandas as pd
+    qa = pd.read_csv('qa_train.csv')
+  starter: |
+    def parse_options(s):
+        try:
+            value = ...
+        except json.JSONDecodeError:
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore', SyntaxWarning)
+                    value = ...
+            except (ValueError, SyntaxError):
+                return None
+        return value if isinstance(value, list) else None
+
+    def is_json(s):
+        try:
+            json.loads(s)
+            return True
+        except json.JSONDecodeError:
+            return False
+
+    n_not_json = ...
+    n_options = ...
+    print(n_not_json)
+    print(n_options)
+  solution: |
+    def parse_options(s):
+        try:
+            value = json.loads(s)
+        except json.JSONDecodeError:
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore', SyntaxWarning)
+                    value = ast.literal_eval(s)
+            except (ValueError, SyntaxError):
+                return None
+        return value if isinstance(value, list) else None
+
+    def is_json(s):
+        try:
+            json.loads(s)
+            return True
+        except json.JSONDecodeError:
+            return False
+
+    n_not_json = int(sum(not is_json(s) for s in qa['варианты']))
+    n_options = qa['варианты'].apply(parse_options).str.len().value_counts()
+    print(n_not_json)
+    print(n_options)
+  explanation: |
+    - Три строки записаны как списки Python в одинарных кавычках: `json.loads` на них падает, `ast.literal_eval` — справляется.
+    - У 79 вопросов четыре варианта, у шести — десять, у двух — семь. Описание задачи («ровно четыре варианта») расходится с данными, и это стоит проверять до того, как строить решение.
+    - `ast.literal_eval` читает только записанные значения — числа, строки, списки, словари. В отличие от `eval`, он не выполняет код, поэтому безопасен для чужих строк.
+  hints:
+    - "Первый способ — `json.loads(s)`, запасной — `ast.literal_eval(s)`."
+    - "Строк не в JSON — `sum(not is_json(s) for s in qa['варианты'])`."
+    - "Число вариантов — `qa['варианты'].apply(parse_options).str.len()`, затем `.value_counts()`."
+  tests: |
+    import pandas as pd
+    f = var('parse_options')
+    ensure(callable(f), '`parse_options` должна быть функцией.')
+    equal(f('["a", "b"]'), ['a', 'b'], 'JSON-строку `["a", "b"]` функция должна превратить в список.')
+    equal(f("['x', 'y', 'z']"), ['x', 'y', 'z'], 'Строку в одинарных кавычках `[\'x\', \'y\', \'z\']` нужно разобрать запасным способом — `ast.literal_eval`.')
+    equal(f('Какой дар получает герой?'), None, 'Для строки, которая не список, функция должна вернуть None.')
+    equal(f('"просто строка"'), None, 'JSON-строка, которая не список, — тоже None.')
+    equal(int(var('n_not_json', 'number', 'числом')), int(ref('n_not_json')), 'Строк не в JSON — {expected}, а у вас {actual}.')
+    no = var('n_options', pd.Series, 'Series')
+    equal({int(k): int(v) for k, v in no.items()}, {int(k): int(v) for k, v in ref('n_options').items()}, 'Число вопросов по числу вариантов — {expected}, а у вас {actual}.')
+    equal({int(k): int(v) for k, v in alt('n_options').items()}, {int(k): int(v) for k, v in alt_ref('n_options').items()}, HARDCODE_MSG)
+  files: [qa_train.csv]
+  wrong:
+    - code: |
+        def parse_options(s):
+            try:
+                value = json.loads(s)
+            except json.JSONDecodeError:
+                return None
+            return value if isinstance(value, list) else None
+        def is_json(s):
+            try:
+                json.loads(s)
+                return True
+            except json.JSONDecodeError:
+                return False
+        n_not_json = int(sum(not is_json(s) for s in qa['варианты']))
+        n_options = qa['варианты'].apply(parse_options).str.len().value_counts()
+      expect: запасным способом
+    - code: |
+        def parse_options(s):
+            try:
+                value = json.loads(s)
+            except json.JSONDecodeError:
+                try:
+                    with warnings.catch_warnings():
+                        warnings.simplefilter('ignore', SyntaxWarning)
+                        value = ast.literal_eval(s)
+                except (ValueError, SyntaxError):
+                    return None
+            return value
+        def is_json(s):
+            try:
+                json.loads(s)
+                return True
+            except json.JSONDecodeError:
+                return False
+        n_not_json = int(sum(not is_json(s) for s in qa['варианты']))
+        n_options = qa['варианты'].apply(parse_options).str.len().value_counts()
+      expect: тоже None
+
+- id: m10-l0-t2
+  title: Вопрос с пронумерованными вариантами
+  difficulty: warmup
+  introduces: []
+  uses: [py-fstrings, py-loops]
+  statement: |
+    Напишите функцию `format_question(question, options)`, которая собирает текст для модели: первая строка — вопрос, дальше по строке на вариант в виде `номер) вариант`, нумерация с 0. Строки соединяются символом `\n`. Получите `text_5` — текст для вопроса из строки 5 таблицы (`question_5`, `options_5`).
+  prelude: |
+    import json
+    import pandas as pd
+    qa = pd.read_csv('qa_train.csv')
+    question_5 = qa.loc[5, 'вопрос']
+    options_5 = json.loads(qa.loc[5, 'варианты'])
+  starter: |
+    def format_question(question, options):
+        lines = [question]
+        for i, option in enumerate(options):
+            lines.append(...)
+        return ...
+
+    text_5 = format_question(question_5, options_5)
+    print(text_5)
+  solution: |
+    def format_question(question, options):
+        lines = [question]
+        for i, option in enumerate(options):
+            lines.append(f'{i}) {option}')
+        return '\n'.join(lines)
+
+    text_5 = format_question(question_5, options_5)
+    print(text_5)
+  explanation: |
+    - `enumerate(options)` даёт пары «номер, вариант», нумерация с 0 — как у ответов в данных.
+    - `'\n'.join(lines)` склеивает строки через перенос строки. Такой текст и человеку, и модели читать проще, чем JSON-массив в одну строку из базового решения.
+    - Номер у каждого варианта прямо в тексте помогает модели ответить номером, а не пересказом варианта.
+  hints:
+    - "Строка варианта — `f'{i}) {option}'`."
+    - "Склейка — `'\\n'.join(lines)`."
+    - "Первая строка списка — сам вопрос, она уже стоит в `lines`."
+  tests: |
+    f = var('format_question')
+    ensure(callable(f), '`format_question` должна быть функцией.')
+    got = f('Сколько будет 2 + 2?', ['3', '4', '5'])
+    ensure(isinstance(got, str), '`format_question` должна вернуть строку, а вернула {0}.'.format(type(got).__name__))
+    if got.startswith('Сколько будет 2 + 2?\n1) 3'):
+        fail('Нумерация вариантов — с 0, как у номеров ответов в данных.')
+    equal(got, 'Сколько будет 2 + 2?\n0) 3\n1) 4\n2) 5', 'Для вопроса «Сколько будет 2 + 2?» с вариантами 3, 4, 5 ожидалось {expected}, а получилось {actual}.')
+    equal(var('text_5', str, 'строкой'), ref('text_5'), '`text_5` — текст для вопроса из строки 5.')
+  files: [qa_train.csv]
+  wrong:
+    - code: |
+        def format_question(question, options):
+            lines = [question]
+            for i, option in enumerate(options, start=1):
+                lines.append(f'{i}) {option}')
+            return '\n'.join(lines)
+        text_5 = format_question(question_5, options_5)
+      expect: с 0
+    - code: |
+        def format_question(question, options):
+            lines = [question]
+            for i, option in enumerate(options):
+                lines.append(f'{i}) {option}')
+            return ' '.join(lines)
+        text_5 = format_question(question_5, options_5)
+      expect: ожидалось
+
+- id: m10-l0-t3
+  title: Первое число в ответе
+  difficulty: warmup
+  introduces: []
+  uses: [py-functions, py-lists]
+  statement: |
+    Напишите функцию `first_number(text)`: первое целое число в тексте (`int`) или `None`, если чисел нет. Числа ищите через `re.findall(r'\d+', text)`. Для ответов модели из списка `replies` получите:
+
+    - `numbers` — список: первое число каждого ответа;
+    - `n_out_of_range` — сколько из этих чисел не годятся в номер варианта: `None` или больше 3 (у вопросов по четыре варианта).
+  prelude: |
+    import re
+    replies = ['Правильный ответ: 2',
+               'В 1662 году. Ответ: 0',
+               'Ответ: 3 (Геродот)',
+               'Сколько будет 99 + 11? Ответ: вариант 1',
+               'Затрудняюсь ответить',
+               '1']
+  starter: |
+    def first_number(text):
+        found = re.findall(r'\d+', text)
+        return ...
+
+    numbers = [first_number(r) for r in replies]
+    n_out_of_range = ...
+    print(numbers, n_out_of_range)
+  solution: |
+    def first_number(text):
+        found = re.findall(r'\d+', text)
+        return int(found[0]) if found else None
+
+    numbers = [first_number(r) for r in replies]
+    n_out_of_range = sum(1 for n in numbers if n is None or n > 3)
+    print(numbers, n_out_of_range)
+  explanation: |
+    - Правило «первое число» срабатывает, когда модель начинает с номера, и ломается, когда до номера в ответе встречается другое число: год (1662) или число из вопроса (99).
+    - Три ответа из шести не дают годного номера: 1662, 99 и «не знаю». Так устроено базовое решение соревнования, и в уроке 10.5 посмотрим, как часто оно ошибалось на настоящих ответах GigaChat.
+    - `int(found[0]) if found else None` — условное выражение: если список не пуст, берём первое, иначе `None`.
+  hints:
+    - "`re.findall(r'\\d+', text)` возвращает список строк из цифр."
+    - "Первое — `int(found[0])`; если список пуст — `None`."
+    - "Негодные — `n is None or n > 3`."
+  tests: |
+    f = var('first_number')
+    ensure(callable(f), '`first_number` должна быть функцией.')
+    for text, exp in [('ответ 12, а не 3', 12), ('нет чисел', None), ('007', 7)]:
+        got = f(text)
+        if exp is not None and got == str(exp):
+            fail('Верните число `int`, а не строку: `int(found[0])`.')
+        equal(got, exp, 'Для текста ' + repr(text) + ' ожидалось {expected}, а получилось {actual}.')
+    equal(list(var('numbers', list, 'списком')), list(ref('numbers')), 'Первые числа ответов — {expected}, а у вас {actual}.')
+    equal(int(var('n_out_of_range', 'number', 'числом')), int(ref('n_out_of_range')), 'Негодных номеров — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        def first_number(text):
+            found = re.findall(r'\d+', text)
+            return found[0] if found else None
+        numbers = [first_number(r) for r in replies]
+        n_out_of_range = sum(1 for n in numbers if n is None or int(n) > 3)
+      expect: int
+    - code: |
+        def first_number(text):
+            found = re.findall(r'\d+', text)
+            return int(found[-1]) if found else None
+        numbers = [first_number(r) for r in replies]
+        n_out_of_range = sum(1 for n in numbers if n is None or n > 3)
+      expect: ожидалось
+
+- id: m10-l0-t4
+  title: Темы и ответы
+  difficulty: warmup
+  introduces: []
+  uses: [pd-value-counts, pd-groupby]
+  statement: |
+    Получите для обучающих вопросов:
+
+    - `answer_shares` — Series: доля вопросов с каждым номером правильного ответа (`value_counts` с долями);
+    - `top_answer` — номер ответа, который встречается чаще всех, и `top_share` — его доля;
+    - `words_by_topic` — Series: средняя длина вопроса в словах для каждой темы (столбец `n_words` уже посчитан), по убыванию;
+    - `wordiest_topic` — тему с самыми длинными в среднем вопросами.
+  prelude: |
+    import pandas as pd
+    qa = pd.read_csv('qa_train.csv')
+    qa['n_words'] = qa['вопрос'].str.split().str.len()
+  starter: |
+    answer_shares = ...
+    top_answer = ...
+    top_share = ...
+    words_by_topic = ...
+    wordiest_topic = ...
+    print(answer_shares.round(3))
+    print(top_answer, round(top_share, 3), wordiest_topic)
+  solution: |
+    answer_shares = qa['ответ'].value_counts(normalize=True)
+    top_answer = int(answer_shares.index[0])
+    top_share = answer_shares.iloc[0]
+    words_by_topic = qa.groupby('категория')['n_words'].mean().sort_values(ascending=False)
+    wordiest_topic = words_by_topic.index[0]
+    print(answer_shares.round(3))
+    print(top_answer, round(top_share, 3), wordiest_topic)
+  explanation: |
+    - Чаще всего правильный ответ стоит под номером 1 — в 37 % вопросов. Решение «всегда отвечать 1» уже угадает больше трети: это ориентир, который любая модель должна обгонять (урок 10.8).
+    - Самые длинные вопросы — в теме «электричество», 12,5 слова: «Как называется закон, устанавливающий зависимость силы взаимодействия…». Но вопросов в этой теме всего два, и среднее по двум числам мало что значит — как маленькие группы в модуле 3.
+    - Длинный вопрос — длинный промпт, а за длину платят токенами (урок 10.3).
+  hints:
+    - "Доли — `qa['ответ'].value_counts(normalize=True)`, самый частый — первая строка."
+    - "`top_answer = int(answer_shares.index[0])`, `top_share = answer_shares.iloc[0]`."
+    - "Средняя длина по темам — `qa.groupby('категория')['n_words'].mean().sort_values(ascending=False)`."
+  tests: |
+    import pandas as pd
+    sh = var('answer_shares', pd.Series, 'Series')
+    if abs(float(sh.sum()) - 1) > 1e-9:
+        fail('В `answer_shares` нужны доли: `value_counts(normalize=True)`.')
+    same_array(sh.reindex(ref('answer_shares').index).to_numpy(dtype=float), ref('answer_shares').to_numpy(dtype=float), '`answer_shares` — доля вопросов с каждым номером ответа.')
+    equal(int(var('top_answer', 'number', 'числом')), int(ref('top_answer')), 'Чаще всего встречается ответ {expected}, а у вас {actual}.')
+    close(var('top_share', 'number', 'числом'), ref('top_share'), 'Доля самого частого ответа — {expected}, а у вас {actual}.')
+    wt = var('words_by_topic', pd.Series, 'Series')
+    same_array(wt.reindex(ref('words_by_topic').index).to_numpy(dtype=float), ref('words_by_topic').to_numpy(dtype=float), '`words_by_topic` — средняя длина вопроса по темам.')
+    equal(var('wordiest_topic', str, 'строкой'), ref('wordiest_topic'), 'Самые длинные вопросы — в теме {expected}, а у вас {actual}.')
+    close(alt('top_share'), alt_ref('top_share'), HARDCODE_MSG)
+  files: [qa_train.csv]
+  wrong:
+    - code: |
+        answer_shares = qa['ответ'].value_counts()
+        top_answer = int(answer_shares.index[0])
+        top_share = answer_shares.iloc[0]
+        words_by_topic = qa.groupby('категория')['n_words'].mean().sort_values(ascending=False)
+        wordiest_topic = words_by_topic.index[0]
+      expect: нужны доли
+    - code: |
+        answer_shares = qa['ответ'].value_counts(normalize=True)
+        top_answer = int(answer_shares.index[0])
+        top_share = answer_shares.iloc[0]
+        words_by_topic = qa.groupby('категория')['n_words'].mean().sort_values()
+        wordiest_topic = words_by_topic.index[0]
+      expect: Самые длинные вопросы
+
+- id: m10-l0-t5
+  kind: quiz
+  title: Что понадобится в модуле 10
+  difficulty: warmup
+  introduces: []
+  uses: [py-fstrings]
+  statement: |
+    Проверьте, что знакомые инструменты на месте.
+  quiz:
+    - q: Что делает json.loads('["a", "b"]')?
+      options:
+        - Превращает строку в формате JSON в список Python ['a', 'b']
+        - Записывает список в файл
+        - Проверяет, что строка написана по-английски
+      answer: 0
+      explain: JSON — способ записать списки и словари текстом; json.loads читает такую запись, json.dumps — создаёт.
+    - q: "Что вернёт re.findall(r'\\d+', 'В 1662 году — вариант 0')?"
+      options:
+        - "['1662', '0'] — все группы цифр по порядку"
+        - "['0'] — только номер варианта"
+        - "1662 — первое число"
+      answer: 0
+      explain: findall возвращает список строк. Поэтому правило «первое число — это номер» здесь ошибётся.
+    - q: Почему нельзя полагаться на то, что у вопроса ровно четыре варианта?
+      options:
+        - В данных есть вопросы с семью и десятью вариантами, хотя в описании сказано про четыре
+        - Модель сама добавляет варианты
+        - Варианты нумеруются с единицы
+      answer: 0
+      explain: Описание данных и сами данные расходятся — это проверяют до построения решения.
+  hints:
+    - Вспомните шаги урока.
+    - "JSON — текстовая запись списков; findall — все совпадения; вариантов бывает 7 и 10."
+    - "Ответы: первый вариант во всех трёх вопросах."

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 250" font-family="Inter, Arial, sans-serif" font-size="13" role="img" aria-label="После удаления пропусков позиции в отфильтрованном векторе сдвигаются; номера исходных записей сохраняет вектор rows">
+  <g font-family="JetBrains Mono, monospace" font-size="12" fill="currentColor">
+    <text x="20" y="34" font-weight="700">engine</text>
+    <text x="20" y="58" fill-opacity="0.6">номер записи</text>
+    <g>
+      <text x="170" y="34">1800</text><text x="240" y="34" fill="#c0362c">nan</text><text x="300" y="34">1400</text><text x="370" y="34" fill="#c0362c">nan</text><text x="430" y="34">9999</text><text x="500" y="34">1600</text>
+      <text x="178" y="58" fill-opacity="0.6">0</text><text x="248" y="58" fill-opacity="0.6">1</text><text x="308" y="58" fill-opacity="0.6">2</text><text x="378" y="58" fill-opacity="0.6">3</text><text x="438" y="58" fill-opacity="0.6">4</text><text x="508" y="58" fill-opacity="0.6">5</text>
+    </g>
+    <text x="20" y="130" font-weight="700">engine_values</text>
+    <text x="20" y="154" fill-opacity="0.6">позиция</text>
+    <text x="20" y="178" font-weight="700" fill="#1f8a4c">rows</text>
+    <text x="170" y="130">1800</text><text x="240" y="130">1400</text><text x="310" y="130" font-weight="700">9999</text><text x="380" y="130">1600</text>
+    <text x="178" y="154" fill-opacity="0.6">0</text><text x="248" y="154" fill-opacity="0.6">1</text><text x="318" y="154" fill-opacity="0.6">2</text><text x="388" y="154" fill-opacity="0.6">3</text>
+    <text x="178" y="178" fill="#1f8a4c">0</text><text x="248" y="178" fill="#1f8a4c">2</text><text x="318" y="178" fill="#1f8a4c" font-weight="700">4</text><text x="388" y="178" fill="#1f8a4c">5</text>
+  </g>
+  <g stroke="currentColor" stroke-opacity="0.45" stroke-width="1.2" fill="none">
+    <path d="M186 64 L186 112"/>
+    <path d="M316 64 L256 112"/>
+    <path d="M446 64 L326 112"/>
+    <path d="M516 64 L396 112"/>
+  </g>
+  <rect x="300" y="114" width="60" height="72" rx="6" fill="none" stroke="#3d5bd9" stroke-width="1.8"/>
+  <text x="560" y="128" fill="currentColor">np.argmax(engine_values)</text>
+  <text x="560" y="148" fill="currentColor">→ позиция 2</text>
+  <text x="560" y="176" fill="#1f8a4c">rows[2] → запись 4</text>
+  <text x="20" y="222" fill="currentColor" fill-opacity="0.8">После отбора маской позиции сдвигаются. Номер исходной записи — rows = row_id[маска], а не позиция.</text>
+</svg>

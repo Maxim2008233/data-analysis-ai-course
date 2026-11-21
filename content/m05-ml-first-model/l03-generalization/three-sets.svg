@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 214" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="Три выборки: данные делят на обучающую часть 60 процентов — на ней модели учатся, валидационную 20 процентов — на ней сравнивают модели и выбирают настройки, и тестовую 20 процентов — её используют один раз в конце для итоговой оценки">
+  <defs><marker id="ta" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor" fill-opacity="0.6"/></marker></defs>
+  <text x="12" y="22" fill="currentColor" font-weight="700">Все размеченные данные</text>
+  <rect x="12" y="32" width="438" height="40" rx="6" fill="#3d5bd9" fill-opacity="0.16" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <rect x="450" y="32" width="146" height="40" fill="#c2410c" fill-opacity="0.14" stroke="#c2410c" stroke-opacity="0.6"/>
+  <rect x="596" y="32" width="152" height="40" rx="6" fill="currentColor" fill-opacity="0.10" stroke="currentColor" stroke-opacity="0.5"/>
+  <g fill="currentColor" font-weight="700" text-anchor="middle">
+    <text x="231" y="57">train — 60 %</text><text x="523" y="57">validation — 20 %</text><text x="672" y="57">test — 20 %</text>
+  </g>
+  <path d="M231 74 L231 102" stroke="currentColor" stroke-opacity="0.6" marker-end="url(#ta)"/>
+  <path d="M523 74 L523 102" stroke="currentColor" stroke-opacity="0.6" marker-end="url(#ta)"/>
+  <path d="M672 74 L672 102" stroke="currentColor" stroke-opacity="0.6" marker-end="url(#ta)"/>
+  <g fill="currentColor" font-size="12" text-anchor="middle">
+    <text x="231" y="122">fit: модели подбирают параметры</text>
+    <text x="231" y="140" fill-opacity="0.75">(здесь же — fit для StandardScaler)</text>
+    <text x="523" y="122">сравниваем модели,</text>
+    <text x="523" y="140">выбираем настройки</text>
+    <text x="672" y="122">итоговая оценка</text>
+    <text x="672" y="140">один раз, в самом конце</text>
+  </g>
+  <line x1="12" y1="160" x2="748" y2="160" stroke="currentColor" stroke-opacity="0.2"/>
+  <text x="12" y="184" fill="currentColor" font-size="12">Части не пересекаются. Ошибка на train показывает, как модель выучила примеры; на validation и test — как она работает на новых.</text>
+  <text x="12" y="204" fill="currentColor" fill-opacity="0.8" font-size="12">Если выбирать модель по test, его оценка станет слишком оптимистичной — для честной итоговой проверки не останется данных.</text>
+</svg>

@@ -1,0 +1,571 @@
+- id: m6-l9-t1
+  title: "Шаг 1. X, y и отложенный test"
+  difficulty: main
+  introduces: []
+  uses: [sk-split, train-valid-test]
+  statement: |
+    Получите `X` — все колонки, кроме `target`, и `y` — `target`. Отложите test: `X_temp`, `X_test`, `y_temp`, `y_test` — 20 % в test, `random_state=42`. Validation отдельно не выделяем: сравнивать будем кросс-валидацией на `X_temp`.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    db = pd.read_csv('diabetes.csv')
+  starter: |
+    X = ...
+    y = ...
+    X_temp, X_test, y_temp, y_test = ...
+    print(len(X_temp), len(X_test))
+  solution: |
+    X = db.drop(columns='target')
+    y = db['target']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    print(len(X_temp), len(X_test))
+  explanation: |
+    - 353 пациента для обучения и сравнения моделей, 89 — для одной итоговой проверки. Test тот же, что в мини-проекте 5.10: первое разбиение с теми же параметрами.
+    - Validation из 89 человек была бы слишком шумной, поэтому её роль сыграет кросс-валидация: каждый из 353 пациентов побывает в проверке.
+  hints:
+    - "Признаки — `db.drop(columns='target')`, ответ — `db['target']`."
+    - "Одно разбиение: `train_test_split(X, y, test_size=0.2, random_state=42)`."
+    - "Порядок результатов — `X_temp, X_test, y_temp, y_test`."
+  tests: |
+    import pandas as pd
+    Xs = var('X', pd.DataFrame, 'таблицей DataFrame')
+    ensure('target' not in Xs.columns, 'Ответ `target` не должен попасть в признаки.')
+    equal((len(var('X_temp')), len(var('X_test'))), (353, 89), 'Размеры частей (обучение, test) — {expected}, а у вас {actual}.')
+    ensure(list(var('X_test').index) == list(ref('X_test').index), 'Состав test не совпадает: `train_test_split(X, y, test_size=0.2, random_state=42)`.')
+    ensure(list(var('y_temp').index) == list(var('X_temp').index), '`y_temp` должен соответствовать `X_temp` — разбивайте X и y одним вызовом.')
+  files: [diabetes.csv]
+  wrong:
+    - code: |
+        X = db
+        y = db['target']
+        X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+      expect: не должен попасть
+    - code: |
+        X = db.drop(columns='target')
+        y = db['target']
+        X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
+      expect: Состав test
+
+- id: m6-l9-t2
+  title: "Шаг 2. Блоки и ориентир"
+  difficulty: main
+  introduces: []
+  uses: [k-fold-cv, cross-validate, baseline-model]
+  statement: |
+    Создайте `cv` — `KFold` на 5 блоков с перемешиванием (`random_state=42`). Оцените кросс-валидацией на `X_temp`, `y_temp` ориентир — `DummyRegressor` с медианой: `base_folds` — MAE по блокам (положительные), `base_mean` и `base_std`.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split, KFold, cross_val_score
+    from sklearn.dummy import DummyRegressor
+    db = pd.read_csv('diabetes.csv')
+    X, y = db.drop(columns='target'), db['target']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+  starter: |
+    cv = ...
+    base_folds = ...
+    base_mean = ...
+    base_std = ...
+    print(base_folds.round(1), round(base_mean, 1), round(base_std, 1))
+  solution: |
+    cv = KFold(n_splits=5, shuffle=True, random_state=42)
+    base_folds = -cross_val_score(DummyRegressor(strategy='median'), X_temp, y_temp, cv=cv, scoring='neg_mean_absolute_error')
+    base_mean = base_folds.mean()
+    base_std = base_folds.std()
+    print(base_folds.round(1), round(base_mean, 1), round(base_std, 1))
+  explanation: |
+    - Ориентир — 66,5 ± 4,8: настолько ошибается «одно число для всех». Разброс по блокам почти 5 баллов: на 70 пациентах в блоке оценки заметно колеблются.
+    - Один и тот же `cv` будем передавать всем кандидатам — так все модели проверяются на одних и тех же блоках, и сравнение честное.
+  hints:
+    - "`KFold(n_splits=5, shuffle=True, random_state=42)`."
+    - "`cross_val_score(DummyRegressor(strategy='median'), X_temp, y_temp, cv=cv, scoring='neg_mean_absolute_error')` — со сменой знака."
+    - "Среднее и разброс — `.mean()` и `.std()`."
+  tests: |
+    import numpy as np
+    from sklearn.model_selection import KFold
+    c = var('cv', KFold, 'объектом KFold')
+    ensure(c.n_splits == 5 and c.shuffle and c.random_state == 42, 'Блоки — `KFold(n_splits=5, shuffle=True, random_state=42)`.')
+    f = np.asarray(var('base_folds'), dtype=float)
+    if (f < 0).all():
+        fail('MAE отрицательные — поменяйте знак результата `cross_val_score`.')
+    same_array(f, ref('base_folds'), 'MAE ориентира по блокам не совпадают: медиана, данные `X_temp`, `y_temp`, блоки `cv`.')
+    close(var('base_mean', 'number', 'числом'), ref('base_mean'), 'Средняя MAE ориентира — {expected}, а у вас {actual}.')
+    close(var('base_std', 'number', 'числом'), ref('base_std'), 'Разброс — {expected}, а у вас {actual}.')
+    close(alt('base_mean'), alt_ref('base_mean'), HARDCODE_MSG)
+  files: [diabetes.csv]
+  wrong:
+    - code: |
+        cv = KFold(n_splits=5, shuffle=True, random_state=42)
+        base_folds = cross_val_score(DummyRegressor(strategy='median'), X_temp, y_temp, cv=cv, scoring='neg_mean_absolute_error')
+        base_mean = base_folds.mean()
+        base_std = base_folds.std()
+      expect: поменяйте знак
+    - code: |
+        cv = KFold(n_splits=5)
+        base_folds = -cross_val_score(DummyRegressor(strategy='median'), X_temp, y_temp, cv=cv, scoring='neg_mean_absolute_error')
+        base_mean = base_folds.mean()
+        base_std = base_folds.std()
+      expect: "KFold(n_splits=5, shuffle=True"
+
+- id: m6-l9-t3
+  title: "Шаг 3. Линейная модель в Pipeline"
+  difficulty: main
+  introduces: []
+  uses: [sk-pipeline, cross-validate, linear-regression]
+  statement: |
+    Соберите `linear` — Pipeline `'scale'` (`StandardScaler`) + `'model'` (`LinearRegression`) и оцените его кросс-валидацией на тех же блоках `cv`: `linear_folds`, `linear_mean`, `linear_std`.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split, KFold, cross_val_score
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import Pipeline
+    from sklearn.linear_model import LinearRegression
+    db = pd.read_csv('diabetes.csv')
+    X, y = db.drop(columns='target'), db['target']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    cv = KFold(n_splits=5, shuffle=True, random_state=42)
+  starter: |
+    linear = ...
+    linear_folds = ...
+    linear_mean = ...
+    linear_std = ...
+    print(linear_folds.round(1), round(linear_mean, 1), round(linear_std, 1))
+  solution: |
+    linear = Pipeline([('scale', StandardScaler()), ('model', LinearRegression())])
+    linear_folds = -cross_val_score(linear, X_temp, y_temp, cv=cv, scoring='neg_mean_absolute_error')
+    linear_mean = linear_folds.mean()
+    linear_std = linear_folds.std()
+    print(linear_folds.round(1), round(linear_mean, 1), round(linear_std, 1))
+  explanation: |
+    - Линейная модель: 45,0 ± 1,8 — на 21 балл лучше ориентира и с самым маленьким разбросом.
+    - Scaler внутри Pipeline: в каждом из пяти шагов он учится только на обучающих блоках (урок 6.8). Для линейной регрессии масштаб не меняет прогнозы, но привычка та же.
+  hints:
+    - "`Pipeline([('scale', StandardScaler()), ('model', LinearRegression())])`."
+    - "MAE по блокам — `-cross_val_score(linear, X_temp, y_temp, cv=cv, scoring='neg_mean_absolute_error')`."
+    - "Среднее и разброс — `.mean()` и `.std()`."
+  tests: |
+    import numpy as np
+    from sklearn.pipeline import Pipeline
+    p = var('linear', Pipeline, 'объектом Pipeline')
+    ensure(list(p.named_steps) == ['scale', 'model'], 'Шаги — `scale` и `model`.')
+    f = np.asarray(var('linear_folds'), dtype=float)
+    if (f < 0).all():
+        fail('MAE отрицательные — поменяйте знак результата `cross_val_score`.')
+    same_array(f, ref('linear_folds'), 'MAE по блокам не совпадают: те же блоки `cv`, данные `X_temp`, `y_temp`.')
+    close(var('linear_mean', 'number', 'числом'), ref('linear_mean'), 'Средняя MAE — {expected}, а у вас {actual}.')
+    close(var('linear_std', 'number', 'числом'), ref('linear_std'), 'Разброс — {expected}, а у вас {actual}.')
+    close(alt('linear_mean'), alt_ref('linear_mean'), HARDCODE_MSG)
+  files: [diabetes.csv]
+  wrong:
+    - code: |
+        linear = Pipeline([('scale', StandardScaler()), ('model', LinearRegression())])
+        linear_folds = -cross_val_score(linear, X_temp, y_temp, cv=5, scoring='neg_mean_absolute_error')
+        linear_mean = linear_folds.mean()
+        linear_std = linear_folds.std()
+      expect: те же блоки
+    - code: |
+        linear = Pipeline([('scale', StandardScaler()), ('model', LinearRegression())])
+        linear_folds = -cross_val_score(linear, X, y, cv=cv, scoring='neg_mean_absolute_error')
+        linear_mean = linear_folds.mean()
+        linear_std = linear_folds.std()
+      expect: "`X_temp`"
+
+- id: m6-l9-t4
+  title: "Шаг 4. kNN: подбор k"
+  difficulty: main
+  introduces: []
+  uses: [knn, hyperparameter, cross-validate]
+  statement: |
+    Для каждого k из `ks` оцените kNN в Pipeline (`'scale'` + `'model'`) кросс-валидацией на `cv` и соберите `knn_cv` — Series «k → средняя MAE». Найдите `best_k` и `knn_best` — его среднюю MAE.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split, KFold, cross_val_score
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import Pipeline
+    from sklearn.neighbors import KNeighborsRegressor
+    db = pd.read_csv('diabetes.csv')
+    X, y = db.drop(columns='target'), db['target']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    cv = KFold(n_splits=5, shuffle=True, random_state=42)
+    ks = [5, 10, 20, 40]
+  starter: |
+    result = {}
+    for k in ks:
+        model = Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=k))])
+        result[k] = ...
+    knn_cv = pd.Series(result)
+    best_k = ...
+    knn_best = ...
+    print(knn_cv.round(1))
+    print(best_k, round(knn_best, 1))
+  solution: |
+    result = {}
+    for k in ks:
+        model = Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=k))])
+        result[k] = -cross_val_score(model, X_temp, y_temp, cv=cv, scoring='neg_mean_absolute_error').mean()
+    knn_cv = pd.Series(result)
+    best_k = knn_cv.idxmin()
+    knn_best = knn_cv.min()
+    print(knn_cv.round(1))
+    print(best_k, round(knn_best, 1))
+  explanation: |
+    - Лучшее k — 10: MAE ≈ 48,1. Различия между k = 10 и k = 20 (48,5) — меньше разброса по блокам, дно кривой плоское.
+    - Даже лучший kNN хуже линейной модели на ≈ 3 балла. У kNN десять признаков, а пациентов мало: в десятимерном пространстве «соседи» оказываются далеко и не так уж похожи.
+  hints:
+    - "Средняя MAE — `-cross_val_score(model, X_temp, y_temp, cv=cv, scoring='neg_mean_absolute_error').mean()`."
+    - "Лучшее k — `knn_cv.idxmin()`, его ошибка — `knn_cv.min()`."
+    - "Новый Pipeline создаётся на каждой итерации — он уже в заготовке."
+  tests: |
+    import pandas as pd
+    s = var('knn_cv', pd.Series, 'Series')
+    ensure(list(s.index) == ref('ks'), 'Индекс `knn_cv` — значения k из `ks`.')
+    if (s < 0).all():
+        fail('Средние отрицательные — поменяйте знак.')
+    same_array(s.to_numpy(dtype=float), ref('knn_cv').to_numpy(dtype=float), 'Средние MAE не совпадают: блоки `cv`, данные `X_temp`, `y_temp`.')
+    equal(var('best_k'), ref('best_k'), 'Лучшее k — {expected}, а у вас {actual}.')
+    close(var('knn_best', 'number', 'числом'), ref('knn_best'), 'MAE лучшего kNN — {expected}, а у вас {actual}.')
+    close(alt('knn_best'), alt_ref('knn_best'), HARDCODE_MSG)
+  files: [diabetes.csv]
+  wrong:
+    - code: |
+        result = {}
+        for k in ks:
+            model = Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=k))])
+            result[k] = -cross_val_score(model, X_temp, y_temp, cv=cv, scoring='neg_mean_absolute_error').mean()
+        knn_cv = pd.Series(result)
+        best_k = knn_cv.idxmax()
+        knn_best = knn_cv.max()
+      expect: Лучшее k
+    - code: |
+        result = {}
+        for k in ks:
+            model = KNeighborsRegressor(n_neighbors=k)
+            result[k] = -cross_val_score(model, X_temp, y_temp, cv=cv, scoring='neg_mean_absolute_error').mean()
+        knn_cv = pd.Series(result)
+        best_k = knn_cv.idxmin()
+        knn_best = knn_cv.min()
+      expect: Средние MAE не совпадают
+
+- id: m6-l9-t5
+  title: "Шаг 5. Дерево: подбор глубины"
+  difficulty: main
+  introduces: []
+  uses: [tree-depth, cross-validate]
+  statement: |
+    Для каждой глубины из `depths` оцените дерево (`random_state=42`) кросс-валидацией на `cv` и соберите `tree_cv` — Series «глубина → средняя MAE». Найдите `best_depth` и `tree_best`.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split, KFold, cross_val_score
+    from sklearn.tree import DecisionTreeRegressor
+    db = pd.read_csv('diabetes.csv')
+    X, y = db.drop(columns='target'), db['target']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    cv = KFold(n_splits=5, shuffle=True, random_state=42)
+    depths = [2, 3, 4, 6]
+  starter: |
+    result = {}
+    for d in depths:
+        result[d] = ...
+    tree_cv = pd.Series(result)
+    best_depth = ...
+    tree_best = ...
+    print(tree_cv.round(1))
+    print(best_depth, round(tree_best, 1))
+  solution: |
+    result = {}
+    for d in depths:
+        tree = DecisionTreeRegressor(max_depth=d, random_state=42)
+        result[d] = -cross_val_score(tree, X_temp, y_temp, cv=cv, scoring='neg_mean_absolute_error').mean()
+    tree_cv = pd.Series(result)
+    best_depth = tree_cv.idxmin()
+    tree_best = tree_cv.min()
+    print(tree_cv.round(1))
+    print(best_depth, round(tree_best, 1))
+  explanation: |
+    - Лучшая глубина — 2 (≈ 51,6): всего четыре листа! С каждым уровнем ошибка растёт — на 280 пациентах в шаге CV дереву быстро не хватает данных, и глубокие листья запоминают шум.
+    - Масштабирование дереву не нужно, поэтому Pipeline здесь не требуется.
+  hints:
+    - "Дерево глубины d — `DecisionTreeRegressor(max_depth=d, random_state=42)`."
+    - "Средняя MAE — как в шаге 4, через `cross_val_score` со сменой знака."
+    - "`best_depth = tree_cv.idxmin()`."
+  tests: |
+    import pandas as pd
+    s = var('tree_cv', pd.Series, 'Series')
+    ensure(list(s.index) == ref('depths'), 'Индекс `tree_cv` — глубины из `depths`.')
+    if (s < 0).all():
+        fail('Средние отрицательные — поменяйте знак.')
+    same_array(s.to_numpy(dtype=float), ref('tree_cv').to_numpy(dtype=float), 'Средние MAE не совпадают: `max_depth=d`, `random_state=42`, блоки `cv`.')
+    equal(var('best_depth'), ref('best_depth'), 'Лучшая глубина — {expected}, а у вас {actual}.')
+    close(var('tree_best', 'number', 'числом'), ref('tree_best'), 'MAE лучшего дерева — {expected}, а у вас {actual}.')
+    close(alt('tree_best'), alt_ref('tree_best'), HARDCODE_MSG)
+  files: [diabetes.csv]
+  wrong:
+    - code: |
+        result = {}
+        for d in depths:
+            tree = DecisionTreeRegressor(random_state=42)
+            result[d] = -cross_val_score(tree, X_temp, y_temp, cv=cv, scoring='neg_mean_absolute_error').mean()
+        tree_cv = pd.Series(result)
+        best_depth = tree_cv.idxmin()
+        tree_best = tree_cv.min()
+      expect: "max_depth=d"
+    - code: |
+        result = {}
+        for d in depths:
+            tree = DecisionTreeRegressor(max_depth=d, random_state=42)
+            result[d] = -cross_val_score(tree, X_temp, y_temp, cv=cv, scoring='neg_mean_absolute_error').mean()
+        tree_cv = pd.Series(result)
+        best_depth = tree_cv.idxmax()
+        tree_best = tree_cv.max()
+      expect: Лучшая глубина
+
+- id: m6-l9-t6
+  title: "Шаг 6. Лес: подбор размера листа"
+  difficulty: main
+  introduces: []
+  uses: [random-forest, cross-validate]
+  statement: |
+    Для каждого размера листа из `leafs` оцените лес из 100 деревьев (`min_samples_leaf=leaf`, `random_state=42`, `n_jobs=1`) кросс-валидацией на `cv`. Соберите `forest_cv` — Series «размер листа → средняя MAE», найдите `best_leaf` и `forest_best`.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split, KFold, cross_val_score
+    from sklearn.ensemble import RandomForestRegressor
+    db = pd.read_csv('diabetes.csv')
+    X, y = db.drop(columns='target'), db['target']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    cv = KFold(n_splits=5, shuffle=True, random_state=42)
+    leafs = [5, 10, 20]
+  starter: |
+    result = {}
+    for leaf in leafs:
+        forest = ...
+        result[leaf] = ...
+    forest_cv = pd.Series(result)
+    best_leaf = ...
+    forest_best = ...
+    print(forest_cv.round(1))
+    print(best_leaf, round(forest_best, 1))
+  solution: |
+    result = {}
+    for leaf in leafs:
+        forest = RandomForestRegressor(n_estimators=100, min_samples_leaf=leaf, random_state=42, n_jobs=1)
+        result[leaf] = -cross_val_score(forest, X_temp, y_temp, cv=cv, scoring='neg_mean_absolute_error').mean()
+    forest_cv = pd.Series(result)
+    best_leaf = forest_cv.idxmin()
+    forest_best = forest_cv.min()
+    print(forest_cv.round(1))
+    print(best_leaf, round(forest_best, 1))
+  explanation: |
+    - Лучший лес — с листьями не меньше 5 пациентов: ≈ 47,6. Это лучше одного дерева (51,6) и kNN (48,1), но всё ещё хуже линейной модели (45,0).
+    - Лес без ограничения листа ошибается на обучающих блоках всего на ≈ 18 баллов, а на проверочных — на ≈ 49: на маленьких данных он запоминает пациентов, и ограничение листа помогает.
+  hints:
+    - "`RandomForestRegressor(n_estimators=100, min_samples_leaf=leaf, random_state=42, n_jobs=1)`."
+    - "Средняя MAE — `-cross_val_score(forest, X_temp, y_temp, cv=cv, scoring='neg_mean_absolute_error').mean()`."
+    - "`best_leaf = forest_cv.idxmin()`."
+  tests: |
+    import pandas as pd
+    s = var('forest_cv', pd.Series, 'Series')
+    ensure(list(s.index) == ref('leafs'), 'Индекс `forest_cv` — размеры листа из `leafs`.')
+    if (s < 0).all():
+        fail('Средние отрицательные — поменяйте знак.')
+    same_array(s.to_numpy(dtype=float), ref('forest_cv').to_numpy(dtype=float), 'Средние MAE не совпадают: 100 деревьев, `min_samples_leaf=leaf`, `random_state=42`, блоки `cv`.')
+    equal(var('best_leaf'), ref('best_leaf'), 'Лучший размер листа — {expected}, а у вас {actual}.')
+    close(var('forest_best', 'number', 'числом'), ref('forest_best'), 'MAE лучшего леса — {expected}, а у вас {actual}.')
+    close(alt('forest_best'), alt_ref('forest_best'), HARDCODE_MSG)
+  files: [diabetes.csv]
+  wrong:
+    - code: |
+        result = {}
+        for leaf in leafs:
+            forest = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=1)
+            result[leaf] = -cross_val_score(forest, X_temp, y_temp, cv=cv, scoring='neg_mean_absolute_error').mean()
+        forest_cv = pd.Series(result)
+        best_leaf = forest_cv.idxmin()
+        forest_best = forest_cv.min()
+      expect: "min_samples_leaf=leaf"
+    - code: |
+        result = {}
+        for leaf in leafs:
+            forest = RandomForestRegressor(n_estimators=100, min_samples_leaf=leaf, random_state=42, n_jobs=1)
+            result[leaf] = -cross_val_score(forest, X_temp, y_temp, cv=cv, scoring='neg_mean_absolute_error').mean()
+        forest_cv = pd.Series(result)
+        best_leaf = forest_cv.idxmax()
+        forest_best = forest_cv.max()
+      expect: Лучший размер листа
+
+- id: m6-l9-t7
+  title: "Шаг 7. Таблица кандидатов и выбор"
+  difficulty: main
+  introduces: []
+  uses: [model-comparison, cross-validate]
+  statement: |
+    В словаре `folds` — MAE по пяти блокам для лучшего варианта каждой модели (результаты шагов 2–6). Постройте `table` — DataFrame с индексом-моделью и колонками `cv_mae` (среднее) и `cv_std` (разброс), отсортированный по `cv_mae`. Затем `best` — выбранная модель и `wins` — в скольких из пяти блоков она точнее второй по таблице модели.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split, KFold, cross_val_score
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import Pipeline
+    from sklearn.dummy import DummyRegressor
+    from sklearn.linear_model import LinearRegression
+    from sklearn.neighbors import KNeighborsRegressor
+    from sklearn.tree import DecisionTreeRegressor
+    from sklearn.ensemble import RandomForestRegressor
+    db = pd.read_csv('diabetes.csv')
+    X, y = db.drop(columns='target'), db['target']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    cv = KFold(n_splits=5, shuffle=True, random_state=42)
+    models = {
+        'Медиана': DummyRegressor(strategy='median'),
+        'Линейная': Pipeline([('scale', StandardScaler()), ('model', LinearRegression())]),
+        'kNN, k=10': Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=10))]),
+        'Дерево, глубина 2': DecisionTreeRegressor(max_depth=2, random_state=42),
+        'Лес, лист ≥ 5': RandomForestRegressor(n_estimators=100, min_samples_leaf=5, random_state=42, n_jobs=1),
+    }
+    folds = {name: -cross_val_score(m, X_temp, y_temp, cv=cv, scoring='neg_mean_absolute_error') for name, m in models.items()}
+  starter: |
+    table = pd.DataFrame({'cv_mae': ..., 'cv_std': ...}).sort_values('cv_mae')
+    best = ...
+    second = table.index[1]
+    wins = ...
+    print(table.round(1))
+    print(best, '| второй:', second, '| побед по блокам:', wins)
+  solution: |
+    table = pd.DataFrame({'cv_mae': {n: f.mean() for n, f in folds.items()},
+                          'cv_std': {n: f.std() for n, f in folds.items()}}).sort_values('cv_mae')
+    best = table.index[0]
+    second = table.index[1]
+    wins = int((folds[best] < folds[second]).sum())
+    print(table.round(1))
+    print(best, '| второй:', second, '| побед по блокам:', wins)
+  explanation: |
+    - Лучшая — линейная модель (45,0 ± 1,8), вторая — лес (47,6 ± 2,6). Линейная точнее леса во **всех пяти** блоках — значит, разница не случайна.
+    - Почему так: ответ здесь зависит от признаков почти линейно, а пациентов слишком мало, чтобы гибкие модели уверенно нашли что-то сверх прямой. Гибкость окупается, когда данных много и зависимость сложная — как у машин.
+    - Сравнение по блокам — простой и наглядный способ проверить, устойчив ли выбор (урок 6.7).
+  hints:
+    - "Среднее и разброс по блокам — `f.mean()` и `f.std()` для каждого массива в `folds`; словарь «имя → число» станет колонкой."
+    - "Лучшая — первая строка после сортировки: `table.index[0]`."
+    - "Победы — сколько блоков, где ошибка лучшей меньше: `(folds[best] < folds[second]).sum()`."
+  tests: |
+    import pandas as pd
+    t = var('table', pd.DataFrame, 'таблицей DataFrame')
+    ensure({'cv_mae', 'cv_std'} <= set(t.columns), 'Колонки `table` — cv_mae и cv_std.')
+    ensure(list(t.index) == list(ref('table').index), 'Строки — модели по возрастанию `cv_mae`.')
+    same_array(t['cv_mae'].to_numpy(dtype=float), ref('table')['cv_mae'].to_numpy(dtype=float), 'Средние не совпадают: среднее MAE по пяти блокам каждой модели.')
+    same_array(t['cv_std'].to_numpy(dtype=float), ref('table')['cv_std'].to_numpy(dtype=float), 'Разбросы не совпадают: `.std()` по пяти блокам.')
+    equal(var('best', str, 'строкой'), ref('best'), 'Выбранная модель — «{expected}», а у вас «{actual}».')
+    equal(var('wins', 'number', 'числом'), ref('wins'), 'Блоков, где лучшая модель точнее второй, — {expected}, а у вас {actual}.')
+    close(float(alt('table')['cv_mae'].iloc[0]), float(alt_ref('table')['cv_mae'].iloc[0]), HARDCODE_MSG)
+  files: [diabetes.csv]
+  wrong:
+    - code: |
+        table = pd.DataFrame({'cv_mae': {n: f.mean() for n, f in folds.items()}, 'cv_std': {n: f.std() for n, f in folds.items()}}).sort_values('cv_mae', ascending=False)
+        best = table.index[0]
+        second = table.index[1]
+        wins = int((folds[best] < folds[second]).sum())
+      expect: по возрастанию
+    - code: |
+        table = pd.DataFrame({'cv_mae': {n: f.mean() for n, f in folds.items()}, 'cv_std': {n: f.std() for n, f in folds.items()}}).sort_values('cv_mae')
+        best = table.index[0]
+        second = table.index[1]
+        wins = int((folds[best] > folds[second]).sum())
+      expect: Блоков, где лучшая
+
+- id: m6-l9-t8
+  title: "Шаг 8. Итоговая проверка на test"
+  difficulty: main
+  introduces: []
+  uses: [train-valid-test, sk-pipeline, regression-metrics]
+  statement: |
+    Выбрана линейная модель. Обучите её (`final` — тот же Pipeline) на всех `X_temp`, `y_temp` и один раз посчитайте `test_mae`. Для сравнения — `base_test_mae`: ориентир-медиана, обученный на тех же данных, на test.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import Pipeline
+    from sklearn.dummy import DummyRegressor
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import mean_absolute_error
+    db = pd.read_csv('diabetes.csv')
+    X, y = db.drop(columns='target'), db['target']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+  starter: |
+    final = Pipeline([('scale', StandardScaler()), ('model', LinearRegression())])
+    final.fit(..., ...)
+    test_mae = ...
+    base_test_mae = ...
+    print(round(test_mae, 1), round(base_test_mae, 1))
+  solution: |
+    final = Pipeline([('scale', StandardScaler()), ('model', LinearRegression())])
+    final.fit(X_temp, y_temp)
+    test_mae = mean_absolute_error(y_test, final.predict(X_test))
+    base_test_mae = mean_absolute_error(y_test, DummyRegressor(strategy='median').fit(X_temp, y_temp).predict(X_test))
+    print(round(test_mae, 1), round(base_test_mae, 1))
+  explanation: |
+    - Итог: MAE ≈ 42,8 на test против ≈ 62,7 у ориентира. Число близко к CV-оценке (45,0 ± 1,8) — с поправкой на то, что 89 пациентов test могли оказаться чуть «легче» блоков CV.
+    - В мини-проекте 5.10 линейная модель обучалась только на 264 пациентах и дала ≈ 42,9; теперь — на 353, и оценка выбора опирается на пять проверок, а не на одну.
+    - Ради урока мы посчитали и то, чего в работе не делают: лес с листьями не меньше 10 пациентов на этом test оказался бы на 0,7 балла лучше линейной модели. Но по кросс-валидации он хуже неё во всех пяти блоках — разница на 89 пациентах случайна. Если выбирать по test, мы бы «выбрали» шум.
+  hints:
+    - "Обучение — `final.fit(X_temp, y_temp)`, ошибка — по `X_test`, `y_test`."
+    - "Ориентир — `DummyRegressor(strategy='median').fit(X_temp, y_temp)`."
+    - "`base_test_mae = mean_absolute_error(y_test, ориентир.predict(X_test))`."
+  tests: |
+    t = var('test_mae', 'number', 'числом')
+    close(t, ref('test_mae'), 'MAE линейной модели на test — {expected}, а у вас {actual}. Обучайте на всех `X_temp`, `y_temp`.')
+    close(var('base_test_mae', 'number', 'числом'), ref('base_test_mae'), 'MAE ориентира на test — {expected}, а у вас {actual}.')
+    close(alt('test_mae'), alt_ref('test_mae'), HARDCODE_MSG)
+  files: [diabetes.csv]
+  wrong:
+    - code: |
+        final = Pipeline([('scale', StandardScaler()), ('model', LinearRegression())])
+        final.fit(X_test, y_test)
+        test_mae = mean_absolute_error(y_test, final.predict(X_test))
+        base_test_mae = mean_absolute_error(y_test, DummyRegressor(strategy='median').fit(X_temp, y_temp).predict(X_test))
+      expect: "Обучайте на всех `X_temp`"
+    - code: |
+        final = Pipeline([('scale', StandardScaler()), ('model', LinearRegression())])
+        final.fit(X_temp, y_temp)
+        test_mae = mean_absolute_error(y_test, final.predict(X_test))
+        base_test_mae = mean_absolute_error(y_test, DummyRegressor(strategy='mean').fit(X_temp, y_temp).predict(X_test))
+      expect: MAE ориентира
+
+- id: m6-l9-t9
+  kind: quiz
+  title: "Шаг 9. Выводы"
+  difficulty: main
+  introduces: []
+  uses: []
+  statement: |
+    Сформулируйте выводы проекта.
+  quiz:
+    - q: На машинах лес был в полтора раза точнее линейной модели, а на пациентах — хуже. Почему?
+      options:
+        - Здесь зависимость близка к линейной, а данных мало — гибкость леса не окупается
+        - Лес плохо работает на медицинских данных в принципе
+        - Ошиблись в подсчёте
+      answer: 0
+      explain: Гибкие модели выигрывают, когда данных много и зависимость сложная; на 353 пациентах они в основном подстраиваются под шум.
+    - q: Почему в этом проекте не выделяли отдельную validation?
+      options:
+        - На 353 пациентах одна validation из ~70 человек слишком шумная; кросс-валидация использует всех
+        - Validation не нужна, если есть test
+        - scikit-learn не позволяет делить маленькие данные
+      answer: 0
+      explain: CV на 5 блоках даёт пять оценок по всем пациентам — выбор надёжнее.
+    - q: "Один из вариантов леса на test оказался на 0,7 балла лучше линейной модели. Стоит ли поменять выбор?"
+      options:
+        - Нет — по test не выбирают; по CV линейная модель лучше во всех пяти блоках
+        - Да — test важнее CV
+        - Да, если разница больше 0,5
+      answer: 0
+      explain: Решение, принятое по test, делает его оценку оптимистичной; 0,7 балла на 89 пациентах — в пределах шума, а по CV этот лес хуже во всех блоках.
+    - q: Какой вывод из модуля самый важный?
+      options:
+        - Сложная модель не обязательно лучше — выбор делают честным сравнением на одинаковых данных
+        - Всегда берите случайный лес
+        - Всегда берите линейную модель
+      answer: 0
+      explain: На машинах победил лес, на пациентах — линейная модель. Решают данные и честный протокол, а не «рейтинг алгоритмов».
+  hints:
+    - Сравните размер данных и вид зависимости в двух задачах; вспомните, для чего нужен test.
+    - "Мало данных и почти линейная зависимость — простая модель; CV вместо шумной validation; test не для выбора."
+    - "Ответы: первый вариант во всех четырёх вопросах."

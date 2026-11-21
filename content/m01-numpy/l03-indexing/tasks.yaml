@@ -1,0 +1,246 @@
+- id: m1-l3-t1
+  title: Пробег записи 100
+  difficulty: warmup
+  introduces: [np-indexing]
+  uses: [shape-dtype]
+  statement: |
+    Получите переменную `distance_100` — пробег (км) записи с номером 100. Пробег — столбец 1 матрицы `X`.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()   # столбцы: 0 Year, 1 Distance, 2 Engine_capacity(cm3), 3 Price(euro)
+  preludeNote: Матрица `X` читается как в [уроке 1.1](/learn/m01-numpy/l01-question-to-table).
+  starter: |
+    distance_100 = ...
+    print(distance_100)
+  solution: |
+    distance_100 = X[100, 1]
+    print(distance_100)
+  explanation: |
+    - Первый индекс — строка (запись 100), второй — столбец (1 — Distance).
+  hints:
+    - Элемент матрицы задаётся двумя номерами — строки и столбца.
+    - "`X[строка, столбец]`; пробег — столбец 1. См. справочник «Индексация X[i, j]»."
+    - "`distance_100 = X[100, ...]` — допишите номер столбца пробега."
+  tests: |
+    v = var('distance_100', 'number', 'числом')
+    if v == ref('X')[101, 1] and v != ref('distance_100'):
+        fail('Вы взяли запись 101. Номер записи 100 — это X[100, ...]: нумерация уже начинается с нуля, ничего прибавлять не нужно.')
+    if v == ref('X')[100, 0]:
+        fail('Это год выпуска (столбец 0). Пробег — столбец 1.')
+    close(v, ref('distance_100'), 'Пробег записи 100 — {expected} км, а у вас {actual}. Проверьте порядок индексов: сначала строка, потом столбец.')
+    close(alt('distance_100'), alt_ref('distance_100'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        distance_100 = X[100, 0]
+      expect: Это год выпуска
+    - code: |
+        distance_100 = 31091.0
+      expect: вписан вручную
+    - code: |
+        distance_100 = X[1, 100]
+      expect: Индекс за пределами
+      note: X[1, 100] — столбца 100 нет, будет IndexError с понятным объяснением
+
+- id: m1-l3-t2
+  title: Три последние цены
+  difficulty: warmup
+  introduces: [np-slicing]
+  uses: []
+  statement: |
+    Вектор `price` уже выделен из `X`. Получите `last_three` — три последние цены в исходном порядке. Решение должно работать при любой длине таблицы — используйте отрицательные номера.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    price = X[:, 3]
+  starter: |
+    last_three = ...
+    print(last_three)
+  solution: |
+    last_three = price[-3:]
+    print(last_three)
+  explanation: |
+    - Срез `-3:` начинается с третьего элемента с конца и идёт до конца вектора.
+  hints:
+    - Нужен срез, который начинается недалеко от конца и идёт до конца.
+    - "Отрицательный `start` в срезе считается от конца: `a[-3:]`."
+    - "`last_three = price[-3:]`"
+  tests: |
+    import numpy as np
+    v = var('last_three', 'ndarray', 'массивом NumPy')
+    ensure(v.shape == (3,), 'Нужно ровно 3 значения, а у вас форма %s.' % (v.shape,))
+    same_array(v, ref('last_three'), 'Значения не совпадают с тремя последними ценами — проверьте срез и порядок.')
+    same_array(alt('last_three'), alt_ref('last_three'), 'На другой части данных результат не совпал — не используйте номера вроде 41004, берите элементы от конца: [-3:].')
+  wrong:
+    - code: |
+        last_three = price[41004:41007]
+      expect: от конца
+    - code: |
+        last_three = price[-3:][::-1]
+      expect: порядок
+
+- id: m1-l3-t3
+  title: Год и цена записей 10–14
+  difficulty: main
+  introduces: [np-indexing, np-slicing]
+  uses: []
+  statement: |
+    Получите матрицу `block` с годом выпуска и ценой записей с номерами 10, 11, 12, 13 и 14 — форма `(5, 2)`, первый столбец — год, второй — цена.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()   # столбцы: 0 Year, 1 Distance, 2 Engine_capacity(cm3), 3 Price(euro)
+  starter: |
+    block = ...
+    print(block)
+  solution: |
+    block = X[10:15, [0, 3]]
+    print(block)
+  explanation: |
+    - `10:15` — строки с 10-й по 14-ю (stop не входит).
+    - `[0, 3]` — список номеров столбцов: Year и Price(euro).
+  hints:
+    - По строкам нужен срез, по столбцам — два несоседних столбца.
+    - "Срез строк `10:15` (15 не входит) и список номеров столбцов `[0, 3]`."
+    - "`block = X[10:15, [0, 3]]`"
+  tests: |
+    import numpy as np
+    b = var('block', 'ndarray', 'массивом NumPy')
+    ensure(b.ndim == 2, 'block должен быть матрицей (2 оси), а у него осей: %d.' % b.ndim)
+    if b.shape[0] == 6:
+        fail('Строк 6 — похоже, срез 10:16 или 10…15 включительно. Записи 10–14 — это срез 10:15.')
+    if b.shape[0] == 4:
+        fail('Строк 4 — запись 14 не попала. Срез 10:15 включает номера 10, 11, 12, 13, 14.')
+    ensure(b.shape == (5, 2), 'Форма должна быть (5, 2), а у вас %s.' % (b.shape,))
+    same_array(b, ref('block'), 'Значения не совпадают: нужны столбцы Year (0) и Price(euro) (3) в таком порядке.')
+    same_array(alt('block'), alt_ref('block'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        block = X[10:16, [0, 3]]
+      expect: Строк 6
+    - code: |
+        block = X[10:15, [0, 2]]
+      expect: Значения не совпадают
+    - code: |
+        block = X[10:15, 0:3]
+      expect: Форма должна быть
+
+- id: m1-l3-t4
+  kind: quiz
+  title: Что выберет индекс
+  difficulty: main
+  introduces: []
+  uses: [np-indexing, np-slicing]
+  statement: |
+    Матрица `X` имеет форму `(41007, 4)`, столбцы — Year, Distance, Engine_capacity(cm3), Price(euro). Ответьте, не запуская код.
+  quiz:
+    - q: Какая форма у `X[100:110, :]`?
+      options:
+        - "`(10, 4)`"
+        - "`(11, 4)`"
+        - "`(10,)`"
+        - "`(4, 10)`"
+      answer: 0
+      explain: 110 − 100 = 10 строк, все 4 столбца.
+    - q: Что содержит `X[:3, -1]`?
+      options:
+        - Три последние записи целиком
+        - Цены трёх первых записей
+        - Годы трёх первых записей
+        - Ошибку — отрицательный индекс нельзя
+      answer: 1
+      explain: "`:3` — строки 0, 1, 2; столбец `-1` — последний, то есть цена."
+    - q: Какие выражения дают **один и тот же** результат — вектор всех годов выпуска? Выберите все.
+      options:
+        - "`X[:, 0]`"
+        - "`X[0]`"
+        - "`X[:, -4]`"
+        - "`X[0, :]`"
+      answer: [0, 2]
+      explain: Столбец 0 — это и `-4` при четырёх столбцах. `X[0]` и `X[0, :]` — первая запись, а не годы.
+  hints:
+    - Сначала номер строки, потом столбца; срез не включает stop.
+    - "`X[a:b, :]` даёт b − a строк; `-1` — последний столбец (цена); один индекс — строка."
+    - "(10, 4); цены трёх первых записей; столбец 0 можно записать и как −4."
+
+- id: m1-l3-t5
+  kind: bug
+  title: "Найдите ошибку: годы или первая запись?"
+  difficulty: main
+  introduces: []
+  uses: [np-indexing, shape-dtype]
+  statement: |
+    Коллега хотел получить вектор годов выпуска всех автомобилей, но в `year` оказалось всего 4 числа. Исправьте код: `year` должен быть вектором формы `(число записей,)`.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()   # столбцы: 0 Year, 1 Distance, 2 Engine_capacity(cm3), 3 Price(euro)
+  starter: |
+    year = X[0]
+    print(year.shape, year[:5])
+  solution: |
+    year = X[:, 0]
+    print(year.shape, year[:5])
+  explanation: |
+    - `X[0]` — первая **строка** (запись целиком): 4 числа.
+    - Годы — это **столбец** 0 по всем строкам: `X[:, 0]`.
+  hints:
+    - Сколько чисел в одной записи? А сколько годов должно быть в векторе?
+    - "Один индекс выбирает строку. Для столбца нужно «все строки» (`:`) и номер столбца."
+    - "`year = X[:, 0]`"
+  tests: |
+    y = var('year', 'ndarray', 'массивом NumPy')
+    if y.shape == (4,):
+        fail('В year 4 числа — это одна запись (строка), а не столбец. Нужны все строки: X[:, ...].')
+    same_array(y, ref('year'), 'year должен содержать год выпуска для каждой записи (столбец 0).')
+    same_array(alt('year'), alt_ref('year'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        year = X[0]
+      expect: одна запись
+    - code: |
+        year = X[:, 1]
+      expect: столбец 0
+
+- id: m1-l3-t6
+  title: Края таблицы
+  difficulty: star
+  introduces: []
+  uses: [np-indexing, np-slicing]
+  statement: |
+    Чтобы быстро взглянуть на файл, аналитики смотрят на первые и последние записи. Получите матрицу `edges` из **двух первых и двух последних** записей `X` (все 4 столбца) — форма `(4, 4)`, сначала первые записи, потом последние в исходном порядке.
+
+    Сделайте это одним выражением со списком номеров строк, в котором есть отрицательные номера.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+  starter: |
+    edges = ...
+    print(edges)
+  solution: |
+    edges = X[[0, 1, -2, -1]]
+    print(edges)
+  explanation: |
+    - Список номеров `[0, 1, -2, -1]` выбирает строки 0, 1, предпоследнюю и последнюю.
+    - Второй индекс не указан — значит, берутся все столбцы.
+  alternatives:
+    - |
+      edges = X[[0, 1, -2, -1], :]
+  hints:
+    - Список номеров строк может содержать и отрицательные номера.
+    - "`X[[номера строк]]` выбирает строки по списку; предпоследняя — `-2`, последняя — `-1`."
+    - "`edges = X[[0, 1, -2, -1]]`"
+  tests: |
+    e = var('edges', 'ndarray', 'массивом NumPy')
+    ensure(e.shape == (4, 4), 'Форма должна быть (4, 4), а у вас %s.' % (e.shape,))
+    same_array(e, ref('edges'), 'Строки не совпадают: нужны записи 0, 1, предпоследняя и последняя — именно в таком порядке.')
+    same_array(alt('edges'), alt_ref('edges'), 'На другой части данных результат не совпал — используйте отрицательные номера, а не номера вроде 41005.')
+  wrong:
+    - code: |
+        edges = X[[0, 1, 41005, 41006]]
+      expect: вписаны числа
+    - code: |
+        edges = X[[0, 1, -1, -2]]
+      expect: в таком порядке

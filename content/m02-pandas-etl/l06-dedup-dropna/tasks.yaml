@@ -1,0 +1,360 @@
+- id: m2-l6-t1
+  title: Удаление точных повторов
+  difficulty: warmup
+  introduces: [pd-drop-duplicates]
+  uses: [pd-isna-duplicated]
+  statement: |
+    Получите `dedup` — таблицу `raw` без точных повторов (из каждой группы остаётся первое вхождение), и `n_removed` — сколько строк удалено.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')   # загрузка — урок 2.1
+  starter: |
+    dedup = ...
+    n_removed = ...
+    print(len(raw), len(dedup), n_removed)
+  solution: |
+    dedup = raw.drop_duplicates()
+    n_removed = len(raw) - len(dedup)
+    print(len(raw), len(dedup), n_removed)
+  explanation: |
+    - `drop_duplicates()` возвращает новую таблицу без повторов; `raw` не меняется.
+    - Разница длин до и после — число удалённых строк. Оно совпадает с `raw.duplicated().sum()` из урока 2.3.
+  alternatives:
+    - |
+      dedup = raw.drop_duplicates(keep='first')
+      n_removed = int(raw.duplicated().sum())
+  hints:
+    - Какой метод удаляет полностью совпадающие строки?
+    - "`raw.drop_duplicates()` — новая таблица; число удалённых — разность `len(...)` до и после."
+    - "`dedup = raw.drop_duplicates()`, `n_removed = len(raw) - len(dedup)`."
+  tests: |
+    import pandas as pd
+    d = var('dedup', pd.DataFrame, 'таблицей DataFrame')
+    if len(d) == len(ref('raw')) - int(ref('raw').duplicated(keep=False).sum()):
+        fail('Удалены все строки групп повторов, включая первые. Оставьте по одной строке из группы: `drop_duplicates()` без `keep=False`.')
+    same_frame(d, ref('dedup'), 'Таблица без повторов не совпадает с нужной.')
+    close(var('n_removed', 'number', 'числом'), ref('n_removed'), 'Удалено должно быть {expected} строк, а у вас {actual}.')
+    ensure(len(var('raw')) == len(ref('raw')), 'Исходная таблица `raw` изменилась. Сохраняйте результат в `dedup`, а `raw` не трогайте.')
+    close(alt('n_removed'), alt_ref('n_removed'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        dedup = raw.drop_duplicates(keep=False)
+        n_removed = len(raw) - len(dedup)
+      expect: включая первые
+    - code: |
+        dedup = raw.drop_duplicates()
+        n_removed = 3623
+      expect: вписан вручную
+
+- id: m2-l6-t2
+  title: Неполные записи — отдельно
+  difficulty: main
+  introduces: [pd-dropna]
+  uses: [axis]
+  statement: |
+    В таблице `dedup` (уже без повторов) получите:
+
+    - `incomplete_rows` — строки хотя бы с одним пропуском (сохраним их для проверки);
+    - `complete` — таблицу только из полных записей.
+
+    Вместе эти две таблицы должны содержать все строки `dedup`.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    dedup = raw.drop_duplicates()   # точные повторы удалены — задание 2.6.1
+  starter: |
+    incomplete_rows = ...
+    complete = ...
+    print(len(dedup), len(incomplete_rows), len(complete))
+  solution: |
+    incomplete_rows = dedup[dedup.isna().any(axis=1)]
+    complete = dedup.dropna()
+    print(len(dedup), len(incomplete_rows), len(complete))
+  explanation: |
+    - `dedup.isna().any(axis=1)` — маска строк хотя бы с одним пропуском (урок 2.3); по ней отбираем неполные строки.
+    - `dedup.dropna()` удаляет такие строки и возвращает полные записи.
+    - Неполных и полных вместе ровно `len(dedup)`.
+  alternatives:
+    - |
+      mask = dedup.isna().any(axis=1)
+      incomplete_rows = dedup.loc[mask].copy()
+      complete = dedup.loc[~mask].copy()
+  hints:
+    - Неполные строки отбирает маска «есть хоть один пропуск в строке». Какой метод удаляет такие строки?
+    - "Маска — `dedup.isna().any(axis=1)`; удаление — `dedup.dropna()`."
+    - "`incomplete_rows = dedup[dedup.isna().any(axis=1)]`, `complete = dedup.dropna()`."
+  tests: |
+    import pandas as pd
+    i = var('incomplete_rows', pd.DataFrame, 'таблицей DataFrame')
+    c = var('complete', pd.DataFrame, 'таблицей DataFrame')
+    if c.isna().any().any():
+        fail('В `complete` остались пропуски — удалите неполные строки методом `dropna()`.')
+    if len(i) and not i.isna().any(axis=1).all():
+        fail('В `incomplete_rows` есть полные строки. Отбирайте маской `dedup.isna().any(axis=1)`.')
+    same_frame(i, ref('incomplete_rows'), 'В `incomplete_rows` должны быть все неполные строки `dedup`.')
+    same_frame(c, ref('complete'), 'В `complete` должны быть все полные строки `dedup`.')
+    close(alt('complete').shape[0], alt_ref('complete').shape[0], 'На другой части данных число полных строк не совпало: у вас {actual}, нужно {expected}.')
+  wrong:
+    - code: |
+        incomplete_rows = dedup[dedup.isna().all(axis=1)]
+        complete = dedup.dropna()
+      expect: все неполные строки
+    - code: |
+        incomplete_rows = dedup[dedup.isna().any(axis=1)]
+        complete = dedup.dropna(subset=['Make'])
+      expect: остались пропуски
+
+- id: m2-l6-t3
+  title: Журнал обработки
+  difficulty: main
+  introduces: [processing-log]
+  uses: [py-dicts]
+  statement: |
+    Повторите два первых шага обработки с журналом. После каждого шага добавляйте в список `processing_log` словарь с ключами `'Этап'`, `'До'`, `'После'`, `'Убрано'`. Названия этапов: `'Удаление точных повторов'` и `'Отбор полных записей'`.
+
+    В конце получите `log_table = pd.DataFrame(processing_log)`.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+  starter: |
+    df = raw.copy()
+    processing_log = []
+
+    n_before = len(df)
+    df = df.drop_duplicates().copy()
+    processing_log.append(...)
+
+    n_before = ...
+    df = df.dropna().copy()
+    processing_log.append(...)
+
+    log_table = pd.DataFrame(processing_log)
+    log_table
+  solution: |
+    df = raw.copy()
+    processing_log = []
+
+    n_before = len(df)
+    df = df.drop_duplicates().copy()
+    processing_log.append({'Этап': 'Удаление точных повторов',
+                           'До': n_before, 'После': len(df), 'Убрано': n_before - len(df)})
+
+    n_before = len(df)
+    df = df.dropna().copy()
+    processing_log.append({'Этап': 'Отбор полных записей',
+                           'До': n_before, 'После': len(df), 'Убрано': n_before - len(df)})
+
+    log_table = pd.DataFrame(processing_log)
+    log_table
+  explanation: |
+    - `n_before = len(df)` запоминаем **перед** каждым шагом — иначе «до» совпадёт с «после».
+    - Каждый словарь с одинаковыми ключами — одна строка будущей таблицы.
+    - `pd.DataFrame(список словарей)` превращает ключи в колонки, словари — в строки.
+  hints:
+    - Что нужно запомнить до изменения таблицы, а что посчитать после?
+    - "Словарь: `{'Этап': ..., 'До': n_before, 'После': len(df), 'Убрано': n_before - len(df)}`; перед вторым шагом снова `n_before = len(df)`."
+    - "`processing_log.append({'Этап': 'Отбор полных записей', 'До': n_before, 'После': len(df), 'Убрано': n_before - len(df)})`."
+  tests: |
+    import pandas as pd
+    log = var('processing_log', list, 'списком словарей')
+    if any(x is Ellipsis for x in log):
+        fail('В журнал добавлено многоточие `...`. Замените его словарём: `{\'Этап\': ..., \'До\': n_before, \'После\': len(df), \'Убрано\': ...}`.')
+    t = var('log_table', pd.DataFrame, 'таблицей DataFrame: `pd.DataFrame(processing_log)`')
+    if len(t) != 2:
+        fail('В журнале {0} строк, а должно быть 2 — по одной на каждый этап.'.format(len(t)))
+    missing = [c for c in ['Этап', 'До', 'После', 'Убрано'] if c not in t.columns]
+    if missing:
+        fail('В журнале не хватает колонок {0}. Ключи словарей: \'Этап\', \'До\', \'После\', \'Убрано\'.'.format(missing))
+    e = ref('log_table')
+    if int(t['До'].iloc[1]) == int(t['После'].iloc[1]) and int(e['До'].iloc[1]) != int(e['После'].iloc[1]):
+        fail('Во второй строке «До» совпадает с «После»: запомните `n_before = len(df)` перед вторым шагом.')
+    equal(t['Этап'].tolist(), e['Этап'].tolist(), 'Названия этапов должны быть {expected}, а у вас {actual}.')
+    for col in ['До', 'После', 'Убрано']:
+        equal([int(x) for x in t[col]], [int(x) for x in e[col]], 'Колонка «' + col + '»: должно быть {expected}, а у вас {actual}.')
+    equal([int(x) for x in alt('log_table')['Убрано']], [int(x) for x in alt_ref('log_table')['Убрано']], HARDCODE_MSG)
+  wrong:
+    - code: |
+        df = raw.copy()
+        processing_log = []
+        n_before = len(df)
+        df = df.drop_duplicates().copy()
+        processing_log.append({'Этап': 'Удаление точных повторов', 'До': n_before, 'После': len(df), 'Убрано': n_before - len(df)})
+        df = df.dropna().copy()
+        n_before = len(df)
+        processing_log.append({'Этап': 'Отбор полных записей', 'До': n_before, 'После': len(df), 'Убрано': n_before - len(df)})
+        log_table = pd.DataFrame(processing_log)
+      expect: перед вторым шагом
+    - code: |
+        df = raw.copy()
+        processing_log = []
+        n_before = len(df)
+        df = df.drop_duplicates().copy()
+        processing_log.append({'stage': 'Удаление точных повторов', 'before': n_before, 'after': len(df)})
+        n_before = len(df)
+        df = df.dropna().copy()
+        processing_log.append({'stage': 'Отбор полных записей', 'before': n_before, 'after': len(df)})
+        log_table = pd.DataFrame(processing_log)
+      expect: не хватает колонок
+
+- id: m2-l6-t4
+  title: Удалить только по одной колонке
+  difficulty: main
+  introduces: [pd-dropna]
+  uses: []
+  statement: |
+    Иногда пропуск мешает только в одной колонке. В таблице `dedup` получите:
+
+    - `engine_known` — строки, где известен объём двигателя (пропуски в других колонках оставляем);
+    - `n_lost_engine` — сколько строк удалено при этом;
+    - `n_lost_all` — сколько строк удалил бы обычный `dropna()` по всем колонкам.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    dedup = raw.drop_duplicates()   # задание 2.6.1
+  starter: |
+    engine_known = ...
+    n_lost_engine = ...
+    n_lost_all = ...
+    print(n_lost_engine, n_lost_all)
+  solution: |
+    engine_known = dedup.dropna(subset=['Engine_capacity(cm3)'])
+    n_lost_engine = len(dedup) - len(engine_known)
+    n_lost_all = len(dedup) - len(dedup.dropna())
+    print(n_lost_engine, n_lost_all)
+  explanation: |
+    - `subset=['Engine_capacity(cm3)']` — проверять пропуски только в этой колонке.
+    - Без `subset` удаляется строка с пропуском в любой колонке — потерь в четыре раза больше.
+  alternatives:
+    - |
+      engine_known = dedup[dedup['Engine_capacity(cm3)'].notna()]
+      n_lost_engine = int(dedup['Engine_capacity(cm3)'].isna().sum())
+      n_lost_all = int(dedup.isna().any(axis=1).sum())
+  hints:
+    - У `dropna` есть параметр, который ограничивает проверку выбранными колонками.
+    - "`dedup.dropna(subset=['Engine_capacity(cm3)'])`; потери — разность длин."
+    - "`n_lost_all = len(dedup) - len(dedup.dropna())`."
+  tests: |
+    import pandas as pd
+    e = var('engine_known', pd.DataFrame, 'таблицей DataFrame')
+    if e['Engine_capacity(cm3)'].isna().any():
+        fail('В `engine_known` остались строки без объёма двигателя.')
+    if len(e) == len(ref('dedup').dropna()):
+        fail('В `engine_known` удалены строки с пропусками в любых колонках. Нужен `subset=[\'Engine_capacity(cm3)\']`.')
+    same_frame(e, ref('engine_known'), 'В `engine_known` должны остаться все строки с известным объёмом.')
+    close(var('n_lost_engine', 'number', 'числом'), ref('n_lost_engine'), 'При удалении только по объёму теряется {expected} строк, а у вас {actual}.')
+    close(var('n_lost_all', 'number', 'числом'), ref('n_lost_all'), 'Обычный dropna удалил бы {expected} строк, а у вас {actual}.')
+    close(alt('n_lost_all'), alt_ref('n_lost_all'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        engine_known = dedup.dropna()
+        n_lost_engine = len(dedup) - len(engine_known)
+        n_lost_all = len(dedup) - len(dedup.dropna())
+      expect: subset
+    - code: |
+        engine_known = dedup.dropna(subset=['Engine_capacity(cm3)'])
+        n_lost_engine = len(dedup) - len(engine_known)
+        n_lost_all = n_lost_engine
+      expect: Обычный dropna
+
+- id: m2-l6-t5
+  kind: quiz
+  title: Удалить, заполнить или оставить?
+  difficulty: main
+  introduces: [pd-dropna]
+  uses: []
+  statement: |
+    Для каждой ситуации выберите разумное решение.
+  quiz:
+    - q: В объявлении не указан тип топлива, остальные поля заполнены. Какое заполнение честнее всего?
+      options:
+        - Самый частый тип — дизель
+        - Явная категория `'Unknown'` — значение неизвестно
+        - Случайный тип из списка
+      answer: 1
+      explain: "`'Unknown'` не выдумывает значение, а помечает его отсутствие; модель сможет это учесть."
+    - q: "В строке пропущена марка, а модель — `Cayenne`. Что можно сделать?"
+      options:
+        - Восстановить марку Porsche — эту модель выпускает только она
+        - Заполнить самой частой маркой — Volkswagen
+        - Записать марку `'Rare'`
+      answer: 0
+      explain: Иногда пропуск восстанавливается по другим колонкам. Но так можно не всегда — одинаковые названия моделей бывают у разных марок.
+    - q: В объявлении не указана цена. Как поступить в задаче оценки цены?
+      options:
+        - Заполнить медианной ценой похожих машин
+        - Не использовать запись как обучающий пример
+        - Поставить цену 0
+      answer: 1
+      explain: Цена — целевая переменная. Придуманный ответ испортит обучение и оценку качества.
+    - q: "Что вернёт `df.drop_duplicates(inplace=True)`?"
+      options:
+        - Таблицу без повторов
+        - "`None` — таблица меняется на месте"
+        - Число удалённых строк
+      answer: 1
+      explain: Поэтому `df = df.drop_duplicates(inplace=True)` превращает `df` в `None`.
+  hints:
+    - Перечитайте раздел «Удалить или заполнить?» и врезку о целевой переменной.
+    - "Неизвестное значение категории можно пометить; пропуск иногда восстанавливается по другим колонкам; цену не придумывают."
+    - "Ответы: 'Unknown'; Porsche; не использовать; None."
+
+- id: m2-l6-t6
+  title: Группы повторов
+  difficulty: star
+  introduces: [pd-drop-duplicates]
+  uses: [pd-value-counts]
+  statement: |
+    Изучите повторы подробнее. Получите:
+
+    - `dup_all` — все строки `raw`, у которых есть хотя бы один полный двойник (вместе с первыми вхождениями);
+    - `n_patterns` — сколько **разных** строк повторяется (число групп повторов);
+    - `biggest_group` — сколько раз встречается самая частая строка таблицы.
+
+    У таблицы тоже есть метод `value_counts()` — он считает, сколько раз встречается каждая **строка** целиком. Пропуски в таких строках учитывайте: `dropna=False`.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+  starter: |
+    dup_all = ...
+    n_patterns = ...
+    biggest_group = ...
+    print(len(dup_all), n_patterns, biggest_group)
+  solution: |
+    dup_all = raw[raw.duplicated(keep=False)]
+    n_patterns = len(dup_all.drop_duplicates())
+    biggest_group = raw.value_counts(dropna=False).max()
+    print(len(dup_all), n_patterns, biggest_group)
+  explanation: |
+    - `raw.duplicated(keep=False)` отмечает все строки групп повторов, включая первые (урок 2.3).
+    - `dup_all.drop_duplicates()` оставляет по одной строке из каждой группы — их число и есть число групп.
+    - `raw.value_counts(dropna=False)` считает, сколько раз встречается каждая строка целиком; максимум — размер самой большой группы.
+  alternatives:
+    - |
+      mask = raw.duplicated(keep=False)
+      dup_all = raw.loc[mask]
+      n_patterns = int(raw.loc[mask].drop_duplicates().shape[0])
+      biggest_group = int(raw.value_counts(dropna=False).iloc[0])
+  hints:
+    - Сначала отберите все строки групп повторов. Как из каждой группы оставить одну строку?
+    - "`raw[raw.duplicated(keep=False)]`; число групп — длина `drop_duplicates()` от неё; частоты строк — `raw.value_counts(dropna=False)`."
+    - "`biggest_group = raw.value_counts(dropna=False).max()`."
+  tests: |
+    import pandas as pd
+    d = var('dup_all', pd.DataFrame, 'таблицей DataFrame')
+    if len(d) == int(ref('raw').duplicated().sum()):
+        fail('В `dup_all` нет первых вхождений. Нужна маска `raw.duplicated(keep=False)`.')
+    same_frame(d, ref('dup_all'), 'В `dup_all` должны быть все строки групп повторов.')
+    close(var('n_patterns', 'number', 'числом'), ref('n_patterns'), 'Групп повторов — {expected}, а у вас {actual}.')
+    close(var('biggest_group', 'number', 'числом'), ref('biggest_group'), 'Самая частая строка встречается {expected} раз, а у вас {actual}.')
+    close(alt('n_patterns'), alt_ref('n_patterns'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        dup_all = raw[raw.duplicated()]
+        n_patterns = len(dup_all.drop_duplicates())
+        biggest_group = raw.value_counts(dropna=False).max()
+      expect: keep=False
+    - code: |
+        dup_all = raw[raw.duplicated(keep=False)]
+        n_patterns = len(dup_all)
+        biggest_group = raw.value_counts(dropna=False).max()
+      expect: Групп повторов

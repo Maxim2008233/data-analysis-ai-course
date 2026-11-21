@@ -1,0 +1,425 @@
+- id: m6-l2-t1
+  title: Расстояние между двумя машинами
+  difficulty: warmup
+  introduces: [feature-distance]
+  uses: [standard-scaler]
+  statement: |
+    Даны признаки двух обучающих машин: `a_raw`, `b_raw` — в исходных единицах, `a_z`, `b_z` — после стандартизации. Посчитайте евклидовы расстояния `d_raw` и `d_z`, а также `km_share` — сколько **процентов** квадрата расстояния в исходных единицах дают два «километровых» признака: `Distance` и `km_year` (в массивах это позиции 1 и 3).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    a_raw, b_raw = X_train.iloc[0].to_numpy(), X_train.iloc[1].to_numpy()
+    a_z, b_z = scaler.transform(X_train.iloc[:2])
+  starter: |
+    sq_raw = (a_raw - b_raw) ** 2
+    d_raw = ...
+    d_z = ...
+    km_share = ...
+    print(round(d_raw, 1), round(d_z, 3), round(km_share, 2))
+  solution: |
+    sq_raw = (a_raw - b_raw) ** 2
+    d_raw = np.sqrt(sq_raw.sum())
+    d_z = np.sqrt(((a_z - b_z) ** 2).sum())
+    km_share = 100 * (sq_raw[1] + sq_raw[3]) / sq_raw.sum()
+    print(round(d_raw, 1), round(d_z, 3), round(km_share, 2))
+  explanation: |
+    - Расстояние — корень из суммы квадратов разностей по признакам.
+    - В исходных единицах 99,7 % квадрата расстояния дают километры: машины различаются на 6 лет и 800 см³, но разница в 12 500 км пробега в год перевешивает всё.
+    - После стандартизации расстояние ≈ 2,17: разницы измеряются в стандартных отклонениях, и год с объёмом двигателя снова заметны.
+  hints:
+    - "Евклидово расстояние — `np.sqrt(((a - b) ** 2).sum())`."
+    - "Квадраты разностей в исходных единицах уже в `sq_raw`; нужные признаки — элементы 1 и 3."
+    - "`km_share = 100 * (sq_raw[1] + sq_raw[3]) / sq_raw.sum()`."
+  tests: |
+    import numpy as np
+    d = var('d_raw', 'number', 'числом')
+    if abs(d - ref('sq_raw').sum()) < 1e-6:
+        fail('Это квадрат расстояния. Расстояние — корень: `np.sqrt(...)`.')
+    close(d, ref('d_raw'), 'Расстояние в исходных единицах — {expected}, а у вас {actual}.')
+    close(var('d_z', 'number', 'числом'), ref('d_z'), 'Расстояние после стандартизации — {expected}, а у вас {actual}.')
+    k = var('km_share', 'number', 'числом')
+    if abs(k - ref('km_share') / 100) < 1e-9:
+        fail('Это доля, а нужны проценты: умножьте на 100.')
+    close(k, ref('km_share'), 'Вклад километровых признаков — {expected} %, а у вас {actual}.')
+    close(alt('d_z'), alt_ref('d_z'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        sq_raw = (a_raw - b_raw) ** 2
+        d_raw = sq_raw.sum()
+        d_z = np.sqrt(((a_z - b_z) ** 2).sum())
+        km_share = 100 * (sq_raw[1] + sq_raw[3]) / sq_raw.sum()
+      expect: квадрат расстояния
+    - code: |
+        sq_raw = (a_raw - b_raw) ** 2
+        d_raw = np.sqrt(sq_raw.sum())
+        d_z = np.sqrt(((a_z - b_z) ** 2).sum())
+        km_share = (sq_raw[1] + sq_raw[3]) / sq_raw.sum()
+      expect: умножьте на 100
+
+- id: m6-l2-t2
+  title: kNN руками на шести машинах
+  difficulty: main
+  introduces: [knn, feature-distance]
+  uses: []
+  statement: |
+    В таблице `cars` — шесть машин со стандартизированными признаками `year_z`, `km_z` и ценой. Для новой машины `new` найдите `dist` — массив расстояний до всех шести, `nearest3` — позиции трёх ближайших (от ближайшей к дальней) и `pred3` — прогноз kNN с k = 3.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    cars = pd.DataFrame({'year_z': [-1.2, -0.8, 0.1, 0.4, 0.9, 1.5],
+                         'km_z': [1.1, 0.7, 0.2, -0.3, -0.6, -1.2],
+                         'price': [2500, 3400, 6800, 8200, 9900, 14500]})
+    new = np.array([0.3, -0.1])
+  starter: |
+    Z = cars[['year_z', 'km_z']].to_numpy()
+    dist = ...
+    nearest3 = ...
+    pred3 = ...
+    print(dist.round(3), nearest3, pred3)
+  solution: |
+    Z = cars[['year_z', 'km_z']].to_numpy()
+    dist = np.sqrt(((Z - new) ** 2).sum(axis=1))
+    nearest3 = np.argsort(dist)[:3]
+    pred3 = cars['price'].to_numpy()[nearest3].mean()
+    print(dist.round(3), nearest3, pred3)
+  explanation: |
+    - `Z - new` вычитает новую машину из каждой строки (broadcasting, урок 1.10); сумма квадратов по строкам (`axis=1`) и корень — шесть расстояний.
+    - `np.argsort` возвращает позиции в порядке возрастания расстояния (урок 1.6); первые три — соседи: машины 3, 2 и 4.
+    - Прогноз — средняя цена соседей: (8 200 + 6 800 + 9 900) / 3 = 8 300. `KNeighborsRegressor(n_neighbors=3)` на тех же данных даёт то же число.
+  hints:
+    - "Разности со всеми машинами сразу — `Z - new`; расстояние — корень из суммы квадратов по строкам: `.sum(axis=1)`."
+    - "Позиции по возрастанию — `np.argsort(dist)`; три первые — `[:3]`."
+    - "`pred3 = cars['price'].to_numpy()[nearest3].mean()`."
+  tests: |
+    import numpy as np
+    from sklearn.neighbors import KNeighborsRegressor
+    d = np.asarray(var('dist'), dtype=float)
+    ensure(d.shape == (6,), '`dist` — шесть расстояний, по одному на машину.')
+    if np.allclose(d, ref('dist') ** 2):
+        fail('Это квадраты расстояний — возьмите корень `np.sqrt(...)`.')
+    same_array(d, ref('dist'), 'Расстояния не совпадают: корень из суммы квадратов разностей по строкам (`axis=1`).')
+    n3 = [int(v) for v in np.asarray(var('nearest3')).ravel()]
+    if n3 == [int(v) for v in np.argsort(ref('dist'))[::-1][:3]]:
+        fail('Это три самые **далёкие** машины. Соседи — с наименьшим расстоянием: первые элементы `np.argsort(dist)`.')
+    equal(n3, [int(v) for v in ref('nearest3')], 'Позиции трёх ближайших — {expected}, а у вас {actual}.')
+    p = var('pred3', 'number', 'числом')
+    sk = KNeighborsRegressor(n_neighbors=3).fit(ref('cars')[['year_z', 'km_z']], ref('cars')['price']).predict(np.asarray([ref('new')]))[0]
+    close(p, sk, 'Прогноз kNN с k = 3 — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        Z = cars[['year_z', 'km_z']].to_numpy()
+        dist = np.sqrt(((Z - new) ** 2).sum(axis=1))
+        nearest3 = np.argsort(dist)[::-1][:3]
+        pred3 = cars['price'].to_numpy()[nearest3].mean()
+      expect: самые **далёкие**
+    - code: |
+        Z = cars[['year_z', 'km_z']].to_numpy()
+        dist = ((Z - new) ** 2).sum(axis=1)
+        nearest3 = np.argsort(dist)[:3]
+        pred3 = cars['price'].to_numpy()[nearest3].mean()
+      expect: квадраты расстояний
+
+- id: m6-l2-t3
+  title: kNN в Pipeline
+  difficulty: main
+  introduces: [knn]
+  uses: [sk-pipeline, regression-metrics]
+  statement: |
+    Соберите `knn` — Pipeline из `'scale'` (`StandardScaler`) и `'model'` (`KNeighborsRegressor` с 10 соседями), обучите его, посчитайте `knn_mae` на validation и `gain` — на сколько евро kNN точнее линейной модели (`linear_mae` уже посчитана).
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    from sklearn.pipeline import Pipeline
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    linear_mae = mean_absolute_error(y_valid, LinearRegression().fit(X_train, y_train).predict(X_valid))
+  starter: |
+    from sklearn.neighbors import KNeighborsRegressor
+
+    knn = Pipeline([
+        ('scale', ...),
+        ('model', ...),
+    ])
+    knn.fit(X_train, y_train)
+    knn_mae = ...
+    gain = ...
+    print(round(knn_mae, 1), round(gain, 1))
+  solution: |
+    from sklearn.neighbors import KNeighborsRegressor
+
+    knn = Pipeline([
+        ('scale', StandardScaler()),
+        ('model', KNeighborsRegressor(n_neighbors=10)),
+    ])
+    knn.fit(X_train, y_train)
+    knn_mae = mean_absolute_error(y_valid, knn.predict(X_valid))
+    gain = linear_mae - knn_mae
+    print(round(knn_mae, 1), round(gain, 1))
+  explanation: |
+    - Число соседей задаётся при создании: `KNeighborsRegressor(n_neighbors=10)`.
+    - MAE ≈ 2 706 — на ≈ 1 564 евро лучше линейной модели. Линейная модель описывает зависимость одной формулой для всех машин, kNN смотрит на похожие машины и улавливает нелинейность.
+  hints:
+    - "Шаги — `StandardScaler()` и `KNeighborsRegressor(n_neighbors=10)`."
+    - "`knn_mae = mean_absolute_error(y_valid, knn.predict(X_valid))`."
+    - "Выигрыш — разница MAE: `linear_mae - knn_mae`."
+  tests: |
+    from sklearn.pipeline import Pipeline
+    p = var('knn', Pipeline, 'объектом Pipeline')
+    ensure(list(p.named_steps) == ['scale', 'model'], 'Шаги должны называться `scale` и `model`.')
+    m = p.named_steps['model']
+    ensure(type(m).__name__ == 'KNeighborsRegressor', 'Шаг `model` — `KNeighborsRegressor`.')
+    ensure(m.n_neighbors == 10, 'Соседей должно быть 10: `KNeighborsRegressor(n_neighbors=10)`, а у вас {0}.'.format(m.n_neighbors))
+    ensure(type(p.named_steps['scale']).__name__ == 'StandardScaler', 'Шаг `scale` — `StandardScaler()`: без стандартизации kNN заметно хуже.')
+    close(var('knn_mae', 'number', 'числом'), ref('knn_mae'), 'MAE kNN на validation — {expected}, а у вас {actual}.')
+    g = var('gain', 'number', 'числом')
+    if abs(g + ref('gain')) < 1e-6:
+        fail('Знак наоборот: выигрыш — MAE линейной модели минус MAE kNN.')
+    close(g, ref('gain'), 'Выигрыш — {expected} евро, а у вас {actual}.')
+    close(alt('knn_mae'), alt_ref('knn_mae'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        from sklearn.neighbors import KNeighborsRegressor
+        knn = Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor())])
+        knn.fit(X_train, y_train)
+        knn_mae = mean_absolute_error(y_valid, knn.predict(X_valid))
+        gain = linear_mae - knn_mae
+      expect: Соседей должно быть 10
+    - code: |
+        from sklearn.neighbors import KNeighborsRegressor
+        knn = Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=10))])
+        knn.fit(X_train, y_train)
+        knn_mae = mean_absolute_error(y_valid, knn.predict(X_valid))
+        gain = knn_mae - linear_mae
+      expect: Знак наоборот
+
+- id: m6-l2-t4
+  title: Соседи одной машины
+  difficulty: main
+  introduces: [knn]
+  uses: [sk-pipeline]
+  statement: |
+    Для первой машины validation `car` найдите её 10 соседей в обученном Pipeline `knn`: `positions` — их позиции в обучающей части, `nb_prices` — массив их цен, `nb_mean` — средняя цена соседей и `pred_one` — прогноз Pipeline для этой машины.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.neighbors import KNeighborsRegressor
+    from sklearn.pipeline import Pipeline
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    knn = Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=10))]).fit(X_train, y_train)
+    car = X_valid.iloc[[0]]
+  starter: |
+    car_scaled = ...
+    distances, positions = ...
+    positions = positions[0]
+    nb_prices = ...
+    nb_mean = ...
+    pred_one = ...
+    print(car)
+    print(nb_prices, round(nb_mean, 1), round(pred_one, 1))
+  solution: |
+    car_scaled = knn.named_steps['scale'].transform(car)
+    distances, positions = knn.named_steps['model'].kneighbors(car_scaled)
+    positions = positions[0]
+    nb_prices = y_train.iloc[positions].to_numpy()
+    nb_mean = nb_prices.mean()
+    pred_one = knn.predict(car)[0]
+    print(car)
+    print(nb_prices, round(nb_mean, 1), round(pred_one, 1))
+  explanation: |
+    - `kneighbors` — метод модели, а не Pipeline, поэтому строку сначала преобразуем тем же scaler: `knn.named_steps['scale'].transform(car)`.
+    - Позиции — номера строк по порядку, для них `iloc`. Цены соседей — от 1 000 до 4 000 евро; их среднее, 2 370, и есть прогноз Pipeline (настоящая цена этой машины — 4 200).
+    - `[0]` берёт результат для первой (и единственной) машины: `kneighbors` может искать соседей сразу для многих строк.
+  hints:
+    - "Строку преобразуйте шагом `scale`, соседей ищите шагом `model`: `knn.named_steps['model'].kneighbors(...)`."
+    - "Цены по позициям — `y_train.iloc[positions]`; прогноз — `knn.predict(car)[0]`."
+    - "`car_scaled = knn.named_steps['scale'].transform(car)`; `nb_prices = y_train.iloc[positions].to_numpy()`."
+  tests: |
+    import numpy as np
+    pos = [int(v) for v in np.asarray(var('positions')).ravel()]
+    if len(pos) == 10 and pos != [int(v) for v in ref('positions')]:
+        raw_pos = [int(v) for v in ref('knn').named_steps['model'].kneighbors(ref('car').to_numpy())[1][0]]
+        if pos == raw_pos:
+            fail('Соседи найдены по нестандартизированной строке. Сначала преобразуйте её: `knn.named_steps[\'scale\'].transform(car)`.')
+    equal(pos, [int(v) for v in ref('positions')], 'Позиции соседей не совпадают.')
+    same_array(np.asarray(var('nb_prices'), dtype=float), np.asarray(ref('nb_prices'), dtype=float), 'Цены соседей не совпадают: берите их по позициям через `iloc`.')
+    close(var('nb_mean', 'number', 'числом'), ref('nb_mean'), 'Средняя цена соседей — {expected}, а у вас {actual}.')
+    close(var('pred_one', 'number', 'числом'), ref('pred_one'), 'Прогноз Pipeline — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        car_scaled = car.to_numpy()
+        distances, positions = knn.named_steps['model'].kneighbors(car_scaled)
+        positions = positions[0]
+        nb_prices = y_train.iloc[positions].to_numpy()
+        nb_mean = nb_prices.mean()
+        pred_one = knn.predict(car)[0]
+      expect: нестандартизированной
+    - code: |
+        car_scaled = knn.named_steps['scale'].transform(car)
+        distances, positions = knn.named_steps['model'].kneighbors(car_scaled)
+        positions = positions[0]
+        nb_prices = y_train.to_numpy()[:10]
+        nb_mean = nb_prices.mean()
+        pred_one = knn.predict(car)[0]
+      expect: Цены соседей
+
+- id: m6-l2-t5
+  title: Что будет без стандартизации
+  difficulty: main
+  introduces: [feature-distance]
+  uses: [standard-scaler, regression-metrics]
+  statement: |
+    Обучите `raw_knn` — `KNeighborsRegressor` с 10 соседями **без** стандартизации — и посчитайте `raw_mae` на validation. Затем `loss` — на сколько евро он хуже kNN со стандартизацией (`scaled_mae` уже посчитана) и `biggest_std` — признак с наибольшим стандартным отклонением на train.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import Pipeline
+    from sklearn.neighbors import KNeighborsRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    knn = Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=10))]).fit(X_train, y_train)
+    scaled_mae = mean_absolute_error(y_valid, knn.predict(X_valid))
+  starter: |
+    raw_knn = ...
+    raw_mae = ...
+    loss = ...
+    biggest_std = ...
+    print(round(raw_mae, 1), round(loss, 1), biggest_std)
+    print(X_train.std().round(1))
+  solution: |
+    raw_knn = KNeighborsRegressor(n_neighbors=10).fit(X_train, y_train)
+    raw_mae = mean_absolute_error(y_valid, raw_knn.predict(X_valid))
+    loss = raw_mae - scaled_mae
+    biggest_std = X_train.std().idxmax()
+    print(round(raw_mae, 1), round(loss, 1), biggest_std)
+    print(X_train.std().round(1))
+  explanation: |
+    - Без стандартизации MAE ≈ 3 611 — на ≈ 905 евро хуже. Модель та же, изменилась только мера «похожести».
+    - Стандартное отклонение пробега ≈ 99 тысяч км, года — 7,4: разница в один «типичный» пробег в 13 тысяч раз больше разницы в один «типичный» год. Расстояние почти целиком определяет пробег, и соседями становятся машины с тем же пробегом, но совсем другого года и объёма.
+  hints:
+    - "Модель без Pipeline — `KNeighborsRegressor(n_neighbors=10).fit(X_train, y_train)`."
+    - "Потеря — `raw_mae - scaled_mae`."
+    - "Стандартные отклонения признаков — `X_train.std()`; имя наибольшего — `.idxmax()`."
+  tests: |
+    close(var('raw_mae', 'number', 'числом'), ref('raw_mae'), 'MAE kNN без стандартизации — {expected}, а у вас {actual}.')
+    l = var('loss', 'number', 'числом')
+    if abs(l + ref('loss')) < 1e-6:
+        fail('Знак наоборот: потеря — MAE без стандартизации минус MAE со стандартизацией.')
+    close(l, ref('loss'), 'Потеря — {expected} евро, а у вас {actual}.')
+    equal(var('biggest_std', str, 'строкой — именем признака'), ref('biggest_std'), 'Наибольшее стандартное отклонение — у «{expected}», а у вас «{actual}».')
+    close(alt('raw_mae'), alt_ref('raw_mae'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        raw_knn = Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=10))]).fit(X_train, y_train)
+        raw_mae = mean_absolute_error(y_valid, raw_knn.predict(X_valid))
+        loss = raw_mae - scaled_mae
+        biggest_std = X_train.std().idxmax()
+      expect: без стандартизации
+    - code: |
+        raw_knn = KNeighborsRegressor(n_neighbors=10).fit(X_train, y_train)
+        raw_mae = mean_absolute_error(y_valid, raw_knn.predict(X_valid))
+        loss = raw_mae - scaled_mae
+        biggest_std = X_train.std().idxmin()
+      expect: Наибольшее стандартное отклонение
+
+- id: m6-l2-t6
+  title: kNN своими руками на NumPy
+  difficulty: star
+  introduces: [knn]
+  uses: []
+  statement: |
+    Напишите функцию `knn_predict(X_fit, y_fit, X_new, k)` — прогноз kNN для **всех** строк `X_new` сразу, без циклов по строкам: расстояния через broadcasting (урок 1.10), соседи через `np.argsort`, прогноз — среднее ответов соседей. Все аргументы — массивы NumPy (`X_fit` — n × m, `y_fit` — n, `X_new` — q × m). Затем `pred` — прогнозы для `X_query` по данным `X_demo`, `y_demo` с k = 5.
+  prelude: |
+    import numpy as np
+    rng = np.random.default_rng(7)
+    X_demo = rng.normal(size=(300, 2))
+    y_demo = 10 + 3 * X_demo[:, 0] - 2 * X_demo[:, 1] ** 2 + rng.normal(scale=0.5, size=300)
+    X_query = rng.normal(size=(20, 2))
+  starter: |
+    def knn_predict(X_fit, y_fit, X_new, k):
+        diff = X_new[:, None, :] - X_fit[None, :, :]    # q × n × m
+        dist = ...                                      # q × n
+        nearest = ...                                   # q × k
+        return ...
+
+    pred = knn_predict(X_demo, y_demo, X_query, k=5)
+    print(pred.round(2))
+  solution: |
+    def knn_predict(X_fit, y_fit, X_new, k):
+        diff = X_new[:, None, :] - X_fit[None, :, :]    # q × n × m
+        dist = np.sqrt((diff ** 2).sum(axis=2))         # q × n
+        nearest = np.argsort(dist, axis=1)[:, :k]       # q × k
+        return y_fit[nearest].mean(axis=1)
+
+    pred = knn_predict(X_demo, y_demo, X_query, k=5)
+    print(pred.round(2))
+  explanation: |
+    - `X_new[:, None, :] - X_fit[None, :, :]` даёт разности каждой новой точки с каждой обучающей: массив q × n × m. Сумма квадратов по последней оси и корень — матрица расстояний q × n.
+    - `np.argsort(dist, axis=1)[:, :k]` — позиции k ближайших для каждой строки; `y_fit[nearest]` — их ответы (q × k), среднее по строке — прогнозы.
+    - Так и работает `KNeighborsRegressor` с перебором всех пар (`algorithm='brute'`). Для больших таблиц scikit-learn строит деревья поиска, чтобы не считать все расстояния. На настоящих данных о машинах бывают одинаковые расстояния — тогда выбор соседей из «ничьих» у разных реализаций может отличаться.
+  hints:
+    - "Расстояния — корень из суммы квадратов `diff` по последней оси: `axis=2`."
+    - "Ближайшие для каждой строки — `np.argsort(dist, axis=1)[:, :k]`."
+    - "Ответы соседей — `y_fit[nearest]`, прогноз — `.mean(axis=1)`."
+  tests: |
+    import numpy as np
+    from sklearn.neighbors import KNeighborsRegressor
+    f = var('knn_predict')
+    ensure(callable(f), '`knn_predict` должна быть функцией.')
+    rng = np.random.default_rng(123)
+    for k in (1, 3, 7):
+        Xf = rng.normal(size=(150, 3))
+        yf = rng.normal(size=150)
+        Xn = rng.normal(size=(12, 3))
+        got = np.asarray(f(Xf, yf, Xn, k), dtype=float)
+        exp = KNeighborsRegressor(n_neighbors=k, algorithm='brute').fit(Xf, yf).predict(Xn)
+        ensure(got.shape == exp.shape, 'Функция должна вернуть по прогнозу на каждую строку `X_new` ({0}), а вернула форму {1}.'.format(exp.shape, got.shape))
+        if not np.allclose(got, exp):
+            far = np.asarray(yf[np.argsort(np.sqrt(((Xn[:, None, :] - Xf[None, :, :]) ** 2).sum(axis=2)), axis=1)[:, -k:]].mean(axis=1))
+            if np.allclose(got, far):
+                fail('Взяты самые **далёкие** точки: соседи — первые k позиций после `np.argsort` по возрастанию.')
+            fail('При k = {0} прогнозы не совпадают с KNeighborsRegressor на новых данных. Проверьте ось суммы (`axis=2`) и ось сортировки (`axis=1`).'.format(k))
+    same_array(np.asarray(var('pred'), dtype=float), ref('pred'), 'Прогнозы для `X_query` не совпадают.')
+  wrong:
+    - code: |
+        def knn_predict(X_fit, y_fit, X_new, k):
+            diff = X_new[:, None, :] - X_fit[None, :, :]
+            dist = np.sqrt((diff ** 2).sum(axis=2))
+            nearest = np.argsort(dist, axis=1)[:, -k:]
+            return y_fit[nearest].mean(axis=1)
+
+        pred = knn_predict(X_demo, y_demo, X_query, k=5)
+      expect: самые **далёкие**
+    - code: |
+        def knn_predict(X_fit, y_fit, X_new, k):
+            diff = X_new[:, None, :] - X_fit[None, :, :]
+            dist = np.sqrt((diff ** 2).sum(axis=1))
+            nearest = np.argsort(dist, axis=1)[:, :k]
+            return y_fit[nearest].mean(axis=1)
+
+        pred = knn_predict(X_demo, y_demo, X_query, k=5)
+      expect: "axis=2"

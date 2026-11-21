@@ -1,0 +1,411 @@
+- id: m4-l12-t1
+  title: Число для заголовка-вывода
+  difficulty: warmup
+  introduces: [takeaway-title]
+  uses: [pd-value-counts, py-fstrings]
+  statement: |
+    Получите `share_top3` — долю (в процентах) объявлений трёх самых частых типов кузова — и `title` — заголовок слайда **ровно** в таком виде: `f'Три самых частых кузова — {share_top3:.1f}% объявлений'`.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    share_top3 = ...
+    title = ...
+    print(title)
+  solution: |
+    share_top3 = 100 * df['Style'].value_counts().head(3).sum() / len(df)
+    title = f'Три самых частых кузова — {share_top3:.1f}% объявлений'
+    print(title)
+  explanation: |
+    - Три самых частых значения — `value_counts().head(3)`; их сумма, делённая на число всех объявлений, × 100 — доля в процентах.
+    - f-строка вставляет число в заголовок, `:.1f` — один знак после точки (урок 0.6). При обновлении данных заголовок пересчитается сам.
+  hints:
+    - Доля — сумма трёх частот, делённая на число всех объявлений; заголовок — f-строка.
+    - "`share_top3 = 100 * df['Style'].value_counts().head(3).sum() / len(df)`."
+    - "`title = f'Три самых частых кузова — {share_top3:.1f}% объявлений'`."
+  tests: |
+    sh = var('share_top3', 'number', 'числом')
+    if sh <= 1:
+        fail('Доля должна быть в процентах: умножьте на 100.')
+    close(sh, ref('share_top3'), 'Доля трёх самых частых кузовов — {expected} %, а у вас {actual}.')
+    t = var('title', str, 'строкой')
+    equal(t, ref('title'), 'Заголовок должен быть ровно «{expected}», а у вас «{actual}».')
+    equal(alt('title'), alt_ref('title'), 'На другой части данных заголовок получился «{actual}», а должен быть «{expected}». Число в заголовке нужно вычислять f-строкой, а не вписывать.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        share_top3 = 100 * df['Style'].value_counts().head(3).sum() / len(df)
+        title = 'Три самых частых кузова — 64.7% объявлений'
+      expect: вычислять f-строкой
+    - code: |
+        share_top3 = df['Style'].value_counts().head(3).sum() / len(df)
+        title = f'Три самых частых кузова — {share_top3:.1f}% объявлений'
+      expect: в процентах
+
+- id: m4-l12-t2
+  kind: plot
+  title: "Слайд: почти половина — дизель"
+  difficulty: main
+  introduces: [takeaway-title, data-story]
+  uses: [color-emphasis, mpl-bar-labels]
+  statement: |
+    Сделайте слайд о составе топлива: горизонтальные столбцы всех типов топлива (лидер сверху), дизель — цветом `'tab:blue'`, остальные — `'lightgray'`, подписи долей у столбцов. Заголовок-вывод — f-строкой с долей дизеля: `f'Почти половина объявлений — дизель ({diesel_share:.1f}%)'`.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    fuel = df['Fuel_type'].value_counts().sort_values()
+    diesel_share = ...
+    colors = ...
+    fig, ax = plt.subplots(figsize=(9, 3.5))
+    bars = ax.barh(fuel.index, fuel.values, color=colors)
+    ax.bar_label(bars, labels=[f'{100 * n / len(df):.1f}%' for n in fuel], padding=4)
+    ax.set_xlim(0, fuel.max() * 1.25)
+    ax.set_title(...)
+    ax.set_xlabel('Число объявлений')
+    plt.show()
+  solution: |
+    fuel = df['Fuel_type'].value_counts().sort_values()
+    diesel_share = 100 * fuel['Diesel'] / len(df)
+    colors = ['tab:blue' if name == 'Diesel' else 'lightgray' for name in fuel.index]
+    fig, ax = plt.subplots(figsize=(9, 3.5))
+    bars = ax.barh(fuel.index, fuel.values, color=colors)
+    ax.bar_label(bars, labels=[f'{100 * n / len(df):.1f}%' for n in fuel], padding=4)
+    ax.set_xlim(0, fuel.max() * 1.25)
+    ax.set_title(f'Почти половина объявлений — дизель ({diesel_share:.1f}%)')
+    ax.set_xlabel('Число объявлений')
+    plt.show()
+  explanation: |
+    - Доля дизеля — его частота, делённая на все объявления, × 100.
+    - Акцентный цвет только у той категории, о которой вывод (урок 4.3); остальные — серые.
+    - Заголовок формулирует вывод, а число в нём посчитано из данных.
+  hints:
+    - Доля — частота дизеля из `fuel`, делённая на число объявлений; цвета — список в порядке `fuel.index`.
+    - "`diesel_share = 100 * fuel['Diesel'] / len(df)`; `colors = ['tab:blue' if name == 'Diesel' else 'lightgray' for name in fuel.index]`."
+    - "`ax.set_title(f'Почти половина объявлений — дизель ({diesel_share:.1f}%)')`."
+  tests: |
+    from matplotlib.colors import to_hex
+    ax = axes()
+    bars = [b for b in ax.patches if type(b).__name__ == 'Rectangle']
+    names = [t.get_text() for t in ax.get_yticklabels()]
+    ensure(len(bars) == len(ref('fuel')) and 'Diesel' in names, 'Нарисуйте столбцы всех типов топлива.')
+    colors = [to_hex(b.get_facecolor()) for b in bars]
+    i = names.index('Diesel')
+    ensure(colors[i] == to_hex('tab:blue') and all(c == to_hex('lightgray') for k, c in enumerate(colors) if k != i), 'Дизель — цветом `\'tab:blue\'`, остальные — `\'lightgray\'`.')
+    want = 'Почти половина объявлений — дизель ({0:.1f}%)'.format(ref('diesel_share'))
+    equal(ax.get_title(), want, 'Заголовок должен быть «{expected}», а у вас «{actual}».')
+    close(alt('diesel_share'), alt_ref('diesel_share'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        fuel = df['Fuel_type'].value_counts().sort_values()
+        diesel_share = 100 * fuel['Diesel'] / len(df)
+        fig, ax = plt.subplots()
+        bars = ax.barh(fuel.index, fuel.values)
+        ax.set_title(f'Почти половина объявлений — дизель ({diesel_share:.1f}%)')
+        plt.show()
+      expect: "`'tab:blue'`"
+    - code: |
+        fuel = df['Fuel_type'].value_counts().sort_values()
+        diesel_share = 100 * fuel['Diesel'] / len(df)
+        colors = ['tab:blue' if name == 'Diesel' else 'lightgray' for name in fuel.index]
+        fig, ax = plt.subplots()
+        bars = ax.barh(fuel.index, fuel.values, color=colors)
+        ax.set_title('Распределение по типу топлива')
+        plt.show()
+      expect: Заголовок должен быть
+
+- id: m4-l12-t3
+  kind: plot
+  title: "Слайд 2: цены пяти самых частых марок"
+  difficulty: main
+  introduces: [data-story, takeaway-title]
+  uses: [boxplot-rule, sns-basics, pd-isin-between]
+  statement: |
+    Возьмите пять самых частых марок по `Make_original` (`top5`, порядок — по частоте) и их объявления (`selected`). Нарисуйте боксплоты цены по марке в порядке `top5` без точек за усами. Заголовок — **вывод** (не описание графика вроде «Боксплоты цен»), ось Y подпишите с единицами `евро`.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    top5 = ...
+    selected = ...
+    fig, ax = plt.subplots(figsize=(10, 3.8))
+    sns.boxplot(...)
+    ax.set_title(...)
+    ax.set(xlabel='Марка', ylabel=...)
+    plt.show()
+  solution: |
+    top5 = df['Make_original'].value_counts().head(5).index
+    selected = df[df['Make_original'].isin(top5)]
+    fig, ax = plt.subplots(figsize=(10, 3.8))
+    sns.boxplot(data=selected, x='Make_original', y='Price', order=top5, showfliers=False, color='lightblue', ax=ax)
+    ax.set_title('Цены различаются между марками и внутри них')
+    ax.set(xlabel='Марка', ylabel='Цена предложения, евро')
+    plt.show()
+  explanation: |
+    - `value_counts().head(5).index` — пять марок по частоте; `isin` оставляет их объявления (урок 2.5).
+    - `order=top5` — ящики в порядке частоты марок, `showfliers=False` прячет точки за усами (о чём стоит сказать в подписи слайда).
+    - Заголовок-вывод отвечает на вопрос слайда «насколько различаются цены?».
+  hints:
+    - "Марки — `value_counts().head(5).index`; объявления — `isin`; порядок ящиков — `order=top5`."
+    - "`sns.boxplot(data=selected, x='Make_original', y='Price', order=top5, showfliers=False, ax=ax)`."
+    - "Заголовок-вывод, например: «Цены различаются между марками и внутри них»."
+  tests: |
+    ax = axes()
+    top5 = [str(x) for x in ref('top5')]
+    labels = [t.get_text() for t in ax.get_xticklabels()]
+    ensure(labels == top5, 'Ящики должны идти в порядке частоты марок: {0}, а у вас {1}. Используйте `Make_original` и `order=top5`.'.format(top5, labels))
+    boxes = [p for p in ax.patches if type(p).__name__ == 'PathPatch']
+    ensure(len(boxes) == 5, 'Должно быть 5 ящиков — по одному на марку.')
+    fliers = [l for l in ax.get_lines() if l.get_marker() not in (None, 'None', '') and len(l.get_xdata()) > 0]
+    ensure(len(fliers) == 0, 'Спрячьте точки за усами: `showfliers=False`.')
+    t = ax.get_title().strip()
+    ensure(len(t) >= 15, 'Сформулируйте в заголовке вывод — что видно на графике.')
+    first = t.split()[0].lower()
+    if first in ('боксплот', 'боксплоты', 'график', 'распределение', 'цена', 'цены') and len(t.split()) <= 4:
+        fail('Заголовок описывает график. Сформулируйте вывод: например, «Цены различаются между марками и внутри них».')
+    ensure('евро' in ax.get_ylabel().lower(), 'Подпишите ось Y с единицами: `ylabel=\'Цена предложения, евро\'`.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        top5 = df['Make'].value_counts().head(5).index
+        selected = df[df['Make'].isin(top5)]
+        fig, ax = plt.subplots()
+        sns.boxplot(data=selected, x='Make', y='Price', order=top5, showfliers=False, ax=ax)
+        ax.set_title('Цены различаются между марками и внутри них')
+        ax.set(ylabel='Цена, евро')
+        plt.show()
+      expect: Make_original
+    - code: |
+        top5 = df['Make_original'].value_counts().head(5).index
+        selected = df[df['Make_original'].isin(top5)]
+        fig, ax = plt.subplots()
+        sns.boxplot(data=selected, x='Make_original', y='Price', order=top5, showfliers=False, ax=ax)
+        ax.set_title('Боксплоты цен по маркам')
+        ax.set(ylabel='Цена, евро')
+        plt.show()
+      expect: описывает график
+
+- id: m4-l12-t4
+  kind: quiz
+  title: Заголовок-вывод и границы
+  difficulty: main
+  introduces: [data-story, takeaway-title]
+  uses: []
+  statement: |
+    Выберите лучший вариант для дата-истории.
+  quiz:
+    - q: Какой заголовок лучше для слайда с гистограммой пробега?
+      options:
+        - «Гистограмма пробега, 40 интервалов»
+        - «Половина машин прошла больше 180 тыс. км»
+        - «Пробег»
+      answer: 1
+      explain: Заголовок-вывод сообщает главное, что зритель должен унести со слайда.
+    - q: Каким должен быть последний слайд истории?
+      options:
+        - Самым красивым графиком модуля
+        - Предложением для сервиса, следующим шагом и границами выводов
+        - Таблицей со всеми числами
+      answer: 1
+      explain: "История ведёт к решению: что делаем дальше и чего данные не доказывают."
+    - q: "В истории есть вывод «Покупатели предпочитают Volkswagen». Что не так?"
+      options:
+        - Ничего, Volkswagen — самая частая марка
+        - "Данные — объявления; о предпочтениях покупателей по ним не судят. Корректно: «больше всего объявлений — Volkswagen»"
+        - Нужно округлить долю
+      answer: 1
+      explain: Границы выводов — часть истории (урок 4.1).
+  hints:
+    - Вспомните, чем заголовок-вывод отличается от описания и из чего состоит последний слайд.
+    - "Заголовок — вывод; финал — предложение, следующий шаг и границы; объявления — не продажи."
+    - "Ответы: «Половина машин прошла больше 180 тыс. км»; предложение и границы; о покупателях по объявлениям не судят."
+
+- id: m4-l12-t5
+  kind: plot
+  title: "Слайд 3: год и цена в трёх марках"
+  difficulty: main
+  introduces: [data-story]
+  uses: [shared-scales, overplotting]
+  statement: |
+    Для трёх самых частых марок по `Make_original` нарисуйте три панели в ряд с общими шкалами: на каждой — облако «год выпуска — цена» своей марки (`s=8`, `alpha=0.2`), логарифмическая ось цены, заголовок панели — название марки. Общий заголовок рисунка (`fig.suptitle`) — вывод: `'Одной марки и года недостаточно для точной оценки'`.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    top3 = ...
+    fig, axes = plt.subplots(1, 3, figsize=(14, 3.8), sharex=True, sharey=True)
+    for ax, make in zip(axes, top3):
+        group = ...
+        ax.scatter(...)
+        ax.set(title=make, xlabel='Год выпуска', yscale='log')
+    axes[0].set_ylabel('Цена, евро')
+    fig.suptitle(...)
+    fig.tight_layout()
+    plt.show()
+  solution: |
+    top3 = df['Make_original'].value_counts().head(3).index
+    fig, axes = plt.subplots(1, 3, figsize=(14, 3.8), sharex=True, sharey=True)
+    for ax, make in zip(axes, top3):
+        group = df[df['Make_original'] == make]
+        ax.scatter(group['Year'], group['Price'], s=8, alpha=0.2)
+        ax.set(title=make, xlabel='Год выпуска', yscale='log')
+    axes[0].set_ylabel('Цена, евро')
+    fig.suptitle('Одной марки и года недостаточно для точной оценки')
+    fig.tight_layout()
+    plt.show()
+  explanation: |
+    - Цикл по парам «ось, марка» (урок 4.4); в каждой панели — облако своей марки.
+    - Общие шкалы (урок 4.9) позволяют сравнить ширину «пятен»: внутри одного года цены различаются в разы.
+    - `fig.suptitle` — вывод всего слайда.
+  hints:
+    - "Три марки — `value_counts().head(3).index`; внутри цикла отберите объявления марки."
+    - "`group = df[df['Make_original'] == make]`; `ax.scatter(group['Year'], group['Price'], s=8, alpha=0.2)`."
+    - "`fig.suptitle('Одной марки и года недостаточно для точной оценки')`."
+  tests: |
+    fig = figures()[-1]
+    axs = plot_axes(fig)
+    top3 = [str(x) for x in ref('top3')]
+    ensure(len(axs) == 3, 'Нужны три панели, а у вас {0}.'.format(len(axs)))
+    ensure(axs[0].get_shared_y_axes().joined(axs[0], axs[2]), 'Сделайте общие шкалы: `sharex=True, sharey=True`.')
+    d = ref('df')
+    for ax, make in zip(axs, top3):
+        ensure(ax.get_title() == make, 'Панели должны называться марками по порядку: {0}.'.format(top3))
+        pts = [c for c in ax.collections if type(c).__name__ == 'PathCollection']
+        n = int((d['Make_original'] == make).sum())
+        ensure(len(pts) >= 1 and len(pts[0].get_offsets()) == n, 'На панели {0} должно быть {1} точек — все объявления марки.'.format(make, n))
+        ensure(ax.get_yscale() == 'log', 'Сделайте ось цены логарифмической: `yscale=\'log\'`.')
+    equal(fig.get_suptitle(), 'Одной марки и года недостаточно для точной оценки', 'Общий заголовок-вывод должен быть «{expected}».')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        top3 = df['Make_original'].value_counts().head(3).index
+        fig, axes = plt.subplots(1, 3, sharex=True, sharey=True)
+        for ax, make in zip(axes, top3):
+            group = df[df['Make_original'] == make]
+            ax.scatter(group['Year'], group['Price'], s=8, alpha=0.2)
+            ax.set(title=make, yscale='log')
+        fig.suptitle('Цена и год выпуска')
+        plt.show()
+      expect: заголовок-вывод
+    - code: |
+        top3 = df['Make_original'].value_counts().head(3).index
+        fig, axes = plt.subplots(1, 3)
+        for ax, make in zip(axes, top3):
+            group = df[df['Make_original'] == make]
+            ax.scatter(group['Year'], group['Price'], s=8, alpha=0.2)
+            ax.set(title=make, yscale='log')
+        fig.suptitle('Одной марки и года недостаточно для точной оценки')
+        plt.show()
+      expect: общие шкалы
+
+- id: m4-l12-t6
+  kind: plot
+  title: "Что ещё нужно: модель сужает разброс"
+  difficulty: star
+  introduces: [data-story]
+  uses: [quantiles-iqr, pd-groupby, group-size-caution]
+  statement: |
+    Проверим предложение истории «оценивать с учётом модели». Для **BMW 2014–2016 годов выпуска** (`bmw`) получите:
+
+    - `iqr_all` — IQR цены всех этих машин;
+    - `iqr_models` — IQR цены каждой модели, у которой **не меньше 30** объявлений, по возрастанию (Series: индекс — модель);
+    - `share_narrower` — долю таких моделей, у которых IQR меньше `iqr_all`.
+
+    Нарисуйте `iqr_models` горизонтальными столбцами и вертикальную пунктирную линию на уровне `iqr_all` (`ax.axvline(iqr_all, linestyle='--', label=...)`) с легендой; заголовок — вывод.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    bmw = ...
+    q1, q3 = ...
+    iqr_all = ...
+    by_model = bmw.groupby('Model')['Price']
+    sizes = by_model.size()
+    iqr = by_model.quantile(0.75) - by_model.quantile(0.25)
+    iqr_models = ...
+    share_narrower = ...
+    fig, ax = plt.subplots(figsize=(9, 3.5))
+    ax.barh(iqr_models.index, iqr_models.values)
+    ax.axvline(...)
+    ax.set(title=..., xlabel='IQR цены, евро')
+    ax.legend()
+    plt.show()
+  solution: |
+    bmw = df[(df['Make'] == 'BMW') & df['Year'].between(2014, 2016)]
+    q1, q3 = bmw['Price'].quantile([0.25, 0.75])
+    iqr_all = q3 - q1
+    by_model = bmw.groupby('Model')['Price']
+    sizes = by_model.size()
+    iqr = by_model.quantile(0.75) - by_model.quantile(0.25)
+    iqr_models = iqr[sizes >= 30].sort_values()
+    share_narrower = (iqr_models < iqr_all).mean()
+    fig, ax = plt.subplots(figsize=(9, 3.5))
+    ax.barh(iqr_models.index, iqr_models.values)
+    ax.axvline(iqr_all, color='tab:red', linestyle='--', label='Все BMW 2014–2016')
+    ax.set(title='Внутри модели разброс цен в 1,5–7 раз меньше', xlabel='IQR цены, евро')
+    ax.legend()
+    plt.show()
+  explanation: |
+    - IQR — ширина центральных 50 % цен (урок 1.7): у всех BMW 2014–2016 он около 12 000 евро.
+    - IQR по моделям — разность квантилей 0,75 и 0,25 внутри групп; малые группы отбрасываем (урок 3.3).
+    - У каждой модели разброс заметно меньше — доля равна 1. Значит, модель действительно объясняет большую часть различий в цене, и оценка «по похожим машинам» должна её учитывать.
+    - `ax.axvline` рисует вертикальную линию через всю высоту осей — ориентир для сравнения.
+  hints:
+    - "IQR модели — `quantile(0.75) - quantile(0.25)` в группах; оставьте модели с `sizes >= 30`."
+    - "`iqr_models = iqr[sizes >= 30].sort_values()`; доля — `(iqr_models < iqr_all).mean()`."
+    - "`bmw = df[(df['Make'] == 'BMW') & df['Year'].between(2014, 2016)]`; линия — `ax.axvline(iqr_all, linestyle='--', label='Все BMW 2014–2016')`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    close(var('iqr_all', 'number', 'числом'), ref('iqr_all'), 'IQR цены всех BMW 2014–2016 — {expected}, а у вас {actual}.')
+    im = var('iqr_models', pd.Series, 'Series')
+    if len(im) > len(ref('iqr_models')):
+        fail('В `iqr_models` есть модели меньше чем с 30 объявлениями — отберите `sizes >= 30`.')
+    same_frame(im, ref('iqr_models'), 'IQR по моделям не совпадает (модели с 30+ объявлениями, по возрастанию).')
+    close(var('share_narrower', 'number', 'числом'), ref('share_narrower'), 'Доля моделей с меньшим разбросом — {expected}, а у вас {actual}.')
+    ax = axes()
+    bars = [b for b in ax.patches if type(b).__name__ == 'Rectangle']
+    ensure(len(bars) == len(ref('iqr_models')), 'Нарисуйте столбцы `iqr_models`.')
+    vl = [l for l in ax.get_lines() if len(set(np.round(np.asarray(l.get_xdata(), dtype=float), 6))) == 1]
+    ensure(len(vl) >= 1 and np.isclose(float(vl[0].get_xdata()[0]), ref('iqr_all')), 'Добавьте вертикальную линию на уровне `iqr_all`: `ax.axvline(iqr_all, ...)`.')
+    ensure(vl[0].get_linestyle() == '--', 'Сделайте линию пунктирной: `linestyle=\'--\'`.')
+    ensure(ax.get_legend() is not None, 'Подпишите линию (`label=...`) и добавьте легенду.')
+    ensure(len(ax.get_title()) >= 15, 'Сформулируйте вывод в заголовке.')
+    close(alt('iqr_all'), alt_ref('iqr_all'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        bmw = df[(df['Make'] == 'BMW') & df['Year'].between(2014, 2016)]
+        q1, q3 = bmw['Price'].quantile([0.25, 0.75])
+        iqr_all = q3 - q1
+        by_model = bmw.groupby('Model')['Price']
+        iqr = by_model.quantile(0.75) - by_model.quantile(0.25)
+        iqr_models = iqr.sort_values()
+        share_narrower = (iqr_models < iqr_all).mean()
+        fig, ax = plt.subplots()
+        ax.barh(iqr_models.index, iqr_models.values)
+        ax.axvline(iqr_all, linestyle='--', label='Все')
+        ax.set(title='Внутри модели разброс меньше')
+        ax.legend()
+        plt.show()
+      expect: меньше чем с 30
+    - code: |
+        bmw = df[(df['Make'] == 'BMW') & df['Year'].between(2014, 2016)]
+        q1, q3 = bmw['Price'].quantile([0.25, 0.75])
+        iqr_all = q3 - q1
+        by_model = bmw.groupby('Model')['Price']
+        sizes = by_model.size()
+        iqr = by_model.quantile(0.75) - by_model.quantile(0.25)
+        iqr_models = iqr[sizes >= 30].sort_values()
+        share_narrower = (iqr_models < iqr_all).mean()
+        fig, ax = plt.subplots()
+        ax.barh(iqr_models.index, iqr_models.values)
+        ax.set(title='Внутри модели разброс меньше')
+        plt.show()
+      expect: вертикальную линию

@@ -1,0 +1,815 @@
+- id: m10-l9-t1
+  title: "Шаг 1. Надёжный разбор вариантов"
+  difficulty: main
+  introduces: []
+  uses: [structured-output]
+  statement: |
+    Напишите функцию `parse_options(s)` — варианты ответа списком строк или `None`:
+
+    1. Убрать пробелы по краям и лишнюю запятую в конце (`s.strip().rstrip(',').strip()`).
+    2. Разобрать `json.loads`. Если не вышло — `ast.literal_eval` (предупреждения `SyntaxWarning` заглушить, как в уроке 10.0). Если и это не вышло — `None`.
+    3. Результат должен быть списком или кортежем, иначе `None`.
+    4. Вернуть список строк: `[str(x) for x in value]`.
+
+    Разберите варианты обеих таблиц в столбец `options` и получите:
+
+    - `train_bad`, `test_bad` — сколько строк в `qa` и в `test` не разобралось;
+    - `bad_ids` — список `id` неразобранных вопросов теста;
+    - `test_n` — словарь «число вариантов → сколько вопросов теста» по разобранным строкам.
+  prelude: |
+    import ast
+    import json
+    import warnings
+    import pandas as pd
+    qa = pd.read_csv('qa_train.csv')
+    test = pd.read_csv('qa_test.csv')
+  starter: |
+    def parse_options(s):
+        s = s.strip().rstrip(',').strip()
+        try:
+            value = json.loads(s)
+        except json.JSONDecodeError:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', SyntaxWarning)
+                try:
+                    value = ...
+                except (ValueError, SyntaxError):
+                    return None
+        if ...:
+            return None
+        return [str(x) for x in value]
+
+    qa['options'] = qa['варианты'].apply(parse_options)
+    test['options'] = test['варианты'].apply(parse_options)
+    train_bad = int(qa['options'].isna().sum())
+    test_bad = ...
+    bad_ids = ...
+    test_n = test['options'].dropna().str.len().value_counts().to_dict()
+    print(train_bad, test_bad, bad_ids, test_n)
+  solution: |
+    def parse_options(s):
+        s = s.strip().rstrip(',').strip()
+        try:
+            value = json.loads(s)
+        except json.JSONDecodeError:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', SyntaxWarning)
+                try:
+                    value = ast.literal_eval(s)
+                except (ValueError, SyntaxError):
+                    return None
+        if not isinstance(value, (list, tuple)):
+            return None
+        return [str(x) for x in value]
+
+    qa['options'] = qa['варианты'].apply(parse_options)
+    test['options'] = test['варианты'].apply(parse_options)
+    train_bad = int(qa['options'].isna().sum())
+    test_bad = int(test['options'].isna().sum())
+    bad_ids = test.loc[test['options'].isna(), 'id'].tolist()
+    test_n = test['options'].dropna().str.len().value_counts().to_dict()
+    print(train_bad, test_bad, bad_ids, test_n)
+  explanation: |
+    - В обучающих вопросах разбирается всё. В тесте не разбираются три строки: в одной вместо вариантов записан вопрос, в двух — формулы с апострофом внутри кавычек (`'$f'(x)$'`). Ещё три строки разобрались только благодаря отрезанной запятой в конце.
+    - Проверка типа нужна, потому что JSON-строка `"текст"` тоже разбирается — но в строку, а не в список. Без проверки длина «вариантов» оказалась бы числом букв.
+    - В тесте 725 вопросов с четырьмя вариантами, 45 — с десятью и 13 — с семью. Промпт и проверка ответа должны работать с любым числом вариантов.
+  hints:
+    - "Запасной разбор — `ast.literal_eval(s)`."
+    - "Не список и не кортеж — `not isinstance(value, (list, tuple))`."
+    - "`bad_ids = test.loc[test['options'].isna(), 'id'].tolist()`."
+  tests: |
+    f = var('parse_options')
+    ensure(callable(f), '`parse_options` должна быть функцией.')
+    cases = [('["a", "b"]', ['a', 'b']), ('["a", "b"],', ['a', 'b']), ("['a', 'b']", ['a', 'b']), ('  [1, 2.5] ', ['1', '2.5']),
+             ('("x", "y")', ['x', 'y']), ('"просто строка"', None), ('Какой дар получает герой?', None),
+             ("['$f'(x)$', 'b']", None), ('', None), ('{"a": 1}', None)]
+    for s, want in cases:
+        try:
+            got = f(s)
+        except Exception as e:
+            fail('На строке {0!r} функция упала ({1}): ошибки разбора нужно ловить и возвращать None.'.format(s, type(e).__name__))
+        if want is None and got is not None:
+            if s == '"просто строка"':
+                fail('JSON-строка "просто строка" разбирается в строку, а не в список — функция должна вернуть None.')
+            fail('Строка {0!r} — не список вариантов, функция должна вернуть None, а вернула {1!r}.'.format(s, got))
+        if want is not None and got != want:
+            if s == '["a", "b"],':
+                fail('Лишнюю запятую в конце нужно отрезать: «["a", "b"],» → [\'a\', \'b\'], а получилось {0!r}.'.format(got))
+            fail('Строка {0!r} должна дать {1!r}, а получилось {2!r}.'.format(s, want, got))
+    equal(int(var('train_bad', 'number', 'числом')), ref('train_bad'), 'Неразобранных строк в обучающих вопросах — {expected}, а у вас {actual}.')
+    equal(int(var('test_bad', 'number', 'числом')), ref('test_bad'), 'Неразобранных строк в тесте — {expected}, а у вас {actual}.')
+    equal([int(x) for x in var('bad_ids', list, 'списком')], [int(x) for x in ref('bad_ids')], '`bad_ids` — {expected}, а у вас {actual}.')
+    equal({int(k): int(v) for k, v in var('test_n', dict, 'словарём').items()}, {int(k): int(v) for k, v in ref('test_n').items()}, '`test_n` — {expected}, а у вас {actual}.')
+    equal(int(alt('test_bad')), int(alt_ref('test_bad')), HARDCODE_MSG)
+  files: [qa_train.csv, qa_test.csv]
+  wrong:
+    - code: |
+        def parse_options(s):
+            try:
+                value = json.loads(s)
+            except json.JSONDecodeError:
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore', SyntaxWarning)
+                    try:
+                        value = ast.literal_eval(s)
+                    except (ValueError, SyntaxError):
+                        return None
+            if not isinstance(value, (list, tuple)):
+                return None
+            return [str(x) for x in value]
+        qa['options'] = qa['варианты'].apply(parse_options)
+        test['options'] = test['варианты'].apply(parse_options)
+        train_bad = int(qa['options'].isna().sum())
+        test_bad = int(test['options'].isna().sum())
+        bad_ids = test.loc[test['options'].isna(), 'id'].tolist()
+        test_n = test['options'].dropna().str.len().value_counts().to_dict()
+      expect: запятую в конце
+    - code: |
+        def parse_options(s):
+            s = s.strip().rstrip(',').strip()
+            try:
+                value = json.loads(s)
+            except json.JSONDecodeError:
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore', SyntaxWarning)
+                    try:
+                        value = ast.literal_eval(s)
+                    except (ValueError, SyntaxError):
+                        return None
+            return [str(x) for x in value]
+        qa['options'] = qa['варианты'].apply(parse_options)
+        test['options'] = test['варианты'].apply(parse_options)
+        train_bad = int(qa['options'].isna().sum())
+        test_bad = int(test['options'].isna().sum())
+        bad_ids = test.loc[test['options'].isna(), 'id'].tolist()
+        test_n = test['options'].dropna().str.len().value_counts().to_dict()
+      expect: разбирается в строку
+
+- id: m10-l9-t2
+  title: "Шаг 2. Промпт для вопроса"
+  difficulty: main
+  introduces: []
+  uses: [few-shot, system-prompt]
+  statement: |
+    Напишите функцию `build_messages(row, examples)` — список сообщений для вопроса `row`:
+
+    - системное сообщение `SYSTEM.format(last=...)`, где `last` — наибольший допустимый номер у **этого** вопроса (число вариантов минус один);
+    - для каждого примера из таблицы `examples` — вопрос `ask(пример)` с ролью `user` и его ответ строкой с ролью `assistant`;
+    - последним — `ask(row)` с ролью `user`.
+
+    `ask(row)` и `train_examples(row, k)` готовы: вторая подбирает `k` примеров из обучающих вопросов — той же категории и с разными ответами (урок 10.4). Получите:
+
+    - `msgs0` — сообщения для вопроса теста номер 0 с примерами `train_examples(test.loc[0], 2)` и `roles0` — их роли;
+    - `system10` — системное сообщение для первого вопроса теста с десятью вариантами (`i10` уже найден).
+  prelude: |
+    import ast
+    import json
+    import warnings
+    import pandas as pd
+
+    def parse_options(s):
+        s = s.strip().rstrip(',').strip()
+        try:
+            value = json.loads(s)
+        except json.JSONDecodeError:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', SyntaxWarning)
+                try:
+                    value = ast.literal_eval(s)
+                except (ValueError, SyntaxError):
+                    return None
+        return [str(x) for x in value] if isinstance(value, (list, tuple)) else None
+
+    qa = pd.read_csv('qa_train.csv')
+    test = pd.read_csv('qa_test.csv')
+    qa['options'] = qa['варианты'].apply(parse_options)
+    test['options'] = test['варианты'].apply(parse_options)
+    TEMPLATE = "Вопрос: {question}\nВарианты ответа:\n{options}\nОтвет:"
+    SYSTEM = "Ты решаешь тест. Ответь одной цифрой от 0 до {last} — номером правильного варианта, без пояснений."
+
+    def ask(r):
+        return TEMPLATE.format(question=r['вопрос'], options='\n'.join(f'{i}) {o}' for i, o in enumerate(r['options'])))
+
+    answers = qa['ответ'].to_dict()
+    by_category = {c: list(g) for c, g in qa.groupby('категория').groups.items()}
+
+    def train_examples(row, k):
+        same = by_category.get(row['категория'], []) if row['категория'] != '-' else []
+        cands = same + [j for j in qa.index if j not in set(same)]
+        chosen, used = [], set()
+        for j in cands:
+            if len(chosen) < k and answers[j] not in used:
+                chosen.append(j)
+                used.add(answers[j])
+        for j in cands:
+            if len(chosen) < k and j not in chosen:
+                chosen.append(j)
+        return qa.loc[chosen]
+
+    i10 = int(test.index[test['options'].str.len() == 10][0])
+  starter: |
+    def build_messages(row, examples):
+        msgs = [{'role': 'system', 'content': SYSTEM.format(last=...)}]
+        for _, ex in examples.iterrows():
+            msgs.append(...)
+            msgs.append(...)
+        msgs.append({'role': 'user', 'content': ask(row)})
+        return msgs
+
+    msgs0 = build_messages(test.loc[0], train_examples(test.loc[0], 2))
+    roles0 = [m['role'] for m in msgs0]
+    system10 = ...
+    for m in msgs0:
+        print(m['role'], '|', m['content'][:70].replace('\n', ' / '))
+    print(system10)
+  solution: |
+    def build_messages(row, examples):
+        msgs = [{'role': 'system', 'content': SYSTEM.format(last=len(row['options']) - 1)}]
+        for _, ex in examples.iterrows():
+            msgs.append({'role': 'user', 'content': ask(ex)})
+            msgs.append({'role': 'assistant', 'content': str(ex['ответ'])})
+        msgs.append({'role': 'user', 'content': ask(row)})
+        return msgs
+
+    msgs0 = build_messages(test.loc[0], train_examples(test.loc[0], 2))
+    roles0 = [m['role'] for m in msgs0]
+    system10 = build_messages(test.loc[i10], train_examples(test.loc[i10], 0))[0]['content']
+    for m in msgs0:
+        print(m['role'], '|', m['content'][:70].replace('\n', ' / '))
+    print(system10)
+  explanation: |
+    - Допустимые номера зависят от вопроса: у десяти вариантов — от 0 до 9, у четырёх — от 0 до 3. Системная инструкция говорит об этом прямо, и модели не нужно гадать, считать ли с нуля.
+    - Варианты пронумерованы и в примерах, и в вопросе, а ответы примеров — одна цифра. Формат задан трижды: словами, нумерацией и образцами.
+    - Примеры взяты только из обучающих вопросов. Вопросы теста в промпт не попадают — их ответов никто не знает, а для оценки на обучающих вопросах `train_examples` пришлось бы исключать сам вопрос (урок 10.4).
+  hints:
+    - "Наибольший допустимый номер — `len(row['options']) - 1`."
+    - "Пример — два сообщения: `{'role': 'user', 'content': ask(ex)}` и `{'role': 'assistant', 'content': str(ex['ответ'])}`."
+    - "`system10` — первое сообщение (`[0]['content']`) для вопроса `test.loc[i10]`."
+  tests: |
+    import pandas as pd
+    f = var('build_messages')
+    ensure(callable(f), '`build_messages` должна быть функцией.')
+    ex = pd.DataFrame({'вопрос': ['2 + 2?'], 'options': [['3', '4']], 'ответ': [1]})
+    row = pd.Series({'вопрос': '5 + 5?', 'options': ['9', '10', '11']})
+    got = f(row, ex)
+    ensure(isinstance(got, list) and len(got) == 4, 'Для одного примера должно быть 4 сообщения: системное, пример (вопрос и ответ) и вопрос.')
+    sys_text = got[0].get('content', '')
+    if 'от 0 до 1' in sys_text:
+        fail('Допустимые номера берутся из вопроса `row`, а не из примеров: у вопроса три варианта — «от 0 до 2».')
+    if 'от 0 до 3' in sys_text:
+        fail('Наибольший номер — число вариантов минус один: у вопроса с тремя вариантами — «от 0 до 2».')
+    equal(got[0], {'role': 'system', 'content': 'Ты решаешь тест. Ответь одной цифрой от 0 до 2 — номером правильного варианта, без пояснений.'}, 'Системное сообщение — {expected}, а у вас {actual}.')
+    equal(got[1], {'role': 'user', 'content': 'Вопрос: 2 + 2?\nВарианты ответа:\n0) 3\n1) 4\nОтвет:'}, 'Вопрос примера — {expected}, а у вас {actual}.')
+    if got[2].get('content') == 1:
+        fail('Ответ примера — строка: `str(ex[\'ответ\'])`.')
+    equal(got[2], {'role': 'assistant', 'content': '1'}, 'Ответ примера — {expected}, а у вас {actual}.')
+    equal(got[3], {'role': 'user', 'content': 'Вопрос: 5 + 5?\nВарианты ответа:\n0) 9\n1) 10\n2) 11\nОтвет:'}, 'Последнее сообщение — {expected}, а у вас {actual}.')
+    equal(var('msgs0', list, 'списком'), ref('msgs0'), '`msgs0` — сообщения для вопроса теста 0 с двумя примерами.')
+    equal(var('roles0', list, 'списком'), ['system', 'user', 'assistant', 'user', 'assistant', 'user'], 'Роли — {expected}, а у вас {actual}.')
+    equal(var('system10', str, 'строкой'), ref('system10'), '`system10` — {expected}, а у вас {actual}.')
+  files: [qa_train.csv, qa_test.csv]
+  wrong:
+    - code: |
+        def build_messages(row, examples):
+            msgs = [{'role': 'system', 'content': SYSTEM.format(last=3)}]
+            for _, ex in examples.iterrows():
+                msgs.append({'role': 'user', 'content': ask(ex)})
+                msgs.append({'role': 'assistant', 'content': str(ex['ответ'])})
+            msgs.append({'role': 'user', 'content': ask(row)})
+            return msgs
+        msgs0 = build_messages(test.loc[0], train_examples(test.loc[0], 2))
+        roles0 = [m['role'] for m in msgs0]
+        system10 = build_messages(test.loc[i10], train_examples(test.loc[i10], 0))[0]['content']
+      expect: минус один
+    - code: |
+        def build_messages(row, examples):
+            msgs = [{'role': 'system', 'content': SYSTEM.format(last=len(row['options']) - 1)}]
+            for _, ex in examples.iterrows():
+                msgs.append({'role': 'user', 'content': ask(ex)})
+                msgs.append({'role': 'assistant', 'content': ex['ответ']})
+            msgs.append({'role': 'user', 'content': ask(row)})
+            return msgs
+        msgs0 = build_messages(test.loc[0], train_examples(test.loc[0], 2))
+        roles0 = [m['role'] for m in msgs0]
+        system10 = build_messages(test.loc[i10], train_examples(test.loc[i10], 0))[0]['content']
+      expect: Ответ примера — строка
+
+- id: m10-l9-t3
+  title: "Шаг 3. Число примеров под бюджет"
+  difficulty: main
+  introduces: []
+  uses: [few-shot, context-window]
+  statement: |
+    Каждый пример уходит в каждом из 783 запросов (вопросы с разобранными вариантами — таблица `ok`). Пусть на запросы теста выделено `BUDGET = 80_000` токенов. `build_messages` и `count_tokens` (прикидка из урока 10.3) готовы.
+
+    Получите:
+
+    - `tokens_by_k` — список: сколько токенов уйдёт на все вопросы `ok`, если в каждом промпте `k` примеров, для `k` из `[0, 1, 2, 3]` (примеры — `train_examples(row, k)`);
+    - `k_best` — наибольшее `k` из этого списка, при котором расход не больше бюджета;
+    - `per_question` — сколько токенов в среднем на один вопрос при `k_best`.
+  prelude: |
+    import ast
+    import json
+    import math
+    import warnings
+    import pandas as pd
+
+    def parse_options(s):
+        s = s.strip().rstrip(',').strip()
+        try:
+            value = json.loads(s)
+        except json.JSONDecodeError:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', SyntaxWarning)
+                try:
+                    value = ast.literal_eval(s)
+                except (ValueError, SyntaxError):
+                    return None
+        return [str(x) for x in value] if isinstance(value, (list, tuple)) else None
+
+    qa = pd.read_csv('qa_train.csv')
+    test = pd.read_csv('qa_test.csv')
+    qa['options'] = qa['варианты'].apply(parse_options)
+    test['options'] = test['варианты'].apply(parse_options)
+    ok = test[test['options'].notna()]
+    TEMPLATE = "Вопрос: {question}\nВарианты ответа:\n{options}\nОтвет:"
+    SYSTEM = "Ты решаешь тест. Ответь одной цифрой от 0 до {last} — номером правильного варианта, без пояснений."
+    BUDGET = 80_000
+
+    def ask(r):
+        return TEMPLATE.format(question=r['вопрос'], options='\n'.join(f'{i}) {o}' for i, o in enumerate(r['options'])))
+
+    answers = qa['ответ'].to_dict()
+    by_category = {c: list(g) for c, g in qa.groupby('категория').groups.items()}
+
+    def train_examples(row, k):
+        same = by_category.get(row['категория'], []) if row['категория'] != '-' else []
+        cands = same + [j for j in qa.index if j not in set(same)]
+        chosen, used = [], set()
+        for j in cands:
+            if len(chosen) < k and answers[j] not in used:
+                chosen.append(j)
+                used.add(answers[j])
+        for j in cands:
+            if len(chosen) < k and j not in chosen:
+                chosen.append(j)
+        return qa.loc[chosen]
+
+    def build_messages(row, examples):
+        msgs = [{'role': 'system', 'content': SYSTEM.format(last=len(row['options']) - 1)}]
+        for _, ex in examples.iterrows():
+            msgs.append({'role': 'user', 'content': ask(ex)})
+            msgs.append({'role': 'assistant', 'content': str(ex['ответ'])})
+        msgs.append({'role': 'user', 'content': ask(row)})
+        return msgs
+
+    def count_tokens(messages):
+        return math.ceil(sum(len(m['content']) for m in messages) / 5.09)
+  starter: |
+    tokens_by_k = []
+    for k in [0, 1, 2, 3]:
+        total = sum(count_tokens(build_messages(row, ...)) for _, row in ok.iterrows())
+        tokens_by_k.append(total)
+    k_best = ...
+    per_question = ...
+    print(tokens_by_k, k_best, round(per_question, 1))
+  solution: |
+    tokens_by_k = []
+    for k in [0, 1, 2, 3]:
+        total = sum(count_tokens(build_messages(row, train_examples(row, k))) for _, row in ok.iterrows())
+        tokens_by_k.append(total)
+    k_best = max(k for k, t in zip([0, 1, 2, 3], tokens_by_k) if t <= BUDGET)
+    per_question = tokens_by_k[k_best] / len(ok)
+    print(tokens_by_k, k_best, round(per_question, 1))
+  explanation: |
+    - Без примеров весь тест — около 36 тысяч токенов, каждый пример добавляет ещё примерно 20 тысяч. В бюджет 80 тысяч помещаются два примера: около 99 токенов на вопрос.
+    - Это только запросы. Ответ одной цифрой — один-два токена, а `max_tokens` стоит поставить маленьким: тогда и разговорчивая модель не потратит лишнего. Повторы при ответе не по формату добавят ещё.
+    - Лучше ли два примера, чем ноль, бюджет не скажет. Это проверяют на обучающих вопросах (урок 10.8), и, может быть, окажется, что хватает и одного.
+  hints:
+    - "Примеры для вопроса — `train_examples(row, k)`."
+    - "Подходящие `k` — те, у которых `t <= BUDGET`; наибольшее — `max(...)`."
+    - "Среднее на вопрос — `tokens_by_k[k_best] / len(ok)`."
+  tests: |
+    tk = [int(x) for x in var('tokens_by_k', list, 'списком')]
+    ensure(len(tk) == 4, '`tokens_by_k` — по числу на каждое `k` из [0, 1, 2, 3].')
+    if len(set(tk)) == 1:
+        fail('Расход не зависит от `k`: передайте в `build_messages` примеры `train_examples(row, k)`.')
+    equal(tk, ref('tokens_by_k'), '`tokens_by_k` — {expected}, а у вас {actual}.')
+    equal(int(var('k_best', 'number', 'числом')), ref('k_best'), 'В бюджет помещается {expected} примеров, а у вас {actual}.')
+    close(var('per_question', 'number', 'числом'), ref('per_question'), 'Токенов на вопрос — {expected}, а у вас {actual}.')
+    equal([int(x) for x in alt('tokens_by_k')], [int(x) for x in alt_ref('tokens_by_k')], HARDCODE_MSG)
+  files: [qa_train.csv, qa_test.csv]
+  wrong:
+    - code: |
+        tokens_by_k = []
+        for k in [0, 1, 2, 3]:
+            total = sum(count_tokens(build_messages(row, train_examples(row, 0))) for _, row in ok.iterrows())
+            tokens_by_k.append(total)
+        k_best = 3
+        per_question = tokens_by_k[k_best] / len(ok)
+      expect: не зависит от `k`
+    - code: |
+        tokens_by_k = []
+        for k in [0, 1, 2, 3]:
+            total = sum(count_tokens(build_messages(row, train_examples(row, k))) for _, row in ok.iterrows())
+            tokens_by_k.append(total)
+        k_best = min(k for k, t in zip([0, 1, 2, 3], tokens_by_k) if t <= BUDGET)
+        per_question = tokens_by_k[k_best] / len(ok)
+      expect: В бюджет помещается
+
+- id: m10-l9-t4
+  title: "Шаг 4. Ответ модели: разбор, повтор, запасной ответ"
+  difficulty: main
+  introduces: []
+  uses: [structured-output, llm-chain]
+  statement: |
+    Напишите функцию `get_answer(model, messages, n)`. `model` — чат-модель LangChain, `model.invoke(messages)` возвращает сообщение, текст — в `.content`. Разбор — готовая `parse_answer(text, n)` из урока 10.5.
+
+    1. Спросить модель. Ответ разобрался — вернуть `(номер, 1, False)`.
+    2. Иначе один раз переспросить: добавить к истории ответ модели с ролью `assistant` и `FIX.format(last=n - 1)` с ролью `user`. Разобрался — `(номер, 2, False)`.
+    3. Иначе — запасной ответ `FALLBACK`: `(FALLBACK, 2, True)`.
+
+    Тестовые модели собраны из `SCENARIOS`. Получите `results` — результаты `get_answer` для каждого сценария (вопрос `QUESTION`, четыре варианта), `n_fallback` — сколько раз понадобился запасной ответ, и `n_requests` — сколько всего ушло запросов.
+  prelude: |
+    import re
+    from langchain_core.language_models import FakeListChatModel
+
+    def parse_answer(text, n):
+        m = re.fullmatch(r'\s*(?:ответ\s*:?\s*)?(\d+)\s*\.?\s*', text, flags=re.IGNORECASE)
+        if m is None:
+            return None
+        k = int(m.group(1))
+        return k if k < n else None
+
+    FIX = 'Ответь только одной цифрой от 0 до {last}, без пояснений.'
+    FALLBACK = 1
+    QUESTION = [{'role': 'system', 'content': 'Ты решаешь тест. Ответь одной цифрой от 0 до 3 — номером правильного варианта, без пояснений.'},
+                {'role': 'user', 'content': 'Вопрос: Сколько будет √64?\nВарианты ответа:\n0) 6\n1) 7\n2) 8\n3) 9\nОтвет:'}]
+    SCENARIOS = [['2'], ['Ответ: 2'], ['√64 = 8, это вариант 2', '2'], ['8', 'Восемь'], ['4', '3.']]
+  starter: |
+    def get_answer(model, messages, n):
+        text = model.invoke(messages).content
+        answer = parse_answer(text, n)
+        if answer is not None:
+            return answer, 1, False
+        retry = messages + [...]
+        answer = parse_answer(model.invoke(retry).content, n)
+        if answer is not None:
+            return ...
+        return ...
+
+    results = [get_answer(FakeListChatModel(responses=s), QUESTION, 4) for s in SCENARIOS]
+    n_fallback = ...
+    n_requests = ...
+    print(results, n_fallback, n_requests)
+  solution: |
+    def get_answer(model, messages, n):
+        text = model.invoke(messages).content
+        answer = parse_answer(text, n)
+        if answer is not None:
+            return answer, 1, False
+        retry = messages + [{'role': 'assistant', 'content': text},
+                            {'role': 'user', 'content': FIX.format(last=n - 1)}]
+        answer = parse_answer(model.invoke(retry).content, n)
+        if answer is not None:
+            return answer, 2, False
+        return FALLBACK, 2, True
+
+    results = [get_answer(FakeListChatModel(responses=s), QUESTION, 4) for s in SCENARIOS]
+    n_fallback = sum(used for _, _, used in results)
+    n_requests = sum(r for _, r, _ in results)
+    print(results, n_fallback, n_requests)
+  explanation: |
+    - Ответ «8» — правильное число, но не номер варианта, и строгий разбор его отвергает: у вопроса только номера от 0 до 3. Модель ответила по существу, но не по формату. Переспрос «Восемь» тоже не помог, и пошёл запасной ответ.
+    - Запасной ответ помечен (`True` в третьем элементе): такие вопросы потом можно пересчитать и разобрать. Если их много, чинят промпт.
+    - Повтор стоит запроса: на пять вопросов ушло восемь запросов. Ограничение одним повтором держит расход предсказуемым.
+  hints:
+    - "Повтор — `messages + [{'role': 'assistant', 'content': text}, {'role': 'user', 'content': FIX.format(last=n - 1)}]`."
+    - "Удачный повтор — `return answer, 2, False`; неудачный — `return FALLBACK, 2, True`."
+    - "`n_fallback = sum(used for _, _, used in results)`, `n_requests = sum(r for _, r, _ in results)`."
+  tests: |
+    from langchain_core.language_models import FakeListChatModel
+    f = var('get_answer')
+    ensure(callable(f), '`get_answer` должна быть функцией.')
+    q = [{'role': 'user', 'content': 'Q'}]
+    equal(tuple(f(FakeListChatModel(responses=['3']), q, 4)), (3, 1, False), 'Первый ответ подошёл: ожидалось {expected}, а получилось {actual}.')
+    m2 = FakeListChatModel(responses=['не знаю', '0'])
+    got = tuple(f(m2, q, 4))
+    if got == (None, 2, False):
+        fail('После удачного повтора нужно вернуть разобранный номер.')
+    equal(got, (0, 2, False), 'Подошёл ответ на повтор: ожидалось {expected}, а получилось {actual}.')
+    sent = m2.calls[1] if len(m2.calls) > 1 else []
+    roles = [m.type for m in sent]
+    if roles[-2:] != ['ai', 'human']:
+        fail('При повторе к истории добавляют ответ модели (роль assistant) и просьбу исправить формат (роль user).')
+    equal(sent[-1].content, 'Ответь только одной цифрой от 0 до 3, без пояснений.', 'Просьба исправить формат — {expected}, а у вас {actual}.')
+    got3 = tuple(f(FakeListChatModel(responses=['x', 'y']), q, 2))
+    equal(got3, (1, 2, True), 'Ни один ответ не подошёл — запасной ответ: ожидалось {expected}, а получилось {actual}.')
+    equal([tuple(r) for r in var('results', list, 'списком')], [tuple(r) for r in ref('results')], '`results` — {expected}, а у вас {actual}.')
+    equal(int(var('n_fallback', 'number', 'числом')), ref('n_fallback'), 'Запасной ответ понадобился {expected} раз, а у вас {actual}.')
+    equal(int(var('n_requests', 'number', 'числом')), ref('n_requests'), 'Всего запросов — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        def get_answer(model, messages, n):
+            text = model.invoke(messages).content
+            answer = parse_answer(text, n)
+            if answer is not None:
+                return answer, 1, False
+            return FALLBACK, 1, True
+        results = [get_answer(FakeListChatModel(responses=s), QUESTION, 4) for s in SCENARIOS]
+        n_fallback = sum(used for _, _, used in results)
+        n_requests = sum(r for _, r, _ in results)
+      expect: Подошёл ответ на повтор
+    - code: |
+        def get_answer(model, messages, n):
+            text = model.invoke(messages).content
+            answer = parse_answer(text, n)
+            if answer is not None:
+                return answer, 1, False
+            retry = messages + [{'role': 'user', 'content': FIX.format(last=n - 1)}]
+            answer = parse_answer(model.invoke(retry).content, n)
+            if answer is not None:
+                return answer, 2, False
+            return FALLBACK, 2, True
+        results = [get_answer(FakeListChatModel(responses=s), QUESTION, 4) for s in SCENARIOS]
+        n_fallback = sum(used for _, _, used in results)
+        n_requests = sum(r for _, r, _ in results)
+      expect: ответ модели (роль assistant)
+
+- id: m10-l9-t5
+  title: "Шаг 5. Проверка файла ответов"
+  difficulty: main
+  introduces: []
+  uses: [structured-output, llm-evaluation]
+  statement: |
+    Перед отправкой файл ответов проверяют. Напишите функцию `check_submission(sub, test)`. `sub` — таблица `id`, `prediction`; `test` — вопросы со столбцом `n` (число вариантов, 0 — если варианты не разобрались). Функция возвращает словарь с четырьмя числами:
+
+    - `'missing'` — сколько вопросов теста нет в `sub`;
+    - `'extra'` — сколько `id` в `sub` нет в тесте;
+    - `'duplicates'` — сколько строк `sub` повторяют уже встреченный `id` (`duplicated().sum()`);
+    - `'out_of_range'` — сколько прогнозов для вопросов теста вне диапазона от 0 до `n - 1`.
+
+    Получите `report` — проверку файла базового решения `baseline`.
+  prelude: |
+    import ast
+    import json
+    import warnings
+    import pandas as pd
+
+    def parse_options(s):
+        s = s.strip().rstrip(',').strip()
+        try:
+            value = json.loads(s)
+        except json.JSONDecodeError:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', SyntaxWarning)
+                try:
+                    value = ast.literal_eval(s)
+                except (ValueError, SyntaxError):
+                    return None
+        return [str(x) for x in value] if isinstance(value, (list, tuple)) else None
+
+    test = pd.read_csv('qa_test.csv')
+    test['n'] = test['варианты'].apply(parse_options).apply(lambda o: len(o) if o is not None else 0)
+    baseline = pd.read_csv('qa_gigachat_baseline.csv')
+  starter: |
+    def check_submission(sub, test):
+        ids = set(test['id'])
+        merged = test[['id', 'n']].merge(sub.drop_duplicates('id'), on='id')
+        bad = (merged['prediction'] < 0) | (merged['prediction'] >= merged['n'])
+        return {'missing': len(ids - set(sub['id'])),
+                'extra': ...,
+                'duplicates': ...,
+                'out_of_range': ...}
+
+    report = check_submission(baseline, test)
+    print(report)
+  solution: |
+    def check_submission(sub, test):
+        ids = set(test['id'])
+        merged = test[['id', 'n']].merge(sub.drop_duplicates('id'), on='id')
+        bad = (merged['prediction'] < 0) | (merged['prediction'] >= merged['n'])
+        return {'missing': len(ids - set(sub['id'])),
+                'extra': len(set(sub['id']) - ids),
+                'duplicates': int(sub['id'].duplicated().sum()),
+                'out_of_range': int(bad.sum())}
+
+    report = check_submission(baseline, test)
+    print(report)
+  explanation: |
+    - Файл базового решения полон: все 786 `id` на месте, лишних и повторов нет. Но 96 прогнозов вне диапазона — те самые недопустимые номера из урока 10.5.
+    - Разности множеств `ids - set(sub['id'])` и наоборот находят пропущенные и лишние `id`. Пропущенный вопрос на проверке — это гарантированная ошибка, а лишний `id` может сломать подсчёт.
+    - Такая проверка стоит пары строк, а ловит ошибки до отправки, а не после.
+  hints:
+    - "Лишние `id` — `len(set(sub['id']) - ids)`."
+    - "Повторы — `int(sub['id'].duplicated().sum())`."
+    - "Вне диапазона — `int(bad.sum())`."
+  tests: |
+    import pandas as pd
+    f = var('check_submission')
+    ensure(callable(f), '`check_submission` должна быть функцией.')
+    t = pd.DataFrame({'id': [1, 2, 3, 4], 'n': [4, 4, 10, 0]})
+    s = pd.DataFrame({'id': [1, 2, 2, 3, 9], 'prediction': [3, 4, 0, 9, 1]})
+    got = f(s, t)
+    ensure(isinstance(got, dict), '`check_submission` должна вернуть словарь.')
+    want = {'missing': 1, 'extra': 1, 'duplicates': 1, 'out_of_range': 1}
+    for key in want:
+        ensure(key in got, 'В словаре нет ключа {0!r}.'.format(key))
+    if got['duplicates'] == 2:
+        fail('Повторы — строки, которые повторяют уже встреченный `id`: у `id` 2 две строки, повтор один.')
+    equal({k: int(got[k]) for k in want}, want, 'На маленьком примере ожидалось {expected}, а получилось {actual}.')
+    s2 = pd.DataFrame({'id': [1, 2, 3, 4], 'prediction': [0, 1, 2, 0]})
+    got2 = f(s2, t)
+    if int(got2['out_of_range']) == 0:
+        fail('У вопроса с n = 0 варианты не разобрались, и любой прогноз для него вне диапазона.')
+    equal({k: int(v) for k, v in var('report', dict, 'словарём').items()}, ref('report'), '`report` — {expected}, а у вас {actual}.')
+  files: [qa_test.csv, qa_gigachat_baseline.csv]
+  wrong:
+    - code: |
+        def check_submission(sub, test):
+            ids = set(test['id'])
+            merged = test[['id', 'n']].merge(sub.drop_duplicates('id'), on='id')
+            bad = (merged['prediction'] < 0) | (merged['prediction'] >= merged['n'])
+            return {'missing': len(ids - set(sub['id'])),
+                    'extra': len(set(sub['id']) - ids),
+                    'duplicates': int(sub['id'].duplicated(keep=False).sum()),
+                    'out_of_range': int(bad.sum())}
+        report = check_submission(baseline, test)
+      expect: повтор один
+    - code: |
+        def check_submission(sub, test):
+            ids = set(test['id'])
+            merged = test[['id', 'n']].merge(sub.drop_duplicates('id'), on='id')
+            bad = (merged['prediction'] < 0) | ((merged['prediction'] >= merged['n']) & (merged['n'] > 0))
+            return {'missing': len(ids - set(sub['id'])),
+                    'extra': len(set(sub['id']) - ids),
+                    'duplicates': int(sub['id'].duplicated().sum()),
+                    'out_of_range': int(bad.sum())}
+        report = check_submission(baseline, test)
+      expect: n = 0
+
+- id: m10-l9-t6
+  title: "Шаг 6. Починка файла и честная оценка"
+  difficulty: main
+  introduces: []
+  uses: [llm-evaluation]
+  statement: |
+    Починим файл базового решения: каждый прогноз вне диапазона заменим запасным ответом `1`. Остальные прогнозы не трогаем. Известно, что исходный файл дал `CORRECT = 517` верных из 786.
+
+    Получите:
+
+    - `fixed` — исправленную копию `baseline` (те же столбцы и порядок строк);
+    - `n_fixed` — сколько прогнозов заменено;
+    - `report_after` — `check_submission(fixed, test)`;
+    - `expected_acc` — ожидаемую долю верных у исправленного файла: к 517 прибавляется `n_fixed × p1`, где `p1` — доля вопросов с ответом 1 среди обучающих (`qa`).
+
+    И сохраните `fixed` в файл `qa_fixed_submission.csv` без индекса.
+  prelude: |
+    import ast
+    import json
+    import os
+    import warnings
+    import pandas as pd
+
+    def parse_options(s):
+        s = s.strip().rstrip(',').strip()
+        try:
+            value = json.loads(s)
+        except json.JSONDecodeError:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', SyntaxWarning)
+                try:
+                    value = ast.literal_eval(s)
+                except (ValueError, SyntaxError):
+                    return None
+        return [str(x) for x in value] if isinstance(value, (list, tuple)) else None
+
+    qa = pd.read_csv('qa_train.csv')
+    test = pd.read_csv('qa_test.csv')
+    test['n'] = test['варианты'].apply(parse_options).apply(lambda o: len(o) if o is not None else 0)
+    baseline = pd.read_csv('qa_gigachat_baseline.csv')
+    CORRECT = 517
+    if os.path.exists('qa_fixed_submission.csv'):
+        os.remove('qa_fixed_submission.csv')               # файл прошлого запуска
+
+    def check_submission(sub, test):
+        ids = set(test['id'])
+        merged = test[['id', 'n']].merge(sub.drop_duplicates('id'), on='id')
+        bad = (merged['prediction'] < 0) | (merged['prediction'] >= merged['n'])
+        return {'missing': len(ids - set(sub['id'])), 'extra': len(set(sub['id']) - ids),
+                'duplicates': int(sub['id'].duplicated().sum()), 'out_of_range': int(bad.sum())}
+  starter: |
+    n_of = baseline['id'].map(test.set_index('id')['n'])          # число вариантов для каждой строки baseline
+    bad = (baseline['prediction'] < 0) | (baseline['prediction'] >= n_of)
+    fixed = baseline.copy()
+    fixed.loc[bad, 'prediction'] = ...
+    n_fixed = ...
+    report_after = ...
+    p1 = ...
+    expected_acc = ...
+    fixed.to_csv('qa_fixed_submission.csv', index=False)
+    print(n_fixed, report_after, round(expected_acc, 3))
+  solution: |
+    n_of = baseline['id'].map(test.set_index('id')['n'])          # число вариантов для каждой строки baseline
+    bad = (baseline['prediction'] < 0) | (baseline['prediction'] >= n_of)
+    fixed = baseline.copy()
+    fixed.loc[bad, 'prediction'] = 1
+    n_fixed = int(bad.sum())
+    report_after = check_submission(fixed, test)
+    p1 = (qa['ответ'] == 1).mean()
+    expected_acc = (CORRECT + n_fixed * p1) / len(baseline)
+    fixed.to_csv('qa_fixed_submission.csv', index=False)
+    print(n_fixed, report_after, round(expected_acc, 3))
+  explanation: |
+    - Заменено 96 прогнозов. После починки вне диапазона остаются три — вопросы, у которых варианты в файле не разбираются, и программа не может проверить номер. Два из них — формулы с апострофом, их прочтёт человек; о таких строках стоит сообщить организаторам.
+    - Ожидаемая доля верных — около 70,3 % вместо 65,8 %: прибавка в 4,5 пункта без единого нового запроса к модели. Это оценка, и держится она на допущении, что «1» верна на тесте так же часто, как на обучающих вопросах.
+    - Новое LLM-решение из шагов 1–4 нужно сравнивать уже с этим файлом, а не с исходным: дешёвая починка — тоже ориентир.
+  hints:
+    - "Замена — `fixed.loc[bad, 'prediction'] = 1`; число замен — `int(bad.sum())`."
+    - "`report_after = check_submission(fixed, test)`."
+    - "`p1 = (qa['ответ'] == 1).mean()`; `expected_acc = (CORRECT + n_fixed * p1) / len(baseline)`."
+  tests: |
+    import os
+    import pandas as pd
+    ensure(os.path.exists('qa_fixed_submission.csv'), 'Сохраните `fixed` в файл `qa_fixed_submission.csv`.')
+    saved = pd.read_csv('qa_fixed_submission.csv')
+    ensure(list(saved.columns) == ['id', 'prediction'], 'В файле должны быть только столбцы id и prediction — сохраняйте с `index=False`.')
+    fx = var('fixed', pd.DataFrame, 'таблицей')
+    base = ref('baseline')
+    ensure(list(fx.columns) == ['id', 'prediction'], 'В `fixed` должны остаться столбцы `id` и `prediction`.')
+    ensure(len(fx) == len(base) and (fx['id'].to_numpy() == base['id'].to_numpy()).all(), '`fixed` — копия `baseline` с тем же порядком строк.')
+    changed = (fx['prediction'].to_numpy() != base['prediction'].to_numpy())
+    ref_bad = ref('bad').to_numpy()
+    if (changed & ~ref_bad).any():
+        fail('Допустимые прогнозы трогать нельзя — заменяются только номера вне диапазона.')
+    ensure((fx.loc[ref_bad, 'prediction'] == 1).all(), 'Прогнозы вне диапазона заменяются запасным ответом 1.')
+    if (base['prediction'] == fx['prediction']).all():
+        fail('`fixed` не отличается от `baseline`: замените прогнозы вне диапазона.')
+    equal(int(var('n_fixed', 'number', 'числом')), ref('n_fixed'), 'Заменено {expected} прогнозов, а у вас {actual}.')
+    equal({k: int(v) for k, v in var('report_after', dict, 'словарём').items()}, ref('report_after'), '`report_after` — {expected}, а у вас {actual}.')
+    close(var('expected_acc', 'number', 'числом'), ref('expected_acc'), 'Ожидаемая доля верных — {expected}, а у вас {actual}.')
+    close(alt('expected_acc'), alt_ref('expected_acc'), HARDCODE_MSG)
+  files: [qa_train.csv, qa_test.csv, qa_gigachat_baseline.csv]
+  wrong:
+    - code: |
+        fixed = baseline.copy()
+        fixed['prediction'] = 1
+        n_fixed = len(fixed)
+        report_after = check_submission(fixed, test)
+        p1 = (qa['ответ'] == 1).mean()
+        expected_acc = p1
+        fixed.to_csv('qa_fixed_submission.csv', index=False)
+      expect: Допустимые прогнозы трогать нельзя
+    - code: |
+        n_of = baseline['id'].map(test.set_index('id')['n'])
+        bad = (baseline['prediction'] < 0) | (baseline['prediction'] >= n_of)
+        fixed = baseline.copy()
+        fixed.loc[bad, 'prediction'] = 1
+        n_fixed = int(bad.sum())
+        report_after = check_submission(fixed, test)
+        p1 = (qa['ответ'] == 1).mean()
+        expected_acc = (CORRECT + n_fixed * p1) / len(baseline)
+        fixed.to_csv('qa_fixed_submission.csv')
+      expect: index=False
+
+- id: m10-l9-t7
+  kind: quiz
+  title: "Шаг 7. Выводы"
+  difficulty: main
+  introduces: []
+  uses: [llm-evaluation, structured-output]
+  statement: |
+    Подведите итоги проекта.
+  quiz:
+    - q: Почему системная инструкция называет допустимые номера для каждого вопроса отдельно?
+      options:
+        - У вопросов разное число вариантов — 4, 7 или 10, и допустимый диапазон у них разный
+        - Чтобы промпт был длиннее
+        - Модель всё равно считает с единицы
+      answer: 0
+      explain: "В тесте 725 вопросов с четырьмя вариантами, 45 — с десятью и 13 — с семью."
+    - q: Сколько примеров поместилось в бюджет 80 тысяч токенов на весь тест?
+      options:
+        - Два — около 77 тысяч токенов, примерно 99 на вопрос
+        - Пять
+        - Ни одного
+      answer: 0
+      explain: "Без примеров — около 36 тысяч, каждый пример добавляет примерно 20 тысяч. Помогают ли примеры, решает проверка на обучающих вопросах."
+    - q: Модель ответила «8» на вопрос «Сколько будет √64?» с вариантами 0) 6, 1) 7, 2) 8, 3) 9. Что сделает get_answer?
+      options:
+        - Отвергнет ответ — номера 8 нет — и переспросит; если и повтор не по формату, поставит запасной ответ и пометит его
+        - Примет 8 как номер варианта
+        - Возьмёт первое число и вернёт 8
+      answer: 0
+      explain: "Ответ по существу верный, но не по формату: строгий разбор не угадывает, что модель имела в виду."
+    - q: Что даёт починка файла базового решения?
+      options:
+        - Ожидаемо около 70 % вместо 65,8 % без новых запросов; у трёх вопросов варианты не разбираются, и программа их номер не проверит
+        - Ровно 100 % верных ответов
+        - Ничего — недопустимые номера и так засчитываются
+      answer: 0
+      explain: "96 недопустимых прогнозов заменены на «1», которая верна примерно в 36,8 % вопросов. Это оценка, а не измерение."
+  hints:
+    - Вспомните шаги 2, 3, 4 и 6.
+    - "Диапазон — от числа вариантов; бюджет — два примера; «8» — не номер варианта; починка — около 70 %."
+    - "Ответы: первый вариант во всех четырёх вопросах."

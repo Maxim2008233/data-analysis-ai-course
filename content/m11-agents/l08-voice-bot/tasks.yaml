@@ -1,0 +1,529 @@
+- id: m11-l8-t1
+  title: Параметры записи
+  difficulty: warmup
+  introduces: [digital-audio]
+  uses: []
+  statement: |
+    Напишите функцию `wav_info(path)`: она открывает WAV-файл модулем `wave` и возвращает словарь с ключами `'rate'` (частота дискретизации), `'channels'` (число каналов), `'sampwidth'` (байт на отсчёт), `'frames'` (число отсчётов в канале) и `'duration'` — длительность в секундах (`frames / rate`).
+
+    Получите `info` для файла `recording.wav` и `n_samples_16k` — сколько отсчётов было бы в той же записи при частоте 16 000 Гц (`round(duration * 16000)`).
+  prelude: |
+    import wave
+  starter: |
+    def wav_info(path):
+        with wave.open(path) as w:
+            rate = w.getframerate()
+            frames = ...
+            return {'rate': rate, 'channels': w.getnchannels(), 'sampwidth': ...,
+                    'frames': frames, 'duration': ...}
+
+    info = wav_info('recording.wav')
+    n_samples_16k = round(info['duration'] * 16000)
+    print(info, n_samples_16k)
+  solution: |
+    def wav_info(path):
+        with wave.open(path) as w:
+            rate = w.getframerate()
+            frames = w.getnframes()
+            return {'rate': rate, 'channels': w.getnchannels(), 'sampwidth': w.getsampwidth(),
+                    'frames': frames, 'duration': frames / rate}
+
+    info = wav_info('recording.wav')
+    n_samples_16k = round(info['duration'] * 16000)
+    print(info, n_samples_16k)
+  explanation: |
+    - `with wave.open(path) as w:` закрывает файл сам — даже если внутри случится ошибка.
+    - Длительность — число отсчётов, делённое на их число в секунду: 164 160 / 48 000 = 3,42 с.
+    - При 16 000 Гц та же запись заняла бы 54 720 отсчётов — втрое меньше данных. Для распознавания речи этого хватает, поэтому запись перед отправкой часто пересчитывают на меньшую частоту.
+  hints:
+    - "Число отсчётов — `w.getnframes()`, байт на отсчёт — `w.getsampwidth()`."
+    - "Длительность — `frames / rate`."
+    - "Значения нужно прочитать внутри `with`: после выхода файл закрыт."
+  tests: |
+    import wave
+    import numpy as np
+    f = var('wav_info')
+    ensure(callable(f), '`wav_info` должна быть функцией.')
+    with wave.open('tone_check.wav', 'wb') as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(8000)
+        w.writeframes((np.sin(np.arange(4000) / 5) * 1000).astype(np.int16).tobytes())
+    got = f('tone_check.wav')
+    ensure(isinstance(got, dict), '`wav_info` должна вернуть словарь, а вернула {0}.'.format(type(got).__name__))
+    equal(sorted(got), ['channels', 'duration', 'frames', 'rate', 'sampwidth'], 'Ключи словаря — {expected}, а у вас {actual}.')
+    equal({k: got[k] for k in ['rate', 'channels', 'sampwidth', 'frames']}, {'rate': 8000, 'channels': 1, 'sampwidth': 2, 'frames': 4000}, 'Для тестового файла (8000 Гц, моно, 16 бит, 4000 отсчётов) ожидалось {expected}, а у вас {actual}.')
+    close(got['duration'], 0.5, 'Длительность 4000 отсчётов при 8000 Гц — 0.5 с, а у вас {actual}.')
+    equal(var('info', dict, 'словарём'), ref('info'), 'Параметры recording.wav — {expected}, а у вас {actual}.')
+    equal(int(var('n_samples_16k', 'number', 'числом')), int(ref('n_samples_16k')), 'При 16 000 Гц отсчётов было бы {expected}, а у вас {actual}.')
+  files: [recording.wav]
+  wrong:
+    - code: |
+        def wav_info(path):
+            with wave.open(path) as w:
+                rate = w.getframerate()
+                frames = w.getnframes()
+                return {'rate': rate, 'channels': w.getnchannels(), 'sampwidth': w.getsampwidth(), 'frames': frames, 'duration': rate / frames}
+        info = wav_info('recording.wav')
+        n_samples_16k = round(info['duration'] * 16000)
+      expect: Длительность 4000 отсчётов
+    - code: |
+        def wav_info(path):
+            with wave.open(path) as w:
+                rate = w.getframerate()
+                frames = w.getnframes() * w.getsampwidth()
+                return {'rate': rate, 'channels': w.getnchannels(), 'sampwidth': w.getsampwidth(), 'frames': frames, 'duration': frames / rate}
+        info = wav_info('recording.wav')
+        n_samples_16k = round(info['duration'] * 16000)
+      expect: Для тестового файла
+
+- id: m11-l8-t2
+  title: Громкость кадров
+  difficulty: main
+  introduces: []
+  uses: [digital-audio]
+  statement: |
+    Напишите функцию `frame_rms(samples, rate, frame_ms=20)`: отсчёты 16-битной записи (`int16`) переводятся в доли от предела (делением на 32768), режутся на кадры по `frame_ms` миллисекунд (последний неполный кадр отбрасывается), и для каждого кадра считается RMS — корень из среднего квадрата. Результат — массив NumPy.
+
+    Получите `rms` для записи `samples` (частота `rate`) и `noise` — медиану RMS кадров: так оценивают громкость фонового шума.
+  prelude: |
+    import wave
+    import numpy as np
+    with wave.open('recording.wav') as w:
+        rate = w.getframerate()
+        samples = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16)
+  starter: |
+    def frame_rms(samples, rate, frame_ms=20):
+        x = samples.astype(np.float64) / 32768
+        frame = int(rate * frame_ms / 1000)
+        k = ...                                       # число полных кадров
+        return np.sqrt((x[:k * frame].reshape(k, frame) ** 2).mean(axis=1))
+
+    rms = frame_rms(samples, rate)
+    noise = ...
+    print(len(rms), round(float(rms.max()), 3), round(float(noise), 4))
+  solution: |
+    def frame_rms(samples, rate, frame_ms=20):
+        x = samples.astype(np.float64) / 32768
+        frame = int(rate * frame_ms / 1000)
+        k = len(x) // frame                           # число полных кадров
+        return np.sqrt((x[:k * frame].reshape(k, frame) ** 2).mean(axis=1))
+
+    rms = frame_rms(samples, rate)
+    noise = float(np.median(rms))
+    print(len(rms), round(float(rms.max()), 3), round(float(noise), 4))
+  explanation: |
+    - `astype(np.float64)` до деления обязательно: квадраты 16-битных чисел не помещаются в `int16` и «переполнились» бы.
+    - `len(x) // frame` — целое число полных кадров; `reshape(k, frame)` раскладывает отсчёты по строкам-кадрам, и среднее по строке (`axis=1`) — средний квадрат каждого кадра.
+    - 171 кадр по 20 мс. Медиана RMS — около 0,004: больше половины кадров — тишина, и медиана показывает уровень шума. Самый громкий кадр — 0,28, в 66 раз громче.
+  hints:
+    - "Число полных кадров — `len(x) // frame`."
+    - "Уровень шума — `float(np.median(rms))`."
+    - "Проверьте себя: постоянный сигнал 16384 даёт RMS 0,5."
+  tests: |
+    import numpy as np
+    f = var('frame_rms')
+    ensure(callable(f), '`frame_rms` должна быть функцией.')
+    loud = np.array([30000, -30000] * 50, dtype=np.int16)
+    with np.errstate(all='ignore'):
+        first = float(f(loud, 1000, 100)[0])
+    close(first, 30000 / 32768, 'RMS сигнала ±30000 — {expected}, а у вас {actual}. Если получилось странное число или nan, переведите отсчёты в float до возведения в квадрат: квадраты не помещаются в int16.')
+    pulse = np.array([0, 0, 0, 30000] * 25, dtype=np.int16)
+    close(float(f(pulse, 1000, 100)[0]), 0.5 * 30000 / 32768, 'RMS — корень из среднего квадрата, а не средний модуль: для сигнала [0, 0, 0, 30000, …] RMS = {expected}, а у вас {actual}.')
+    const = np.full(1000, 16384, dtype=np.int16)
+    got = np.asarray(f(const, 1000, 100))
+    equal(got.shape, (10,), '1000 отсчётов при 1000 Гц по 100 мс — 10 кадров, а у вас форма {actual}.')
+    same_array(got, np.full(10, 0.5), 'Постоянный сигнал 16384 — это 0.5 от предела: RMS каждого кадра 0.5.')
+    tail = np.ones(1050, dtype=np.int16)
+    equal(len(f(tail, 1000, 100)), 10, 'Неполный последний кадр (50 отсчётов) отбрасывается: кадров 10, а у вас {actual}.')
+    same_array(np.asarray(var('rms')), ref('rms'), 'RMS кадров записи не совпадает с ожидаемым.')
+    close(var('noise', 'number', 'числом'), ref('noise'), 'Медиана RMS — {expected}, а у вас {actual}.')
+  files: [recording.wav]
+  wrong:
+    - code: |
+        def frame_rms(samples, rate, frame_ms=20):
+            x = samples / 32768
+            frame = int(rate * frame_ms / 1000)
+            k = len(x) // frame
+            return np.sqrt((samples[:k * frame].reshape(k, frame) ** 2).mean(axis=1)) / 32768
+        rms = frame_rms(samples, rate)
+        noise = float(np.median(rms))
+      expect: в float
+    - code: |
+        def frame_rms(samples, rate, frame_ms=20):
+            x = samples.astype(np.float64) / 32768
+            frame = int(rate * frame_ms / 1000)
+            k = len(x) // frame
+            return np.abs(x[:k * frame].reshape(k, frame)).mean(axis=1)
+        rms = frame_rms(samples, rate)
+        noise = float(np.median(rms))
+      expect: корень из среднего квадрата
+
+- id: m11-l8-t3
+  title: Обрезать тишину
+  difficulty: main
+  introduces: []
+  uses: [digital-audio]
+  statement: |
+    1. Напишите функцию `speech_bounds(rms, frame_s, ratio=0.1)`: начало и конец речи в секундах — от начала первого кадра до конца последнего кадра, у которых RMS не меньше `ratio` от максимального. Кадр длится `frame_s` секунд. Если вся запись — нули (максимум 0), функция возвращает `None`.
+    2. Напишите функцию `trim(samples, rate, bounds, margin=0.1)`: отсчёты от `bounds[0] - margin` до `bounds[1] + margin` секунд, но не за пределами записи.
+
+    Получите `bounds` для записи, `trimmed` — обрезанную запись и `saved` — долю отсчётов, которую не придётся отправлять в сервис распознавания (`1 - len(trimmed) / len(samples)`).
+  prelude: |
+    import wave
+    import numpy as np
+    with wave.open('recording.wav') as w:
+        rate = w.getframerate()
+        samples = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16)
+    x = samples.astype(np.float64) / 32768
+    frame = int(rate * 0.02)
+    k = len(x) // frame
+    rms = np.sqrt((x[:k * frame].reshape(k, frame) ** 2).mean(axis=1))
+  starter: |
+    def speech_bounds(rms, frame_s, ratio=0.1):
+        if rms.max() == 0:
+            return None
+        loud = np.nonzero(rms >= ratio * rms.max())[0]
+        return ...
+
+    def trim(samples, rate, bounds, margin=0.1):
+        start = max(int(round((bounds[0] - margin) * rate)), 0)
+        end = ...
+        return samples[start:end]
+
+    bounds = speech_bounds(rms, 0.02)
+    trimmed = trim(samples, rate, bounds)
+    saved = 1 - len(trimmed) / len(samples)
+    print(bounds, len(trimmed) / rate, round(saved, 3))
+  solution: |
+    def speech_bounds(rms, frame_s, ratio=0.1):
+        if rms.max() == 0:
+            return None
+        loud = np.nonzero(rms >= ratio * rms.max())[0]
+        return loud[0] * frame_s, (loud[-1] + 1) * frame_s
+
+    def trim(samples, rate, bounds, margin=0.1):
+        start = max(int(round((bounds[0] - margin) * rate)), 0)
+        end = min(int(round((bounds[1] + margin) * rate)), len(samples))
+        return samples[start:end]
+
+    bounds = speech_bounds(rms, 0.02)
+    trimmed = trim(samples, rate, bounds)
+    saved = 1 - len(trimmed) / len(samples)
+    print(bounds, len(trimmed) / rate, round(saved, 3))
+  explanation: |
+    - Конец речи — конец последнего громкого кадра: `(номер + 1) × длительность кадра`. Без `+ 1` обрезался бы последний кусочек слова.
+    - Запас `margin` по 0,1 с с каждой стороны сохраняет тихие начала и концы слов: первые и последние звуки бывают тише порога.
+    - `max(…, 0)` и `min(…, len(samples))` не дают выйти за пределы записи, если речь у самого края.
+    - Речь — от 1,26 до 2,70 с; с запасом остаётся 1,64 с из 3,42 — отправлять придётся вдвое меньше. Для длинных записей с паузами экономия ещё больше.
+  hints:
+    - "Границы — `loud[0] * frame_s` и `(loud[-1] + 1) * frame_s`."
+    - "Конец обрезки — `min(int(round((bounds[1] + margin) * rate)), len(samples))`."
+    - "Экономия — `1 - len(trimmed) / len(samples)`."
+  tests: |
+    import numpy as np
+    sb = var('speech_bounds')
+    tr = var('trim')
+    ensure(callable(sb) and callable(tr), '`speech_bounds` и `trim` должны быть функциями.')
+    r = np.array([0.0, 0.01, 0.5, 1.0, 0.3, 0.05, 0.0])
+    got = sb(r, 0.1)
+    ensure(got is not None, 'Для ненулевой записи границы не могут быть None.')
+    if abs(got[1] - 0.4) < 1e-9:
+        fail('Конец речи — конец последнего громкого кадра: (номер + 1) × длительность кадра. Для кадров 2–4 по 0.1 с это 0.5 с, а у вас 0.4.')
+    close(float(got[0]), 0.2, 'Начало речи — начало первого громкого кадра (кадр 2 по 0.1 с = 0.2 с), а у вас {actual}.')
+    close(float(got[1]), 0.5, 'Конец речи — {expected}, а у вас {actual}.')
+    close(float(sb(r, 0.1, ratio=0.01)[0]), 0.1, 'При ratio=0.01 громким считается и кадр 1 (0.01): начало 0.1 с, а у вас {actual}.')
+    equal(sb(np.zeros(5), 0.1), None, 'Если вся запись — тишина (максимум 0), нужен None.')
+    s = np.arange(100)
+    equal(list(tr(s, 10, (2.0, 5.0), margin=1.0)), list(range(10, 60)), 'Обрезка 10-Гц записи по (2, 5) с запасом 1 с — отсчёты 10…59, а у вас другие.')
+    equal(len(tr(s, 10, (0.5, 9.9), margin=1.0)), 100, 'Обрезка не выходит за пределы записи: если речь у краёв, остаётся вся запись.')
+    b = var('bounds')
+    ensure(abs(float(b[0]) - float(ref('bounds')[0])) < 1e-9 and abs(float(b[1]) - float(ref('bounds')[1])) < 1e-9, 'Границы речи в записи — {0}, а у вас {1}.'.format(ref('bounds'), b))
+    equal(len(var('trimmed')), len(ref('trimmed')), 'В обрезанной записи {expected} отсчётов, а у вас {actual}.')
+    close(var('saved', 'number', 'числом'), ref('saved'), 'Доля сэкономленных отсчётов — {expected}, а у вас {actual}.')
+  files: [recording.wav]
+  wrong:
+    - code: |
+        def speech_bounds(rms, frame_s, ratio=0.1):
+            if rms.max() == 0:
+                return None
+            loud = np.nonzero(rms >= ratio * rms.max())[0]
+            return loud[0] * frame_s, loud[-1] * frame_s
+        def trim(samples, rate, bounds, margin=0.1):
+            start = max(int(round((bounds[0] - margin) * rate)), 0)
+            end = min(int(round((bounds[1] + margin) * rate)), len(samples))
+            return samples[start:end]
+        bounds = speech_bounds(rms, 0.02)
+        trimmed = trim(samples, rate, bounds)
+        saved = 1 - len(trimmed) / len(samples)
+      expect: конец последнего громкого кадра
+    - code: |
+        def speech_bounds(rms, frame_s, ratio=0.1):
+            loud = np.nonzero(rms >= ratio * rms.max())[0]
+            return loud[0] * frame_s, (loud[-1] + 1) * frame_s
+        def trim(samples, rate, bounds, margin=0.1):
+            start = max(int(round((bounds[0] - margin) * rate)), 0)
+            end = min(int(round((bounds[1] + margin) * rate)), len(samples))
+            return samples[start:end]
+        bounds = speech_bounds(rms, 0.02)
+        trimmed = trim(samples, rate, bounds)
+        saved = 1 - len(trimmed) / len(samples)
+      expect: нужен None
+
+- id: m11-l8-t4
+  title: Разбор ответа распознавания
+  difficulty: main
+  introduces: [speech-pipeline]
+  uses: [digital-audio]
+  statement: |
+    Исправьте ошибку ноутбука. Напишите функцию `parse_stt(response)`, которая всегда возвращает словарь `{'ok': ..., 'text': ..., 'emotion': ...}`:
+
+    - `response` — словарь со `status` 200 → `ok` = `True`; `text` — все **непустые** фразы из `result` (без пробелов по краям) через пробел; `emotion` — эмоция с наибольшей суммой оценок по этим непустым фразам (оценки — в `emotions`, по одной на фразу, в том же порядке). Если непустых фраз нет — `text` пустой, `emotion` = `None`;
+    - что угодно другое (строка с текстом ошибки, как возвращает `stt` из ноутбука, или статус не 200) → `{'ok': False, 'text': '', 'emotion': None}`.
+
+    Получите `parsed` — результаты для ответов SaluteSpeech из ноутбука (`responses`) и для двух ошибочных ответов (`failures`).
+  prelude: |
+    import json
+    with open('voice_bot_notebook.json', encoding='utf-8') as fh:
+        responses = [r['response'] for r in json.load(fh)['records'] if r['kind'] == 'stt']
+    failures = ['{"status":401,"message":"Unauthorized"}', {'status': 400, 'result': [], 'emotions': []}]
+  starter: |
+    def parse_stt(response):
+        if not isinstance(response, dict) or response.get('status') != 200:
+            return {'ok': False, 'text': '', 'emotion': None}
+        pairs = [(p.strip(), e) for p, e in zip(response['result'], response['emotions']) if p.strip()]
+        if not pairs:
+            return {'ok': True, 'text': '', 'emotion': None}
+        totals = {}
+        for phrase, emotions in pairs:
+            for name, value in emotions.items():
+                totals[name] = ...
+        return {'ok': True, 'text': ..., 'emotion': max(totals, key=totals.get)}
+
+    parsed = [parse_stt(r) for r in responses + failures]
+    for p in parsed:
+        print(p)
+  solution: |
+    def parse_stt(response):
+        if not isinstance(response, dict) or response.get('status') != 200:
+            return {'ok': False, 'text': '', 'emotion': None}
+        pairs = [(p.strip(), e) for p, e in zip(response['result'], response['emotions']) if p.strip()]
+        if not pairs:
+            return {'ok': True, 'text': '', 'emotion': None}
+        totals = {}
+        for phrase, emotions in pairs:
+            for name, value in emotions.items():
+                totals[name] = totals.get(name, 0) + value
+        return {'ok': True, 'text': ' '.join(p for p, e in pairs), 'emotion': max(totals, key=totals.get)}
+
+    parsed = [parse_stt(r) for r in responses + failures]
+    for p in parsed:
+        print(p)
+  explanation: |
+    - Первая проверка отсекает и строку с ошибкой, которую возвращает `stt` из ноутбука, и словарь с другим статусом. Дальше код работает только с правильным ответом, а вызывающий код узнаёт об ошибке по `ok`, а не по первой букве строки.
+    - `zip(result, emotions)` держит вместе фразу и её оценки. Пустая вторая фраза в ответе из Gradio не попадает ни в текст, ни в подсчёт эмоций.
+    - Все четыре настоящих ответа — нейтральные. Оценка эмоций полезна, например, чтобы передать модели: «пользователь, похоже, раздражён — отвечай короче и спокойнее».
+  hints:
+    - "Сумма оценок — `totals[name] = totals.get(name, 0) + value`."
+    - "Текст — `' '.join(p for p, e in pairs)`."
+    - "Строка с ошибкой — не словарь: её отсекает `not isinstance(response, dict)`."
+  tests: |
+    f = var('parse_stt')
+    ensure(callable(f), '`parse_stt` должна быть функцией.')
+    try:
+        bad = f('Ошибка: 401 Unauthorized')
+    except Exception as e:
+        fail('На строке с текстом ошибки функция упала ({0}). Ответ stt при ошибке — строка; верните {{"ok": False, ...}}.'.format(type(e).__name__))
+    equal(bad, {'ok': False, 'text': '', 'emotion': None}, 'Строка с текстом ошибки — {expected}, а у вас {actual}.')
+    equal(f({'status': 500, 'result': ['x'], 'emotions': [{'neutral': 1}]}), {'ok': False, 'text': '', 'emotion': None}, 'Статус не 200 — неуспех, даже если есть result.')
+    two = {'status': 200, 'result': [' Привет. ', '', 'Как дела?'], 'emotions': [{'negative': 0.1, 'neutral': 0.5, 'positive': 0.4}, {'negative': 0, 'neutral': 1, 'positive': 0}, {'negative': 0.1, 'neutral': 0.2, 'positive': 0.7}]}
+    got = f(two)
+    equal(got['text'], 'Привет. Как дела?', 'Непустые фразы без пробелов по краям через пробел: ожидалось {expected}, а у вас {actual}.')
+    if got['emotion'] == 'neutral':
+        fail('Эмоции пустой фразы не учитываются: без неё сумма positive (1.1) больше neutral (0.7).')
+    equal(got, {'ok': True, 'text': 'Привет. Как дела?', 'emotion': 'positive'}, 'Ожидалось {expected}, а у вас {actual}.')
+    equal(f({'status': 200, 'result': ['', '  '], 'emotions': [{'neutral': 1}, {'neutral': 1}]}), {'ok': True, 'text': '', 'emotion': None}, 'Только пустые фразы — ok True, пустой текст, emotion None.')
+    equal(var('parsed', list, 'списком'), ref('parsed'), 'Результаты разбора — {expected}, а у вас {actual}.')
+  files: [voice_bot_notebook.json]
+  wrong:
+    - code: |
+        def parse_stt(response):
+            if response.get('status') != 200:
+                return {'ok': False, 'text': '', 'emotion': None}
+            pairs = [(p.strip(), e) for p, e in zip(response['result'], response['emotions']) if p.strip()]
+            if not pairs:
+                return {'ok': True, 'text': '', 'emotion': None}
+            totals = {}
+            for phrase, emotions in pairs:
+                for name, value in emotions.items():
+                    totals[name] = totals.get(name, 0) + value
+            return {'ok': True, 'text': ' '.join(p for p, e in pairs), 'emotion': max(totals, key=totals.get)}
+        parsed = [parse_stt(r) for r in responses + failures[1:]]
+      expect: функция упала
+    - code: |
+        def parse_stt(response):
+            if not isinstance(response, dict) or response.get('status') != 200:
+                return {'ok': False, 'text': '', 'emotion': None}
+            texts = [p.strip() for p in response['result'] if p.strip()]
+            if not texts:
+                return {'ok': True, 'text': '', 'emotion': None}
+            totals = {}
+            for emotions in response['emotions']:
+                for name, value in emotions.items():
+                    totals[name] = totals.get(name, 0) + value
+            return {'ok': True, 'text': ' '.join(texts), 'emotion': max(totals, key=totals.get)}
+        parsed = [parse_stt(r) for r in responses + failures]
+      expect: Эмоции пустой фразы
+
+- id: m11-l8-t5
+  title: Один ход голосового бота
+  difficulty: star
+  introduces: []
+  uses: [speech-pipeline, context-window]
+  statement: |
+    Соберите текстовую середину голосового бота — функцию `voice_turn(stt_response, chat, max_chars=120)`. Функция `parse_stt` из прошлого задания уже есть, `chat` — объект с методом `conversation_predict(text)`, как `AudioChat` в уроке.
+
+    1. Ответ распознавания разбирается `parse_stt`. Если он неуспешный или текст пустой, бот возвращает `'Не расслышал. Повторите, пожалуйста.'` и **не** обращается к модели.
+    2. Иначе ответ модели — `chat.conversation_predict(text)`.
+    3. Ответ готовится к озвучиванию: длинный текст в синтез речи не отправляют. Оставьте столько **целых предложений** с начала, сколько помещается в `max_chars` (предложения разделяются как `re.split(r'(?<=[.!?])\s+', текст)`, между ними пробел). Если не помещается даже первое предложение, обрежьте его по последнему пробелу не дальше `max_chars - 1` символов и добавьте `'…'`.
+
+    Получите `replies` — ответы бота на ответы распознавания `turns` (чат `chat` воспроизводит ответы GigaChat из ноутбука).
+  prelude: |
+    import json
+    import re
+    from langchain_gigachat.chat_models import GigaChat
+    from langchain_core.messages import HumanMessage, AIMessage
+    with open('voice_bot_notebook.json', encoding='utf-8') as fh:
+        stt = {r['cell']: r['response'] for r in json.load(fh)['records'] if r['kind'] == 'stt'}
+
+    def parse_stt(response):
+        if not isinstance(response, dict) or response.get('status') != 200:
+            return {'ok': False, 'text': '', 'emotion': None}
+        phrases = [p.strip() for p in response['result'] if p.strip()]
+        return {'ok': True, 'text': ' '.join(phrases), 'emotion': None}
+
+    class AudioChat:
+        def __init__(self):
+            self.history = []
+            self.llm = GigaChat(credentials='ваш-ключ', verify_ssl_certs=False)
+
+        def conversation_predict(self, message):
+            self.history.append(HumanMessage(content=message))
+            answer = self.llm.invoke(self.history).content
+            self.history.append(AIMessage(answer))
+            return answer
+
+    chat = AudioChat()
+    turns = [stt[46], 'Ошибка: 401 Unauthorized', stt[48], {'status': 200, 'result': [''], 'emotions': [{'neutral': 1}]}]
+  starter: |
+    def for_speech(text, max_chars):
+        sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+        out = ''
+        for s in sentences:
+            candidate = s if not out else out + ' ' + s
+            if len(candidate) > max_chars:
+                break
+            out = candidate
+        if not out:
+            cut = text[:max_chars - 1]
+            out = ...
+        return out
+
+    def voice_turn(stt_response, chat, max_chars=120):
+        heard = parse_stt(stt_response)
+        if ...:
+            return 'Не расслышал. Повторите, пожалуйста.'
+        return for_speech(chat.conversation_predict(heard['text']), max_chars)
+
+    replies = [voice_turn(t, chat, max_chars=60) for t in turns]
+    for r in replies:
+        print(r)
+    print('сообщений в истории:', len(chat.history))
+  solution: |
+    def for_speech(text, max_chars):
+        sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+        out = ''
+        for s in sentences:
+            candidate = s if not out else out + ' ' + s
+            if len(candidate) > max_chars:
+                break
+            out = candidate
+        if not out:
+            cut = text[:max_chars - 1]
+            out = (cut[:cut.rfind(' ')] if ' ' in cut else cut) + '…'
+        return out
+
+    def voice_turn(stt_response, chat, max_chars=120):
+        heard = parse_stt(stt_response)
+        if not heard['ok'] or not heard['text']:
+            return 'Не расслышал. Повторите, пожалуйста.'
+        return for_speech(chat.conversation_predict(heard['text']), max_chars)
+
+    replies = [voice_turn(t, chat, max_chars=60) for t in turns]
+    for r in replies:
+        print(r)
+    print('сообщений в истории:', len(chat.history))
+  explanation: |
+    - Бот переспрашивает, не обращаясь к модели: ни ошибка сервиса, ни пустая фраза не попадают в историю. Поэтому второй настоящий вопрос («Просто удивительно.») ушёл модели с той же историей, что в ноутбуке, — и учебная версия GigaChat нашла записанный ответ.
+    - Из ответа «Нормально удивлён? Или есть конкретная причина удивления? Расскажи подробнее.» в 60 символов поместились два первых предложения. Синтез речи получает короткий текст — его быстрее озвучить и легче слушать.
+    - Обрезка по пробелу не режет слово пополам, а «…» честно показывает, что текст не весь.
+  hints:
+    - "Переспрос — если `not heard['ok'] or not heard['text']`."
+    - "Обрезка первого предложения — `cut[:cut.rfind(' ')]` и `'…'` в конце."
+    - "Проверьте себя: в истории чата после всех ходов — 4 сообщения, по два на каждый настоящий вопрос."
+  tests: |
+    f = var('voice_turn')
+    ensure(callable(f), '`voice_turn` должна быть функцией.')
+    class FakeChat:
+        def __init__(self, answer):
+            self.answer, self.asked = answer, []
+        def conversation_predict(self, text):
+            self.asked.append(text)
+            return self.answer
+    c = FakeChat('Первое предложение. Второе предложение! Третье?')
+    equal(f('Ошибка: 500', c), 'Не расслышал. Повторите, пожалуйста.', 'При ошибке распознавания бот переспрашивает: ожидалось {expected}, а у вас {actual}.')
+    equal(f({'status': 200, 'result': ['  '], 'emotions': [{}]}, c), 'Не расслышал. Повторите, пожалуйста.', 'Пустой распознанный текст — тоже переспрос.')
+    if c.asked:
+        fail('При ошибке или пустом тексте модель не вызывается, а у вас её спросили: {0}.'.format(c.asked))
+    ok = {'status': 200, 'result': ['Привет', 'бот'], 'emotions': [{}, {}]}
+    equal(f(ok, c, max_chars=200), 'Первое предложение. Второе предложение! Третье?', 'Ответ короче max_chars — целиком: ожидалось {expected}, а у вас {actual}.')
+    equal(c.asked, ['Привет бот'], 'Модель получает распознанный текст: {expected}, а у вас {actual}.')
+    equal(f(ok, c, max_chars=45), 'Первое предложение. Второе предложение!', 'В 45 символов помещаются два целых предложения: ожидалось {expected}, а у вас {actual}.')
+    c2 = FakeChat('Очень длинное первое предложение без точки до самого конца строки.')
+    got = f(ok, c2, max_chars=20)
+    ensure(got.endswith('…') and len(got) <= 20, 'Если не помещается даже первое предложение, обрезайте по пробелу и ставьте «…» (не длиннее max_chars), а у вас {0!r}.'.format(got))
+    equal(got, 'Очень длинное…', 'Обрезка первого предложения в 20 символов: ожидалось {expected}, а у вас {actual}.')
+    equal(var('replies', list, 'списком'), ref('replies'), 'Ответы бота — {expected}, а у вас {actual}.')
+  files: [voice_bot_notebook.json]
+  wrong:
+    - code: |
+        def for_speech(text, max_chars):
+            sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+            out = ''
+            for s in sentences:
+                candidate = s if not out else out + ' ' + s
+                if len(candidate) > max_chars:
+                    break
+                out = candidate
+            if not out:
+                cut = text[:max_chars - 1]
+                out = (cut[:cut.rfind(' ')] if ' ' in cut else cut) + '…'
+            return out
+        def voice_turn(stt_response, chat, max_chars=120):
+            heard = parse_stt(stt_response)
+            answer = chat.conversation_predict(heard['text'])
+            if not heard['ok'] or not heard['text']:
+                return 'Не расслышал. Повторите, пожалуйста.'
+            return for_speech(answer, max_chars)
+        replies = [voice_turn(t, chat, max_chars=60) for t in turns[:1]]
+      expect: модель не вызывается
+    - code: |
+        def for_speech(text, max_chars):
+            return text[:max_chars]
+        def voice_turn(stt_response, chat, max_chars=120):
+            heard = parse_stt(stt_response)
+            if not heard['ok'] or not heard['text']:
+                return 'Не расслышал. Повторите, пожалуйста.'
+            return for_speech(chat.conversation_predict(heard['text']), max_chars)
+        replies = [voice_turn(t, chat, max_chars=60) for t in turns]
+      expect: два целых предложения

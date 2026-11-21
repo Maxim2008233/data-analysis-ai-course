@@ -1,0 +1,346 @@
+- id: m3-l3-t1
+  title: Два рейтинга марок
+  difficulty: warmup
+  introduces: [group-size-caution]
+  uses: [pd-groupby]
+  statement: |
+    Получите два списка из пяти марок:
+
+    - `top5_mean` — марки с самой высокой **средней** ценой (по убыванию);
+    - `top5_median` — марки с самой высокой **медианной** ценой (по убыванию).
+
+    Затем `only_in_median` — список марок из `top5_median`, которых нет в `top5_mean`.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')   # результат модуля 2
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    top5_mean = ...
+    top5_median = ...
+    only_in_median = ...
+    print(top5_mean)
+    print(top5_median)
+    print(only_in_median)
+  solution: |
+    top5_mean = df.groupby('Make')['Price'].mean().sort_values(ascending=False).head(5).index.tolist()
+    top5_median = df.groupby('Make')['Price'].median().sort_values(ascending=False).head(5).index.tolist()
+    only_in_median = [m for m in top5_median if m not in top5_mean]
+    print(top5_mean)
+    print(top5_median)
+    print(only_in_median)
+  explanation: |
+    - Группировка → статистика → сортировка по убыванию → первые 5 → названия марок из индекса.
+    - Генератор списка оставляет марки медианного рейтинга, которых нет в рейтинге по среднему.
+  alternatives:
+    - |
+      top5_mean = list(df.groupby('Make')['Price'].mean().nlargest(5).index)
+      top5_median = list(df.groupby('Make')['Price'].median().nlargest(5).index)
+      only_in_median = [m for m in top5_median if m not in set(top5_mean)]
+  hints:
+    - Для каждого рейтинга — своя статистика группировки, затем сортировка и первые пять.
+    - "`df.groupby('Make')['Price'].median().sort_values(ascending=False).head(5).index.tolist()`."
+    - "`only_in_median = [m for m in top5_median if m not in top5_mean]`."
+  tests: |
+    a = var('top5_mean', list, 'списком марок')
+    b = var('top5_median', list, 'списком марок')
+    equal(a, ref('top5_mean'), 'Пятёрка по средней цене — {expected}, а у вас {actual}.')
+    equal(b, ref('top5_median'), 'Пятёрка по медианной цене — {expected}, а у вас {actual}.')
+    equal(var('only_in_median', list, 'списком'), ref('only_in_median'), 'Только в медианном рейтинге — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        top5_mean = df.groupby('Make')['Price'].mean().sort_values().head(5).index.tolist()
+        top5_median = df.groupby('Make')['Price'].median().sort_values(ascending=False).head(5).index.tolist()
+        only_in_median = [m for m in top5_median if m not in top5_mean]
+      expect: Пятёрка по средней цене
+    - code: |
+        top5_mean = df.groupby('Make')['Price'].mean().sort_values(ascending=False).head(5).index.tolist()
+        top5_median = df.groupby('Make')['Price'].mean().sort_values(ascending=False).head(5).index.tolist()
+        only_in_median = []
+      expect: Пятёрка по медианной цене
+
+- id: m3-l3-t2
+  title: Кто сильнее всех сдвинулся в рейтинге
+  difficulty: main
+  introduces: [group-size-caution]
+  uses: [pd-agg, mean-median]
+  statement: |
+    В таблице `make_summary` уже есть средняя и медианная цена марок. Добавьте колонки:
+
+    - `rank_mean` и `rank_median` — места марок в рейтингах (1 — самая высокая цена; метод `rank(ascending=False)`);
+    - `shift = rank_mean − rank_median` — насколько марка поднимается в рейтинге по медиане.
+
+    Затем `biggest_rise` — марку с наибольшим `shift` и `biggest_drop` — с наименьшим.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+    make_summary = df.groupby('Make').agg(n=('Price', 'size'), mean_price=('Price', 'mean'), median_price=('Price', 'median'))   # урок 3.2
+  starter: |
+    make_summary['rank_mean'] = ...
+    make_summary['rank_median'] = ...
+    make_summary['shift'] = ...
+    biggest_rise = ...
+    biggest_drop = ...
+    print(biggest_rise, biggest_drop)
+    make_summary.sort_values('shift')
+  solution: |
+    make_summary['rank_mean'] = make_summary['mean_price'].rank(ascending=False)
+    make_summary['rank_median'] = make_summary['median_price'].rank(ascending=False)
+    make_summary['shift'] = make_summary['rank_mean'] - make_summary['rank_median']
+    biggest_rise = make_summary['shift'].idxmax()
+    biggest_drop = make_summary['shift'].idxmin()
+    print(biggest_rise, biggest_drop)
+    make_summary.sort_values('shift')
+  explanation: |
+    - `rank(ascending=False)` даёт место: самая высокая цена — 1.
+    - Положительный `shift` значит, что по медиане марка выше, чем по среднему: у неё мало очень дорогих машин при высокой типичной цене.
+    - Отрицательный — наоборот: среднее «держат» несколько дорогих машин.
+  hints:
+    - Место в рейтинге даёт метод `rank`. Какой параметр делает место 1 для самой высокой цены?
+    - "`make_summary['mean_price'].rank(ascending=False)`; разность колонок; `idxmax()` и `idxmin()`."
+    - "`biggest_rise = make_summary['shift'].idxmax()`, `biggest_drop = make_summary['shift'].idxmin()`."
+  tests: |
+    import pandas as pd
+    s = var('make_summary', pd.DataFrame, 'таблицей DataFrame')
+    for col in ['rank_mean', 'rank_median', 'shift']:
+        ensure(col in s.columns, 'В `make_summary` нет колонки `{0}`.'.format(col))
+    if s['rank_mean'].loc[s['mean_price'].idxmax()] != 1:
+        fail('У марки с самой высокой средней ценой место должно быть 1. Используйте `rank(ascending=False)`.')
+    same_frame(s['shift'], ref('make_summary')['shift'], 'Колонка shift не совпадает: `rank_mean - rank_median`.')
+    equal(var('biggest_rise'), ref('biggest_rise'), 'Сильнее всех поднимается {expected}, а у вас {actual}.')
+    equal(var('biggest_drop'), ref('biggest_drop'), 'Сильнее всех опускается {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        make_summary['rank_mean'] = make_summary['mean_price'].rank()
+        make_summary['rank_median'] = make_summary['median_price'].rank()
+        make_summary['shift'] = make_summary['rank_mean'] - make_summary['rank_median']
+        biggest_rise = make_summary['shift'].idxmax()
+        biggest_drop = make_summary['shift'].idxmin()
+      expect: ascending=False
+    - code: |
+        make_summary['rank_mean'] = make_summary['mean_price'].rank(ascending=False)
+        make_summary['rank_median'] = make_summary['median_price'].rank(ascending=False)
+        make_summary['shift'] = make_summary['rank_median'] - make_summary['rank_mean']
+        biggest_rise = make_summary['shift'].idxmax()
+        biggest_drop = make_summary['shift'].idxmin()
+      expect: Колонка shift
+
+- id: m3-l3-t3
+  title: Рейтинг моделей с порогом размера группы
+  difficulty: main
+  introduces: [group-size-caution]
+  uses: [pd-agg, pd-bool-filter]
+  statement: |
+    В таблице `model_summary` для каждой пары «марка + модель» есть число объявлений `n` и медианная цена. Получите:
+
+    - `top3_all` — три группы с самой высокой медианой **без** ограничения размера;
+    - `top3_reliable` — три группы с самой высокой медианой среди групп с **не менее чем 30** объявлениями;
+    - `n_reliable_groups` — сколько групп проходят порог.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+    model_summary = df.groupby(['Make', 'Model']).agg(n=('Price', 'size'), median_price=('Price', 'median'))
+  starter: |
+    top3_all = ...
+    reliable = ...
+    top3_reliable = ...
+    n_reliable_groups = ...
+    print(n_reliable_groups)
+    display(top3_all)
+    top3_reliable
+  solution: |
+    top3_all = model_summary.sort_values('median_price', ascending=False).head(3)
+    reliable = model_summary[model_summary['n'] >= 30]
+    top3_reliable = reliable.sort_values('median_price', ascending=False).head(3)
+    n_reliable_groups = len(reliable)
+    print(n_reliable_groups)
+    display(top3_all)
+    top3_reliable
+  explanation: |
+    - Без порога наверх выходят группы из одного объявления — их «медиана» равна единственной цене.
+    - Маска `model_summary['n'] >= 30` оставляет группы с достаточным числом объявлений.
+    - Рейтинг по надёжным группам и число групп, прошедших порог, указывают в отчёте вместе.
+  hints:
+    - Отбор групп — обычный фильтр по колонке `n` сводной таблицы.
+    - "`model_summary[model_summary['n'] >= 30]`, затем `sort_values('median_price', ascending=False).head(3)`."
+    - "`n_reliable_groups = len(reliable)`."
+  tests: |
+    import pandas as pd
+    a = var('top3_all', pd.DataFrame, 'таблицей DataFrame')
+    same_frame(a, ref('top3_all'), 'Тройка без порога не совпадает.')
+    r = var('top3_reliable', pd.DataFrame, 'таблицей DataFrame')
+    if (r['n'] < 30).any():
+        fail('В `top3_reliable` есть группы меньше 30 объявлений — отфильтруйте `n >= 30` до сортировки.')
+    same_frame(r, ref('top3_reliable'), 'Тройка надёжных групп не совпадает.')
+    n = var('n_reliable_groups', 'number', 'числом')
+    if n == int((ref('model_summary')['n'] > 30).sum()) and n != ref('n_reliable_groups'):
+        fail('«Не менее 30» включает ровно 30: нужно `>= 30`.')
+    close(n, ref('n_reliable_groups'), 'Групп с 30+ объявлениями — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        top3_all = model_summary.sort_values('median_price', ascending=False).head(3)
+        reliable = model_summary[model_summary['n'] >= 30]
+        top3_reliable = top3_all
+        n_reliable_groups = len(reliable)
+      expect: меньше 30
+    - code: |
+        top3_all = model_summary.sort_values('median_price', ascending=False).head(3)
+        reliable = model_summary[model_summary['n'] > 30]
+        top3_reliable = reliable.sort_values('median_price', ascending=False).head(3)
+        n_reliable_groups = len(reliable)
+      expect: ">= 30"
+
+- id: m3-l3-t4
+  title: Как «гуляет» медиана маленькой выборки
+  difficulty: main
+  introduces: [group-size-caution]
+  uses: [sampling-variability, rng-sample]
+  statement: |
+    Повторите опыт урока на ценах Toyota. Для размеров выборки 10 и 300 возьмите по 20 случайных выборок (`random_state` от 0 до 19) и посчитайте медиану каждой. Получите:
+
+    - `spread_10` — разницу между наибольшей и наименьшей медианой выборок по 10;
+    - `spread_300` — то же для выборок по 300.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+    toyota = df.loc[df['Make'] == 'Toyota', 'Price']
+  starter: |
+    medians_10 = [... for i in range(20)]
+    medians_300 = ...
+    spread_10 = ...
+    spread_300 = ...
+    print(round(spread_10), round(spread_300))
+  solution: |
+    medians_10 = [toyota.sample(10, random_state=i).median() for i in range(20)]
+    medians_300 = [toyota.sample(300, random_state=i).median() for i in range(20)]
+    spread_10 = max(medians_10) - min(medians_10)
+    spread_300 = max(medians_300) - min(medians_300)
+    print(round(spread_10), round(spread_300))
+  explanation: |
+    - `toyota.sample(10, random_state=i)` — случайные 10 цен; разные `i` дают разные, но воспроизводимые выборки (урок 2.1).
+    - Генератор списка собирает 20 медиан; разность максимума и минимума — размах медиан.
+    - Размах для выборок по 10 в разы больше: статистика маленькой группы сильно зависит от случая.
+  hints:
+    - Для каждого размера — список из 20 медиан случайных выборок.
+    - "`[toyota.sample(10, random_state=i).median() for i in range(20)]`; размах — `max(...) - min(...)`."
+    - "`spread_300 = max(medians_300) - min(medians_300)`."
+  tests: |
+    s10 = var('spread_10', 'number', 'числом')
+    s300 = var('spread_300', 'number', 'числом')
+    close(s10, ref('spread_10'), 'Размах медиан выборок по 10 — {expected}, а у вас {actual}. Проверьте random_state от 0 до 19.')
+    close(s300, ref('spread_300'), 'Размах медиан выборок по 300 — {expected}, а у вас {actual}.')
+    ensure(s10 > s300, 'Размах для маленьких выборок должен получиться больше.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        medians_10 = [toyota.sample(10, random_state=0).median() for i in range(20)]
+        medians_300 = [toyota.sample(300, random_state=0).median() for i in range(20)]
+        spread_10 = max(medians_10) - min(medians_10)
+        spread_300 = max(medians_300) - min(medians_300)
+      expect: random_state от 0 до 19
+    - code: |
+        medians_10 = [toyota.sample(10, random_state=i).mean() for i in range(20)]
+        medians_300 = [toyota.sample(300, random_state=i).mean() for i in range(20)]
+        spread_10 = max(medians_10) - min(medians_10)
+        spread_300 = max(medians_300) - min(medians_300)
+      expect: Размах медиан
+
+- id: m3-l3-t5
+  kind: quiz
+  title: Рейтинги и размер групп
+  difficulty: main
+  introduces: [group-size-caution]
+  uses: []
+  statement: |
+    Проверьте, как вы поняли связь статистики и размера группы.
+  quiz:
+    - q: В рейтинге моделей по медианной цене первое место у модели с одним объявлением. Что делать?
+      options:
+        - Объявить её самой дорогой моделью
+        - Пометить «мало данных» или ввести минимальный размер группы и указать его в отчёте
+        - Удалить объявление как ошибку
+      answer: 1
+      explain: Одна цена — не статистика группы. Порог размера и число исключённых групп пишут в отчёте.
+    - q: По средней цене марка на 4-м месте, по медиане — на 7-м. Что вероятнее всего?
+      options:
+        - В марке есть немного очень дорогих машин
+        - В марке мало объявлений
+        - Медиана посчитана неверно
+      answer: 0
+      explain: Дорогие машины поднимают среднее сильнее, чем медиану.
+    - q: Выберите корректный вывод из рейтинга марок по медианной цене.
+      options:
+        - Lexus — самая выгодная марка для перепродажи
+        - Среди объявлений выборки у Lexus самая высокая медианная цена (585 объявлений)
+        - Lexus дорожает быстрее остальных
+      answer: 1
+      explain: Данные описывают цены предложения в выборке; о выгоде и динамике цен они ничего не говорят.
+  hints:
+    - Вспомните опыт с выборками Lexus и разницу между средним и медианой.
+    - "Маленькая группа — ненадёжная статистика; среднее тянут крайние значения; выводы — только о выборке."
+    - "Ответы: порог и пометка; немного дорогих машин; медианная цена с размером группы."
+
+- id: m3-l3-t6
+  title: Сколько объявлений в надёжных группах
+  difficulty: star
+  introduces: [group-size-caution]
+  uses: [pd-agg, pd-new-column]
+  statement: |
+    В `model_summary` добавьте колонку `reliable` — True для групп «марка + модель» с не менее чем 30 объявлениями. Получите:
+
+    - `share_reliable_groups` — долю надёжных групп среди всех групп;
+    - `share_reliable_listings` — долю **объявлений**, которые попадают в надёжные группы.
+
+    Почему вторая доля намного больше первой?
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+    model_summary = df.groupby(['Make', 'Model']).agg(n=('Price', 'size'), median_price=('Price', 'median'))
+  starter: |
+    model_summary['reliable'] = ...
+    share_reliable_groups = ...
+    share_reliable_listings = ...
+    print(round(share_reliable_groups, 3), round(share_reliable_listings, 3))
+  solution: |
+    model_summary['reliable'] = model_summary['n'] >= 30
+    share_reliable_groups = model_summary['reliable'].mean()
+    share_reliable_listings = model_summary.loc[model_summary['reliable'], 'n'].sum() / model_summary['n'].sum()
+    print(round(share_reliable_groups, 3), round(share_reliable_listings, 3))
+  explanation: |
+    - Новая колонка-маска `n >= 30`; её среднее — доля надёжных групп.
+    - Для доли объявлений складываем размеры надёжных групп и делим на общее число объявлений.
+    - Знаменатели разные: групп мало, но они крупные — поэтому доля объявлений намного больше.
+  hints:
+    - Доля групп — среднее маски. Для доли объявлений нужны размеры групп `n`.
+    - "`model_summary['n'] >= 30`; `model_summary.loc[маска, 'n'].sum() / model_summary['n'].sum()`."
+    - "`share_reliable_listings = model_summary.loc[model_summary['reliable'], 'n'].sum() / model_summary['n'].sum()`."
+  tests: |
+    import pandas as pd
+    s = var('model_summary', pd.DataFrame, 'таблицей DataFrame')
+    ensure('reliable' in s.columns, 'В `model_summary` нет колонки `reliable`.')
+    same_frame(s['reliable'], ref('model_summary')['reliable'], 'Колонка reliable должна быть маской `n >= 30`.')
+    g = var('share_reliable_groups', 'number', 'числом')
+    l = var('share_reliable_listings', 'number', 'числом')
+    if abs(float(l) - float(ref('share_reliable_groups'))) < 1e-9:
+        fail('`share_reliable_listings` совпадает с долей групп. Для доли объявлений сложите размеры групп `n`.')
+    close(g, ref('share_reliable_groups'), 'Доля надёжных групп — {expected}, а у вас {actual}.')
+    close(l, ref('share_reliable_listings'), 'Доля объявлений в надёжных группах — {expected}, а у вас {actual}.')
+    close(alt('share_reliable_listings'), alt_ref('share_reliable_listings'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        model_summary['reliable'] = model_summary['n'] >= 30
+        share_reliable_groups = model_summary['reliable'].mean()
+        share_reliable_listings = model_summary['reliable'].mean()
+      expect: размеры групп
+    - code: |
+        model_summary['reliable'] = model_summary['n'] > 30
+        share_reliable_groups = model_summary['reliable'].mean()
+        share_reliable_listings = model_summary.loc[model_summary['reliable'], 'n'].sum() / model_summary['n'].sum()
+      expect: Колонка reliable

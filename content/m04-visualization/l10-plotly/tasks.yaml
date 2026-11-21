@@ -1,0 +1,413 @@
+- id: m4-l10-t1
+  kind: plot
+  title: Интерактивный scatter с подсказками
+  difficulty: warmup
+  introduces: [plotly-express]
+  uses: [hue-channel]
+  statement: |
+    Постройте `fig = px.scatter(...)` «пробег — цена» для всех объявлений с цветом по коробке передач, прозрачностью `opacity=0.4` и подсказкой, в которой есть `source_row_id`, `Make`, `Model` и `Year`. Подпишите оси по-русски через `labels=` (`'Distance'` → `'Пробег, км'`, `'Price'` → `'Цена, евро'`), добавьте заголовок и покажите график.
+  prelude: |
+    import pandas as pd
+    import plotly.express as px
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    fig = px.scatter(...)
+    fig.show()
+  solution: |
+    fig = px.scatter(df, x='Distance', y='Price', color='Transmission', opacity=0.4,
+                     hover_data=['source_row_id', 'Make', 'Model', 'Year'],
+                     title='Цена и пробег: наведите курсор на точку',
+                     labels={'Distance': 'Пробег, км', 'Price': 'Цена, евро'})
+    fig.show()
+  explanation: |
+    - `color='Transmission'` — по ряду точек на каждый тип коробки, с легендой.
+    - `hover_data` — колонки подсказки; `source_row_id` позволяет найти запись в таблице.
+    - `labels` заменяет имена колонок в подписях осей и подсказке.
+  hints:
+    - "Функция `px.scatter` принимает таблицу, `x`, `y`, `color`, `opacity`, `hover_data`, `title` и `labels`."
+    - "`hover_data=['source_row_id', 'Make', 'Model', 'Year']`; `labels={'Distance': 'Пробег, км', 'Price': 'Цена, евро'}`."
+    - "`fig = px.scatter(df, x='Distance', y='Price', color='Transmission', opacity=0.4, hover_data=[...], title=..., labels={...})`."
+  tests: |
+    fig = pfig()
+    ensure(all(t.type in ('scatter', 'scattergl') for t in fig.data), 'Нужна диаграмма рассеяния: `px.scatter(...)`.')
+    names = {t.name for t in fig.data}
+    ensure({'Automatic', 'Manual'} <= names, 'Раскрасьте точки по коробке передач: `color=\'Transmission\'`.')
+    n = sum(len(t.x) for t in fig.data)
+    ensure(n == len(ref('df')), 'На графике должны быть все объявления ({0}), а у вас {1}.'.format(len(ref('df')), n))
+    tpl = fig.data[0].hovertemplate or ''
+    for col in ['source_row_id', 'Make', 'Model', 'Year']:
+        ensure(col in tpl, 'В подсказке нет колонки `{0}` — добавьте её в `hover_data`.'.format(col))
+    op = fig.data[0].marker.opacity if fig.data[0].marker.opacity is not None else fig.data[0].opacity
+    ensure(op is not None and abs(op - 0.4) < 1e-9, 'Задайте прозрачность: `opacity=0.4`.')
+    ensure((fig.layout.xaxis.title.text or '') == 'Пробег, км' and (fig.layout.yaxis.title.text or '') == 'Цена, евро', 'Подпишите оси по-русски: `labels={\'Distance\': \'Пробег, км\', \'Price\': \'Цена, евро\'}`.')
+    ensure((fig.layout.title.text or '').strip() != '', 'Добавьте заголовок: `title=...`.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        fig = px.scatter(df, x='Distance', y='Price', color='Transmission', opacity=0.4,
+                         title='Цена и пробег', labels={'Distance': 'Пробег, км', 'Price': 'Цена, евро'})
+        fig.show()
+      expect: source_row_id
+    - code: |
+        fig = px.scatter(df, x='Distance', y='Price', color='Transmission', opacity=0.4,
+                         hover_data=['source_row_id', 'Make', 'Model', 'Year'], title='Цена и пробег')
+        fig.show()
+      expect: по-русски
+
+- id: m4-l10-t2
+  kind: plot
+  title: Пять типов кузова и «Другие»
+  difficulty: main
+  introduces: [plotly-express]
+  uses: [pd-loc-assign, pd-value-counts]
+  statement: |
+    Добавьте в копию таблицы `df_viz` колонку `Кузов на графике`: для пяти самых частых типов кузова — сам кузов, для остальных — `'Другие'`. Постройте `fig = px.scatter(...)` «год выпуска — цена» с цветом по этой колонке, логарифмической осью цены (`log_y=True`), `opacity=0.4` и подсказкой с `source_row_id` и `Model`. Добавьте заголовок и покажите график.
+  prelude: |
+    import pandas as pd
+    import plotly.express as px
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    top5 = ...
+    df_viz = df.copy()
+    df_viz['Кузов на графике'] = 'Другие'
+    df_viz.loc[...] = ...
+    fig = px.scatter(...)
+    fig.show()
+  solution: |
+    top5 = df['Style'].value_counts().head(5).index
+    df_viz = df.copy()
+    df_viz['Кузов на графике'] = 'Другие'
+    df_viz.loc[df_viz['Style'].isin(top5), 'Кузов на графике'] = df_viz['Style']
+    fig = px.scatter(df_viz, x='Year', y='Price', color='Кузов на графике', log_y=True, opacity=0.4,
+                     hover_data=['source_row_id', 'Model'], title='Цена и год выпуска по типу кузова',
+                     labels={'Year': 'Год выпуска', 'Price': 'Цена, евро'})
+    fig.show()
+  explanation: |
+    - Сначала всем строкам — `'Другие'`, затем `loc` с маской `isin(top5)` переписывает значение на сам кузов (урок 2.9).
+    - Шесть групп — шесть цветов: их ещё можно различить; двенадцать кузовов слились бы.
+    - `log_y=True` — логарифмическая ось цены, как `yscale='log'` в Matplotlib.
+  hints:
+    - "Всем строкам задайте `'Другие'`, а через `loc` с маской `isin(top5)` перепишите значение на кузов."
+    - "`df_viz.loc[df_viz['Style'].isin(top5), 'Кузов на графике'] = df_viz['Style']`."
+    - "`px.scatter(df_viz, x='Year', y='Price', color='Кузов на графике', log_y=True, opacity=0.4, hover_data=['source_row_id', 'Model'], title=...)`."
+  tests: |
+    import pandas as pd
+    v = var('df_viz', pd.DataFrame, 'таблицей DataFrame')
+    ensure('Кузов на графике' in v.columns, 'Добавьте в `df_viz` колонку `Кузов на графике`.')
+    same_frame(v['Кузов на графике'], ref('df_viz')['Кузов на графике'], 'Колонка `Кузов на графике` не совпадает: пять самых частых кузовов — как есть, остальные — `\'Другие\'`.')
+    ensure('Кузов на графике' not in var('df', pd.DataFrame, 'таблицей').columns, 'Добавляйте колонку в копию `df_viz`, а не в исходную `df`.')
+    fig = pfig()
+    names = {t.name for t in fig.data}
+    exp = set(ref('df_viz')['Кузов на графике'].unique())
+    ensure(names == exp, 'Цвет должен идти по колонке `Кузов на графике` — шесть групп: {0}.'.format(sorted(exp)))
+    ensure(fig.layout.yaxis.type == 'log', 'Сделайте ось цены логарифмической: `log_y=True`.')
+    tpl = fig.data[0].hovertemplate or ''
+    ensure('source_row_id' in tpl and 'Model' in tpl, 'Добавьте в подсказку `source_row_id` и `Model`: `hover_data=[...]`.')
+    ensure((fig.layout.title.text or '').strip() != '', 'Добавьте заголовок.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        top5 = df['Style'].value_counts().head(5).index
+        df_viz = df.copy()
+        df_viz['Кузов на графике'] = 'Другие'
+        df_viz.loc[df_viz['Style'].isin(top5), 'Кузов на графике'] = df_viz['Style']
+        fig = px.scatter(df_viz, x='Year', y='Price', color='Style', log_y=True, opacity=0.4, hover_data=['source_row_id', 'Model'], title='Цена')
+        fig.show()
+      expect: шесть групп
+    - code: |
+        top5 = df['Style'].value_counts().head(5).index
+        df_viz = df.copy()
+        df_viz['Кузов на графике'] = 'Другие'
+        df_viz.loc[df_viz['Style'].isin(top5), 'Кузов на графике'] = df_viz['Style']
+        fig = px.scatter(df_viz, x='Year', y='Price', color='Кузов на графике', opacity=0.4, hover_data=['source_row_id', 'Model'], title='Цена')
+        fig.show()
+      expect: log_y
+
+- id: m4-l10-t3
+  kind: plot
+  title: Боксплоты по категории пробега с подсказками
+  difficulty: main
+  introduces: [plotly-express]
+  uses: [conditional-dist]
+  statement: |
+    Постройте `fig = px.box(...)`: цена по категории пробега в год (`km_year_cat`) с цветом по коробке передач, категории в порядке `Small`, `Medium`, `Large` (`category_orders={'km_year_cat': [...]}`), логарифмическая ось цены и подсказка с `source_row_id`, `Make`, `Model`. Добавьте заголовок и покажите график.
+  prelude: |
+    import pandas as pd
+    import plotly.express as px
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    fig = px.box(...)
+    fig.show()
+  solution: |
+    fig = px.box(df, x='km_year_cat', y='Price', color='Transmission', log_y=True,
+                 category_orders={'km_year_cat': ['Small', 'Medium', 'Large']},
+                 hover_data=['source_row_id', 'Make', 'Model'],
+                 title='Цена по категории пробега в год: наведите на точки за усами',
+                 labels={'km_year_cat': 'Пробег в год', 'Price': 'Цена, евро'})
+    fig.show()
+  explanation: |
+    - `px.box` — боксплоты; `color` делит каждую категорию на автомат и механику.
+    - `category_orders` задаёт порядок категорий по смыслу, а не по алфавиту (урок 4.7).
+    - Наведя на точку за усом, видим запись — и можем найти её в таблице по `source_row_id`.
+  hints:
+    - "`px.box` принимает те же основные параметры, что `px.scatter`; порядок категорий — словарь `category_orders`."
+    - "`category_orders={'km_year_cat': ['Small', 'Medium', 'Large']}`; `log_y=True`."
+    - "`px.box(df, x='km_year_cat', y='Price', color='Transmission', log_y=True, category_orders=..., hover_data=[...], title=...)`."
+  tests: |
+    fig = pfig()
+    ensure(all(t.type == 'box' for t in fig.data) and len(fig.data) > 0, 'Нужны боксплоты: `px.box(...)`.')
+    ensure({t.name for t in fig.data} == {'Automatic', 'Manual'}, 'Раскрасьте боксплоты по коробке передач: `color=\'Transmission\'`.')
+    ensure(set(map(str, fig.data[0].x)) <= {'Small', 'Medium', 'Large'}, 'По оси X должна быть категория пробега в год (`x=\'km_year_cat\'`).')
+    arr = list(fig.layout.xaxis.categoryarray or [])
+    ensure(arr == ['Small', 'Medium', 'Large'], 'Задайте порядок категорий: `category_orders={\'km_year_cat\': [\'Small\', \'Medium\', \'Large\']}`.')
+    ensure(fig.layout.yaxis.type == 'log', 'Сделайте ось цены логарифмической: `log_y=True`.')
+    tpl = fig.data[0].hovertemplate or ''
+    ensure(all(c in tpl for c in ['source_row_id', 'Make', 'Model']), 'Добавьте в подсказку `source_row_id`, `Make` и `Model`.')
+    ensure((fig.layout.title.text or '').strip() != '', 'Добавьте заголовок.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        fig = px.box(df, x='km_year_cat', y='Price', color='Transmission', log_y=True, hover_data=['source_row_id', 'Make', 'Model'], title='Цена')
+        fig.show()
+      expect: порядок категорий
+    - code: |
+        fig = px.box(df, x='km_year_cat', y='Price', log_y=True, category_orders={'km_year_cat': ['Small', 'Medium', 'Large']}, hover_data=['source_row_id', 'Make', 'Model'], title='Цена')
+        fig.show()
+      expect: коробке передач
+
+- id: m4-l10-t4
+  kind: plot
+  title: "Treemap: топливо → марка"
+  difficulty: main
+  introduces: [plotly-treemap]
+  uses: [pd-groupby, pd-agg, pd-reset-index]
+  statement: |
+    Получите `fuel_make` — для каждой пары «тип топлива, марка» число объявлений `count` и **медианную** цену `median_price`, с колонками `Fuel_type` и `Make` (после `reset_index()`). Постройте treemap: сначала топливо, внутри — марки, площадь — `count`, цвет — `median_price`. Добавьте заголовок и покажите график.
+  prelude: |
+    import pandas as pd
+    import plotly.express as px
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    fuel_make = ...
+    fig = px.treemap(...)
+    fig.show()
+  solution: |
+    fuel_make = (df.groupby(['Fuel_type', 'Make'])
+                   .agg(count=('Price', 'size'), median_price=('Price', 'median'))
+                   .reset_index())
+    fig = px.treemap(fuel_make, path=['Fuel_type', 'Make'], values='count', color='median_price',
+                     color_continuous_scale='RdYlBu_r',
+                     title='Топливо → марка: площадь — число объявлений, цвет — медианная цена')
+    fig.show()
+  explanation: |
+    - Группировка по двум колонкам и именованная агрегация (урок 3.2); `reset_index()` превращает уровни индекса в колонки (урок 2.7) — treemap берёт уровни из колонок.
+    - `path=['Fuel_type', 'Make']` — топливо снаружи, марки внутри; `values` — площадь, `color` — цвет.
+    - Сразу видно, что дизель и бензин — больше 80 % каталога, а среди гибридов почти половина — Toyota (и ещё пятая часть — Lexus той же компании).
+  hints:
+    - "Группировка по `['Fuel_type', 'Make']`, `agg` с двумя именованными статистиками, затем `reset_index()`."
+    - "`df.groupby(['Fuel_type', 'Make']).agg(count=('Price', 'size'), median_price=('Price', 'median')).reset_index()`."
+    - "`px.treemap(fuel_make, path=['Fuel_type', 'Make'], values='count', color='median_price', title=...)`."
+  tests: |
+    import pandas as pd
+    t = var('fuel_make', pd.DataFrame, 'таблицей DataFrame')
+    ensure({'Fuel_type', 'Make'} <= set(t.columns), 'Сделайте `Fuel_type` и `Make` колонками: `reset_index()` после группировки.')
+    ensure({'count', 'median_price'} <= set(t.columns), 'Нужны колонки `count` и `median_price`.')
+    same_frame(t[['Fuel_type', 'Make', 'count', 'median_price']], ref('fuel_make')[['Fuel_type', 'Make', 'count', 'median_price']], 'Таблица `fuel_make` не совпадает (медиана цены, а не среднее).')
+    fig = pfig()
+    tm = [d for d in fig.data if d.type == 'treemap']
+    ensure(len(tm) == 1, 'Нужен treemap: `px.treemap(...)`.')
+    d = tm[0]
+    ids, parents, values = list(d.ids), list(d.parents), list(d.values)
+    parent_set = set(parents)
+    leaves = [(p, v) for i, p, v in zip(ids, parents, values) if i not in parent_set]
+    fuels = set(ref('fuel_make')['Fuel_type'])
+    ensure(len(leaves) == len(ref('fuel_make')) and all(p in fuels for p, _ in leaves), 'Иерархия должна быть «топливо → марка»: `path=[\'Fuel_type\', \'Make\']`.')
+    total = sum(v for _, v in leaves)
+    ensure(abs(total - len(ref('df'))) < 0.5, 'Площадь должна быть числом объявлений: `values=\'count\'`.')
+    ensure(d.marker.colors is not None and len(d.marker.colors) == len(ids), 'Раскрасьте прямоугольники по медианной цене: `color=\'median_price\'`.')
+    ensure((fig.layout.title.text or '').strip() != '', 'Добавьте заголовок.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        fuel_make = df.groupby(['Fuel_type', 'Make']).agg(count=('Price', 'size'), median_price=('Price', 'mean')).reset_index()
+        fig = px.treemap(fuel_make, path=['Fuel_type', 'Make'], values='count', color='median_price', title='Каталог')
+        fig.show()
+      expect: медиана цены
+    - code: |
+        fuel_make = df.groupby(['Fuel_type', 'Make']).agg(count=('Price', 'size'), median_price=('Price', 'median')).reset_index()
+        fig = px.treemap(fuel_make, path=['Make', 'Fuel_type'], values='count', color='median_price', title='Каталог')
+        fig.show()
+      expect: «топливо → марка»
+
+- id: m4-l10-t5
+  title: Функция фильтра сегмента
+  difficulty: main
+  introduces: [segment-filter]
+  uses: [pd-bool-filter, py-functions, py-dicts]
+  statement: |
+    Напишите функцию `apply_filters(data, filters)`: `filters` — словарь «колонка → значение»; функция возвращает строки `data`, у которых **все** колонки из словаря равны своим значениям, причём значение `None` означает «без условия по этой колонке». Затем получите `segment` — дизельные BMW с автоматом (`filters = {'Make': 'BMW', 'Fuel_type': 'Diesel', 'Transmission': 'Automatic', 'Style': None}`), постройте по нему `px.scatter` «год — цена» с заголовком, в котором есть число записей, и покажите график.
+  prelude: |
+    import pandas as pd
+    import plotly.express as px
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    def apply_filters(data, filters):
+        ...
+
+    filters = {'Make': 'BMW', 'Fuel_type': 'Diesel', 'Transmission': 'Automatic', 'Style': None}
+    segment = apply_filters(df, filters)
+    fig = px.scatter(segment, x='Year', y='Price', title=...)
+    fig.show()
+  solution: |
+    def apply_filters(data, filters):
+        for column, value in filters.items():
+            if value is not None:
+                data = data[data[column] == value]
+        return data
+
+    filters = {'Make': 'BMW', 'Fuel_type': 'Diesel', 'Transmission': 'Automatic', 'Style': None}
+    segment = apply_filters(df, filters)
+    fig = px.scatter(segment, x='Year', y='Price', hover_data=['source_row_id', 'Model'],
+                     title=f'BMW, дизель, автомат: {len(segment)} записей, медиана {segment["Price"].median():.0f} евро',
+                     labels={'Year': 'Год выпуска', 'Price': 'Цена, евро'})
+    fig.show()
+  explanation: |
+    - Цикл по парам словаря `items()` (урок 0.7): для каждой колонки с заданным значением таблица сужается фильтром (урок 2.5).
+    - `None` пропускаем — условие по этой колонке не применяется; поэтому `'Style': None` значит «любой кузов».
+    - Функция не меняет исходную таблицу: каждый фильтр создаёт новую, меньшую.
+  hints:
+    - "Перебирайте пары `for column, value in filters.items()` и сужайте таблицу, если значение не `None`."
+    - "Внутри цикла: `if value is not None: data = data[data[column] == value]`; в конце — `return data`."
+    - "Заголовок с числом записей — f-строка: `f'... {len(segment)} записей'`."
+  tests: |
+    import pandas as pd
+    f = var('apply_filters')
+    ensure(callable(f), '`apply_filters` должна быть функцией.')
+    d = ref('df')
+    cases = [
+        {'Make': 'BMW', 'Fuel_type': 'Diesel', 'Transmission': 'Automatic', 'Style': None},
+        {'Make': 'Toyota', 'Fuel_type': None},
+        {'Style': 'SUV', 'Transmission': 'Manual'},
+        {'Make': None, 'Fuel_type': None},
+        {},
+    ]
+    for c in cases:
+        got = f(d, dict(c))
+        exp = ref('apply_filters')(d, dict(c))
+        ensure(isinstance(got, pd.DataFrame), 'Функция должна возвращать таблицу DataFrame.')
+        if len(got) == len(d) and len(exp) < len(d):
+            fail('Для фильтров {0} функция вернула всю таблицу. Сужайте `data` и верните результат: `return data`.'.format(c))
+        ensure(len(got) == len(exp), 'Для фильтров {0} должно остаться {1} записей, а у вас {2}. Значение `None` — «без условия».'.format(c, len(exp), len(got)))
+    ensure(len(var('df', pd.DataFrame, 'таблицей')) == len(d), 'Функция не должна менять исходную таблицу `df`.')
+    seg = var('segment', pd.DataFrame, 'таблицей DataFrame')
+    ensure(len(seg) == len(ref('segment')), 'В `segment` должно быть {0} записей, а у вас {1}.'.format(len(ref('segment')), len(seg)))
+    fig = pfig()
+    ensure(sum(len(t.x) for t in fig.data) == len(ref('segment')), 'Постройте график по `segment`.')
+    ensure(str(len(ref('segment'))) in (fig.layout.title.text or ''), 'Добавьте в заголовок число записей сегмента: `f\'... {len(segment)} записей\'`.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def apply_filters(data, filters):
+            for column, value in filters.items():
+                data = data[data[column] == value]
+            return data
+
+        filters = {'Make': 'BMW', 'Fuel_type': 'Diesel', 'Transmission': 'Automatic', 'Style': None}
+        segment = apply_filters(df, filters)
+        fig = px.scatter(segment, x='Year', y='Price', title=f'{len(segment)} записей')
+        fig.show()
+      expect: без условия
+    - code: |
+        def apply_filters(data, filters):
+            result = data
+            for column, value in filters.items():
+                if value is not None:
+                    result = data[data[column] == value]
+            return result
+
+        filters = {'Make': 'BMW', 'Fuel_type': 'Diesel', 'Transmission': 'Automatic', 'Style': None}
+        segment = apply_filters(df, filters)
+        fig = px.scatter(segment, x='Year', y='Price', title=f'{len(segment)} записей')
+        fig.show()
+      expect: должно остаться
+
+- id: m4-l10-t6
+  kind: plot
+  title: Выпадающий список прямо в графике
+  difficulty: star
+  introduces: [segment-filter, plotly-express]
+  uses: [hue-channel]
+  statement: |
+    Виджетов в тренажёре нет, но фильтр можно встроить в сам график Plotly. Постройте `fig = px.scatter(df, x='Year', y='Price', color='Transmission', ...)` — в нём два ряда точек (Automatic и Manual) — и добавьте выпадающий список `fig.update_layout(updatemenus=[{'buttons': [...]}])` с тремя кнопками:
+
+    - `'Все'` — видны оба ряда: `{'label': 'Все', 'method': 'update', 'args': [{'visible': [True, True]}]}`;
+    - `'Automatic'` — виден только ряд автоматов;
+    - `'Manual'` — виден только ряд механики.
+
+    Порядок значений в `visible` — порядок рядов в `fig.data`. Покажите график и попробуйте переключать список.
+  prelude: |
+    import pandas as pd
+    import plotly.express as px
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    fig = px.scatter(df, x='Year', y='Price', color='Transmission', opacity=0.4, log_y=True,
+                     labels={'Year': 'Год выпуска', 'Price': 'Цена, евро'})
+    names = [trace.name for trace in fig.data]
+    print(names)
+    buttons = [
+        {'label': 'Все', 'method': 'update', 'args': [{'visible': [True, True]}]},
+        ...
+    ]
+    fig.update_layout(updatemenus=[{'buttons': buttons}], title='Цена и год выпуска: выберите коробку')
+    fig.show()
+  solution: |
+    fig = px.scatter(df, x='Year', y='Price', color='Transmission', opacity=0.4, log_y=True,
+                     labels={'Year': 'Год выпуска', 'Price': 'Цена, евро'})
+    names = [trace.name for trace in fig.data]
+    print(names)
+    buttons = [{'label': 'Все', 'method': 'update', 'args': [{'visible': [True] * len(names)}]}]
+    for name in names:
+        buttons.append({'label': name, 'method': 'update', 'args': [{'visible': [n == name for n in names]}]})
+    fig.update_layout(updatemenus=[{'buttons': buttons}], title='Цена и год выпуска: выберите коробку')
+    fig.show()
+  explanation: |
+    - У `px.scatter` с `color=` каждая группа — отдельный ряд в `fig.data`; их названия — `trace.name`.
+    - Кнопка с `method='update'` меняет свойства рядов: `visible` — список «показывать / скрыть» по рядам в их порядке.
+    - Список кнопок удобно собрать циклом: для ряда `name` видимость `[n == name for n in names]` — `True` только у него.
+    - Такой фильтр работает прямо в браузере, без Python: его можно сохранить в HTML (`fig.write_html`) и отправить заказчику.
+  hints:
+    - Узнайте порядок рядов (`names`) и для каждой кнопки задайте список видимости той же длины.
+    - "Кнопка автоматов: `{'label': 'Automatic', 'method': 'update', 'args': [{'visible': [n == 'Automatic' for n in names]}]}`."
+    - "Соберите кнопки циклом `for name in names:` и передайте их в `fig.update_layout(updatemenus=[{'buttons': buttons}])`."
+  tests: |
+    fig = pfig()
+    names = [t.name for t in fig.data]
+    ensure(set(names) == {'Automatic', 'Manual'}, 'Постройте `px.scatter(..., color=\'Transmission\')` — два ряда точек.')
+    menus = fig.layout.updatemenus
+    ensure(menus is not None and len(menus) >= 1, 'Добавьте выпадающий список: `fig.update_layout(updatemenus=[{\'buttons\': buttons}])`.')
+    buttons = menus[0].buttons
+    labels = [b.label for b in buttons]
+    ensure(len(buttons) == 3 and set(labels) == {'Все', 'Automatic', 'Manual'}, 'Нужны три кнопки: `Все`, `Automatic`, `Manual`, а у вас {0}.'.format(labels))
+    for b in buttons:
+        ensure(b.method == 'update' and b.args and 'visible' in b.args[0], 'У каждой кнопки — `\'method\': \'update\'` и `\'args\': [{\'visible\': [...]}]`.')
+        vis = list(b.args[0]['visible'])
+        ensure(len(vis) == len(names), 'Список `visible` должен быть длины {0} — по значению на каждый ряд.'.format(len(names)))
+        want = [True] * len(names) if b.label == 'Все' else [n == b.label for n in names]
+        ensure(vis == want, 'Кнопка «{0}» должна показывать {1}, а у вас `visible={2}`. Порядок — как в `fig.data`: {3}.'.format(b.label, 'оба ряда' if b.label == 'Все' else 'только ряд ' + b.label, vis, names))
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        fig = px.scatter(df, x='Year', y='Price', color='Transmission', opacity=0.4, log_y=True)
+        names = [trace.name for trace in fig.data]
+        buttons = [
+            {'label': 'Все', 'method': 'update', 'args': [{'visible': [True, True]}]},
+            {'label': 'Automatic', 'method': 'update', 'args': [{'visible': [False, True]}]},
+            {'label': 'Manual', 'method': 'update', 'args': [{'visible': [True, False]}]},
+        ]
+        fig.update_layout(updatemenus=[{'buttons': buttons}])
+        fig.show()
+      expect: Порядок — как в `fig.data`
+    - code: |
+        fig = px.scatter(df, x='Year', y='Price', color='Transmission', opacity=0.4, log_y=True)
+        fig.show()
+      expect: выпадающий список

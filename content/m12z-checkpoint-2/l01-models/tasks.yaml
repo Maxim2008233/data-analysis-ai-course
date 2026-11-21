@@ -1,0 +1,758 @@
+- id: k2-t1
+  title: "1. Ориентир и линейная модель"
+  difficulty: main
+  introduces: []
+  uses: [sk-split, baseline-model, linear-regression]
+  statement: |
+    Разбейте данные диабета на обучающую и проверочную части: `train_test_split(X, y, test_size=0.2, random_state=42)`.
+
+    - `mae_base` — MAE ориентира на проверочной части. Ориентир для всех пациентов отвечает одним числом — медианой `target` **обучающей** части.
+    - `mae_lr` — MAE линейной регрессии, обученной на обучающей части, на проверочной части.
+    - `gain` — на сколько процентов модель ошибается меньше ориентира: `(mae_base − mae_lr) / mae_base × 100`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import mean_absolute_error
+    diabetes = pd.read_csv('diabetes.csv')
+    X, y = diabetes.drop(columns='target'), diabetes['target']
+  starter: |
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    base = ...
+    mae_base = mean_absolute_error(y_test, np.full(len(y_test), base))
+    model = LinearRegression().fit(X_train, y_train)
+    mae_lr = ...
+    gain = (mae_base - mae_lr) / mae_base * 100
+    print(round(mae_base, 1), round(mae_lr, 1), round(gain, 1))
+  solution: |
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    base = y_train.median()
+    mae_base = mean_absolute_error(y_test, np.full(len(y_test), base))
+    model = LinearRegression().fit(X_train, y_train)
+    mae_lr = mean_absolute_error(y_test, model.predict(X_test))
+    gain = (mae_base - mae_lr) / mae_base * 100
+    print(round(mae_base, 1), round(mae_lr, 1), round(gain, 1))
+  explanation: |
+    - Ориентир берут по обучающей части: медиана проверочной части — подглядывание в ответы (уроки 5.4–5.5).
+    - Модель учится на `X_train`, а ошибку меряют на `X_test`, которую она не видела.
+    - Линейная регрессия ошибается в среднем на 42,8 против 62,7 у ориентира — на 32 % меньше. Модель полезна, но до точного прогноза далеко: показатель меняется от 25 до 346.
+  hints:
+    - "Ориентир — медиана цели обучающей части: `y_train.median()`."
+    - "Ошибка модели — `mean_absolute_error(y_test, model.predict(X_test))`."
+    - "`gain` уже посчитан в заготовке по `mae_base` и `mae_lr`."
+  tests: |
+    import numpy as np
+    from sklearn.metrics import mean_absolute_error
+    yt = ref('y_test')
+    leak = mean_absolute_error(yt, np.full(len(yt), yt.median()))
+    mb = var('mae_base', 'number', 'числом')
+    if abs(mb - leak) < 1e-9:
+        fail('Ориентир взят по проверочной части. Медиану берут по обучающей: y_train.median().')
+    close(mb, ref('mae_base'), 'MAE ориентира — {expected}, а у вас {actual}.')
+    close(var('mae_lr', 'number', 'числом'), ref('mae_lr'), 'MAE линейной регрессии на проверочной части — {expected}, а у вас {actual}.')
+    close(var('gain', 'number', 'числом'), ref('gain'), 'Выигрыш у ориентира — {expected} %, а у вас {actual}.')
+    close(alt('mae_lr'), alt_ref('mae_lr'), HARDCODE_MSG)
+  files: [diabetes.csv]
+  wrong:
+    - code: |
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        base = y_test.median()
+        mae_base = mean_absolute_error(y_test, np.full(len(y_test), base))
+        model = LinearRegression().fit(X_train, y_train)
+        mae_lr = mean_absolute_error(y_test, model.predict(X_test))
+        gain = (mae_base - mae_lr) / mae_base * 100
+      expect: по проверочной части
+    - code: |
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        base = y_train.median()
+        mae_base = mean_absolute_error(y_test, np.full(len(y_test), base))
+        model = LinearRegression().fit(X_train, y_train)
+        mae_lr = mean_absolute_error(y_train, model.predict(X_train))
+        gain = (mae_base - mae_lr) / mae_base * 100
+      expect: на проверочной части
+
+- id: k2-t2
+  title: "2. Метрики регрессии своими руками"
+  difficulty: main
+  introduces: []
+  uses: [regression-metrics]
+  statement: |
+    Напишите функцию `regression_report(y_true, y_pred)` без sklearn. Она возвращает словарь с ключами `'MAE'`, `'RMSE'` и `'R2'`:
+
+    - MAE — среднее модуля ошибки;
+    - RMSE — корень из среднего квадрата ошибки;
+    - R² — 1 минус отношение суммы квадратов ошибок к сумме квадратов отклонений настоящих значений от их среднего.
+
+    Получите `report` для прогнозов линейной регрессии `pred` на проверочной части.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.linear_model import LinearRegression
+    diabetes = pd.read_csv('diabetes.csv')
+    X, y = diabetes.drop(columns='target'), diabetes['target']
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    pred = LinearRegression().fit(X_train, y_train).predict(X_test)
+  starter: |
+    def regression_report(y_true, y_pred):
+        y_true, y_pred = np.asarray(y_true, dtype=float), np.asarray(y_pred, dtype=float)
+        err = y_true - y_pred
+        mae = ...
+        rmse = ...
+        r2 = 1 - (err ** 2).sum() / ...
+        return {'MAE': mae, 'RMSE': rmse, 'R2': r2}
+
+    report = regression_report(y_test, pred)
+    print({k: round(float(v), 3) for k, v in report.items()})
+  solution: |
+    def regression_report(y_true, y_pred):
+        y_true, y_pred = np.asarray(y_true, dtype=float), np.asarray(y_pred, dtype=float)
+        err = y_true - y_pred
+        mae = np.abs(err).mean()
+        rmse = np.sqrt((err ** 2).mean())
+        r2 = 1 - (err ** 2).sum() / ((y_true - y_true.mean()) ** 2).sum()
+        return {'MAE': mae, 'RMSE': rmse, 'R2': r2}
+
+    report = regression_report(y_test, pred)
+    print({k: round(float(v), 3) for k, v in report.items()})
+  explanation: |
+    - MAE не даёт ошибкам разных знаков гасить друг друга: берётся модуль. RMSE сначала возводит ошибки в квадрат, поэтому большие промахи весят сильнее, а корень возвращает исходные единицы (урок 5.8).
+    - R² сравнивает модель с ориентиром «всегда среднее»: в знаменателе — разброс настоящих значений вокруг их среднего. R² = 0 — не лучше среднего, 1 — без ошибок.
+    - Для линейной регрессии MAE 42,8, RMSE 53,9 и R² 0,45: модель объясняет меньше половины разброса показателя. RMSE заметно больше MAE — есть крупные промахи.
+  hints:
+    - "MAE — `np.abs(err).mean()`, RMSE — `np.sqrt((err ** 2).mean())`."
+    - "Знаменатель R² — разброс настоящих значений: `((y_true - y_true.mean()) ** 2).sum()`."
+    - "Ключи словаря — ровно `'MAE'`, `'RMSE'`, `'R2'`."
+  tests: |
+    import numpy as np
+    from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+    f = var('regression_report')
+    ensure(callable(f), '`regression_report` должна быть функцией.')
+    got = f([3, 5, 7, 9], [2, 5, 8, 12])
+    ensure(isinstance(got, dict) and set(got) == {'MAE', 'RMSE', 'R2'}, 'Нужен словарь с ключами MAE, RMSE и R2.')
+    close(got['MAE'], 1.25, 'Ошибки 1, 0, −1, −3 — MAE 1.25, а у вас {actual}.')
+    if abs(got['RMSE'] - 2.75) < 1e-9:
+        fail('Это средний квадрат ошибки (MSE). RMSE — корень из него.')
+    close(got['RMSE'], np.sqrt(2.75), 'RMSE — корень из 2.75, {expected}, а у вас {actual}.')
+    if abs(got['R2'] - (1 - 11 / 54.75)) < 1e-6:
+        fail('В знаменателе R² — разброс настоящих значений вокруг их среднего, а не прогнозов.')
+    close(got['R2'], 0.45, 'R² = 1 − 11 / 20 = 0.45, а у вас {actual}.')
+    rep = var('report', dict, 'словарём')
+    yt, pr = ref('y_test'), ref('pred')
+    close(rep['MAE'], mean_absolute_error(yt, pr), 'MAE модели — {expected}, а у вас {actual}.')
+    close(rep['RMSE'], np.sqrt(mean_squared_error(yt, pr)), 'RMSE модели — {expected}, а у вас {actual}.')
+    close(rep['R2'], r2_score(yt, pr), 'R² модели — {expected}, а у вас {actual}.')
+  files: [diabetes.csv]
+  wrong:
+    - code: |
+        def regression_report(y_true, y_pred):
+            y_true, y_pred = np.asarray(y_true, dtype=float), np.asarray(y_pred, dtype=float)
+            err = y_true - y_pred
+            return {'MAE': np.abs(err).mean(), 'RMSE': (err ** 2).mean(),
+                    'R2': 1 - (err ** 2).sum() / ((y_true - y_true.mean()) ** 2).sum()}
+        report = regression_report(y_test, pred)
+      expect: MSE
+    - code: |
+        def regression_report(y_true, y_pred):
+            y_true, y_pred = np.asarray(y_true, dtype=float), np.asarray(y_pred, dtype=float)
+            err = y_true - y_pred
+            return {'MAE': np.abs(err).mean(), 'RMSE': np.sqrt((err ** 2).mean()),
+                    'R2': 1 - (err ** 2).sum() / ((y_pred - y_pred.mean()) ** 2).sum()}
+        report = regression_report(y_test, pred)
+      expect: разброс настоящих значений
+
+- id: k2-t3
+  title: "3. Масштаб признаков для kNN"
+  difficulty: main
+  introduces: []
+  uses: [standard-scaler, sk-pipeline, knn]
+  statement: |
+    Сравните kNN (10 соседей) без масштабирования и со стандартизацией признаков:
+
+    - `mae_raw` — MAE на проверочной части у `KNeighborsRegressor(n_neighbors=10)`, обученного на сырых признаках;
+    - `mae_scaled` — то же для конвейера `StandardScaler` → `KNeighborsRegressor(n_neighbors=10)`;
+    - `widest` — название признака с наибольшим стандартным отклонением на обучающей части: он сильнее всех влияет на расстояния без масштабирования.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.neighbors import KNeighborsRegressor
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import make_pipeline
+    from sklearn.metrics import mean_absolute_error
+    diabetes = pd.read_csv('diabetes.csv')
+    X, y = diabetes.drop(columns='target'), diabetes['target']
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+  starter: |
+    raw = KNeighborsRegressor(n_neighbors=10).fit(X_train, y_train)
+    mae_raw = mean_absolute_error(y_test, raw.predict(X_test))
+    scaled = make_pipeline(..., KNeighborsRegressor(n_neighbors=10)).fit(X_train, y_train)
+    mae_scaled = ...
+    widest = ...
+    print(round(mae_raw, 1), round(mae_scaled, 1), widest)
+  solution: |
+    raw = KNeighborsRegressor(n_neighbors=10).fit(X_train, y_train)
+    mae_raw = mean_absolute_error(y_test, raw.predict(X_test))
+    scaled = make_pipeline(StandardScaler(), KNeighborsRegressor(n_neighbors=10)).fit(X_train, y_train)
+    mae_scaled = mean_absolute_error(y_test, scaled.predict(X_test))
+    widest = X_train.std().idxmax()
+    print(round(mae_raw, 1), round(mae_scaled, 1), widest)
+  explanation: |
+    - kNN ищет соседей по расстоянию, а расстояние складывается из разностей признаков в их единицах. Признак с самым большим разбросом — здесь `s1`, его стандартное отклонение около 35 — решает почти всё, а пол (1 или 2) не значит почти ничего (урок 6.2).
+    - Стандартизация приводит каждый признак к среднему 0 и отклонению 1, и все признаки голосуют на равных (урок 5.7). В конвейере её параметры считаются только по обучающей части (урок 6.1).
+    - Ошибка упала с 51,8 до 45,1. Для линейной регрессии масштаб на прогноз не влияет, а для kNN — меняет самих соседей.
+  hints:
+    - "Первый шаг конвейера — `StandardScaler()`."
+    - "Ошибка конвейера — `mean_absolute_error(y_test, scaled.predict(X_test))`."
+    - "Признак с наибольшим разбросом — `X_train.std().idxmax()`."
+  tests: |
+    close(var('mae_raw', 'number', 'числом'), ref('mae_raw'), 'MAE без масштабирования — {expected}, а у вас {actual}.')
+    ms = var('mae_scaled', 'number', 'числом')
+    if abs(ms - ref('mae_raw')) < 1e-9:
+        fail('mae_scaled совпадает с mae_raw: в конвейере нет StandardScaler.')
+    close(ms, ref('mae_scaled'), 'MAE со стандартизацией — {expected}, а у вас {actual}. Стандартизация — шаг конвейера: её параметры считаются только по обучающей части.')
+    equal(var('widest', str, 'строкой'), ref('widest'), 'Наибольший разброс у признака {expected}, а у вас {actual}.')
+    close(alt('mae_scaled'), alt_ref('mae_scaled'), HARDCODE_MSG)
+  files: [diabetes.csv]
+  wrong:
+    - code: |
+        raw = KNeighborsRegressor(n_neighbors=10).fit(X_train, y_train)
+        mae_raw = mean_absolute_error(y_test, raw.predict(X_test))
+        scaled = make_pipeline(KNeighborsRegressor(n_neighbors=10)).fit(X_train, y_train)
+        mae_scaled = mean_absolute_error(y_test, scaled.predict(X_test))
+        widest = X_train.std().idxmax()
+      expect: нет StandardScaler
+    - code: |
+        raw = KNeighborsRegressor(n_neighbors=10).fit(X_train, y_train)
+        mae_raw = mean_absolute_error(y_test, raw.predict(X_test))
+        knn = KNeighborsRegressor(n_neighbors=10).fit(StandardScaler().fit_transform(X_train), y_train)
+        mae_scaled = mean_absolute_error(y_test, knn.predict(StandardScaler().fit_transform(X_test)))
+        widest = X_train.std().idxmax()
+      expect: шаг конвейера
+
+- id: k2-t4
+  title: "4. Выбор k по валидации"
+  difficulty: main
+  introduces: []
+  uses: [hyperparameter, validation-curve, train-valid-test]
+  statement: |
+    Данные разбиты на три части, как в мини-проекте 5.10: `X_train` (60 %), `X_valid` (20 %), `X_test` (20 %), а `X_temp` — обучающая и валидационная вместе.
+
+    1. Для каждого `k` из `ks` (1, 3, 5, …, 51) обучите конвейер «стандартизация → kNN с `k` соседями» на `X_train` и посчитайте MAE на `X_valid`: список `val_mae`.
+    2. `best_k` — `k` с наименьшей ошибкой на валидации.
+    3. Обучите конвейер с `best_k` на `X_temp` и получите `test_mae` — итоговую ошибку на `X_test`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.neighbors import KNeighborsRegressor
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import make_pipeline
+    from sklearn.metrics import mean_absolute_error
+    diabetes = pd.read_csv('diabetes.csv')
+    X, y = diabetes.drop(columns='target'), diabetes['target']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    ks = list(range(1, 52, 2))
+  starter: |
+    val_mae = []
+    for k in ks:
+        model = make_pipeline(StandardScaler(), KNeighborsRegressor(n_neighbors=k)).fit(X_train, y_train)
+        val_mae.append(...)
+    best_k = ...
+    final = make_pipeline(StandardScaler(), KNeighborsRegressor(n_neighbors=best_k)).fit(X_temp, y_temp)
+    test_mae = mean_absolute_error(y_test, final.predict(X_test))
+    print(best_k, round(min(val_mae), 1), round(test_mae, 1))
+  solution: |
+    val_mae = []
+    for k in ks:
+        model = make_pipeline(StandardScaler(), KNeighborsRegressor(n_neighbors=k)).fit(X_train, y_train)
+        val_mae.append(mean_absolute_error(y_valid, model.predict(X_valid)))
+    best_k = ks[int(np.argmin(val_mae))]
+    final = make_pipeline(StandardScaler(), KNeighborsRegressor(n_neighbors=best_k)).fit(X_temp, y_temp)
+    test_mae = mean_absolute_error(y_test, final.predict(X_test))
+    print(best_k, round(min(val_mae), 1), round(test_mae, 1))
+  explanation: |
+    - `k` — гиперпараметр: модель его не учит, его выбирают по ошибке на валидации (урок 6.3). Тестовая часть в выборе не участвует, иначе её оценка стала бы оптимистичной.
+    - `np.argmin(val_mae)` — номер наименьшей ошибки, `ks[...]` — сам `k`. При малых `k` модель повторяет шум соседей, при больших — усредняет слишком многих: кривая валидации похожа на корыто.
+    - Лучшее `k` — 11, ошибка на валидации 43,9. После выбора модель обучают заново на обучающей и валидационной частях вместе — данных больше, а `k` уже зафиксирован. Тестовую часть открывают один раз: итоговая ошибка 45,6.
+  hints:
+    - "Ошибка на валидации — `mean_absolute_error(y_valid, model.predict(X_valid))`."
+    - "Номер наименьшей ошибки — `np.argmin(val_mae)`; `best_k = ks[int(np.argmin(val_mae))]`."
+    - "Итоговая модель учится на `X_temp`, `y_temp` — это уже в заготовке."
+  tests: |
+    import numpy as np
+    vm = var('val_mae', list, 'списком')
+    ensure(len(vm) == len(ref('ks')), 'В val_mae должна быть ошибка для каждого k из ks.')
+    same_array(np.asarray(vm, dtype=float), np.asarray(ref('val_mae'), dtype=float), 'Ошибки на валидации не совпадают: модель учат на X_train, а проверяют на X_valid. По тестовой части k не выбирают.')
+    bk = var('best_k', 'int', 'целым числом')
+    if bk == ref('ks')[int(np.argmax(ref('val_mae')))]:
+        fail('Выбран k с наибольшей ошибкой. Нужен k с наименьшей: np.argmin.')
+    equal(int(bk), int(ref('best_k')), 'Лучшее k — {expected}, а у вас {actual}.')
+    close(var('test_mae', 'number', 'числом'), ref('test_mae'), 'Итоговая MAE на тесте — {expected}, а у вас {actual}.')
+  files: [diabetes.csv]
+  wrong:
+    - code: |
+        val_mae = []
+        for k in ks:
+            model = make_pipeline(StandardScaler(), KNeighborsRegressor(n_neighbors=k)).fit(X_train, y_train)
+            val_mae.append(mean_absolute_error(y_test, model.predict(X_test)))
+        best_k = ks[int(np.argmin(val_mae))]
+        final = make_pipeline(StandardScaler(), KNeighborsRegressor(n_neighbors=best_k)).fit(X_temp, y_temp)
+        test_mae = mean_absolute_error(y_test, final.predict(X_test))
+      expect: По тестовой части k не выбирают
+    - code: |
+        val_mae = []
+        for k in ks:
+            model = make_pipeline(StandardScaler(), KNeighborsRegressor(n_neighbors=k)).fit(X_train, y_train)
+            val_mae.append(mean_absolute_error(y_valid, model.predict(X_valid)))
+        best_k = ks[int(np.argmax(val_mae))]
+        final = make_pipeline(StandardScaler(), KNeighborsRegressor(n_neighbors=best_k)).fit(X_temp, y_temp)
+        test_mae = mean_absolute_error(y_test, final.predict(X_test))
+      expect: наибольшей ошибкой
+
+- id: k2-t5
+  title: "5. Глубина дерева и переобучение"
+  difficulty: main
+  introduces: []
+  uses: [decision-tree, tree-depth, overfitting]
+  statement: |
+    Обучите на `X_train` деревья решений `DecisionTreeRegressor(max_depth=d, random_state=42)` для глубин `d` от 1 до 10. Для каждой посчитайте MAE на обучающей части (`train_mae`) и на валидационной (`val_mae`).
+
+    - `best_depth` — глубина с наименьшей ошибкой на валидации;
+    - `gap_10` — насколько на глубине 10 ошибка на валидации больше ошибки на обучающей части.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.tree import DecisionTreeRegressor
+    from sklearn.metrics import mean_absolute_error
+    diabetes = pd.read_csv('diabetes.csv')
+    X, y = diabetes.drop(columns='target'), diabetes['target']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    depths = list(range(1, 11))
+  starter: |
+    train_mae, val_mae = [], []
+    for d in depths:
+        tree = DecisionTreeRegressor(max_depth=d, random_state=42).fit(X_train, y_train)
+        train_mae.append(mean_absolute_error(y_train, tree.predict(X_train)))
+        val_mae.append(...)
+    best_depth = ...
+    gap_10 = ...
+    print(best_depth, round(gap_10, 1))
+  solution: |
+    train_mae, val_mae = [], []
+    for d in depths:
+        tree = DecisionTreeRegressor(max_depth=d, random_state=42).fit(X_train, y_train)
+        train_mae.append(mean_absolute_error(y_train, tree.predict(X_train)))
+        val_mae.append(mean_absolute_error(y_valid, tree.predict(X_valid)))
+    best_depth = depths[int(np.argmin(val_mae))]
+    gap_10 = val_mae[-1] - train_mae[-1]
+    print(best_depth, round(gap_10, 1))
+  explanation: |
+    - Ошибка на обучающей части с глубиной только падает: глубокое дерево разбивает данные почти до отдельных пациентов и запоминает их (урок 6.5).
+    - Ошибка на валидации сначала падает, потом растёт — это переобучение (урок 5.3). Лучшую глубину выбирают по валидации.
+    - На глубине 10 ошибка на обучающей части всего 6,6, а на валидации — 51,5: разрыв 44,9. Это мера того, сколько дерево запомнило вместо того, чтобы понять.
+    - Лучшей по валидации вышла глубина 7, но глубина 3 отстаёт лишь на сотые: 46,57 против 46,56. На 89 пациентах валидации такая разница случайна. Разумнее взять дерево попроще или сравнить глубины кросс-валидацией, как в задаче 6.
+  hints:
+    - "Ошибка на валидации — `mean_absolute_error(y_valid, tree.predict(X_valid))`."
+    - "Лучшая глубина — `depths[int(np.argmin(val_mae))]`."
+    - "Разрыв на глубине 10 — последние элементы списков: `val_mae[-1] - train_mae[-1]`."
+  tests: |
+    import numpy as np
+    vm = var('val_mae', list, 'списком')
+    same_array(np.asarray(vm, dtype=float), np.asarray(ref('val_mae'), dtype=float), 'Ошибки на валидации не совпадают с ожидаемыми: дерево учат на X_train, проверяют на X_valid.')
+    bd = var('best_depth', 'int', 'целым числом')
+    if bd == 10 and ref('best_depth') != 10:
+        fail('Глубина 10 — лучшая по обучающей части: там глубже всегда лучше. Выбирайте по валидации.')
+    equal(int(bd), int(ref('best_depth')), 'Лучшая глубина — {expected}, а у вас {actual}.')
+    g = var('gap_10', 'number', 'числом')
+    if g < 0:
+        fail('Разрыв — ошибка на валидации минус ошибка на обучающей части: он положительный.')
+    close(g, ref('gap_10'), 'Разрыв на глубине 10 — {expected}, а у вас {actual}.')
+  files: [diabetes.csv]
+  wrong:
+    - code: |
+        train_mae, val_mae = [], []
+        for d in depths:
+            tree = DecisionTreeRegressor(max_depth=d, random_state=42).fit(X_train, y_train)
+            train_mae.append(mean_absolute_error(y_train, tree.predict(X_train)))
+            val_mae.append(mean_absolute_error(y_valid, tree.predict(X_valid)))
+        best_depth = depths[int(np.argmin(train_mae))]
+        gap_10 = val_mae[-1] - train_mae[-1]
+      expect: Выбирайте по валидации
+    - code: |
+        train_mae, val_mae = [], []
+        for d in depths:
+            tree = DecisionTreeRegressor(max_depth=d, random_state=42).fit(X_train, y_train)
+            train_mae.append(mean_absolute_error(y_train, tree.predict(X_train)))
+            val_mae.append(mean_absolute_error(y_valid, tree.predict(X_valid)))
+        best_depth = depths[int(np.argmin(val_mae))]
+        gap_10 = train_mae[-1] - val_mae[-1]
+      expect: он положительный
+
+- id: k2-t6
+  title: "6. Кросс-валидация: лес против линейной модели"
+  difficulty: main
+  introduces: []
+  uses: [k-fold-cv, random-forest, model-comparison]
+  statement: |
+    Сравните две модели кросс-валидацией на обучающей части `X_train` (80 % данных) с блоками `KFold(n_splits=5, shuffle=True, random_state=42)`:
+
+    - `cv_lr` — средняя MAE по блокам у линейной регрессии;
+    - `cv_rf` — то же у случайного леса `RandomForestRegressor(n_estimators=50, max_depth=5, random_state=42)`;
+    - `better` — строка `'линейная'` или `'лес'`: у какой модели средняя MAE меньше.
+
+    `cross_val_score` с `scoring='neg_mean_absolute_error'` возвращает MAE **со знаком минус**.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split, cross_val_score, KFold
+    from sklearn.linear_model import LinearRegression
+    from sklearn.ensemble import RandomForestRegressor
+    diabetes = pd.read_csv('diabetes.csv')
+    X, y = diabetes.drop(columns='target'), diabetes['target']
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+  starter: |
+    cv = KFold(n_splits=5, shuffle=True, random_state=42)
+
+    def cv_mae(model):
+        scores = cross_val_score(model, X_train, y_train, cv=cv, scoring='neg_mean_absolute_error')
+        return ...
+
+    cv_lr = cv_mae(LinearRegression())
+    cv_rf = cv_mae(RandomForestRegressor(n_estimators=50, max_depth=5, random_state=42))
+    better = ...
+    print(round(cv_lr, 1), round(cv_rf, 1), better)
+  solution: |
+    cv = KFold(n_splits=5, shuffle=True, random_state=42)
+
+    def cv_mae(model):
+        scores = cross_val_score(model, X_train, y_train, cv=cv, scoring='neg_mean_absolute_error')
+        return float(-scores.mean())
+
+    cv_lr = cv_mae(LinearRegression())
+    cv_rf = cv_mae(RandomForestRegressor(n_estimators=50, max_depth=5, random_state=42))
+    better = 'линейная' if cv_lr < cv_rf else 'лес'
+    print(round(cv_lr, 1), round(cv_rf, 1), better)
+  explanation: |
+    - Кросс-валидация обучает модель пять раз, каждый раз проверяя на другом блоке (урок 6.8). Среднее по пяти оценкам надёжнее одной валидационной части, особенно на маленьких данных — здесь всего 353 пациента.
+    - sklearn всегда максимизирует оценку, поэтому ошибки отдаёт со знаком минус. `-scores.mean()` возвращает обычную MAE.
+    - Линейная регрессия выигрывает у леса: 45,0 против 48,2. На небольших данных с почти линейной связью простая модель часто не уступает сложной — поэтому кандидатов сравнивают, а не выбирают самого модного (урок 6.7).
+  hints:
+    - "Оценки отрицательные — средняя MAE: `-scores.mean()`."
+    - "Лучше та модель, у которой средняя MAE меньше."
+    - "`better = 'линейная' if cv_lr < cv_rf else 'лес'`."
+  tests: |
+    a = var('cv_lr', 'number', 'числом')
+    b = var('cv_rf', 'number', 'числом')
+    if a < 0 or b < 0:
+        fail('MAE получилась отрицательной: cross_val_score с neg_mean_absolute_error отдаёт MAE со знаком минус — уберите его.')
+    close(a, ref('cv_lr'), 'Средняя MAE линейной регрессии — {expected}, а у вас {actual}. Блоки — KFold(n_splits=5, shuffle=True, random_state=42).')
+    close(b, ref('cv_rf'), 'Средняя MAE леса — {expected}, а у вас {actual}.')
+    equal(var('better', str, 'строкой'), ref('better'), 'Лучше модель «{expected}», а у вас «{actual}».')
+  files: [diabetes.csv]
+  wrong:
+    - code: |
+        cv = KFold(n_splits=5, shuffle=True, random_state=42)
+        def cv_mae(model):
+            return float(cross_val_score(model, X_train, y_train, cv=cv, scoring='neg_mean_absolute_error').mean())
+        cv_lr = cv_mae(LinearRegression())
+        cv_rf = cv_mae(RandomForestRegressor(n_estimators=50, max_depth=5, random_state=42))
+        better = 'линейная' if cv_lr < cv_rf else 'лес'
+      expect: со знаком минус
+    - code: |
+        def cv_mae(model):
+            return float(-cross_val_score(model, X_train, y_train, cv=5, scoring='neg_mean_absolute_error').mean())
+        cv_lr = cv_mae(LinearRegression())
+        cv_rf = cv_mae(RandomForestRegressor(n_estimators=50, max_depth=5, random_state=42))
+        better = 'линейная' if cv_lr < cv_rf else 'лес'
+      expect: shuffle=True
+
+- id: k2-t7
+  title: "7. Кодирование средним без утечки"
+  difficulty: main
+  introduces: []
+  uses: [target-encoding, data-leakage]
+  statement: |
+    Модель машины (`Model`) — категория с сотнями значений. Закодируем её средней ценой машин этой модели и посмотрим, насколько хорош такой признак сам по себе как прогноз цены.
+
+    Напишите функцию `encode(fit_part, apply_to)`: средняя `Price` каждой модели по таблице `fit_part`, подставленная в таблицу `apply_to`. Моделям, которых в `fit_part` нет, — средняя цена по всей `fit_part`.
+
+    - `mae_honest` — MAE на `test`, если средние посчитаны только по `train`;
+    - `mae_leaky` — то же, если средние посчитаны по `train` и `test` вместе;
+    - `unseen` — доля машин `test`, модели которых нет в `train`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    cars = pd.read_csv('cars_processed.csv')
+    train, test = train_test_split(cars, test_size=0.2, random_state=42)
+  starter: |
+    def encode(fit_part, apply_to):
+        means = fit_part.groupby('Model')['Price'].mean()
+        return apply_to['Model'].map(means).fillna(...)
+
+    mae_honest = (test['Price'] - encode(train, test)).abs().mean()
+    mae_leaky = ...
+    unseen = ...
+    print(round(mae_honest), round(mae_leaky), round(unseen, 3))
+  solution: |
+    def encode(fit_part, apply_to):
+        means = fit_part.groupby('Model')['Price'].mean()
+        return apply_to['Model'].map(means).fillna(fit_part['Price'].mean())
+
+    mae_honest = (test['Price'] - encode(train, test)).abs().mean()
+    mae_leaky = (test['Price'] - encode(pd.concat([train, test]), test)).abs().mean()
+    unseen = (~test['Model'].isin(train['Model'])).mean()
+    print(round(mae_honest), round(mae_leaky), round(unseen, 3))
+  explanation: |
+    - `map(means)` подставляет каждой машине среднюю цену её модели, а `fillna` закрывает модели, которых в обучающей части нет. Для них честного среднего просто не существует.
+    - Если средние считать по всем данным, в среднее для машины из `test` входит её собственная цена. У моделей, которые встречаются один-два раза, «прогноз» почти совпадает с ответом. Это утечка из урока 7.5.
+    - В среднем утечка небольшая: 4093 вместо 4224 евро. У большинства моделей много машин, и одна машина почти не сдвигает среднее. Но у 144 машин теста с редкими моделями (не больше пяти машин во всей таблице) ошибка с утечкой — 1863 евро вместо честных 4834: там «прогноз» почти совпадает с ответом.
+    - На новых машинах модель покажет честную ошибку, а не красивую. Поэтому целевое кодирование учат только на обучающей части — внутри конвейера или по блокам кросс-валидации. Неизвестных моделей в тесте всего 0,4 %.
+  hints:
+    - "Для неизвестных моделей — средняя цена всей таблицы: `fillna(fit_part['Price'].mean())`."
+    - "Средние с утечкой — по объединённой таблице: `encode(pd.concat([train, test]), test)`."
+    - "Доля неизвестных моделей — `(~test['Model'].isin(train['Model'])).mean()`."
+  tests: |
+    import pandas as pd
+    f = var('encode')
+    ensure(callable(f), '`encode` должна быть функцией.')
+    fit = pd.DataFrame({'Model': ['a', 'a', 'b'], 'Price': [10.0, 20.0, 40.0]})
+    app = pd.DataFrame({'Model': ['a', 'b', 'c']})
+    got = list(pd.Series(f(fit, app)).astype(float))
+    if got[2] == 0:
+        fail('Неизвестной модели подставлен 0. Подставьте среднюю цену всей таблицы fit_part.')
+    equal(got, [15.0, 40.0, 70 / 3], 'Для моделей a, b и неизвестной c ожидалось {expected}, а у вас {actual}.')
+    mh = var('mae_honest', 'number', 'числом')
+    if abs(mh - ref('mae_leaky')) < 1e-6:
+        fail('Честная ошибка совпала с ошибкой с утечкой. Средние для честной оценки считают только по train.')
+    close(mh, ref('mae_honest'), 'Честная MAE — {expected}, а у вас {actual}.')
+    close(var('mae_leaky', 'number', 'числом'), ref('mae_leaky'), 'MAE с утечкой — {expected}, а у вас {actual}.')
+    close(var('unseen', 'number', 'числом'), ref('unseen'), 'Доля машин с моделью, которой нет в train, — {expected}, а у вас {actual}.')
+    close(alt('mae_honest'), alt_ref('mae_honest'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def encode(fit_part, apply_to):
+            means = fit_part.groupby('Model')['Price'].mean()
+            return apply_to['Model'].map(means).fillna(0)
+        mae_honest = (test['Price'] - encode(train, test)).abs().mean()
+        mae_leaky = (test['Price'] - encode(pd.concat([train, test]), test)).abs().mean()
+        unseen = (~test['Model'].isin(train['Model'])).mean()
+      expect: подставлен 0
+    - code: |
+        def encode(fit_part, apply_to):
+            means = fit_part.groupby('Model')['Price'].mean()
+            return apply_to['Model'].map(means).fillna(fit_part['Price'].mean())
+        mae_honest = (test['Price'] - encode(pd.concat([train, test]), test)).abs().mean()
+        mae_leaky = mae_honest
+        unseen = (~test['Model'].isin(train['Model'])).mean()
+      expect: только по train
+
+- id: k2-t8
+  title: "8. Нейросеть на полумесяцах"
+  difficulty: main
+  introduces: []
+  uses: [mlp, binary-classification]
+  statement: |
+    Точки двух классов на плоскости лежат двумя вложенными полумесяцами (урок 8.7). Обучите на обучающей части две модели:
+
+    - логистическую регрессию `LogisticRegression()`;
+    - нейросеть `MLPClassifier(hidden_layer_sizes=(16, 8), learning_rate_init=0.01, max_iter=2000, random_state=42)`.
+
+    Получите доли верных ответов на проверочной части `acc_lr` и `acc_mlp`, а также `fixed_by_mlp` — сколько точек проверочной части логистическая регрессия классифицирует неверно, а сеть — верно.
+  prelude: |
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.neural_network import MLPClassifier
+    from sklearn.exceptions import ConvergenceWarning
+    warnings.filterwarnings('ignore', category=ConvergenceWarning)
+    moons = pd.read_csv('moons.csv')
+    X, y = moons[['x1', 'x2']], moons['label']
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
+  starter: |
+    lr = LogisticRegression().fit(X_train, y_train)
+    mlp = MLPClassifier(hidden_layer_sizes=(16, 8), learning_rate_init=0.01, max_iter=2000, random_state=42).fit(X_train, y_train)
+    pred_lr, pred_mlp = lr.predict(X_test), mlp.predict(X_test)
+    acc_lr = ...
+    acc_mlp = ...
+    fixed_by_mlp = ...
+    print(round(acc_lr, 3), round(acc_mlp, 3), fixed_by_mlp)
+  solution: |
+    lr = LogisticRegression().fit(X_train, y_train)
+    mlp = MLPClassifier(hidden_layer_sizes=(16, 8), learning_rate_init=0.01, max_iter=2000, random_state=42).fit(X_train, y_train)
+    pred_lr, pred_mlp = lr.predict(X_test), mlp.predict(X_test)
+    acc_lr = float((pred_lr == y_test).mean())
+    acc_mlp = float((pred_mlp == y_test).mean())
+    fixed_by_mlp = int(((pred_lr != y_test) & (pred_mlp == y_test)).sum())
+    print(round(acc_lr, 3), round(acc_mlp, 3), fixed_by_mlp)
+  explanation: |
+    - Доля верных — среднее логической маски `pred == y_test` (урок 8.7).
+    - Граница решений логистической регрессии — прямая. Полумесяцы прямой не разделить, и кончики полумесяцев она отдаёт чужому классу. Сеть с двумя скрытыми слоями и ReLU проводит изогнутую границу и исправляет большую часть этих точек.
+    - Маска `(pred_lr != y_test) & (pred_mlp == y_test)` выбирает точки, где ошиблась только регрессия. Обратная маска показала бы, где ошиблась только сеть: такие точки тоже бывают — в зоне, где полумесяцы перекрываются шумом.
+  hints:
+    - "Доля верных — `(pred_lr == y_test).mean()`."
+    - "Регрессия ошиблась — `pred_lr != y_test`, сеть права — `pred_mlp == y_test`."
+    - "`fixed_by_mlp = int(((pred_lr != y_test) & (pred_mlp == y_test)).sum())`."
+  tests: |
+    close(var('acc_lr', 'number', 'числом'), ref('acc_lr'), 'Доля верных логистической регрессии на проверочной части — {expected}, а у вас {actual}.')
+    close(var('acc_mlp', 'number', 'числом'), ref('acc_mlp'), 'Доля верных нейросети на проверочной части — {expected}, а у вас {actual}.')
+    fx = var('fixed_by_mlp', 'int', 'целым числом')
+    if fx == int((ref('pred_mlp') == ref('y_test')).sum()):
+        fail('Это все точки, где права сеть. Нужны только те, где регрессия ошиблась, а сеть права.')
+    equal(int(fx), int(ref('fixed_by_mlp')), 'Точек, исправленных сетью, — {expected}, а у вас {actual}.')
+  files: [moons.csv]
+  wrong:
+    - code: |
+        lr = LogisticRegression().fit(X_train, y_train)
+        mlp = MLPClassifier(hidden_layer_sizes=(16, 8), learning_rate_init=0.01, max_iter=2000, random_state=42).fit(X_train, y_train)
+        pred_lr, pred_mlp = lr.predict(X_test), mlp.predict(X_test)
+        acc_lr = float((lr.predict(X_train) == y_train).mean())
+        acc_mlp = float((mlp.predict(X_train) == y_train).mean())
+        fixed_by_mlp = int(((pred_lr != y_test) & (pred_mlp == y_test)).sum())
+      expect: на проверочной части
+    - code: |
+        lr = LogisticRegression().fit(X_train, y_train)
+        mlp = MLPClassifier(hidden_layer_sizes=(16, 8), learning_rate_init=0.01, max_iter=2000, random_state=42).fit(X_train, y_train)
+        pred_lr, pred_mlp = lr.predict(X_test), mlp.predict(X_test)
+        acc_lr = float((pred_lr == y_test).mean())
+        acc_mlp = float((pred_mlp == y_test).mean())
+        fixed_by_mlp = int((pred_mlp == y_test).sum())
+      expect: все точки, где права сеть
+
+- id: k2-t9
+  title: "9. Логиты и softmax"
+  difficulty: main
+  introduces: []
+  uses: [logits]
+  statement: |
+    Модель DistilBERT, дообученная на английских отзывах о фильмах (урок 9.6), выдала для каждого из 88 отзывов `reviews` два логита: `logits[:, 0]` — NEGATIVE, `logits[:, 1]` — POSITIVE. Правильные ответы — столбец `label` (1 — положительный).
+
+    1. Напишите функцию `softmax(z)` для матрицы логитов: вероятности по строкам. Чтобы `exp` не переполнился, вычтите из каждой строки её максимум.
+    2. `pred` — номер класса с наибольшей вероятностью. `acc_by_lang` — словарь «язык отзыва (столбец `lang`) → доля верных».
+    3. `sure_wrong` — сколько отзывов модель классифицировала **неверно**, но с вероятностью больше 0,9.
+  prelude: |
+    import json
+    import numpy as np
+    import pandas as pd
+    reviews = pd.read_csv('reviews.csv')
+    with open('sst2_logits.json', encoding='utf-8') as fh:
+        logits = np.array([e['logits'] for e in json.load(fh)['examples']])
+  starter: |
+    def softmax(z):
+        z = z - z.max(axis=1, keepdims=True)
+        e = np.exp(z)
+        return ...
+
+    probs = softmax(logits)
+    pred = probs.argmax(axis=1)
+    acc_by_lang = ...
+    sure_wrong = ...
+    print(acc_by_lang, sure_wrong)
+  solution: |
+    def softmax(z):
+        z = z - z.max(axis=1, keepdims=True)
+        e = np.exp(z)
+        return e / e.sum(axis=1, keepdims=True)
+
+    probs = softmax(logits)
+    pred = probs.argmax(axis=1)
+    acc_by_lang = reviews.assign(ok=pred == reviews['label'].to_numpy()).groupby('lang')['ok'].mean().to_dict()
+    sure_wrong = int(((probs.max(axis=1) > 0.9) & (pred != reviews['label'].to_numpy())).sum())
+    print(acc_by_lang, sure_wrong)
+  explanation: |
+    - Softmax превращает логиты строки в вероятности: экспонента каждого, делённая на сумму экспонент **этой строки** — `keepdims=True` оставляет сумму столбцом. Вычитание максимума не меняет ответ, но спасает `exp` от переполнения на больших логитах.
+    - На 80 английских отзывах модель верна в 95 % случаев, на 8 русских — в 75 %. Её учили на английских текстах о фильмах, а русские слова токенизатор режет на бессмысленные куски (урок 9.5).
+    - Опаснее всего уверенные ошибки: модель ошиблась, а вероятность выше 0,9. Таких 4, и три из них — на английских отзывах не о фильмах, например «The service could not have been better». Высокая вероятность — не гарантия правоты, особенно на данных не того вида, на которых модель учили.
+  hints:
+    - "Сумма по строке столбцом — `e.sum(axis=1, keepdims=True)`; вероятности — `e / ...`."
+    - "Доли по языкам — `reviews.assign(ok=pred == reviews['label'].to_numpy()).groupby('lang')['ok'].mean().to_dict()`."
+    - "Уверенные ошибки — `(probs.max(axis=1) > 0.9) & (pred != reviews['label'].to_numpy())`, затем `.sum()`."
+  tests: |
+    import numpy as np
+    f = var('softmax')
+    ensure(callable(f), '`softmax` должна быть функцией.')
+    got = np.asarray(f(np.array([[0.0, 0.0], [1.0, 3.0]])))
+    if abs(got.sum() - 1) < 1e-9:
+        fail('Вероятности нормированы по всей матрице. Делите на сумму каждой строки: e.sum(axis=1, keepdims=True).')
+    same_array(got, [[0.5, 0.5], [1 / (1 + np.exp(2)), 1 / (1 + np.exp(-2))]], 'Для логитов [0, 0] и [1, 3] вероятности — [0.5, 0.5] и [0.119, 0.881].')
+    big = np.asarray(f(np.array([[1000.0, 999.0]])))
+    ensure(np.isfinite(big).all(), 'Получилось nan: exp(1000) переполнился. Вычтите из каждой строки её максимум.')
+    by = var('acc_by_lang', dict, 'словарём')
+    exp = ref('acc_by_lang')
+    equal(sorted(by), sorted(exp), 'Языки отзывов — {expected}, а у вас {actual}.')
+    for k in exp:
+        close(by[k], exp[k], 'Доля верных для языка ' + k + ' — {expected}, а у вас {actual}.')
+    sw = var('sure_wrong', 'int', 'целым числом')
+    equal(int(sw), int(ref('sure_wrong')), 'Уверенных ошибок — {expected}, а у вас {actual}. Нужны отзывы, где модель ошиблась и при этом уверена больше чем на 0.9.')
+  files: [sst2_logits.json, reviews.csv]
+  wrong:
+    - code: |
+        def softmax(z):
+            e = np.exp(z - z.max())
+            return e / e.sum()
+        probs = softmax(logits)
+        pred = probs.argmax(axis=1)
+        acc_by_lang = reviews.assign(ok=pred == reviews['label'].to_numpy()).groupby('lang')['ok'].mean().to_dict()
+        sure_wrong = int(((probs.max(axis=1) > 0.9) & (pred != reviews['label'].to_numpy())).sum())
+      expect: по всей матрице
+    - code: |
+        def softmax(z):
+            z = z - z.max(axis=1, keepdims=True)
+            e = np.exp(z)
+            return e / e.sum(axis=1, keepdims=True)
+        probs = softmax(logits)
+        pred = probs.argmax(axis=1)
+        acc_by_lang = reviews.assign(ok=pred == reviews['label'].to_numpy()).groupby('lang')['ok'].mean().to_dict()
+        sure_wrong = int((probs.max(axis=1) > 0.9).sum())
+      expect: модель ошиблась и при этом уверена
+
+- id: k2-t10
+  kind: quiz
+  title: "10. Вопросы на понимание"
+  difficulty: main
+  introduces: []
+  uses: [overfitting, data-leakage, model-comparison]
+  statement: |
+    Проверьте, как вы понимаете выбор и проверку моделей.
+  quiz:
+    - q: Дерево глубины 15 ошибается на обучающей части почти на 0, а на валидации — сильнее дерева глубины 3. Что произошло?
+      options:
+        - Переобучение — глубокое дерево запомнило обучающие примеры
+        - Недообучение — дереву не хватило глубины
+        - Утечка — в валидацию попали обучающие примеры
+      answer: 0
+      explain: Ошибка на обучающей части падает с глубиной всегда; о качестве на новых данных говорит только валидация.
+    - q: Где есть утечка данных? Выберите все.
+      options:
+        - StandardScaler обучили на всех данных до разбиения
+        - Модель машины закодировали средней ценой по всей таблице, включая тест
+        - Гиперпараметр k выбрали по ошибке на тестовой части
+        - Средние для заполнения пропусков посчитали по обучающей части внутри конвейера
+      answer: [0, 1, 2]
+      explain: Во всех трёх первых случаях проверочные данные влияли на модель или на выбор. Расчёт внутри конвейера по обучающей части — правильный способ.
+    - q: Лес по кросс-валидации ошибается на 48,2, линейная регрессия — на 45,0. Что разумно сделать?
+      options:
+        - Выбрать линейную модель — она не хуже и проще
+        - Выбрать лес — сложная модель всегда лучше
+        - Взять ту, что лучше на тестовой части, проверив обе
+      answer: 0
+      explain: Модель выбирают по валидации или кросс-валидации; тестовую часть открывают один раз для выбранной модели. Если качество близко, предпочитают простую.
+    - q: Почему kNN нужна стандартизация признаков, а линейной регрессии на качество прогноза она не влияет?
+      options:
+        - kNN считает расстояния, и признак с большим разбросом подавляет остальные; регрессия подстраивает коэффициенты под масштаб сама
+        - Стандартизация всегда улучшает любую модель
+        - Линейной регрессии стандартизация запрещена
+      answer: 0
+      explain: Для линейной регрессии стандартизация меняет коэффициенты, но не прогнозы. Для kNN она меняет самих соседей.
+  hints:
+    - "Вспомните уроки 5.3–5.7, 6.2 и 6.7."
+    - "Ошибка на обучающей части почти 0 — запоминание; утечка — когда проверочные данные влияют на модель; из близких по качеству выбирают простую."
+    - "Ответы: 1 — переобучение; 2 — первые три; 3 — линейная; 4 — расстояния у kNN."

@@ -1,0 +1,508 @@
+- id: m10-l5-t1
+  title: Число после «Ответ»
+  difficulty: warmup
+  introduces: [structured-output]
+  uses: []
+  statement: |
+    Напишите функцию `final_number(text)` — числовой ответ из текста модели:
+
+    - если в тексте есть слово «Ответ», берётся первое число после **последнего** его вхождения;
+    - если после него чисел нет или слова «Ответ» нет совсем — последнее число всего текста;
+    - если чисел в тексте нет — `None`.
+
+    Число возвращается как `int`. Получите `finals` — список результатов `final_number` для ответов `notebook['cot-1']`, `notebook['cot-2']` и `notebook['calc-final']` (текст — поле `'response'`).
+  prelude: |
+    import json
+    import re
+    with open('gigachat_notebook.json', encoding='utf-8') as fh:
+        notebook = {r['id']: r for r in json.load(fh)['records']}
+  starter: |
+    def final_number(text):
+        numbers = re.findall(r'\d+', text)
+        if not numbers:
+            return None
+        if 'Ответ' in text:
+            after = re.findall(r'\d+', text[...:])
+            if after:
+                return ...
+        return ...
+
+    finals = [final_number(notebook[k]['response']) for k in ['cot-1', 'cot-2', 'calc-final']]
+    print(finals)
+  solution: |
+    def final_number(text):
+        numbers = re.findall(r'\d+', text)
+        if not numbers:
+            return None
+        if 'Ответ' in text:
+            after = re.findall(r'\d+', text[text.rfind('Ответ'):])
+            if after:
+                return int(after[0])
+        return int(numbers[-1])
+
+    finals = [final_number(notebook[k]['response']) for k in ['cot-1', 'cot-2', 'calc-final']]
+    print(finals)
+  explanation: |
+    - `text.rfind('Ответ')` находит последнее вхождение слова. В рассуждениях «шаг за шагом» оно стоит в разделе с итогом, а числа до него — шаги и промежуточные вычисления.
+    - В ответе калькулятора слова «Ответ» нет, и выручает последнее число — 243.
+    - Получилось 18, 400 и 243 — все три верны. Но правило всё равно угадывает формат по тексту. Надёжнее попросить формат явно и разбирать его строго.
+  hints:
+    - "Текст после последнего «Ответ» — `text[text.rfind('Ответ'):]`."
+    - "Первое число после него — `int(after[0])`, последнее во всём тексте — `int(numbers[-1])`."
+    - "`re.findall` возвращает строки — не забудьте `int(...)`."
+  tests: |
+    f = var('final_number')
+    ensure(callable(f), '`final_number` должна быть функцией.')
+    got = f('Шаг 1. Считаем 2 + 2 = 4.\nОтвет: 4')
+    ensure(got is not None, 'Для «Шаг 1. Считаем 2 + 2 = 4. Ответ: 4» функция вернула None, а ожидалось 4.')
+    if isinstance(got, str):
+        fail('Число нужно вернуть как int: `int(...)`.')
+    if got == 1:
+        fail('Первое число всего текста — номер шага. Берите первое число после слова «Ответ».')
+    equal(got, 4, 'Для «Шаг 1. Считаем 2 + 2 = 4. Ответ: 4» ожидалось {expected}, а получилось {actual}.')
+    equal(f('Ответ: 5? Перепроверим. Ответ: 12, а не 13'), 12, 'Берите число после последнего «Ответ»: ожидалось {expected}, а получилось {actual}.')
+    equal(f('Итого 5 яблок и 7 груш'), 7, 'Без слова «Ответ» — последнее число текста: ожидалось {expected}, а получилось {actual}.')
+    equal(f('Было 3, стало 9. Ответ: не знаю'), 9, 'Если после «Ответ» чисел нет — последнее число всего текста: ожидалось {expected}, а получилось {actual}.')
+    equal(f('Не знаю'), None, 'Если чисел нет, функция возвращает None, а у вас {actual}.')
+    equal([int(x) for x in var('finals', list, 'списком')], ref('finals'), '`finals` — {expected}, а у вас {actual}.')
+  files: [gigachat_notebook.json]
+  wrong:
+    - code: |
+        def final_number(text):
+            numbers = re.findall(r'\d+', text)
+            return int(numbers[0]) if numbers else None
+        finals = [final_number(notebook[k]['response']) for k in ['cot-1', 'cot-2', 'calc-final']]
+      expect: номер шага
+    - code: |
+        def final_number(text):
+            numbers = re.findall(r'\d+', text)
+            if not numbers:
+                return None
+            if 'Ответ' in text:
+                after = re.findall(r'\d+', text[text.find('Ответ'):])
+                if after:
+                    return int(after[0])
+            return int(numbers[-1])
+        finals = [final_number(notebook[k]['response']) for k in ['cot-1', 'cot-2', 'calc-final']]
+      expect: после последнего «Ответ»
+
+- id: m10-l5-t2
+  title: Сколько прогнозов недопустимы
+  difficulty: main
+  introduces: []
+  uses: [structured-output]
+  statement: |
+    `df` — вопросы теста соревнования с прогнозами базового решения (столбец `prediction`) и числом вариантов ответа `n` (0, если варианты не разобрать). Прогноз допустим, если он от 0 до `n - 1`. Получите:
+
+    - `n_invalid` — сколько прогнозов недопустимы;
+    - `share_invalid` — их доля;
+    - `n_year` — сколько прогнозов не меньше 1000: такие числа — годы, а не номера вариантов;
+    - `top_invalid` — самое частое недопустимое значение прогноза.
+  prelude: |
+    import ast
+    import json
+    import warnings
+    import pandas as pd
+
+    def parse_options(s):
+        s = s.strip().rstrip(',').strip()
+        try:
+            return json.loads(s)
+        except json.JSONDecodeError:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', SyntaxWarning)
+                try:
+                    return ast.literal_eval(s)
+                except (ValueError, SyntaxError):
+                    return None
+
+    test = pd.read_csv('qa_test.csv')
+    test['n'] = test['варианты'].apply(parse_options).apply(lambda o: len(o) if o is not None else 0)
+    df = test.merge(pd.read_csv('qa_gigachat_baseline.csv'), on='id')
+  starter: |
+    valid = (df['prediction'] >= 0) & (...)
+    n_invalid = ...
+    share_invalid = ...
+    n_year = ...
+    top_invalid = df.loc[~valid, 'prediction'].value_counts().index[...]
+    print(n_invalid, round(share_invalid, 3), n_year, top_invalid)
+  solution: |
+    valid = (df['prediction'] >= 0) & (df['prediction'] < df['n'])
+    n_invalid = int((~valid).sum())
+    share_invalid = (~valid).mean()
+    n_year = int((df['prediction'] >= 1000).sum())
+    top_invalid = df.loc[~valid, 'prediction'].value_counts().index[0]
+    print(n_invalid, round(share_invalid, 3), n_year, top_invalid)
+  explanation: |
+    - Почти каждый восьмой прогноз базового решения заведомо неверен: 96 из 786, 12,2 %. Узнать это можно без правильных ответов — достаточно проверить, что номер вообще возможен.
+    - 16 прогнозов — годы: 2025, 2023, 1812… Правило «первое число» взяло год, который модель упомянула раньше номера варианта.
+    - Самое частое недопустимое значение — 4, у вопросов с четырьмя вариантами. Похоже, модель считала варианты с единицы. Тогда могли сдвинуться и допустимые номера: «2» вместо «1» тоже может быть счётом с единицы. Пронумерованные в промпте варианты `0) … 3)` (урок 10.4) убирают саму возможность так ошибиться.
+  hints:
+    - "Допустимый прогноз — `(df['prediction'] >= 0) & (df['prediction'] < df['n'])`."
+    - "Недопустимые — `~valid`; их число — `(~valid).sum()`, доля — `(~valid).mean()`."
+    - "Годы — `df['prediction'] >= 1000`; самое частое значение — первый элемент индекса `value_counts()`."
+  tests: |
+    ni = int(var('n_invalid', 'number', 'числом'))
+    if ni == ref('n_invalid') - (ref('df')['n'] == 0).sum():
+        fail('У вопросов, где варианты не разобрались (n = 0), любой прогноз недопустим — их тоже нужно считать.')
+    equal(ni, ref('n_invalid'), 'Недопустимых прогнозов — {expected}, а у вас {actual}.')
+    close(var('share_invalid', 'number', 'числом'), ref('share_invalid'), 'Доля недопустимых — {expected}, а у вас {actual}.')
+    equal(int(var('n_year', 'number', 'числом')), ref('n_year'), 'Прогнозов не меньше 1000 — {expected}, а у вас {actual}.')
+    equal(int(var('top_invalid', 'number', 'числом')), int(ref('top_invalid')), 'Самое частое недопустимое значение — {expected}, а у вас {actual}.')
+    equal(int(alt('n_invalid')), int(alt_ref('n_invalid')), HARDCODE_MSG)
+  files: [qa_test.csv, qa_gigachat_baseline.csv]
+  wrong:
+    - code: |
+        valid = (df['prediction'] >= 0) & ((df['prediction'] < df['n']) | (df['n'] == 0))
+        n_invalid = int((~valid).sum())
+        share_invalid = (~valid).mean()
+        n_year = int((df['prediction'] >= 1000).sum())
+        top_invalid = df.loc[~valid, 'prediction'].value_counts().index[0]
+      expect: тоже нужно считать
+    - code: |
+        valid = (df['prediction'] >= 0) & (df['prediction'] <= df['n'])
+        n_invalid = int((~valid).sum())
+        share_invalid = (~valid).mean()
+        n_year = int((df['prediction'] >= 1000).sum())
+        top_invalid = df.loc[~valid, 'prediction'].value_counts().index[0]
+      expect: Недопустимых прогнозов
+
+- id: m10-l5-t3
+  title: Строгий разбор номера
+  difficulty: main
+  introduces: []
+  uses: [structured-output]
+  statement: |
+    Напишите функцию `parse_answer(text, n)`. Она принимает ответ модели и число вариантов и возвращает номер варианта `int` или `None`. Подходят только ответы такого вида, с любыми пробелами вокруг:
+
+    - одно число: `2`, `2.`;
+    - число после слова «Ответ» (с большой или маленькой буквы) и необязательного двоеточия: `Ответ: 2`, `ответ 2`, `Ответ: 2.`
+
+    Число должно быть от 0 до `n - 1`. Всё остальное — `None`. Получите `parsed` — результаты для ответов из списка `replies` при четырёх вариантах.
+  prelude: |
+    import re
+    replies = ['1', ' 0. ', 'Ответ: 3', 'ответ 2', 'Ответ: 4', 'Вариант 1 — 1662 год', '2, но это не точно', 'В 180 минутах 3 часа']
+  starter: |
+    PATTERN = r'\s*(?:...)?\s*(\d+)\s*\.?\s*'
+
+    def parse_answer(text, n):
+        m = re.fullmatch(PATTERN, text, flags=re.IGNORECASE)
+        if m is None:
+            return None
+        k = int(m.group(1))
+        return ...
+
+    parsed = [parse_answer(t, 4) for t in replies]
+    print(parsed)
+  solution: |
+    PATTERN = r'\s*(?:ответ\s*:?\s*)?\s*(\d+)\s*\.?\s*'
+
+    def parse_answer(text, n):
+        m = re.fullmatch(PATTERN, text, flags=re.IGNORECASE)
+        if m is None:
+            return None
+        k = int(m.group(1))
+        return k if k < n else None
+
+    parsed = [parse_answer(t, 4) for t in replies]
+    print(parsed)
+  explanation: |
+    - `(?:ответ\s*:?\s*)?` — необязательная группа: слово «ответ», пробелы и двоеточие. `?:` значит «группа без запоминания», чтобы номер остался в `group(1)`.
+    - `re.IGNORECASE` разрешает «Ответ» и «ответ». `re.fullmatch` не принимает ничего лишнего: «2, но это не точно» и ответ с годом отвергнуты.
+    - «Ответ: 4» при четырёх вариантах тоже `None`: такого номера нет. Строгий разбор лучше пропустит ответ, чем примет неверный: недопустимые ответы видно и их можно переспросить.
+  hints:
+    - "Слово с необязательным двоеточием — `ответ\\s*:?\\s*`; вся группа необязательна: `(?:...)?`."
+    - "Регистр не важен благодаря `flags=re.IGNORECASE`."
+    - "Номер допустим, если `k < n`: `return k if k < n else None`."
+  tests: |
+    f = var('parse_answer')
+    ensure(callable(f), '`parse_answer` должна быть функцией.')
+    cases = [('2', 4, 2), ('  2. ', 4, 2), ('Ответ: 1', 4, 1), ('ответ 0', 4, 0), ('ОТВЕТ:3', 4, 3), ('Ответ: 2.', 4, 2),
+             ('9', 10, 9), ('4', 4, None), ('Ответ: 7', 4, None), ('Ответ: 2 (1662 год)', 4, None),
+             ('Вариант 2', 4, None), ('2 3', 4, None), ('', 4, None), ('Ответ:', 4, None)]
+    for text, n, want in cases:
+        got = f(text, n)
+        if want is None and got is not None:
+            if text in ('4', 'Ответ: 7'):
+                fail('Номер {0} недопустим при {1} вариантах: номера от 0 до {2}. Функция должна вернуть None.'.format(got, n, n - 1))
+            fail('Ответ {0!r} не по формату — функция должна вернуть None, а вернула {1!r}.'.format(text, got))
+        if want is not None and got != want:
+            fail('Ответ {0!r} при {1} вариантах — это номер {2}, а функция вернула {3!r}.'.format(text, n, want, got))
+    equal(var('parsed', list, 'списком'), ref('parsed'), '`parsed` — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        PATTERN = r'\s*(?:ответ\s*:?\s*)?\s*(\d+)\s*\.?\s*'
+        def parse_answer(text, n):
+            m = re.fullmatch(PATTERN, text, flags=re.IGNORECASE)
+            if m is None:
+                return None
+            return int(m.group(1))
+        parsed = [parse_answer(t, 4) for t in replies]
+      expect: недопустим
+    - code: |
+        def parse_answer(text, n):
+            m = re.search(r'(\d+)', text)
+            if m is None:
+                return None
+            k = int(m.group(1))
+            return k if k < n else None
+        parsed = [parse_answer(t, 4) for t in replies]
+      expect: не по формату
+
+- id: m10-l5-t4
+  title: Ответ в JSON
+  difficulty: main
+  introduces: []
+  uses: [structured-output]
+  statement: |
+    Модель просили ответить JSON вида `{"answer": номер}`. Напишите функцию `parse_json_answer(text, n)`. Она возвращает номер `int` или `None`:
+
+    1. Снять пробелы по краям и рамку блока кода, если она есть: в начале `fence + 'json'` или просто `fence`, в конце `fence` (`fence` — три обратные кавычки, готова).
+    2. Разобрать `json.loads`. Если не JSON — `None`.
+    3. Результат должен быть словарём с ключом `"answer"`. Значение — целое число (`int`, но не `True`/`False`) или строка из цифр, например `"2"`.
+    4. Номер должен быть от 0 до `n - 1`.
+
+    Получите `parsed` — результаты для ответов из `replies` при четырёх вариантах.
+  prelude: |
+    import json
+    fence = '`' * 3
+    replies = ['{"answer": 2}', fence + 'json\n{"answer": 0}\n' + fence, '{"answer": "3"}', "{'answer': 1}",
+               '{"answer": 4}', '{"ответ": 1}', '[2]', '{"answer": true}', 'Ответ: {"answer": 1}']
+  starter: |
+    def parse_json_answer(text, n):
+        text = text.strip()
+        for start in [fence + 'json', fence]:
+            text = text.removeprefix(start)
+        text = text.removesuffix(fence).strip()
+        try:
+            data = ...
+        except json.JSONDecodeError:
+            return None
+        if not isinstance(data, dict) or 'answer' not in data:
+            return None
+        value = data['answer']
+        if isinstance(value, str) and value.isdigit():
+            value = int(value)
+        if ...:
+            return None
+        return value if 0 <= value < n else None
+
+    parsed = [parse_json_answer(t, 4) for t in replies]
+    print(parsed)
+  solution: |
+    def parse_json_answer(text, n):
+        text = text.strip()
+        for start in [fence + 'json', fence]:
+            text = text.removeprefix(start)
+        text = text.removesuffix(fence).strip()
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError:
+            return None
+        if not isinstance(data, dict) or 'answer' not in data:
+            return None
+        value = data['answer']
+        if isinstance(value, str) and value.isdigit():
+            value = int(value)
+        if isinstance(value, bool) or not isinstance(value, int):
+            return None
+        return value if 0 <= value < n else None
+
+    parsed = [parse_json_answer(t, 4) for t in replies]
+    print(parsed)
+  explanation: |
+    - Рамку снимают по очереди: сначала с `json`, потом без — так обрабатываются оба варианта. Если рамки нет, `removeprefix` ничего не делает.
+    - `True` в Python — тоже `int` (`isinstance(True, int)` даёт `True`), поэтому логические значения отсеивают отдельно. Иначе `{"answer": true}` превратился бы в номер 1.
+    - Из девяти ответов разобрались три: 2, 0 и 3. Остальные шесть — одинарные кавычки, недопустимый номер, чужой ключ, список, логическое значение и текст перед JSON — честно дают `None`.
+  hints:
+    - "Разбор — `json.loads(text)` внутри `try`."
+    - "Логическое значение — `isinstance(value, bool)`; оно проверяется раньше, чем `int`."
+    - "Нужное условие отказа — `isinstance(value, bool) or not isinstance(value, int)`."
+  tests: |
+    f = var('parse_json_answer')
+    ensure(callable(f), '`parse_json_answer` должна быть функцией.')
+    fence = '`' * 3
+    cases = [('{"answer": 1}', 4, 1), ('  {"answer": 3}  ', 4, 3), (fence + 'json\n{"answer": 2}\n' + fence, 4, 2),
+             (fence + '\n{"answer": 0}\n' + fence, 4, 0), ('{"answer": "2"}', 4, 2), ('{"answer": 9, "why": "..."}', 10, 9)]
+    for text, n, want in cases:
+        try:
+            got = f(text, n)
+        except Exception as e:
+            fail('На ответе {0!r} функция упала с ошибкой {1}: {2}.'.format(text, type(e).__name__, e))
+        equal(got, want, 'Ответ {0!r} — это номер {1}, а функция вернула {{actual}}.'.format(text, want))
+    bad = [("{'answer': 1}", 'одинарные кавычки — не JSON'), ('не знаю', 'это не JSON'), ('[1]', 'это список, а не словарь'),
+           ('{"ответ": 1}', 'нет ключа "answer"'), ('{"answer": true}', 'true — логическое значение, а не номер'),
+           ('{"answer": 4}', 'номера 4 при четырёх вариантах нет'), ('{"answer": -1}', 'номер не может быть отрицательным'),
+           ('{"answer": 1.5}', 'номер — целое число'), ('{"answer": "два"}', 'номер записан не цифрами')]
+    for text, why in bad:
+        try:
+            got = f(text, 4)
+        except Exception as e:
+            fail('На ответе {0!r} функция упала с ошибкой {1}: ловите ошибки разбора и возвращайте None.'.format(text, type(e).__name__))
+        if got is not None:
+            fail('Ответ {0!r} не годится ({1}) — функция должна вернуть None, а вернула {2!r}.'.format(text, why, got))
+    equal(var('parsed', list, 'списком'), ref('parsed'), '`parsed` — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        def parse_json_answer(text, n):
+            text = text.strip()
+            for start in [fence + 'json', fence]:
+                text = text.removeprefix(start)
+            text = text.removesuffix(fence).strip()
+            try:
+                data = json.loads(text)
+            except json.JSONDecodeError:
+                return None
+            if not isinstance(data, dict) or 'answer' not in data:
+                return None
+            value = data['answer']
+            if isinstance(value, str) and value.isdigit():
+                value = int(value)
+            if not isinstance(value, int):
+                return None
+            return value if 0 <= value < n else None
+        parsed = [parse_json_answer(t, 4) for t in replies]
+      expect: логическое значение
+    - code: |
+        def parse_json_answer(text, n):
+            data = json.loads(text.strip())
+            value = data['answer']
+            return value if 0 <= value < n else None
+        parsed = [parse_json_answer(t, 4) for t in replies]
+      expect: Код завершился с ошибкой
+
+- id: m10-l5-t5
+  title: Переспросить, но не больше двух раз
+  difficulty: star
+  introduces: []
+  uses: [structured-output, context-window]
+  statement: |
+    Напишите функцию `ask_until_valid(model, messages, n, retries=2)`. `model(messages)` — модель: получает список сообщений и возвращает текст ответа. Ответ разбирает готовая `parse_digit(text, n)` (из урока).
+
+    - Если ответ подошёл — вернуть кортеж `(номер, число_запросов)`.
+    - Если нет и попытки остались — добавить к истории ответ модели с ролью `assistant` и сообщение пользователя `FIX.format(last=n - 1)`, а затем спросить снова. Исходный список `messages` не меняется.
+    - Переспрашивают не больше `retries` раз. Если ни один ответ не подошёл — вернуть `(None, число_запросов)`.
+
+    Модели здесь — заглушки с заранее заданными ответами: `make_fake(['ответ 1', 'ответ 2', ...])` отвечает ими по очереди. Получите `results` — результаты `ask_until_valid` для каждой заглушки из `SCENARIOS` с вопросом `QUESTION` и четырьмя вариантами, и `total_requests` — сколько запросов ушло всего.
+  prelude: |
+    import re
+
+    def parse_digit(text, n):
+        m = re.fullmatch(r'\s*(\d+)\s*\.?\s*', text)
+        if m is None:
+            return None
+        k = int(m.group(1))
+        return k if k < n else None
+
+    def make_fake(answers):
+        """Модель-заглушка: отвечает заданными текстами по очереди и запоминает, что ей прислали."""
+        def model(messages):
+            model.calls.append([dict(m) for m in messages])
+            return answers[min(len(model.calls), len(answers)) - 1]
+        model.calls = []
+        return model
+
+    FIX = 'Ответь только одной цифрой от 0 до {last}, без пояснений.'
+    QUESTION = [{'role': 'system', 'content': 'Ты решаешь тест. Отвечай одной цифрой — номером правильного варианта.'},
+                {'role': 'user', 'content': 'Вопрос: Сколько часов в 180 минутах?\nВарианты ответа:\n0) 3\n1) 2\n2) 4\n3) 5\nОтвет:'}]
+    SCENARIOS = [['0'], ['В 180 минутах 3 часа.', '0'], ['Ответ: 0', '4', '0'], ['три', 'три часа', 'вариант 0', '0']]
+  starter: |
+    def ask_until_valid(model, messages, n, retries=2):
+        history = list(messages)
+        requests = 0
+        for attempt in range(retries + 1):
+            text = model(history)
+            requests += 1
+            answer = parse_digit(text, n)
+            if answer is not None:
+                return ...
+            history = history + [...]
+        return ...
+
+    results = [ask_until_valid(make_fake(s), QUESTION, 4) for s in SCENARIOS]
+    total_requests = ...
+    print(results, total_requests)
+  solution: |
+    def ask_until_valid(model, messages, n, retries=2):
+        history = list(messages)
+        requests = 0
+        for attempt in range(retries + 1):
+            text = model(history)
+            requests += 1
+            answer = parse_digit(text, n)
+            if answer is not None:
+                return answer, requests
+            history = history + [{'role': 'assistant', 'content': text},
+                                 {'role': 'user', 'content': FIX.format(last=n - 1)}]
+        return None, requests
+
+    results = [ask_until_valid(make_fake(s), QUESTION, 4) for s in SCENARIOS]
+    total_requests = sum(r for _, r in results)
+    print(results, total_requests)
+  explanation: |
+    - `range(retries + 1)` — первый запрос и не больше `retries` повторных. Без ограничения модель, которая упорно отвечает не по формату, тратила бы токены бесконечно.
+    - При повторе модель видит свой ответ (роль `assistant`) и просьбу исправить формат. Каждый повтор удлиняет историю на два сообщения — следующий запрос дороже (урок 10.3).
+    - В четвёртом сценарии все три попытки не по формату, и функция честно возвращает `None`. Дальше программа решает сама: поставить запасной ответ и пометить вопрос.
+    - Число лишних запросов стоит считать: если повторов много, лучше чинить промпт, чем каждый раз переспрашивать.
+  hints:
+    - "Подошёл ответ — `return answer, requests`; не подошёл ни один — `return None, requests`."
+    - "Повтор: `history + [{'role': 'assistant', 'content': text}, {'role': 'user', 'content': FIX.format(last=n - 1)}]`."
+    - "Всего запросов — сумма вторых элементов: `sum(r for _, r in results)`."
+  tests: |
+    import copy
+    f = var('ask_until_valid')
+    ensure(callable(f), '`ask_until_valid` должна быть функцией.')
+    mk = ref('make_fake')
+    q = [{'role': 'system', 'content': 'S'}, {'role': 'user', 'content': 'Q'}]
+    before = copy.deepcopy(q)
+    m1 = mk(['2'])
+    equal(tuple(f(m1, q, 4)), (2, 1), 'Если первый ответ подошёл: ожидалось {expected}, а получилось {actual}.')
+    m2 = mk(['не знаю', '3'])
+    got = f(m2, q, 4)
+    ensure(q == before, '`ask_until_valid` не должна менять исходный список сообщений.')
+    equal(tuple(got), (3, 2), 'Если подошёл второй ответ: ожидалось {expected}, а получилось {actual}.')
+    second = m2.calls[1] if len(m2.calls) > 1 else []
+    ensure(len(second) == 4, 'При повторе в запросе должно быть 4 сообщения: два исходных, ответ модели и просьба исправить формат, а у вас {0}.'.format(len(second)))
+    if second[2].get('role') != 'assistant' or second[2].get('content') != 'не знаю':
+        fail('Ответ модели добавляют в историю с ролью assistant и тем же текстом.')
+    equal(second[3], {'role': 'user', 'content': 'Ответь только одной цифрой от 0 до 3, без пояснений.'}, 'Просьба исправить формат — `FIX.format(last=n - 1)` с ролью user: ожидалось {expected}, а получилось {actual}.')
+    m3 = mk(['a', 'b', 'c', '1'])
+    got3 = tuple(f(m3, q, 4))
+    if got3 == (1, 4):
+        fail('Переспрашивают не больше `retries` раз: при retries = 2 всего три запроса.')
+    equal(got3, (None, 3), 'Если ни один из трёх ответов не подошёл: ожидалось {expected}, а получилось {actual}.')
+    equal(tuple(f(mk(['a', '1']), q, 4, retries=0)), (None, 1), 'При retries = 0 повторов нет: ожидалось {expected}, а получилось {actual}.')
+    equal([tuple(r) for r in var('results', list, 'списком')], [tuple(r) for r in ref('results')], '`results` — {expected}, а у вас {actual}.')
+    equal(int(var('total_requests', 'number', 'числом')), ref('total_requests'), 'Всего запросов — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        def ask_until_valid(model, messages, n, retries=2):
+            history = list(messages)
+            requests = 0
+            while True:
+                text = model(history)
+                requests += 1
+                answer = parse_digit(text, n)
+                if answer is not None or requests > 3:
+                    return answer, requests
+                history = history + [{'role': 'assistant', 'content': text},
+                                     {'role': 'user', 'content': FIX.format(last=n - 1)}]
+        results = [ask_until_valid(make_fake(s), QUESTION, 4) for s in SCENARIOS]
+        total_requests = sum(r for _, r in results)
+      expect: не больше `retries` раз
+    - code: |
+        def ask_until_valid(model, messages, n, retries=2):
+            history = list(messages)
+            requests = 0
+            for attempt in range(retries + 1):
+                text = model(history)
+                requests += 1
+                answer = parse_digit(text, n)
+                if answer is not None:
+                    return answer, requests
+                history = history + [{'role': 'user', 'content': text},
+                                     {'role': 'user', 'content': FIX.format(last=n - 1)}]
+            return None, requests
+        results = [ask_until_valid(make_fake(s), QUESTION, 4) for s in SCENARIOS]
+        total_requests = sum(r for _, r in results)
+      expect: с ролью assistant

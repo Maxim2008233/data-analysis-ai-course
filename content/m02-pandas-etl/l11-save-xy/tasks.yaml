@@ -1,0 +1,334 @@
+- id: m2-l11-t1
+  title: Сохранить без индекса и прочитать обратно
+  difficulty: warmup
+  introduces: [pd-to-csv]
+  uses: []
+  statement: |
+    Сохраните таблицу `processed` в файл `my_cars.csv` без колонки индекса, затем прочитайте его в `loaded` и получите `same_shape` — совпадает ли размер `loaded` с размером `processed` (True/False).
+  prelude: |
+    import os
+    import pandas as pd
+    processed = pd.read_csv('cars_processed.csv')   # подготовленная таблица — результат уроков 2.6–2.10
+    if os.path.exists('my_cars.csv'):
+        os.remove('my_cars.csv')                     # начинаем без старого файла
+  files: [cars_processed.csv]
+  starter: |
+    processed.to_csv(...)
+    loaded = ...
+    same_shape = ...
+    print(same_shape, loaded.columns.tolist()[:3])
+  solution: |
+    processed.to_csv('my_cars.csv', index=False)
+    loaded = pd.read_csv('my_cars.csv')
+    same_shape = loaded.shape == processed.shape
+    print(same_shape, loaded.columns.tolist()[:3])
+  explanation: |
+    - `to_csv('my_cars.csv', index=False)` записывает таблицу без колонки индекса.
+    - `pd.read_csv` читает файл обратно; сравнение кортежей `shape` даёт True, если размеры совпали.
+    - Без `index=False` в файле была бы лишняя колонка, и размер не совпал бы.
+  hints:
+    - Какой параметр `to_csv` запрещает записывать индекс?
+    - "`processed.to_csv('my_cars.csv', index=False)`, затем `pd.read_csv('my_cars.csv')`."
+    - "`same_shape = loaded.shape == processed.shape`."
+  tests: |
+    import os
+    import pandas as pd
+    ensure(os.path.exists('my_cars.csv') and 'my_cars.csv' in source(), 'Файл `my_cars.csv` не найден. Сохраните таблицу: `processed.to_csv(\'my_cars.csv\', index=False)`.')
+    l = var('loaded', pd.DataFrame, 'таблицей DataFrame — результатом pd.read_csv')
+    unnamed = [c for c in l.columns if str(c).startswith('Unnamed:')]
+    if unnamed:
+        fail('В прочитанной таблице есть колонка {0}: индекс записался в файл. Сохраняйте с `index=False`.'.format(unnamed[0]))
+    same_frame(l, ref('loaded'), 'Прочитанная таблица не совпадает с сохранённой.')
+    equal(bool(var('same_shape')), True, '`same_shape` должно быть True — размеры совпадают, если индекс не записан.')
+  wrong:
+    - code: |
+        processed.to_csv('my_cars.csv')
+        loaded = pd.read_csv('my_cars.csv')
+        same_shape = loaded.shape == processed.shape
+      expect: index=False
+    - code: |
+        processed.to_csv('other.csv', index=False)
+        loaded = pd.read_csv('other.csv')
+        same_shape = True
+      expect: my_cars.csv
+
+- id: m2-l11-t2
+  title: Откуда взялась Unnamed 0
+  difficulty: main
+  introduces: [pd-to-csv]
+  uses: [pd-rename-drop]
+  statement: |
+    Коллега сохранил таблицу в `colleague.csv`, забыв `index=False`. Прочитайте файл в `loaded`, найдите `unnamed` — список колонок, имя которых начинается с `'Unnamed:'`, и получите `fixed` — таблицу без них.
+  prelude: |
+    import pandas as pd
+    pd.read_csv('cars_processed.csv').head(500).to_csv('colleague.csv')   # так сохранил коллега
+  files: [cars_processed.csv]
+  starter: |
+    loaded = ...
+    unnamed = ...
+    fixed = ...
+    print(unnamed, loaded.shape, fixed.shape)
+  solution: |
+    loaded = pd.read_csv('colleague.csv')
+    unnamed = [c for c in loaded.columns if c.startswith('Unnamed:')]
+    fixed = loaded.drop(columns=unnamed)
+    print(unnamed, loaded.shape, fixed.shape)
+  explanation: |
+    - Индекс, записанный без имени, при чтении становится колонкой `Unnamed: 0`.
+    - Генератор списка отбирает имена колонок по началу строки: `c.startswith('Unnamed:')`.
+    - `drop(columns=unnamed)` удаляет найденные колонки. Другой способ — сразу прочитать файл с `index_col=0`.
+  alternatives:
+    - |
+      loaded = pd.read_csv('colleague.csv')
+      unnamed = [c for c in loaded.columns if 'Unnamed' in c]
+      fixed = pd.read_csv('colleague.csv', index_col=0)
+  hints:
+    - Найдите колонки по началу имени и удалите их методом из урока 2.8.
+    - "`[c for c in loaded.columns if c.startswith('Unnamed:')]`; удаление — `loaded.drop(columns=...)`."
+    - "`fixed = loaded.drop(columns=unnamed)`."
+  tests: |
+    import pandas as pd
+    u = var('unnamed', list, 'списком имён колонок')
+    equal(u, ref('unnamed'), 'Колонки с Unnamed — {expected}, а у вас {actual}.')
+    f = var('fixed', pd.DataFrame, 'таблицей DataFrame')
+    ensure(not any(str(c).startswith('Unnamed:') for c in f.columns), 'В `fixed` осталась колонка Unnamed.')
+    same_frame(f, ref('fixed'), 'Таблица `fixed` не совпадает с нужной.', check_index=False)
+  wrong:
+    - code: |
+        loaded = pd.read_csv('colleague.csv')
+        unnamed = []
+        fixed = loaded
+      expect: Колонки с Unnamed
+    - code: |
+        loaded = pd.read_csv('colleague.csv')
+        unnamed = [c for c in loaded.columns if c.startswith('Unnamed:')]
+        fixed = loaded.drop(columns=unnamed + ['Make'])
+      expect: Не хватает колонок
+
+- id: m2-l11-t3
+  title: Числовая часть таблицы
+  difficulty: main
+  introduces: [pd-to-csv]
+  uses: [pd-info-dtypes]
+  statement: |
+    Получите `num` — только числовые колонки таблицы `processed` без технического номера `source_row_id`, и `num_columns` — список их названий.
+  prelude: |
+    import pandas as pd
+    processed = pd.read_csv('cars_processed.csv')   # уроки 2.6–2.10
+  files: [cars_processed.csv]
+  starter: |
+    num = ...
+    num_columns = ...
+    print(num_columns)
+  solution: |
+    num = processed.select_dtypes(include='number').drop(columns=['source_row_id'])
+    num_columns = num.columns.tolist()
+    print(num_columns)
+  explanation: |
+    - `select_dtypes(include='number')` оставляет колонки числовых типов (int, float).
+    - `drop(columns=['source_row_id'])` убирает технический номер — он числовой, но это не характеристика автомобиля.
+    - Логическая `AutoTransmission` числовой не считается и в `num` не попадает.
+  alternatives:
+    - |
+      num = processed[['Year', 'Distance', 'Engine', 'Price', 'Age', 'km_year']]
+      num_columns = list(num.columns)
+  hints:
+    - Какой метод выбирает колонки по типу?
+    - "`processed.select_dtypes(include='number')`, затем `.drop(columns=['source_row_id'])`."
+    - "`num_columns = num.columns.tolist()`."
+  tests: |
+    import pandas as pd
+    n = var('num', pd.DataFrame, 'таблицей DataFrame')
+    if 'source_row_id' in n.columns:
+        fail('В `num` остался технический номер `source_row_id` — удалите его.')
+    same_frame(n, ref('num'), 'Числовая часть таблицы не совпадает: нужны все числовые колонки, кроме source_row_id.')
+    equal(var('num_columns', list, 'списком'), ref('num_columns'), 'Список колонок — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        num = processed.select_dtypes(include='number')
+        num_columns = num.columns.tolist()
+      expect: source_row_id
+    - code: |
+        num = processed[['Year', 'Distance', 'Price']]
+        num_columns = num.columns.tolist()
+      expect: Не хватает колонок
+
+- id: m2-l11-t4
+  title: Признаки X и цель y
+  difficulty: main
+  introduces: [target-features]
+  uses: [pd-select-columns]
+  statement: |
+    Разделите таблицу `loaded` для будущей модели оценки цены:
+
+    - `y` — целевая переменная `Price` (Series);
+    - `X` — все остальные колонки, **кроме** цели, технического номера `source_row_id` и колонок-дублей `Transmission`, `km_year_cat`, `Make_original`.
+
+    Порядок колонок в `X` — как в таблице.
+  prelude: |
+    import pandas as pd
+    loaded = pd.read_csv('cars_processed.csv')   # сохранённый результат обработки
+  files: [cars_processed.csv]
+  starter: |
+    y = ...
+    X = ...
+    print(X.shape, y.shape)
+    X.columns.tolist()
+  solution: |
+    y = loaded['Price']
+    X = loaded.drop(columns=['Price', 'source_row_id', 'Transmission', 'km_year_cat', 'Make_original'])
+    print(X.shape, y.shape)
+    X.columns.tolist()
+  explanation: |
+    - `y` — одна колонка, поэтому одинарные скобки: получается Series.
+    - `drop(columns=[...])` убирает цель, технический номер и дубли; остальные колонки остаются в исходном порядке.
+    - Цена в X недопустима: модель «подсмотрела» бы ответ.
+  alternatives:
+    - |
+      feature_columns = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine',
+                         'Fuel_type', 'AutoTransmission', 'Age', 'km_year']
+      X = loaded[feature_columns].copy()
+      y = loaded['Price'].copy()
+  hints:
+    - Цель — одна колонка-Series. Признаки — таблица без пяти лишних колонок.
+    - "`loaded['Price']`; `loaded.drop(columns=[...пять колонок...])` или явный список признаков."
+    - "`X = loaded.drop(columns=['Price', 'source_row_id', 'Transmission', 'km_year_cat', 'Make_original'])`."
+  tests: |
+    import pandas as pd
+    y = var('y', pd.Series, 'Series — одна колонка `loaded[\'Price\']`')
+    same_frame(y, ref('y'), '`y` должна быть колонкой Price.')
+    X = var('X', pd.DataFrame, 'таблицей DataFrame')
+    if 'Price' in X.columns:
+        fail('Цена `Price` попала в X — это целевая переменная, модель подсмотрела бы ответ. Удалите её из признаков.')
+    if 'source_row_id' in X.columns:
+        fail('`source_row_id` попал в X: это технический номер строки, а не свойство автомобиля.')
+    for dup in ['Transmission', 'km_year_cat', 'Make_original']:
+        if dup in X.columns:
+            fail('Колонка `{0}` дублирует другую колонку — не включайте её в X.'.format(dup))
+    same_frame(X, ref('X'), 'Таблица признаков X не совпадает с нужной.')
+  wrong:
+    - code: |
+        y = loaded['Price']
+        X = loaded.drop(columns=['source_row_id', 'Transmission', 'km_year_cat', 'Make_original'])
+      expect: целевая переменная
+    - code: |
+        y = loaded[['Price']]
+        X = loaded.drop(columns=['Price', 'source_row_id', 'Transmission', 'km_year_cat', 'Make_original'])
+      expect: одна колонка
+    - code: |
+        y = loaded['Price']
+        X = loaded.drop(columns=['Price', 'Transmission', 'km_year_cat', 'Make_original'])
+      expect: технический номер
+
+- id: m2-l11-t5
+  kind: quiz
+  title: Что не должно попасть в признаки
+  difficulty: main
+  introduces: [target-features]
+  uses: []
+  statement: |
+    Модель будет оценивать цену объявления. Для каждой колонки решите, место ли ей среди входных признаков.
+  quiz:
+    - q: "Колонка `Price_k` — цена в тысячах евро (Price / 1000). Включить в X?"
+      options:
+        - Да, это новый полезный признак
+        - Нет — это та же цель в других единицах; модель подсмотрит ответ
+        - Только для дорогих машин
+      answer: 1
+      explain: Любой признак, вычисленный из цели, — утечка ответа.
+    - q: "Колонка `source_row_id`. Включить в X?"
+      options:
+        - Да, это число — модели нужны числа
+        - Нет — это служебный номер строки файла, он не описывает автомобиль
+      answer: 1
+      explain: Номер строки зависит от порядка выгрузки, а не от свойств машины.
+    - q: "Колонки `Year` и `Age`. Что верно?"
+      options:
+        - Обе несут одну и ту же информацию (Age = 2022 − Year); оставить можно обе, но это нужно понимать
+        - Age — это цель
+        - Year нельзя использовать, потому что это число
+      answer: 0
+      explain: В исходной практике в X входят обе колонки. Для линейных моделей такая полная зависимость признаков важна — к этому вернёмся в модуле 5.
+    - q: Почему в файле `cars_processed_num.csv` нельзя сразу обучать модель как на матрице признаков?
+      options:
+        - В нём есть колонка цены Price — цель
+        - В нём нет числовых колонок
+        - Он сохранён без индекса
+      answer: 0
+      explain: Сначала нужно отделить цель от признаков.
+  hints:
+    - Признак — то, что известно об автомобиле до назначения цены. Может ли признак вычисляться из самой цены?
+    - "Цель и всё, что из неё вычислено, в X нельзя; служебные номера — тоже; Age и Year связаны формулой."
+    - "Ответы: нет (утечка); нет; обе несут одну информацию; в файле есть Price."
+
+- id: m2-l11-t6
+  title: Функция контроля сохранения
+  difficulty: star
+  introduces: [pd-to-csv]
+  uses: [py-functions, pd-isna-duplicated]
+  statement: |
+    Напишите функцию `check_saved(table, path)`, которая сохраняет таблицу `table` в файл `path` **без индекса**, читает файл обратно и возвращает словарь:
+
+    - `'same_shape'` — совпал ли размер (True/False);
+    - `'n_missing'` — число пропусков в прочитанной таблице;
+    - `'unnamed'` — список колонок прочитанной таблицы, начинающихся с `'Unnamed:'`.
+
+    Проверка вызовет функцию для разных таблиц.
+  prelude: |
+    import pandas as pd
+    processed = pd.read_csv('cars_processed.csv')   # уроки 2.6–2.10
+  files: [cars_processed.csv]
+  starter: |
+    def check_saved(table, path):
+        ...
+
+    check_saved(processed, 'check.csv')
+  solution: |
+    def check_saved(table, path):
+        table.to_csv(path, index=False)
+        loaded = pd.read_csv(path)
+        return {
+            'same_shape': loaded.shape == table.shape,
+            'n_missing': int(loaded.isna().sum().sum()),
+            'unnamed': [c for c in loaded.columns if c.startswith('Unnamed:')],
+        }
+
+    check_saved(processed, 'check.csv')
+  explanation: |
+    - Функция повторяет контроль из урока: сохранить, прочитать, сравнить.
+    - `loaded.isna().sum().sum()` — общее число пустых ячеек (урок 2.3).
+    - Если таблица сохранена правильно, список `unnamed` пуст, а размер совпадает.
+  hints:
+    - "Внутри функции три шага: `to_csv`, `read_csv` и сборка словаря из трёх проверок."
+    - "`table.to_csv(path, index=False)`; `loaded = pd.read_csv(path)`; пропуски — `loaded.isna().sum().sum()`."
+    - "`return {'same_shape': loaded.shape == table.shape, 'n_missing': ..., 'unnamed': [...]}`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    f = var('check_saved')
+    ensure(callable(f), '`check_saved` должна быть функцией.')
+    t1 = ref('processed').head(200)
+    r = f(t1, 'test_a.csv')
+    ensure(isinstance(r, dict), 'Функция должна вернуть словарь, а вернула {0}.'.format(type(r).__name__))
+    for k in ['same_shape', 'n_missing', 'unnamed']:
+        ensure(k in r, 'В словаре нет ключа \'{0}\'.'.format(k))
+    if r['unnamed']:
+        fail('Для правильно сохранённой таблицы `unnamed` должен быть пустым, а у вас {0}. Сохраняйте с `index=False`.'.format(r['unnamed']))
+    equal(bool(r['same_shape']), True, 'Размер прочитанной таблицы должен совпасть с исходным.')
+    t2 = pd.DataFrame({'a': [1.0, np.nan, 3.0], 'b': ['x', None, 'z']})
+    r2 = f(t2, 'test_b.csv')
+    equal(int(r2['n_missing']), 2, 'Для таблицы с двумя пропусками `n_missing` должно быть {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        def check_saved(table, path):
+            table.to_csv(path)
+            loaded = pd.read_csv(path)
+            return {'same_shape': loaded.shape == table.shape, 'n_missing': int(loaded.isna().sum().sum()),
+                    'unnamed': [c for c in loaded.columns if c.startswith('Unnamed:')]}
+      expect: index=False
+    - code: |
+        def check_saved(table, path):
+            table.to_csv(path, index=False)
+            loaded = pd.read_csv(path)
+            return {'same_shape': loaded.shape == table.shape, 'n_missing': 0, 'unnamed': []}
+      expect: двумя пропусками

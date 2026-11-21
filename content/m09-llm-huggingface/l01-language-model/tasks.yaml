@@ -1,0 +1,498 @@
+- id: m9-l1-t1
+  title: Биграммы корпуса
+  difficulty: warmup
+  introduces: [n-gram]
+  uses: [py-dicts]
+  statement: |
+    `sents` — предложения корпуса курса, каждое — список слов. Посчитайте биграммы с метками начала и конца предложения:
+
+    - `bigrams` — `Counter` пар соседних слов в последовательностях `['<s>'] + s + ['</s>']`;
+    - `n_pairs` — сколько разных пар получилось;
+    - `count_mean_price` — сколько раз встретилась пара («средняя», «цена»);
+    - `top_inner` — самая частая пара, в которой нет меток `<s>` и `</s>` (кортеж из двух слов).
+  prelude: |
+    import re
+    from collections import Counter
+    with open('course_texts.txt', encoding='utf-8') as fh:
+        text = fh.read()
+    sentences = [s for s in re.split(r'(?<=[.!?…])\s+|\n', text) if s.strip()]
+
+    def words(sentence):
+        return re.findall(r'[а-яёa-z0-9]+', sentence.lower())
+
+    sents = [w for w in (words(s) for s in sentences) if w]
+  starter: |
+    bigrams = Counter()
+    for s in sents:
+        seq = ...
+        bigrams.update(...)
+    n_pairs = ...
+    count_mean_price = ...
+    top_inner = ...
+    print(n_pairs, count_mean_price, top_inner)
+  solution: |
+    bigrams = Counter()
+    for s in sents:
+        seq = ['<s>'] + s + ['</s>']
+        bigrams.update(zip(seq, seq[1:]))
+    n_pairs = len(bigrams)
+    count_mean_price = bigrams[('средняя', 'цена')]
+    top_inner = next(p for p, c in bigrams.most_common() if '<s>' not in p and '</s>' not in p)
+    print(n_pairs, count_mean_price, top_inner)
+  explanation: |
+    - `zip(seq, seq[1:])` идёт по последовательности парами соседей: (<s>, первое слово), (первое, второе), …, (последнее, </s>).
+    - Разных пар — 33 962 на 47 тысяч слов: большинство пар уникальны. «средняя цена» встретилась 23 раза.
+    - Самая частая пара внутри предложения — «а не» (124 раза). Без фильтра первой была бы пара (<s>, в): 152 предложения начинаются со слова «в».
+  hints:
+    - "Последовательность с метками — `['<s>'] + s + ['</s>']`, пары — `zip(seq, seq[1:])`."
+    - "Разных пар — `len(bigrams)`, одна пара — `bigrams[('средняя', 'цена')]`."
+    - "Самая частая без меток — первая пара из `bigrams.most_common()`, в которой нет `'<s>'` и `'</s>'`."
+  tests: |
+    from collections import Counter
+    b = var('bigrams', Counter, 'Counter')
+    n = int(var('n_pairs', 'number', 'числом'))
+    plain = Counter()
+    for s in ref('sents'):
+        plain.update(zip(s, s[1:]))
+    if n == len(plain):
+        fail('Добавьте метки начала и конца предложения: `[\'<s>\'] + s + [\'</s>\']`.')
+    equal(n, int(ref('n_pairs')), 'Разных пар — {expected}, а у вас {actual}.')
+    equal(int(var('count_mean_price', 'number', 'числом')), int(ref('count_mean_price')), 'Пара «средняя цена» встретилась {expected} раз, а у вас {actual}.')
+    t = tuple(var('top_inner'))
+    if '<s>' in t or '</s>' in t:
+        fail('В `top_inner` не должно быть меток `<s>` и `</s>`: возьмите первую пару без них.')
+    equal(t, tuple(ref('top_inner')), 'Самая частая пара внутри предложения — {expected}, а у вас {actual}.')
+    equal(int(alt('n_pairs')), int(alt_ref('n_pairs')), HARDCODE_MSG)
+  files: [course_texts.txt]
+  wrong:
+    - code: |
+        bigrams = Counter()
+        for s in sents:
+            bigrams.update(zip(s, s[1:]))
+        n_pairs = len(bigrams)
+        count_mean_price = bigrams[('средняя', 'цена')]
+        top_inner = bigrams.most_common(1)[0][0]
+      expect: метки начала
+    - code: |
+        bigrams = Counter()
+        for s in sents:
+            seq = ['<s>'] + s + ['</s>']
+            bigrams.update(zip(seq, seq[1:]))
+        n_pairs = len(bigrams)
+        count_mean_price = bigrams[('средняя', 'цена')]
+        top_inner = bigrams.most_common(1)[0][0]
+      expect: не должно быть меток
+
+- id: m9-l1-t2
+  title: Вероятность следующего слова
+  difficulty: main
+  introduces: [language-model]
+  uses: [n-gram, py-functions]
+  statement: |
+    `bigrams` — пары слов корпуса с метками, `first` — сколько пар начинается с каждого слова. Напишите функцию `cond_prob(prev, word)` — вероятность слова `word` после `prev` в биграммной модели (0, если слова `prev` в корпусе нет). Получите:
+
+    - `p_mean_price` — P(цена | средняя);
+    - `best_after` — словарь: для каждого слова из `starts` — самое вероятное следующее слово.
+  prelude: |
+    import re
+    from collections import Counter
+    with open('course_texts.txt', encoding='utf-8') as fh:
+        text = fh.read()
+    sentences = [s for s in re.split(r'(?<=[.!?…])\s+|\n', text) if s.strip()]
+
+    def words(sentence):
+        return re.findall(r'[а-яёa-z0-9]+', sentence.lower())
+
+    sents = [w for w in (words(s) for s in sentences) if w]
+    bigrams = Counter()
+    for s in sents:
+        seq = ['<s>'] + s + ['</s>']
+        bigrams.update(zip(seq, seq[1:]))
+    first = Counter()
+    for (a, b), c in bigrams.items():
+        first[a] += c
+    starts = ['обучающей', 'случайный', 'линейная']
+  starter: |
+    def cond_prob(prev, word):
+        if first[prev] == 0:
+            return 0.0
+        return ...
+
+    p_mean_price = ...
+    best_after = {}
+    for w in starts:
+        options = [b for (a, b) in bigrams if a == w]
+        best_after[w] = ...
+    print(round(p_mean_price, 3), best_after)
+  solution: |
+    def cond_prob(prev, word):
+        if first[prev] == 0:
+            return 0.0
+        return bigrams[(prev, word)] / first[prev]
+
+    p_mean_price = cond_prob('средняя', 'цена')
+    best_after = {}
+    for w in starts:
+        options = [b for (a, b) in bigrams if a == w]
+        best_after[w] = max(options, key=lambda b: cond_prob(w, b))
+    print(round(p_mean_price, 3), best_after)
+  explanation: |
+    - P(цена | средняя) = 23 / 40 = 0,575: из всех пар, начинающихся со «средняя», больше половины — «средняя цена».
+    - Самые вероятные продолжения: «обучающей» → «части», «случайный» → «лес», «линейная» → «модель». Модель выучила устойчивые обороты курса, ничего не зная о смысле слов.
+    - Делить нужно на число пар, начинающихся с `prev`, а не на число всех пар: нас интересует, что идёт **после** этого слова.
+  hints:
+    - "Условная вероятность — `bigrams[(prev, word)] / first[prev]`."
+    - "`p_mean_price = cond_prob('средняя', 'цена')`."
+    - "Самое вероятное продолжение — `max(options, key=lambda b: cond_prob(w, b))`."
+  tests: |
+    import random
+    f = var('cond_prob')
+    ensure(callable(f), '`cond_prob` должна быть функцией.')
+    bg, fs = ref('bigrams'), ref('first')
+    pairs = list(bg)
+    rnd = random.Random(3)
+    for a, b in rnd.sample(pairs, 5):
+        exp = bg[(a, b)] / fs[a]
+        got = f(a, b)
+        if abs(got - bg[(a, b)] / sum(bg.values())) < 1e-12 and abs(got - exp) > 1e-12:
+            fail('Делите на число пар, начинающихся с `prev` (`first[prev]`), а не на число всех пар корпуса.')
+        close(got, exp, 'Для пары ({0}, {1}) вероятность {2:.4f}, а у вас {3:.4f}.'.format(a, b, exp, got))
+    close(f('несуществующееслово', 'и'), 0.0, 'Для слова, которого нет в корпусе, вероятность 0.')
+    close(var('p_mean_price', 'number', 'числом'), ref('p_mean_price'), 'P(цена | средняя) — {expected}, а у вас {actual}.')
+    d = var('best_after', dict, 'словарём')
+    equal(dict(d), dict(ref('best_after')), 'Самые вероятные продолжения — {expected}, а у вас {actual}.')
+    close(alt('p_mean_price'), alt_ref('p_mean_price'), HARDCODE_MSG)
+  files: [course_texts.txt]
+  wrong:
+    - code: |
+        def cond_prob(prev, word):
+            if first[prev] == 0:
+                return 0.0
+            return bigrams[(prev, word)] / sum(bigrams.values())
+        p_mean_price = cond_prob('средняя', 'цена')
+        best_after = {}
+        for w in starts:
+            options = [b for (a, b) in bigrams if a == w]
+            best_after[w] = max(options, key=lambda b: cond_prob(w, b))
+      expect: first[prev]
+    - code: |
+        def cond_prob(prev, word):
+            if first[prev] == 0:
+                return 0.0
+            return bigrams[(prev, word)] / first[prev]
+        p_mean_price = cond_prob('средняя', 'цена')
+        best_after = {}
+        for w in starts:
+            options = [b for (a, b) in bigrams if a == w]
+            best_after[w] = min(options, key=lambda b: cond_prob(w, b))
+      expect: Самые вероятные продолжения
+
+- id: m9-l1-t3
+  title: Вероятность фразы и невиданные пары
+  difficulty: main
+  introduces: []
+  uses: [language-model, n-gram]
+  statement: |
+    Используя `bigrams`, `first` и функцию `words`, напишите:
+
+    - `phrase_prob(sentence)` — вероятность фразы в биграммной модели: произведение вероятностей всех пар последовательности `['<s>'] + words(sentence) + ['</s>']`;
+    - `unseen_pairs(sentence)` — список пар этой последовательности, которых нет в корпусе.
+
+    Получите `probs` — словарь «фраза → вероятность» для фраз из `phrases` и `zero_reason` — список невиданных пар фразы `'Это урок про градиентный спуск.'`.
+  prelude: |
+    import re
+    from collections import Counter
+    with open('course_texts.txt', encoding='utf-8') as fh:
+        text = fh.read()
+    sentences = [s for s in re.split(r'(?<=[.!?…])\s+|\n', text) if s.strip()]
+
+    def words(sentence):
+        return re.findall(r'[а-яёa-z0-9]+', sentence.lower())
+
+    sents = [w for w in (words(s) for s in sentences) if w]
+    bigrams = Counter()
+    for s in sents:
+        seq = ['<s>'] + s + ['</s>']
+        bigrams.update(zip(seq, seq[1:]))
+    first = Counter()
+    for (a, b), c in bigrams.items():
+        first[a] += c
+    phrases = ['Случайный лес.', 'Средняя цена машин.', 'Градиентный спуск.']
+  starter: |
+    def phrase_prob(sentence):
+        seq = ['<s>'] + words(sentence) + ['</s>']
+        p = 1.0
+        for a, b in zip(seq, seq[1:]):
+            p *= ...
+        return p
+
+    def unseen_pairs(sentence):
+        seq = ['<s>'] + words(sentence) + ['</s>']
+        return ...
+
+    probs = {s: phrase_prob(s) for s in phrases}
+    zero_reason = ...
+    print(probs)
+    print(zero_reason)
+  solution: |
+    def phrase_prob(sentence):
+        seq = ['<s>'] + words(sentence) + ['</s>']
+        p = 1.0
+        for a, b in zip(seq, seq[1:]):
+            p *= bigrams[(a, b)] / first[a] if first[a] else 0.0
+        return p
+
+    def unseen_pairs(sentence):
+        seq = ['<s>'] + words(sentence) + ['</s>']
+        return [(a, b) for a, b in zip(seq, seq[1:]) if bigrams[(a, b)] == 0]
+
+    probs = {s: phrase_prob(s) for s in phrases}
+    zero_reason = unseen_pairs('Это урок про градиентный спуск.')
+    print(probs)
+    print(zero_reason)
+  explanation: |
+    - «Случайный лес.» — 2,5·10⁻⁵, «Средняя цена машин.» — 1,7·10⁻⁶: чем длиннее фраза, тем меньше произведение, даже если все пары частые.
+    - У «Градиентный спуск.» — ноль: после «спуск» предложение в корпусе не заканчивалось.
+    - Во фразе «Это урок про градиентный спуск.» невиданных пар четыре: («это», «урок»), («урок», «про»), («про», «градиентный») и («спуск», </s>). Каждой одной хватило бы, чтобы обнулить вероятность грамотной фразы.
+  hints:
+    - "Множитель — `bigrams[(a, b)] / first[a]`, а если `first[a] == 0` — 0."
+    - "Невиданные пары — те, у которых `bigrams[(a, b)] == 0`."
+    - "`zero_reason = unseen_pairs('Это урок про градиентный спуск.')`."
+  tests: |
+    import math
+    f, g = var('phrase_prob'), var('unseen_pairs')
+    ensure(callable(f) and callable(g), '`phrase_prob` и `unseen_pairs` должны быть функциями.')
+    for s in ['Случайный лес.', 'Модель обучается на train.', 'Средняя цена машин.']:
+        exp = ref('phrase_prob')(s)
+        got = f(s)
+        if exp > 0 and math.isclose(got, exp / (ref('bigrams')[(ref('words')(s)[-1], '</s>')] / ref('first')[ref('words')(s)[-1]]), rel_tol=1e-9):
+            fail('Не забудьте последнюю пару — переход к метке конца `</s>`.')
+        close(got, exp, 'Вероятность фразы «' + s + '» — {expected}, а у вас {actual}.', rtol=1e-9, atol=0)
+    p = var('probs', dict, 'словарём')
+    for s in ref('phrases'):
+        close(p[s], ref('probs')[s], 'Вероятность фразы «' + s + '» — {expected}, а у вас {actual}.', rtol=1e-9, atol=0)
+    zr = [tuple(x) for x in var('zero_reason', list, 'списком')]
+    equal(zr, [tuple(x) for x in ref('zero_reason')], 'Невиданные пары — {expected}, а у вас {actual}.')
+    equal([tuple(x) for x in alt('zero_reason')], [tuple(x) for x in alt_ref('zero_reason')], HARDCODE_MSG)
+  files: [course_texts.txt]
+  wrong:
+    - code: |
+        def phrase_prob(sentence):
+            seq = ['<s>'] + words(sentence)
+            p = 1.0
+            for a, b in zip(seq, seq[1:]):
+                p *= bigrams[(a, b)] / first[a] if first[a] else 0.0
+            return p
+        def unseen_pairs(sentence):
+            seq = ['<s>'] + words(sentence) + ['</s>']
+            return [(a, b) for a, b in zip(seq, seq[1:]) if bigrams[(a, b)] == 0]
+        probs = {s: phrase_prob(s) for s in phrases}
+        zero_reason = unseen_pairs('Это урок про градиентный спуск.')
+      expect: метке конца
+    - code: |
+        def phrase_prob(sentence):
+            seq = ['<s>'] + words(sentence) + ['</s>']
+            p = 1.0
+            for a, b in zip(seq, seq[1:]):
+                p *= bigrams[(a, b)] / first[a] if first[a] else 0.0
+            return p
+        def unseen_pairs(sentence):
+            seq = words(sentence)
+            return [(a, b) for a, b in zip(seq, seq[1:]) if bigrams[(a, b)] == 0]
+        probs = {s: phrase_prob(s) for s in phrases}
+        zero_reason = unseen_pairs('Это урок про градиентный спуск.')
+      expect: Невиданные пары
+
+- id: m9-l1-t4
+  title: Сглаживание Лапласа
+  difficulty: main
+  introduces: []
+  uses: [n-gram, language-model]
+  statement: |
+    Чтобы невиданные пары не обнуляли вероятность, к каждому числу пар прибавляют 1: P(b | a) = (число пар (a, b) + 1) / (first[a] + V), где `V` — размер словаря (все слова корпуса и метка `</s>`). Это **сглаживание Лапласа**. Напишите `smooth_prob(sentence)` — вероятность фразы со сглаживанием. Получите:
+
+    - `smoothed` — словарь «фраза → сглаженная вероятность» для фраз из `phrases`;
+    - `ratio` — во сколько раз сглаживание уменьшило вероятность фразы `'Случайный лес.'`: обычная вероятность, делённая на сглаженную.
+  prelude: |
+    import re
+    from collections import Counter
+    with open('course_texts.txt', encoding='utf-8') as fh:
+        text = fh.read()
+    sentences = [s for s in re.split(r'(?<=[.!?…])\s+|\n', text) if s.strip()]
+
+    def words(sentence):
+        return re.findall(r'[а-яёa-z0-9]+', sentence.lower())
+
+    sents = [w for w in (words(s) for s in sentences) if w]
+    bigrams = Counter()
+    for s in sents:
+        seq = ['<s>'] + s + ['</s>']
+        bigrams.update(zip(seq, seq[1:]))
+    first = Counter()
+    for (a, b), c in bigrams.items():
+        first[a] += c
+    V = len({w for s in sents for w in s}) + 1      # слова корпуса и метка </s>
+
+    def phrase_prob(sentence):
+        seq = ['<s>'] + words(sentence) + ['</s>']
+        p = 1.0
+        for a, b in zip(seq, seq[1:]):
+            p *= bigrams[(a, b)] / first[a] if first[a] else 0.0
+        return p
+
+    phrases = ['Случайный лес.', 'Градиентный спуск.', 'Линейная регрессия предсказывает цену.']
+  starter: |
+    def smooth_prob(sentence):
+        seq = ['<s>'] + words(sentence) + ['</s>']
+        p = 1.0
+        for a, b in zip(seq, seq[1:]):
+            p *= ...
+        return p
+
+    smoothed = {s: smooth_prob(s) for s in phrases}
+    ratio = ...
+    print({s: f'{v:.2e}' for s, v in smoothed.items()}, round(ratio))
+  solution: |
+    def smooth_prob(sentence):
+        seq = ['<s>'] + words(sentence) + ['</s>']
+        p = 1.0
+        for a, b in zip(seq, seq[1:]):
+            p *= (bigrams[(a, b)] + 1) / (first[a] + V)
+        return p
+
+    smoothed = {s: smooth_prob(s) for s in phrases}
+    ratio = phrase_prob('Случайный лес.') / smooth_prob('Случайный лес.')
+    print({s: f'{v:.2e}' for s, v in smoothed.items()}, round(ratio))
+  explanation: |
+    - Нулей больше нет: «Градиентный спуск.» получает 5,5·10⁻¹¹, «Линейная регрессия предсказывает цену.» — 7,6·10⁻¹⁷.
+    - Плата за это: вероятность фразы «Случайный лес.», которую модель видела, упала в 173 тысячи раз. Каждое из 7 434 слов словаря получило добавку, и у настоящих продолжений почти не осталось доли.
+    - Поэтому на практике используют более аккуратные способы сглаживания, а главное — нейросети, которые оценивают вероятность невиданной пары по похожим словам.
+  hints:
+    - "Множитель со сглаживанием — `(bigrams[(a, b)] + 1) / (first[a] + V)`."
+    - "Обычная вероятность уже есть — функция `phrase_prob`."
+    - "`ratio = phrase_prob('Случайный лес.') / smooth_prob('Случайный лес.')`."
+  tests: |
+    f = var('smooth_prob')
+    ensure(callable(f), '`smooth_prob` должна быть функцией.')
+    for s in ['Это урок.', 'Средняя цена машин.']:
+        close(f(s), ref('smooth_prob')(s), 'Сглаженная вероятность фразы «' + s + '» — {expected}, а у вас {actual}.', rtol=1e-9, atol=0)
+    sm = var('smoothed', dict, 'словарём')
+    for s in ref('phrases'):
+        ensure(sm[s] > 0, 'Сглаженная вероятность не должна быть нулём: прибавьте 1 к числу пар.')
+        close(sm[s], ref('smoothed')[s], 'Сглаженная вероятность фразы «' + s + '» — {expected}, а у вас {actual}.', rtol=1e-9, atol=0)
+    r = var('ratio', 'number', 'числом')
+    if abs(r * ref('ratio') - 1) < 1e-6:
+        fail('`ratio` — обычная вероятность, делённая на сглаженную, а не наоборот.')
+    close(r, ref('ratio'), '`ratio` — {expected}, а у вас {actual}.', rtol=1e-6)
+    close(alt('ratio'), alt_ref('ratio'), HARDCODE_MSG, rtol=1e-6)
+  files: [course_texts.txt]
+  wrong:
+    - code: |
+        def smooth_prob(sentence):
+            seq = ['<s>'] + words(sentence) + ['</s>']
+            p = 1.0
+            for a, b in zip(seq, seq[1:]):
+                p *= (bigrams[(a, b)] + 1) / (first[a] + 1)
+            return p
+        smoothed = {s: smooth_prob(s) for s in phrases}
+        ratio = phrase_prob('Случайный лес.') / smooth_prob('Случайный лес.')
+      expect: Сглаженная вероятность
+    - code: |
+        def smooth_prob(sentence):
+            seq = ['<s>'] + words(sentence) + ['</s>']
+            p = 1.0
+            for a, b in zip(seq, seq[1:]):
+                p *= (bigrams[(a, b)] + 1) / (first[a] + V)
+            return p
+        smoothed = {s: smooth_prob(s) for s in phrases}
+        ratio = smooth_prob('Случайный лес.') / phrase_prob('Случайный лес.')
+      expect: а не наоборот
+
+- id: m9-l1-t5
+  title: Чем длиннее n-грамма, тем она реже
+  difficulty: star
+  introduces: []
+  uses: [n-gram, pd-value-counts]
+  statement: |
+    Сравните биграммы и **триграммы** — тройки соседних слов. Для триграмм в начало предложения ставьте две метки: `['<s>', '<s>'] + s + ['</s>']`. Получите:
+
+    - `n_trigrams` — сколько разных триграмм в корпусе;
+    - `single_share` — словарь `{'bigram': ..., 'trigram': ...}`: доля разных n-грамм, встретившихся ровно один раз;
+    - `top_trigram` — самая частая триграмма без меток `<s>` и `</s>`.
+  prelude: |
+    import re
+    from collections import Counter
+    with open('course_texts.txt', encoding='utf-8') as fh:
+        text = fh.read()
+    sentences = [s for s in re.split(r'(?<=[.!?…])\s+|\n', text) if s.strip()]
+
+    def words(sentence):
+        return re.findall(r'[а-яёa-z0-9]+', sentence.lower())
+
+    sents = [w for w in (words(s) for s in sentences) if w]
+    bigrams = Counter()
+    for s in sents:
+        seq = ['<s>'] + s + ['</s>']
+        bigrams.update(zip(seq, seq[1:]))
+  starter: |
+    trigrams = Counter()
+    for s in sents:
+        seq = ...
+        trigrams.update(...)
+    n_trigrams = ...
+    single_share = {'bigram': ..., 'trigram': ...}
+    top_trigram = ...
+    print(n_trigrams, {k: round(v, 3) for k, v in single_share.items()}, top_trigram)
+  solution: |
+    trigrams = Counter()
+    for s in sents:
+        seq = ['<s>', '<s>'] + s + ['</s>']
+        trigrams.update(zip(seq, seq[1:], seq[2:]))
+    n_trigrams = len(trigrams)
+    single_share = {'bigram': sum(c == 1 for c in bigrams.values()) / len(bigrams),
+                    'trigram': sum(c == 1 for c in trigrams.values()) / len(trigrams)}
+    top_trigram = next(t for t, c in trigrams.most_common() if '<s>' not in t and '</s>' not in t)
+    print(n_trigrams, {k: round(v, 3) for k, v in single_share.items()}, top_trigram)
+  explanation: |
+    - Разных триграмм — 44 157, больше, чем биграмм (33 962): сочетаний из трёх слов гораздо больше.
+    - Ровно один раз встретились 81 % разных биграмм и 93 % разных триграмм. Чем длиннее контекст, тем меньше шансов увидеть его в корпусе снова, а невиданное получает вероятность ноль.
+    - Модель с длинным контекстом на подсчётах не построить даже на огромных корпусах. Нейросетевые модели заменяют подсчёты векторами и вниманием (уроки 9.2–9.3).
+  hints:
+    - "Тройки — `zip(seq, seq[1:], seq[2:])` для `seq = ['<s>', '<s>'] + s + ['</s>']`."
+    - "Доля встретившихся один раз — `sum(c == 1 for c in trigrams.values()) / len(trigrams)`, то же для биграмм."
+    - "Самая частая без меток — первая из `trigrams.most_common()`, где нет `'<s>'` и `'</s>'`."
+  tests: |
+    n = int(var('n_trigrams', 'number', 'числом'))
+    equal(n, int(ref('n_trigrams')), 'Разных триграмм — {expected}, а у вас {actual}. Начало предложения — две метки `<s>`.')
+    d = var('single_share', dict, 'словарём')
+    ensure(set(d) == {'bigram', 'trigram'}, 'Ключи `single_share` — bigram и trigram.')
+    close(d['bigram'], ref('single_share')['bigram'], 'Доля биграмм, встретившихся один раз, — {expected}, а у вас {actual}.')
+    close(d['trigram'], ref('single_share')['trigram'], 'Доля триграмм, встретившихся один раз, — {expected}, а у вас {actual}.')
+    t = tuple(var('top_trigram'))
+    ensure(len(t) == 3, '`top_trigram` — тройка слов.')
+    if '<s>' in t or '</s>' in t:
+        fail('В `top_trigram` не должно быть меток `<s>` и `</s>`.')
+    equal(t, tuple(ref('top_trigram')), 'Самая частая триграмма — {expected}, а у вас {actual}.')
+    equal(int(alt('n_trigrams')), int(alt_ref('n_trigrams')), HARDCODE_MSG)
+  files: [course_texts.txt]
+  wrong:
+    - code: |
+        trigrams = Counter()
+        for s in sents:
+            seq = ['<s>'] + s + ['</s>']
+            trigrams.update(zip(seq, seq[1:], seq[2:]))
+        n_trigrams = len(trigrams)
+        single_share = {'bigram': sum(c == 1 for c in bigrams.values()) / len(bigrams),
+                        'trigram': sum(c == 1 for c in trigrams.values()) / len(trigrams)}
+        top_trigram = next(t for t, c in trigrams.most_common() if '<s>' not in t and '</s>' not in t)
+      expect: две метки
+    - code: |
+        trigrams = Counter()
+        for s in sents:
+            seq = ['<s>', '<s>'] + s + ['</s>']
+            trigrams.update(zip(seq, seq[1:], seq[2:]))
+        n_trigrams = len(trigrams)
+        single_share = {'bigram': sum(c == 1 for c in bigrams.values()) / len(bigrams),
+                        'trigram': sum(c == 1 for c in trigrams.values()) / len(trigrams)}
+        top_trigram = trigrams.most_common(1)[0][0]
+      expect: не должно быть меток

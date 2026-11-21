@@ -1,0 +1,502 @@
+- id: m12-l2-t1
+  title: IoU двух рамок
+  difficulty: warmup
+  introduces: [object-detection]
+  uses: []
+  statement: |
+    Напишите функцию `box_iou(a, b)` для рамок `(x1, y1, x2, y2)`: площадь пересечения, делённая на площадь объединения. Если рамки не пересекаются или только касаются краями, IoU равен 0. Результат — `float`.
+
+    Получите `iou_scheme` — IoU рамок со схемы урока: (20, 10, 60, 50) и (30, 20, 80, 60), и `iou_shift` — IoU настоящей рамки первого объекта `true_box` и той же рамки, сдвинутой на 5 пикселей вправо и на 5 вниз.
+  prelude: |
+    true_box = (12, 10, 40, 34)
+  starter: |
+    def box_iou(a, b):
+        ix = max(0, min(a[2], b[2]) - max(a[0], b[0]))
+        iy = ...
+        inter = ix * iy
+        area_a = (a[2] - a[0]) * (a[3] - a[1])
+        area_b = (b[2] - b[0]) * (b[3] - b[1])
+        return float(...)
+
+    iou_scheme = box_iou((20, 10, 60, 50), (30, 20, 80, 60))
+    shifted = (true_box[0] + 5, true_box[1] + 5, true_box[2] + 5, true_box[3] + 5)
+    iou_shift = box_iou(true_box, shifted)
+    print(round(iou_scheme, 3), round(iou_shift, 3))
+  solution: |
+    def box_iou(a, b):
+        ix = max(0, min(a[2], b[2]) - max(a[0], b[0]))
+        iy = max(0, min(a[3], b[3]) - max(a[1], b[1]))
+        inter = ix * iy
+        area_a = (a[2] - a[0]) * (a[3] - a[1])
+        area_b = (b[2] - b[0]) * (b[3] - b[1])
+        return float(inter / (area_a + area_b - inter))
+
+    iou_scheme = box_iou((20, 10, 60, 50), (30, 20, 80, 60))
+    shifted = (true_box[0] + 5, true_box[1] + 5, true_box[2] + 5, true_box[3] + 5)
+    iou_shift = box_iou(true_box, shifted)
+    print(round(iou_scheme, 3), round(iou_shift, 3))
+  explanation: |
+    - Пересечение двух рамок — тоже рамка: левый край — больший из левых, правый — меньший из правых. Если «правый» оказался левее «левого», рамки не пересекаются, и `max(0, …)` даёт ширину 0.
+    - В объединении пересечение вычитается: иначе его площадь посчиталась бы дважды.
+    - Сдвиг всего на 5 пикселей у рамки 28 × 24 даёт IoU 0,48 — уже ниже порога 0,5, и объект считался бы ненайденным. Рамки мелких объектов очень чувствительны к сдвигу, поэтому качество на маленьких объектах оценивают отдельно.
+  hints:
+    - "Высота пересечения — `max(0, min(a[3], b[3]) - max(a[1], b[1]))`."
+    - "Объединение — `area_a + area_b - inter`."
+    - "Проверьте себя на схеме урока: должно получиться 1/3."
+  tests: |
+    f = var('box_iou')
+    ensure(callable(f), '`box_iou` должна быть функцией.')
+    close(f((0, 0, 10, 10), (0, 0, 10, 10)), 1.0, 'Одинаковые рамки — IoU 1, а у вас {actual}.')
+    got = f((0, 0, 10, 10), (5, 0, 15, 10))
+    if abs(got - 0.5) < 1e-9:
+        fail('Пересечение вычитается из суммы площадей: объединение (0, 0, 10, 10) и (5, 0, 15, 10) — 150, IoU = 50/150.')
+    close(got, 1 / 3, 'Для рамок (0, 0, 10, 10) и (5, 0, 15, 10) IoU = 50/150, а у вас {actual}.')
+    equal(f((0, 0, 10, 10), (20, 20, 30, 30)), 0.0, 'Непересекающиеся рамки — IoU 0.')
+    equal(f((0, 0, 10, 10), (10, 0, 20, 10)), 0.0, 'Рамки, касающиеся краем, не пересекаются — IoU 0.')
+    equal(f((0, 0, 10, 10), (20, 0, 30, 10)), 0.0, 'Рамки, разнесённые по горизонтали, — IoU 0, даже если по вертикали они на одном уровне.')
+    ensure(isinstance(got, float), '`box_iou` должна вернуть float.')
+    close(var('iou_scheme', 'number', 'числом'), 1 / 3, 'IoU рамок со схемы — 1/3, а у вас {actual}.')
+    close(var('iou_shift', 'number', 'числом'), ref('iou_shift'), 'IoU сдвинутой рамки — {expected}, а у вас {actual}.')
+  files: []
+  wrong:
+    - code: |
+        def box_iou(a, b):
+            ix = max(0, min(a[2], b[2]) - max(a[0], b[0]))
+            iy = max(0, min(a[3], b[3]) - max(a[1], b[1]))
+            inter = ix * iy
+            area_a = (a[2] - a[0]) * (a[3] - a[1])
+            area_b = (b[2] - b[0]) * (b[3] - b[1])
+            return float(inter / (area_a + area_b))
+        iou_scheme = box_iou((20, 10, 60, 50), (30, 20, 80, 60))
+        iou_shift = box_iou(true_box, (17, 15, 45, 39))
+      expect: Одинаковые рамки
+    - code: |
+        def box_iou(a, b):
+            ix = min(a[2], b[2]) - max(a[0], b[0])
+            iy = min(a[3], b[3]) - max(a[1], b[1])
+            inter = ix * iy
+            area_a = (a[2] - a[0]) * (a[3] - a[1])
+            area_b = (b[2] - b[0]) * (b[3] - b[1])
+            return float(inter / (area_a + area_b - inter))
+        iou_scheme = box_iou((20, 10, 60, 50), (30, 20, 80, 60))
+        iou_shift = box_iou(true_box, (17, 15, 45, 39))
+      expect: Непересекающиеся рамки
+
+- id: m12-l2-t2
+  title: Верные находки, ложные тревоги и пропуски
+  difficulty: main
+  introduces: []
+  uses: [object-detection]
+  statement: |
+    Напишите функцию `match_counts(dets, truths, thr=0.5)`: `dets` — найденные рамки `(рамка, уверенность)`, `truths` — настоящие рамки. Функция возвращает кортеж `(tp, fp, fn)`:
+
+    - найденные рамки перебираются от самой уверенной к наименее уверенной;
+    - рамка — верная находка (`tp`), если её IoU с ещё не «пойманной» настоящей рамкой не меньше `thr`. Берётся та настоящая рамка, с которой IoU наибольший, и она считается пойманной;
+    - иначе рамка — ложная тревога (`fp`);
+    - `fn` — настоящие рамки, которые никто не поймал.
+
+    Функция `box_iou` уже есть. Получите `counts` для ответа детектора `detections` с порогом уверенности 0,5 (рамки с меньшей уверенностью не учитываются) и `counts_strict` — то же при пороге IoU 0,8.
+  prelude: |
+    def box_iou(a, b):
+        ix = max(0, min(a[2], b[2]) - max(a[0], b[0]))
+        iy = max(0, min(a[3], b[3]) - max(a[1], b[1]))
+        inter = ix * iy
+        return inter / ((a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - inter)
+
+    true_boxes = [(12, 10, 40, 34), (70, 45, 110, 70)]
+    detections = [((14, 12, 41, 36), 0.94), ((12, 9, 39, 33), 0.81), ((72, 47, 108, 71), 0.88),
+                  ((74, 14, 84, 23), 0.55), ((40, 60, 52, 72), 0.20)]
+  starter: |
+    def match_counts(dets, truths, thr=0.5):
+        caught = set()
+        tp = fp = 0
+        for box, score in sorted(dets, key=lambda d: -d[1]):
+            options = [(box_iou(box, t), i) for i, t in enumerate(truths) if i not in caught]
+            best_iou, best_i = max(options, default=(0, None))
+            if ...:
+                caught.add(best_i)
+                tp += 1
+            else:
+                fp += 1
+        return tp, fp, ...
+
+    confident = [d for d in detections if d[1] >= 0.5]
+    counts = match_counts(confident, true_boxes)
+    counts_strict = match_counts(confident, true_boxes, thr=0.8)
+    print(counts, counts_strict)
+  solution: |
+    def match_counts(dets, truths, thr=0.5):
+        caught = set()
+        tp = fp = 0
+        for box, score in sorted(dets, key=lambda d: -d[1]):
+            options = [(box_iou(box, t), i) for i, t in enumerate(truths) if i not in caught]
+            best_iou, best_i = max(options, default=(0, None))
+            if best_iou >= thr:
+                caught.add(best_i)
+                tp += 1
+            else:
+                fp += 1
+        return tp, fp, len(truths) - len(caught)
+
+    confident = [d for d in detections if d[1] >= 0.5]
+    counts = match_counts(confident, true_boxes)
+    counts_strict = match_counts(confident, true_boxes, thr=0.8)
+    print(counts, counts_strict)
+  explanation: |
+    - Перебор от самой уверенной рамки решает, кому достанется объект при повторах: его «ловит» уверенная рамка, а остальные становятся ложными тревогами.
+    - `max(options, default=(0, None))` — лучший IoU среди ещё не пойманных объектов. Если все пойманы, список пуст, и `default` даёт 0 — ложная тревога.
+    - При пороге IoU 0,5: 2 находки, 2 ложные тревоги (повтор и тёмное пятно), 0 пропусков. При строгом пороге 0,8 не дотягивают и самая уверенная рамка (IoU 0,76), и рамка второго объекта (0,799). Первый объект «ловит» менее уверенная, но более точная рамка (0,89). Итог — 1 находка, 3 ложные тревоги и 1 пропуск: строгий порог проверяет, насколько точно рамки повторяют контур объекта.
+  hints:
+    - "Находка — `best_iou >= thr`."
+    - "Пропуски — настоящие рамки, которых нет в `caught`: `len(truths) - len(caught)`."
+    - "Порог уверенности применён заранее — в `confident`."
+  tests: |
+    f = var('match_counts')
+    ensure(callable(f), '`match_counts` должна быть функцией.')
+    truths = [(0, 0, 10, 10), (20, 20, 30, 30)]
+    equal(f([((0, 0, 10, 10), 0.9)], truths), (1, 0, 1), 'Одна точная рамка из двух объектов: (tp, fp, fn) = {expected}, а у вас {actual}.')
+    dup = [((1, 1, 11, 11), 0.7), ((0, 0, 10, 10), 0.9)]
+    got = f(dup, truths)
+    if got[0] == 2:
+        fail('Один объект «поймали» две рамки: каждая настоящая рамка засчитывается только один раз — повтор становится ложной тревогой.')
+    equal(got, (1, 1, 1), 'Две рамки на один объект: (tp, fp, fn) = {expected}, а у вас {actual}.')
+    equal(f([((50, 50, 60, 60), 0.9)], truths), (0, 1, 2), 'Рамка мимо объектов — ложная тревога, оба объекта пропущены.')
+    equal(f([], truths), (0, 0, 2), 'Без рамок — оба объекта пропущены.')
+    equal(f([((0, 0, 10, 14), 0.9)], truths, thr=0.8), (0, 1, 2), 'С порогом IoU 0.8 рамка с IoU 0.71 не засчитывается.')
+    equal(var('counts', tuple, 'кортежем'), ref('counts'), 'Итог для ответа детектора — {expected}, а у вас {actual}.')
+    equal(var('counts_strict', tuple, 'кортежем'), ref('counts_strict'), 'Итог при пороге IoU 0.8 — {expected}, а у вас {actual}.')
+  files: []
+  wrong:
+    - code: |
+        def match_counts(dets, truths, thr=0.5):
+            tp = fp = 0
+            for box, score in dets:
+                if max(box_iou(box, t) for t in truths) >= thr:
+                    tp += 1
+                else:
+                    fp += 1
+            return tp, fp, max(len(truths) - tp, 0)
+        confident = [d for d in detections if d[1] >= 0.5]
+        counts = match_counts(confident, true_boxes)
+        counts_strict = match_counts(confident, true_boxes, thr=0.8)
+      expect: только один раз
+    - code: |
+        def match_counts(dets, truths, thr=0.5):
+            caught = set()
+            tp = fp = 0
+            for box, score in sorted(dets, key=lambda d: -d[1]):
+                options = [(box_iou(box, t), i) for i, t in enumerate(truths) if i not in caught]
+                best_iou, best_i = max(options, default=(0, None))
+                if best_iou >= thr:
+                    caught.add(best_i)
+                    tp += 1
+                else:
+                    fp += 1
+            return tp, fp, 0
+        confident = [d for d in detections if d[1] >= 0.5]
+        counts = match_counts(confident, true_boxes)
+        counts_strict = match_counts(confident, true_boxes, thr=0.8)
+      expect: Одна точная рамка
+
+- id: m12-l2-t3
+  title: Подавление повторов внутри класса
+  difficulty: main
+  introduces: []
+  uses: [object-detection]
+  statement: |
+    Детектор находит объекты разных классов, и рамки разных классов могут законно пересекаться: велосипедист — это рамка «человек» поверх рамки «велосипед». Повторы убирают только **внутри класса**. Напишите функцию `nms_by_class(dets, thr=0.5)`: `dets` — список `(рамка, уверенность, класс)`. Функция возвращает оставленные рамки в порядке убывания уверенности: рамка остаётся, если её IoU с каждой уже оставленной рамкой **того же класса** меньше `thr`.
+
+    Получите `kept` для ответа детектора `street`.
+  prelude: |
+    def box_iou(a, b):
+        ix = max(0, min(a[2], b[2]) - max(a[0], b[0]))
+        iy = max(0, min(a[3], b[3]) - max(a[1], b[1]))
+        inter = ix * iy
+        return inter / ((a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - inter)
+
+    street = [((40, 30, 72, 88), 0.92, 'человек'), ((36, 45, 80, 92), 0.88, 'велосипед'),
+              ((42, 32, 74, 86), 0.71, 'человек'), ((120, 30, 140, 60), 0.66, 'человек'),
+              ((37, 46, 79, 90), 0.40, 'велосипед')]
+  starter: |
+    def nms_by_class(dets, thr=0.5):
+        kept = []
+        for box, score, cls in sorted(dets, key=lambda d: -d[1]):
+            same = [k for k in kept if ...]
+            if all(box_iou(box, k[0]) < thr for k in same):
+                kept.append((box, score, cls))
+        return kept
+
+    kept = nms_by_class(street)
+    for k in kept:
+        print(k)
+  solution: |
+    def nms_by_class(dets, thr=0.5):
+        kept = []
+        for box, score, cls in sorted(dets, key=lambda d: -d[1]):
+            same = [k for k in kept if k[2] == cls]
+            if all(box_iou(box, k[0]) < thr for k in same):
+                kept.append((box, score, cls))
+        return kept
+
+    kept = nms_by_class(street)
+    for k in kept:
+        print(k)
+  explanation: |
+    - Рамки перебираются от самой уверенной, и каждая сравнивается только с уже оставленными рамками своего класса: `k[2] == cls`.
+    - Человек и велосипед пересекаются сильно, но оба остались — это разные объекты. Повтор человека (0,71) и повтор велосипеда (0,40) убраны. Второй человек справа не пересекается с первым и остался.
+    - Общее подавление без учёта класса убрало бы велосипед: его рамка пересекается с более уверенной рамкой человека с IoU 0,54. Велосипедист превратился бы в «просто человека».
+  hints:
+    - "Рамки того же класса — `[k for k in kept if k[2] == cls]`."
+    - "`all([])` — `True`: первая рамка класса всегда остаётся."
+    - "Порядок результата — по убыванию уверенности: он получится сам, если перебирать отсортированный список."
+  tests: |
+    f = var('nms_by_class')
+    ensure(callable(f), '`nms_by_class` должна быть функцией.')
+    dets = [((0, 0, 10, 10), 0.6, 'a'), ((0, 0, 10, 10), 0.9, 'b'), ((1, 1, 11, 11), 0.8, 'a')]
+    got = f(dets)
+    if len(got) == 1:
+        fail('Рамки разных классов подавлять нельзя: «a» и «b» на одном месте — разные объекты.')
+    equal(got, [((0, 0, 10, 10), 0.9, 'b'), ((1, 1, 11, 11), 0.8, 'a')], 'Ожидалось {expected}, а у вас {actual}: внутри класса «a» остаётся более уверенная рамка, порядок — по убыванию уверенности.')
+    far = [((0, 0, 10, 10), 0.5, 'a'), ((50, 50, 60, 60), 0.7, 'a')]
+    equal(f(far), [((50, 50, 60, 60), 0.7, 'a'), ((0, 0, 10, 10), 0.5, 'a')], 'Далёкие рамки одного класса обе остаются, по убыванию уверенности.')
+    equal(f([]), [], 'Пустой список — пустой результат.')
+    equal(var('kept', list, 'списком'), ref('kept'), 'Оставленные рамки — {expected}, а у вас {actual}.')
+  files: []
+  wrong:
+    - code: |
+        def nms_by_class(dets, thr=0.5):
+            kept = []
+            for box, score, cls in sorted(dets, key=lambda d: -d[1]):
+                if all(box_iou(box, k[0]) < thr for k in kept):
+                    kept.append((box, score, cls))
+            return kept
+        kept = nms_by_class(street)
+      expect: разных классов
+    - code: |
+        def nms_by_class(dets, thr=0.5):
+            kept = []
+            for box, score, cls in dets:
+                same = [k for k in kept if k[2] == cls]
+                if all(box_iou(box, k[0]) < thr for k in same):
+                    kept.append((box, score, cls))
+            return kept
+        kept = nms_by_class(street)
+      expect: более уверенная
+
+- id: m12-l2-t4
+  title: Убрать мелкие пятна из маски
+  difficulty: main
+  introduces: [image-segmentation]
+  uses: [bool-mask]
+  statement: |
+    Маска «много красного» содержит мелкие пятна, которые не объекты. Напишите функцию `remove_small(mask, min_area)`: номера связных пятен даёт `ndimage.label(mask)`, площадь пятна — число его пикселей; пятна меньше `min_area` из маски убираются. Функция возвращает новую логическую маску.
+
+    Напишите и `mask_iou(pred, true)`: пересечение, делённое на объединение; если обе маски пустые, IoU равен 1. Получите `iou_before` и `iou_after` — IoU маски `red` с настоящей `true_mask` до и после удаления пятен меньше 100 пикселей.
+  prelude: |
+    import numpy as np
+    from scipy import ndimage
+    rng = np.random.default_rng(12)
+    h, w = 80, 120
+    img = 150 + rng.normal(0, 12, size=(h, w, 3))
+    def paint(region, color):
+        img[region] = np.array(color) + rng.normal(0, 12, size=img[region].shape)
+    paint(np.s_[10:34, 12:40], [210, 40, 40])
+    paint(np.s_[45:70, 70:110], [200, 30, 50])
+    yy, xx = np.ogrid[:h, :w]
+    circle = (yy - 52) ** 2 + (xx - 78) ** 2 <= 9 ** 2
+    img[circle] = np.array([40, 60, 200]) + rng.normal(0, 12, size=(int(circle.sum()), 3))
+    paint(np.s_[15:22, 75:83], [160, 60, 60])
+    scene = np.clip(img, 0, 255).astype(np.uint8)
+    true_mask = np.zeros((h, w), dtype=bool)
+    true_mask[10:34, 12:40] = True
+    true_mask[45:70, 70:110] = True
+    true_mask &= ~circle
+    r, g, b = (scene[:, :, k].astype(int) for k in range(3))
+    red = (r > 150) & (g < 100) & (b < 100)
+  starter: |
+    def remove_small(mask, min_area):
+        labels, n = ndimage.label(mask)
+        areas = np.bincount(labels.ravel())             # areas[k] — пикселей в пятне k (areas[0] — фон)
+        big = [k for k in range(1, n + 1) if ...]
+        return np.isin(labels, big)
+
+    def mask_iou(pred, true):
+        union = (pred | true).sum()
+        if union == 0:
+            return 1.0
+        return float(...)
+
+    iou_before = mask_iou(red, true_mask)
+    iou_after = mask_iou(remove_small(red, 100), true_mask)
+    print(round(iou_before, 4), round(iou_after, 4))
+  solution: |
+    def remove_small(mask, min_area):
+        labels, n = ndimage.label(mask)
+        areas = np.bincount(labels.ravel())             # areas[k] — пикселей в пятне k (areas[0] — фон)
+        big = [k for k in range(1, n + 1) if areas[k] >= min_area]
+        return np.isin(labels, big)
+
+    def mask_iou(pred, true):
+        union = (pred | true).sum()
+        if union == 0:
+            return 1.0
+        return float((pred & true).sum() / union)
+
+    iou_before = mask_iou(red, true_mask)
+    iou_after = mask_iou(remove_small(red, 100), true_mask)
+    print(round(iou_before, 4), round(iou_after, 4))
+  explanation: |
+    - `np.bincount(labels.ravel())` считает, сколько пикселей у каждого номера: это площади всех пятен сразу. `np.isin(labels, big)` — маска пикселей, чьё пятно в списке больших.
+    - Удаление мелочи убрало тёмно-красное пятно (48 ложных пикселей) и отрезанный кругом уголок объекта (6 верных). IoU вырос: ложных пикселей ушло больше, чем верных.
+    - Две пустые маски совпадают полностью, поэтому IoU = 1, а не деление 0 / 0. Так бывает на картинках, где объекта нет и модель это правильно поняла.
+  hints:
+    - "Большое пятно — `areas[k] >= min_area`."
+    - "IoU — `(pred & true).sum() / union`."
+    - "Проверьте себя: после удаления в `red` должно остаться два пятна."
+  tests: |
+    import numpy as np
+    rs = var('remove_small')
+    mi = var('mask_iou')
+    ensure(callable(rs) and callable(mi), '`remove_small` и `mask_iou` должны быть функциями.')
+    m = np.zeros((6, 8), dtype=bool)
+    m[0:3, 0:3] = True
+    m[5, 7] = True
+    m[4:6, 3:5] = True
+    got = np.asarray(rs(m, 4))
+    ensure(got.dtype == bool, '`remove_small` должна вернуть логическую маску.')
+    exp = np.zeros((6, 8), dtype=bool)
+    exp[0:3, 0:3] = True
+    exp[4:6, 3:5] = True
+    same_array(got, exp, 'Пятна площадью 9, 1 и 4 при min_area=4: остаются пятна 9 и 4.')
+    same_array(np.asarray(rs(m, 10)), np.zeros((6, 8), dtype=bool), 'При min_area=10 все пятна меньше — маска пустая.')
+    a = np.array([[True, True], [False, False]])
+    b = np.array([[True, False], [True, False]])
+    close(mi(a, b), 1 / 3, 'IoU масок [[1, 1], [0, 0]] и [[1, 0], [1, 0]] — 1/3, а у вас {actual}.')
+    z = np.zeros((2, 2), dtype=bool)
+    equal(mi(z, z), 1.0, 'Две пустые маски совпадают — IoU 1.')
+    equal(mi(a, z), 0.0, 'Маска и пустая маска — IoU 0.')
+    close(var('iou_before', 'number', 'числом'), ref('iou_before'), 'IoU до удаления пятен — {expected}, а у вас {actual}.')
+    close(var('iou_after', 'number', 'числом'), ref('iou_after'), 'IoU после удаления пятен — {expected}, а у вас {actual}.')
+  files: []
+  wrong:
+    - code: |
+        def remove_small(mask, min_area):
+            labels, n = ndimage.label(mask)
+            areas = np.bincount(labels.ravel())
+            big = [k for k in range(0, n + 1) if areas[k] >= min_area]
+            return np.isin(labels, big)
+        def mask_iou(pred, true):
+            union = (pred | true).sum()
+            if union == 0:
+                return 1.0
+            return float((pred & true).sum() / union)
+        iou_before = mask_iou(red, true_mask)
+        iou_after = mask_iou(remove_small(red, 100), true_mask)
+      expect: остаются пятна 9 и 4
+    - code: |
+        def remove_small(mask, min_area):
+            labels, n = ndimage.label(mask)
+            areas = np.bincount(labels.ravel())
+            big = [k for k in range(1, n + 1) if areas[k] >= min_area]
+            return np.isin(labels, big)
+        def mask_iou(pred, true):
+            return float((pred & true).sum() / (pred | true).sum())
+        iou_before = mask_iou(red, true_mask)
+        iou_after = mask_iou(remove_small(red, 100), true_mask)
+      expect: Две пустые маски
+
+- id: m12-l2-t5
+  title: Почему диффузия идёт маленькими шагами
+  difficulty: star
+  introduces: [image-generation]
+  uses: [digital-image]
+  statement: |
+    Зашумлённая картинка шага `t` — `x_t = sqrt(1 − t)·x0 + sqrt(t)·eps`. Если сеть предсказала шум `eps_hat`, картинку восстанавливают так: `x0_hat = (x_t − sqrt(t)·eps_hat) / sqrt(1 − t)`.
+
+    1. Напишите функции `add_noise(x0, t, eps)` и `restore(xt, t, eps_hat)` по этим формулам.
+    2. Пусть сеть ошибается в шуме на небольшую величину: `eps_hat = eps + err`, где `err` — случайная ошибка с разбросом 0,1 (уже есть). Для `t` из списка `ts` получите `restore_rmse` — список среднеквадратичных отклонений `x0_hat` от `x0` (корень из среднего квадрата разности).
+
+    Посмотрите, как растёт ошибка восстановления при больших `t`.
+  prelude: |
+    import numpy as np
+    with np.load('zs_thumbs.npz') as data:
+        stop = data['images'][[str(x) for x in data['ids']].index('778.jpg')]
+    x0 = stop / 127.5 - 1
+    rng = np.random.default_rng(0)
+    eps = rng.normal(size=x0.shape)
+    err = rng.normal(scale=0.1, size=x0.shape)        # ошибка сети в предсказании шума
+    ts = [0.1, 0.5, 0.9, 0.99]
+  starter: |
+    def add_noise(x0, t, eps):
+        return ...
+
+    def restore(xt, t, eps_hat):
+        return ...
+
+    restore_rmse = []
+    for t in ts:
+        xt = add_noise(x0, t, eps)
+        x0_hat = restore(xt, t, eps + err)
+        restore_rmse.append(float(np.sqrt(((x0_hat - x0) ** 2).mean())))
+    print([round(v, 3) for v in restore_rmse])
+  solution: |
+    def add_noise(x0, t, eps):
+        return np.sqrt(1 - t) * x0 + np.sqrt(t) * eps
+
+    def restore(xt, t, eps_hat):
+        return (xt - np.sqrt(t) * eps_hat) / np.sqrt(1 - t)
+
+    restore_rmse = []
+    for t in ts:
+        xt = add_noise(x0, t, eps)
+        x0_hat = restore(xt, t, eps + err)
+        restore_rmse.append(float(np.sqrt(((x0_hat - x0) ** 2).mean())))
+    print([round(v, 3) for v in restore_rmse])
+  explanation: |
+    - Подставим: `x0_hat − x0 = −sqrt(t) / sqrt(1 − t) · err`. Ошибка в шуме умножается на `sqrt(t / (1 − t))`: при t = 0,1 — на 0,33, при t = 0,9 — уже на 3, при t = 0,99 — на 10.
+    - Поэтому сразу из почти чистого шума картинку не восстановить: крошечная ошибка сети превращается в огромную ошибку картинки. Диффузионная модель делает много маленьких шагов: на каждом убирает немного шума и снова спрашивает сеть, уже по более чистой картинке.
+    - Если сеть угадала шум точно (`err = 0`), `restore` возвращает исходную картинку при любом t < 1 — как в уроке.
+  hints:
+    - "Зашумление — `np.sqrt(1 - t) * x0 + np.sqrt(t) * eps`."
+    - "Восстановление — `(xt - np.sqrt(t) * eps_hat) / np.sqrt(1 - t)`."
+    - "Ожидаемая ошибка — примерно `0.1 · sqrt(t / (1 − t))`: проверьте себя для t = 0,9."
+  tests: |
+    import numpy as np
+    an = var('add_noise')
+    rs = var('restore')
+    ensure(callable(an) and callable(rs), '`add_noise` и `restore` должны быть функциями.')
+    x = np.array([1.0, -1.0, 0.5])
+    e = np.array([0.0, 2.0, -1.0])
+    same_array(np.asarray(an(x, 0.0, e)), x, 'При t = 0 зашумлённая картинка — сама картинка.')
+    same_array(np.asarray(an(x, 1.0, e)), e, 'При t = 1 — чистый шум.')
+    same_array(np.asarray(an(x, 0.36, e)), 0.8 * x + 0.6 * e, 'При t = 0.36: sqrt(0.64)·x0 + sqrt(0.36)·eps.')
+    same_array(np.asarray(rs(an(x, 0.36, e), 0.36, e)), x, 'Если шум угадан точно, restore должна вернуть исходную картинку.')
+    rr = var('restore_rmse', list, 'списком')
+    equal(len(rr), 4, 'Нужно по одному отклонению на каждое t из ts.')
+    for t, got, want in zip([0.1, 0.5, 0.9, 0.99], rr, ref('restore_rmse')):
+        close(got, want, 'Ошибка восстановления при t = {0} — {{expected}}, а у вас {{actual}}.'.format(t))
+    ensure(rr[-1] > 5 * rr[1], 'Ошибка при t = 0.99 должна быть во много раз больше, чем при t = 0.5.')
+  files: [zs_thumbs.npz]
+  wrong:
+    - code: |
+        def add_noise(x0, t, eps):
+            return (1 - t) * x0 + t * eps
+        def restore(xt, t, eps_hat):
+            return (xt - t * eps_hat) / (1 - t)
+        restore_rmse = []
+        for t in ts:
+            xt = add_noise(x0, t, eps)
+            x0_hat = restore(xt, t, eps + err)
+            restore_rmse.append(float(np.sqrt(((x0_hat - x0) ** 2).mean())))
+      expect: sqrt(0.64)
+    - code: |
+        def add_noise(x0, t, eps):
+            return np.sqrt(1 - t) * x0 + np.sqrt(t) * eps
+        def restore(xt, t, eps_hat):
+            return xt - np.sqrt(t) * eps_hat
+        restore_rmse = []
+        for t in ts:
+            xt = add_noise(x0, t, eps)
+            x0_hat = restore(xt, t, eps + err)
+            restore_rmse.append(float(np.sqrt(((x0_hat - x0) ** 2).mean())))
+      expect: исходную картинку

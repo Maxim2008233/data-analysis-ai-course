@@ -1,0 +1,411 @@
+- id: m4-l3-t1
+  kind: plot
+  title: Топ-10 типов кузова горизонтальными столбцами
+  difficulty: warmup
+  introduces: [mpl-bar-labels]
+  uses: [pd-value-counts, mpl-fig-ax]
+  statement: |
+    Нарисуйте горизонтальные столбцы (`ax.barh`) для **десяти самых частых типов кузова** (`Style`) так, чтобы самый частый оказался **сверху**. Добавьте заголовок и подпись оси X `Число объявлений`.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    top = ...
+    fig, ax = plt.subplots(figsize=(9, 4))
+    ax.barh(...)
+    ax.set(title=..., xlabel=...)
+    plt.show()
+  solution: |
+    top = df['Style'].value_counts().head(10).sort_values()
+    fig, ax = plt.subplots(figsize=(9, 4))
+    ax.barh(top.index, top.values)
+    ax.set(title='Десять самых частых типов кузова', xlabel='Число объявлений')
+    plt.show()
+  explanation: |
+    - `value_counts().head(10)` — десять самых частых значений по убыванию (урок 2.3).
+    - `sort_values()` переставляет их по возрастанию: `barh` рисует первую категорию снизу, значит, самая частая окажется сверху.
+  alternatives:
+    - |
+      top = df['Style'].value_counts().head(10)
+      fig, ax = plt.subplots()
+      ax.barh(top.index, top.values)
+      ax.invert_yaxis()
+      ax.set(title='Десять самых частых типов кузова', xlabel='Число объявлений')
+      plt.show()
+  hints:
+    - Частоты кузовов — `value_counts`; чтобы лидер был сверху, подумайте, в каком порядке `barh` рисует столбцы.
+    - "`df['Style'].value_counts().head(10).sort_values()`; затем `ax.barh(top.index, top.values)`."
+    - "`ax.set(title='Десять самых частых типов кузова', xlabel='Число объявлений')`."
+  tests: |
+    ax = axes()
+    bars = [p for p in ax.patches if type(p).__name__ == 'Rectangle']
+    ensure(len(bars) > 0, 'На графике нет столбцов — нарисуйте их методом `ax.barh(...)`.')
+    ensure(len(bars) == 10, 'Столбцов должно быть 10, а у вас {0}.'.format(len(bars)))
+    if all(b.get_width() < 1.01 and b.get_height() > 1.5 for b in bars):
+        fail('Столбцы вертикальные. Нужны горизонтальные: `ax.barh(...)`.')
+    exp = ref('top')
+    widths = [b.get_width() for b in bars]
+    ensure(sorted(round(w) for w in widths) == sorted(int(v) for v in exp.values), 'Длины столбцов должны быть числами объявлений десяти самых частых кузовов.')
+    ys = [b.get_y() + b.get_height() / 2 for b in bars]
+    order = [w for _, w in sorted(zip(ys, widths))]
+    top_is_up = order == sorted(order) if not ax.yaxis_inverted() else order == sorted(order, reverse=True)
+    ensure(top_is_up, 'Самый частый кузов должен быть сверху: отсортируйте значения по возрастанию перед `barh` (или переверните ось `ax.invert_yaxis()`).')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+    ensure('объявлен' in ax.get_xlabel().lower(), 'Подпишите ось X: `xlabel=\'Число объявлений\'`.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        top = df['Style'].value_counts().head(10)
+        fig, ax = plt.subplots()
+        ax.barh(top.index, top.values)
+        ax.set(title='Кузова', xlabel='Число объявлений')
+        plt.show()
+      expect: сверху
+    - code: |
+        top = df['Style'].value_counts().head(10).sort_values()
+        fig, ax = plt.subplots()
+        ax.bar(top.index, top.values)
+        ax.set(title='Кузова', xlabel='Число объявлений')
+        plt.show()
+      expect: горизонтальные
+
+- id: m4-l3-t2
+  kind: plot
+  title: Подписи числа и доли у столбцов
+  difficulty: main
+  introduces: [mpl-bar-labels]
+  uses: [pd-value-counts, mpl-fig-ax]
+  statement: |
+    Нарисуйте горизонтальные столбцы для **всех типов топлива** (лидер сверху) и подпишите у каждого число объявлений и долю всех объявлений в процентах с одним знаком после запятой, например `15141 (47.2%)`. Оставьте справа запас для подписей: правая граница оси X — не меньше 1,2 от самого длинного столбца. Добавьте заголовок и подпись оси X.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    fuel = ...
+    labels = ...
+    fig, ax = plt.subplots(figsize=(9, 3.5))
+    bars = ax.barh(fuel.index, fuel.values)
+    ax.bar_label(bars, labels=labels, padding=4)
+    ax.set_xlim(...)
+    ax.set(title=..., xlabel=...)
+    plt.show()
+  solution: |
+    fuel = df['Fuel_type'].value_counts().sort_values()
+    labels = [f'{n} ({100 * n / len(df):.1f}%)' for n in fuel]
+    fig, ax = plt.subplots(figsize=(9, 3.5))
+    bars = ax.barh(fuel.index, fuel.values)
+    ax.bar_label(bars, labels=labels, padding=4)
+    ax.set_xlim(0, fuel.max() * 1.3)
+    ax.set(title='Объявления по типу топлива', xlabel='Число объявлений')
+    plt.show()
+  explanation: |
+    - Частоты по возрастанию — лидер сверху.
+    - Список подписей строится f-строкой по тем же числам и в том же порядке, что и столбцы: `{n}` — число, `{100 * n / len(df):.1f}%` — доля с одним знаком.
+    - `bar_label` ставит подписи у столбцов, `set_xlim(0, max * 1.3)` оставляет для них место.
+  hints:
+    - Подписи — список строк в том же порядке, что и столбцы; его удобно собрать f-строкой в квадратных скобках.
+    - "`[f'{n} ({100 * n / len(df):.1f}%)' for n in fuel]`; запас — `ax.set_xlim(0, fuel.max() * 1.3)`."
+    - "`fuel = df['Fuel_type'].value_counts().sort_values()`."
+  tests: |
+    import re
+    ax = axes()
+    bars = [p for p in ax.patches if type(p).__name__ == 'Rectangle']
+    exp = ref('fuel')
+    ensure(len(bars) == len(exp), 'Столбцов должно быть {0} — по типам топлива, а у вас {1}.'.format(len(exp), len(bars)))
+    texts = [t.get_text() for t in ax.texts]
+    ensure(len(texts) >= len(exp), 'Подпишите столбцы: `ax.bar_label(bars, labels=labels, padding=4)`.')
+    total = len(ref('df'))
+    for name, n in exp.items():
+        share = '{0:.1f}'.format(100 * n / total)
+        ok = any(str(int(n)) in t and (share in t or share.replace('.', ',') in t) for t in texts)
+        ensure(ok, 'Нет подписи для {0}: в ней должны быть число {1} и доля {2}%.'.format(name, int(n), share))
+    right = ax.get_xlim()[1]
+    ensure(right >= 1.2 * exp.max() - 1e-9, 'Оставьте место для подписей: правая граница оси X должна быть не меньше `1.2 * fuel.max()` — `ax.set_xlim(0, fuel.max() * 1.3)`.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+    ensure(ax.get_xlabel().strip() != '', 'Подпишите ось X.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        fuel = df['Fuel_type'].value_counts().sort_values()
+        labels = [f'{n}' for n in fuel]
+        fig, ax = plt.subplots()
+        bars = ax.barh(fuel.index, fuel.values)
+        ax.bar_label(bars, labels=labels, padding=4)
+        ax.set_xlim(0, fuel.max() * 1.3)
+        ax.set(title='Топливо', xlabel='Число объявлений')
+        plt.show()
+      expect: доля
+    - code: |
+        fuel = df['Fuel_type'].value_counts().sort_values()
+        labels = [f'{n} ({100 * n / len(df):.1f}%)' for n in fuel]
+        fig, ax = plt.subplots()
+        bars = ax.barh(fuel.index, fuel.values)
+        ax.bar_label(bars, labels=labels, padding=4)
+        ax.set(title='Топливо', xlabel='Число объявлений')
+        plt.show()
+      expect: место для подписей
+
+- id: m4-l3-t3
+  kind: plot
+  title: Акцент на одной марке
+  difficulty: main
+  introduces: [color-emphasis]
+  uses: [pd-value-counts, mpl-fig-ax]
+  statement: |
+    Нарисуйте десять самых частых значений `Make` горизонтальными столбцами (лидер сверху) так, чтобы **BMW** была выделена цветом `'tab:orange'`, а все остальные столбцы были одного серого цвета `'lightgray'`. Добавьте заголовок и подпись оси X.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    top = ...
+    colors = ...
+    fig, ax = plt.subplots(figsize=(9, 4))
+    ax.barh(top.index, top.values, color=colors)
+    ax.set(title=..., xlabel=...)
+    plt.show()
+  solution: |
+    top = df['Make'].value_counts().head(10).sort_values()
+    colors = ['tab:orange' if name == 'BMW' else 'lightgray' for name in top.index]
+    fig, ax = plt.subplots(figsize=(9, 4))
+    ax.barh(top.index, top.values, color=colors)
+    ax.set(title='BMW — пятое по частоте значение Make', xlabel='Число объявлений')
+    plt.show()
+  explanation: |
+    - Список цветов строится по меткам в том же порядке, что и столбцы: для `'BMW'` — акцент, для остальных — серый.
+    - Параметр `color=` принимает и один цвет, и список — по цвету на столбец.
+  hints:
+    - Нужен список цветов — по одному на каждую марку из `top.index`, в том же порядке.
+    - "`['tab:orange' if name == 'BMW' else 'lightgray' for name in top.index]`."
+    - "`top = df['Make'].value_counts().head(10).sort_values()`; `ax.barh(top.index, top.values, color=colors)`."
+  tests: |
+    from matplotlib.colors import to_hex
+    ax = axes()
+    bars = [p for p in ax.patches if type(p).__name__ == 'Rectangle']
+    ensure(len(bars) == 10, 'Столбцов должно быть 10, а у вас {0}.'.format(len(bars)))
+    names = [t.get_text() for t in ax.get_yticklabels()]
+    ensure('BMW' in names, 'Среди столбцов нет BMW — нарисуйте десять самых частых значений `Make`.')
+    ys = [b.get_y() + b.get_height() / 2 for b in bars]
+    by_pos = sorted(zip(ys, bars), key=lambda p: p[0])
+    colors = [to_hex(b.get_facecolor()) for _, b in by_pos]
+    ticks = sorted(zip(ax.get_yticks(), names))
+    label_at = [n for _, n in ticks]
+    i = label_at.index('BMW')
+    others = set(c for k, c in enumerate(colors) if k != i)
+    ensure(len(set(colors)) > 1, 'Все столбцы одного цвета — выделите BMW: `color=` со списком цветов.')
+    single = [k for k, c in enumerate(colors) if colors.count(c) == 1]
+    if len(set(colors)) == 2 and len(single) == 1 and single[0] != i:
+        fail('Цветом должен выделяться именно столбец BMW, а выделен «{0}».'.format(label_at[single[0]]))
+    ensure(len(others) == 1, 'Все столбцы, кроме BMW, должны быть одного серого цвета, а цветов у них {0}.'.format(len(others)))
+    ensure(colors[i] not in others, 'Цветом должен выделяться именно столбец BMW.')
+    ensure(colors[i] == to_hex('tab:orange'), 'Выделите BMW цветом `\'tab:orange\'`.')
+    ensure(others == {to_hex('lightgray')}, 'Остальные столбцы сделайте серыми: `\'lightgray\'`.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        top = df['Make'].value_counts().head(10).sort_values()
+        fig, ax = plt.subplots()
+        ax.barh(top.index, top.values, color=plt.cm.tab10.colors)
+        ax.set(title='Марки', xlabel='Число объявлений')
+        plt.show()
+      expect: одного серого цвета
+    - code: |
+        top = df['Make'].value_counts().head(10).sort_values()
+        colors = ['tab:orange' if name == 'Toyota' else 'lightgray' for name in top.index]
+        fig, ax = plt.subplots()
+        ax.barh(top.index, top.values, color=colors)
+        ax.set(title='Марки', xlabel='Число объявлений')
+        plt.show()
+      expect: именно столбец BMW
+
+- id: m4-l3-t4
+  kind: plot
+  title: Пять типов кузова и «Остальные»
+  difficulty: main
+  introduces: [color-emphasis, mpl-bar-labels]
+  uses: [pd-value-counts]
+  statement: |
+    Получите `parts` — число объявлений пяти самых частых типов кузова и в конце строку `'Остальные'` со всеми прочими объявлениями. Нарисуйте `parts` горизонтальными столбцами: первая строка сверху (`ax.invert_yaxis()`), пять кузовов — цветом `'#3973a5'`, «Остальные» — `'lightgray'`. Добавьте заголовок и подпись оси X.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    parts = ...
+    parts['Остальные'] = ...
+    colors = ...
+    fig, ax = plt.subplots(figsize=(9, 3.5))
+    ax.barh(parts.index, parts.values, color=colors)
+    ax.invert_yaxis()
+    ax.set(title=..., xlabel=...)
+    plt.show()
+  solution: |
+    parts = df['Style'].value_counts().head(5)
+    parts['Остальные'] = len(df) - parts.sum()
+    colors = ['#3973a5'] * 5 + ['lightgray']
+    fig, ax = plt.subplots(figsize=(9, 3.5))
+    ax.barh(parts.index, parts.values, color=colors)
+    ax.invert_yaxis()
+    ax.set(title='Пять самых частых кузовов и остальные', xlabel='Число объявлений')
+    plt.show()
+  explanation: |
+    - `value_counts().head(5)` — пять самых частых кузовов; присваивание по новой метке добавляет `'Остальные'` в конец Series.
+    - «Остальные» — все объявления минус объявления пяти кузовов.
+    - `['#3973a5'] * 5 + ['lightgray']` — список из шести цветов: повторение списка и сложение списков (урок 0.7).
+  hints:
+    - «Остальные» — это все объявления минус сумма пяти первых.
+    - "`parts['Остальные'] = len(df) - parts.sum()`; цвета — `['#3973a5'] * 5 + ['lightgray']`."
+    - "`parts = df['Style'].value_counts().head(5)`."
+  tests: |
+    import pandas as pd
+    from matplotlib.colors import to_hex
+    p = var('parts', pd.Series, 'Series')
+    ensure(len(p) == 6, 'В `parts` должно быть 6 строк — пять кузовов и «Остальные», а у вас {0}.'.format(len(p)))
+    ensure(p.index[-1] == 'Остальные', 'Последней строкой должна быть `\'Остальные\'`.')
+    if abs(p['Остальные'] - len(ref('df'))) < 0.5:
+        fail('В «Остальные» записано число всех объявлений. Вычтите объявления пяти кузовов: `len(df) - parts.sum()`.')
+    same_frame(p, ref('parts'), 'Значения `parts` не совпадают.')
+    ax = axes()
+    bars = [b for b in ax.patches if type(b).__name__ == 'Rectangle']
+    ensure(len(bars) == 6, 'Столбцов должно быть 6, а у вас {0}.'.format(len(bars)))
+    ensure(ax.yaxis_inverted(), 'Первая строка должна быть сверху: `ax.invert_yaxis()`.')
+    colors = [to_hex(b.get_facecolor()) for b in bars]
+    ensure(colors[-1] == to_hex('lightgray'), 'Столбец «Остальные» сделайте светло-серым: `\'lightgray\'`.')
+    ensure(set(colors[:5]) == {to_hex('#3973a5')}, 'Пять кузовов нарисуйте одним цветом `\'#3973a5\'`.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+    close(alt('parts')['Остальные'], alt_ref('parts')['Остальные'], HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        parts = df['Style'].value_counts().head(5)
+        parts['Остальные'] = len(df)
+        colors = ['#3973a5'] * 5 + ['lightgray']
+        fig, ax = plt.subplots()
+        ax.barh(parts.index, parts.values, color=colors)
+        ax.invert_yaxis()
+        ax.set(title='Кузова', xlabel='Число объявлений')
+        plt.show()
+      expect: Вычтите
+    - code: |
+        parts = df['Style'].value_counts().head(5)
+        parts['Остальные'] = len(df) - parts.sum()
+        fig, ax = plt.subplots()
+        ax.barh(parts.index, parts.values, color='#3973a5')
+        ax.invert_yaxis()
+        ax.set(title='Кузова', xlabel='Число объявлений')
+        plt.show()
+      expect: светло-серым
+
+- id: m4-l3-t5
+  kind: quiz
+  title: Читаемо или нет
+  difficulty: main
+  introduces: [mpl-bar-labels, color-emphasis]
+  uses: []
+  statement: |
+    Оцените решения оформления.
+  quiz:
+    - q: "Ось Y столбчатой диаграммы начинается с 4 000, а не с нуля. Что не так?"
+      options:
+        - Ничего, так компактнее
+        - Длины столбцов перестают быть пропорциональны значениям — различия выглядят больше, чем есть
+        - Столбцы станут горизонтальными
+      answer: 1
+      explain: У столбцов длина и есть значение, поэтому ось начинают с нуля.
+    - q: На графике 10 столбцов одного ряда, каждый своего цвета. Как улучшить?
+      options:
+        - Один цвет для всех; акцент — только для категории, о которой вывод
+        - Добавить ещё цветов
+        - Сделать столбцы прозрачными
+      answer: 0
+      explain: Разные цвета подсказывают, что категории чем-то различаются по смыслу; если это не так, цвет только отвлекает.
+    - q: "Подписи категорий длинные («Plug-in Hybrid», «Metan/Propan»). Какие столбцы удобнее?"
+      options:
+        - Вертикальные с подписями под углом 90°
+        - Горизонтальные — подписи читаются без поворота
+        - Круговая диаграмма
+      answer: 1
+      explain: У горизонтальных столбцов подписи стоят слева и читаются как обычный текст.
+  hints:
+    - Вспомните, что на столбчатой диаграмме кодирует значение, и что делает цвет.
+    - "Длина столбца = значение (ось с нуля); цвет — сигнал; длинные подписи — горизонтальные столбцы."
+    - "Ответы: длины непропорциональны; один цвет + акцент; горизонтальные."
+
+- id: m4-l3-t6
+  kind: plot
+  title: "Топ-12 моделей: подписи «марка модель» и акцент на марке"
+  difficulty: star
+  introduces: [mpl-bar-labels, color-emphasis]
+  uses: [pd-groupby, pd-multiindex, pd-sort-values]
+  statement: |
+    Получите `top_models` — двенадцать самых частых пар «марка, модель» (группировка по `['Make', 'Model']`, число объявлений), по возрастанию, — и `labels` — подписи вида `'Volkswagen Passat'` для каждой пары. Нарисуйте горизонтальные столбцы с этими подписями (лидер сверху), модели **Volkswagen** — цветом `'tab:blue'`, остальные — `'lightgray'`. Добавьте заголовок и подпись оси X.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    top_models = ...
+    labels = ...
+    colors = ...
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.barh(labels, top_models.values, color=colors)
+    ax.set(title=..., xlabel=...)
+    plt.show()
+  solution: |
+    top_models = df.groupby(['Make', 'Model']).size().sort_values(ascending=False).head(12).sort_values()
+    labels = [f'{make} {model}' for make, model in top_models.index]
+    colors = ['tab:blue' if make == 'Volkswagen' else 'lightgray' for make, model in top_models.index]
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.barh(labels, top_models.values, color=colors)
+    ax.set(title='Самые частые модели: две из двенадцати — Volkswagen', xlabel='Число объявлений')
+    plt.show()
+  explanation: |
+    - `groupby(['Make', 'Model']).size()` — число объявлений каждой пары; индекс составной (урок 3.4).
+    - Сначала двенадцать самых частых (по убыванию, `head(12)`), затем по возрастанию — для `barh`.
+    - Элемент составного индекса — пара `(марка, модель)`; её распаковывают в цикле списка: `for make, model in top_models.index`.
+    - Тот же приём даёт и подписи, и цвета — в одном порядке со столбцами.
+  hints:
+    - "Группировка по двум колонкам и `size()`; элементы составного индекса — пары, их можно распаковать: `for make, model in ...`."
+    - "`df.groupby(['Make', 'Model']).size().sort_values(ascending=False).head(12).sort_values()`."
+    - "`labels = [f'{make} {model}' for make, model in top_models.index]`; цвета — так же, с условием `make == 'Volkswagen'`."
+  tests: |
+    import pandas as pd
+    from matplotlib.colors import to_hex
+    t = var('top_models', pd.Series, 'Series')
+    ensure(len(t) == 12, 'Нужны двенадцать самых частых моделей, а у вас {0}.'.format(len(t)))
+    same_frame(t, ref('top_models'), 'Двенадцать самых частых моделей (по возрастанию) не совпадают.')
+    lab = var('labels', list, 'списком строк')
+    equal(lab, ref('labels'), 'Подписи должны быть вида «Марка Модель» в порядке `top_models`: {expected}.')
+    ax = axes()
+    bars = [b for b in ax.patches if type(b).__name__ == 'Rectangle']
+    ensure(len(bars) == 12, 'Столбцов должно быть 12, а у вас {0}.'.format(len(bars)))
+    names = [x.get_text() for x in ax.get_yticklabels()]
+    ensure(names == ref('labels'), 'Подписи столбцов должны быть «Марка Модель» — передайте `labels` в `ax.barh`.')
+    colors = [to_hex(b.get_facecolor()) for b in bars]
+    for name, c in zip(names, colors):
+        want = to_hex('tab:blue') if name.startswith('Volkswagen ') else to_hex('lightgray')
+        ensure(c == want, 'Модели Volkswagen — цветом `\'tab:blue\'`, остальные — `\'lightgray\'`; неверный цвет у «{0}».'.format(name))
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        top_models = df.groupby(['Make', 'Model']).size().sort_values().head(12)
+        labels = [f'{make} {model}' for make, model in top_models.index]
+        colors = ['tab:blue' if make == 'Volkswagen' else 'lightgray' for make, model in top_models.index]
+        fig, ax = plt.subplots()
+        ax.barh(labels, top_models.values, color=colors)
+        ax.set(title='Модели', xlabel='Число объявлений')
+        plt.show()
+      expect: самых частых моделей
+    - code: |
+        top_models = df.groupby(['Make', 'Model']).size().sort_values(ascending=False).head(12).sort_values()
+        labels = [model for make, model in top_models.index]
+        colors = ['tab:blue' if make == 'Volkswagen' else 'lightgray' for make, model in top_models.index]
+        fig, ax = plt.subplots()
+        ax.barh(labels, top_models.values, color=colors)
+        ax.set(title='Модели', xlabel='Число объявлений')
+        plt.show()
+      expect: «Марка Модель»

@@ -1,0 +1,489 @@
+- id: m8-l3-t1
+  title: Шаги и эпохи
+  difficulty: warmup
+  introduces: [epoch-batch]
+  uses: []
+  statement: |
+    В train `n_train` строк. Посчитайте:
+
+    - `steps` — словарь: для каждого размера батча из `batch_sizes` — число шагов градиентного спуска за одну эпоху (последний неполный батч — тоже шаг);
+    - `last_batch` — сколько строк в последнем батче при `batch_size = 256`;
+    - `total_steps` — сколько шагов сделает `MLPRegressor(batch_size=256, max_iter=30)`, если пройдёт все 30 эпох.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    n_train = len(X_train)
+    batch_sizes = [32, 256, 2048, n_train]
+  starter: |
+    steps = {bs: ... for bs in batch_sizes}
+    last_batch = ...
+    total_steps = ...
+    print(steps, last_batch, total_steps)
+  solution: |
+    steps = {bs: int(np.ceil(n_train / bs)) for bs in batch_sizes}
+    last_batch = n_train - (steps[256] - 1) * 256
+    total_steps = 30 * steps[256]
+    print(steps, last_batch, total_steps)
+  explanation: |
+    - Шагов за эпоху — n / batch_size, округлённое **вверх**: 602 при батчах по 32, 76 при 256, 10 при 2 048 и 1 шаг, если батч — весь train.
+    - При батчах по 256: 75 полных батчей (19 200 строк) и последний из 39 строк.
+    - 30 эпох — 2 280 шагов. Мелкие батчи дают много шагов за эпоху, но каждый шаг — по шумной оценке градиента.
+  hints:
+    - "Шагов за эпоху — `int(np.ceil(n_train / bs))`."
+    - "В последнем батче остаётся то, что не вошло в полные: `n_train - (steps[256] - 1) * 256`."
+    - "`total_steps = 30 * steps[256]`."
+  tests: |
+    s = var('steps', dict, 'словарём')
+    ensure(set(s) == set(ref('batch_sizes')), 'Ключи `steps` — размеры батчей из `batch_sizes`.')
+    n = ref('n_train')
+    for bs in ref('batch_sizes'):
+        if s[bs] == n // bs and n % bs != 0:
+            fail('Последний неполный батч — тоже шаг: округляйте вверх, `int(np.ceil(n_train / bs))`.')
+        ensure(s[bs] == ref('steps')[bs], 'При batch_size={0} шагов за эпоху {1}, а у вас {2}.'.format(bs, ref('steps')[bs], s[bs]))
+    equal(int(var('last_batch', 'number', 'числом')), int(ref('last_batch')), 'В последнем батче {expected} строк, а у вас {actual}.')
+    equal(int(var('total_steps', 'number', 'числом')), int(ref('total_steps')), '`total_steps` — {expected}, а у вас {actual}: 30 эпох × шагов за эпоху.')
+    equal(alt('steps')[256], alt_ref('steps')[256], HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        steps = {bs: n_train // bs for bs in batch_sizes}
+        last_batch = n_train % 256
+        total_steps = 30 * steps[256]
+      expect: округляйте вверх
+    - code: |
+        steps = {bs: int(np.ceil(n_train / bs)) for bs in batch_sizes}
+        last_batch = n_train - (steps[256] - 1) * 256
+        total_steps = 30 * 256
+      expect: total_steps
+
+- id: m8-l3-t2
+  title: Градиенты выходного слоя
+  difficulty: warmup
+  introduces: [backpropagation]
+  uses: [loss-mse, gradient-descent]
+  statement: |
+    Для первого батча из 256 машин уже сделан прямой проход: `H` — выходы скрытого слоя (256 × 16), `pred` — прогнозы, `tb` — ответы (цена / 10 000), `params` — веса сети. Посчитайте:
+
+    - `e` — ошибку выхода 2(ŷ − t)/n;
+    - `grad_w2` = Hᵀ·e и `grad_b2` — сумму e;
+    - `w2_new`, `b2_new` — выходной слой после одного шага с `lr = 0.05`;
+    - `loss_before` и `loss_after` — MSE батча до и после шага. Скрытый слой не меняется, поэтому прогноз после шага — `H @ w2_new + b2_new`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s = scaler.transform(X_train)
+    t_train = y_train.to_numpy() / 10000
+    rng = np.random.default_rng(42)
+    params = {'W1': rng.normal(0, np.sqrt(2 / 4), size=(4, 16)), 'b1': np.zeros(16),
+              'w2': rng.normal(0, np.sqrt(1 / 16), size=16), 'b2': 0.0}
+    Xb, tb = X_train_s[:256], t_train[:256]
+    Z = Xb @ params['W1'] + params['b1']
+    H = np.maximum(Z, 0)
+    pred = H @ params['w2'] + params['b2']
+    lr = 0.05
+  starter: |
+    e = ...
+    grad_w2 = ...
+    grad_b2 = ...
+    w2_new = ...
+    b2_new = ...
+    loss_before = ...
+    loss_after = ...
+    print(grad_w2[:4].round(4), round(grad_b2, 4))
+    print(round(loss_before, 4), round(loss_after, 4))
+  solution: |
+    e = 2 * (pred - tb) / len(tb)
+    grad_w2 = H.T @ e
+    grad_b2 = e.sum()
+    w2_new = params['w2'] - lr * grad_w2
+    b2_new = params['b2'] - lr * grad_b2
+    loss_before = np.mean((pred - tb) ** 2)
+    loss_after = np.mean((H @ w2_new + b2_new - tb) ** 2)
+    print(grad_w2[:4].round(4), round(grad_b2, 4))
+    print(round(loss_before, 4), round(loss_after, 4))
+  explanation: |
+    - e — производная MSE по каждому прогнозу: знак показывает, завышен прогноз или занижен, величина — насколько.
+    - `H.T @ e` складывает по строкам произведения «активность нейрона × ошибка»: вес растёт у нейронов, которые активны там, где сеть занижает цену. Градиенты 15 весов из 16 отрицательные: сеть пока занижает цены, и шаг увеличит эти веса.
+    - Один шаг только выходного слоя снижает MSE батча с 1,63 до 1,19. Полное обучение делает такие шаги для всех слоёв сразу.
+  hints:
+    - "`e = 2 * (pred - tb) / len(tb)`."
+    - "`grad_w2 = H.T @ e`, `grad_b2 = e.sum()`; шаг — против градиента: `params['w2'] - lr * grad_w2`."
+    - "MSE после шага — `np.mean((H @ w2_new + b2_new - tb) ** 2)`."
+  tests: |
+    import numpy as np
+    ee = np.asarray(var('e'), dtype=float)
+    ensure(ee.shape == (256,), '`e` — по ошибке на каждую машину батча (256 значений).')
+    if np.allclose(ee, ref('pred') - ref('tb')):
+        fail('Ошибка выхода — производная MSE: `2 * (pred - tb) / len(tb)`, а не просто разность.')
+    if np.allclose(ee, -np.asarray(ref('e'))):
+        fail('Знак ошибки: прогноз минус ответ — `pred - tb`.')
+    same_array(ee, ref('e'), '`e` не совпадает: `2 * (pred - tb) / len(tb)`.')
+    g = np.asarray(var('grad_w2'), dtype=float)
+    ensure(g.shape == (16,), '`grad_w2` — по градиенту на каждый из 16 весов выходного слоя: `H.T @ e`.')
+    same_array(g, ref('grad_w2'), '`grad_w2` не совпадает: `H.T @ e`.')
+    close(var('grad_b2', 'number', 'числом'), ref('grad_b2'), '`grad_b2` — сумма ошибок выхода: {expected}, а у вас {actual}.')
+    wn = np.asarray(var('w2_new'), dtype=float)
+    if np.allclose(wn, ref('params')['w2'] + ref('lr') * ref('grad_w2')):
+        fail('Шаг делают против градиента: `params[\'w2\'] - lr * grad_w2`.')
+    same_array(wn, ref('w2_new'), '`w2_new` — `params[\'w2\'] - lr * grad_w2`.')
+    close(var('b2_new', 'number', 'числом'), ref('b2_new'), '`b2_new` — {expected}, а у вас {actual}.')
+    close(var('loss_before', 'number', 'числом'), ref('loss_before'), 'MSE до шага — {expected}, а у вас {actual}.')
+    close(var('loss_after', 'number', 'числом'), ref('loss_after'), 'MSE после шага — {expected}, а у вас {actual}.')
+    same_array(np.asarray(alt('grad_w2'), dtype=float), np.asarray(alt_ref('grad_w2'), dtype=float), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        e = pred - tb
+        grad_w2 = H.T @ e
+        grad_b2 = e.sum()
+        w2_new = params['w2'] - lr * grad_w2
+        b2_new = params['b2'] - lr * grad_b2
+        loss_before = np.mean((pred - tb) ** 2)
+        loss_after = np.mean((H @ w2_new + b2_new - tb) ** 2)
+      expect: производная MSE
+    - code: |
+        e = 2 * (pred - tb) / len(tb)
+        grad_w2 = H.T @ e
+        grad_b2 = e.sum()
+        w2_new = params['w2'] + lr * grad_w2
+        b2_new = params['b2'] + lr * grad_b2
+        loss_before = np.mean((pred - tb) ** 2)
+        loss_after = np.mean((H @ w2_new + b2_new - tb) ** 2)
+      expect: против градиента
+
+- id: m8-l3-t3
+  title: Ошибка скрытого слоя
+  difficulty: main
+  introduces: []
+  uses: [backpropagation, activation-function]
+  statement: |
+    Продолжим обратный проход для того же батча. Ошибка выхода `e`, веса выходного слоя `params['w2']`, суммы скрытого слоя `Z` и входы `Xb` уже посчитаны. Получите:
+
+    - `dZ` — ошибку на входах скрытых нейронов: `np.outer(e, params['w2'])`, умноженную на маску активных нейронов `Z > 0`;
+    - `grad_W1` = Xbᵀ·dZ (форма 4 × 16) и `grad_b1` — сумму `dZ` по строкам (16 чисел);
+    - `share_blocked` — долю элементов `Z` (пар «машина — нейрон»), где ReLU не пропустила ошибку назад.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s = scaler.transform(X_train)
+    t_train = y_train.to_numpy() / 10000
+    rng = np.random.default_rng(42)
+    params = {'W1': rng.normal(0, np.sqrt(2 / 4), size=(4, 16)), 'b1': np.zeros(16),
+              'w2': rng.normal(0, np.sqrt(1 / 16), size=16), 'b2': 0.0}
+    Xb, tb = X_train_s[:256], t_train[:256]
+    Z = Xb @ params['W1'] + params['b1']
+    H = np.maximum(Z, 0)
+    pred = H @ params['w2'] + params['b2']
+    e = 2 * (pred - tb) / len(tb)
+  starter: |
+    dZ = ...
+    grad_W1 = ...
+    grad_b1 = ...
+    share_blocked = ...
+    print(dZ.shape, grad_W1.shape, grad_b1.shape, round(share_blocked, 3))
+  solution: |
+    dZ = np.outer(e, params['w2']) * (Z > 0)
+    grad_W1 = Xb.T @ dZ
+    grad_b1 = dZ.sum(axis=0)
+    share_blocked = (Z <= 0).mean()
+    print(dZ.shape, grad_W1.shape, grad_b1.shape, round(share_blocked, 3))
+  explanation: |
+    - `np.outer(e, w2)` — таблица 256 × 16: ошибка каждой машины, разнесённая по нейронам пропорционально их весам в выходном слое.
+    - Маска `Z > 0` обнуляет ошибку там, где нейрон был выключен: у ReLU там нулевой наклон. Сейчас так у 49 % пар «машина — нейрон» — половина сигнала не доходит до первого слоя, и это нормально.
+    - `Xb.T @ dZ` даёт градиент той же формы, что `W1` (4 × 16), а сумма по строкам — градиент смещений. Вместе с прошлым заданием это полный обратный проход: все 97 градиентов сети.
+  hints:
+    - "`dZ = np.outer(e, params['w2']) * (Z > 0)`."
+    - "Градиент весов первого слоя — `Xb.T @ dZ`, смещений — `dZ.sum(axis=0)`."
+    - "Доля заблокированных — `(Z <= 0).mean()`."
+  tests: |
+    import numpy as np
+    d = np.asarray(var('dZ'), dtype=float)
+    ensure(d.shape == (256, 16), '`dZ` — таблица 256 × 16: машины × нейроны скрытого слоя.')
+    if np.allclose(d, np.outer(ref('e'), ref('params')['w2'])):
+        fail('Умножьте на маску активных нейронов `(Z > 0)`: ReLU пропускает ошибку только там, где сумма положительная.')
+    same_array(d, ref('dZ'), '`dZ` не совпадает: `np.outer(e, params[\'w2\']) * (Z > 0)`.')
+    gW = np.asarray(var('grad_W1'), dtype=float)
+    if gW.shape == (16, 4):
+        fail('`grad_W1` должен иметь форму весов `W1` — 4 × 16: `Xb.T @ dZ`.')
+    ensure(gW.shape == (4, 16), '`grad_W1` — матрица 4 × 16: `Xb.T @ dZ`.')
+    same_array(gW, ref('grad_W1'), '`grad_W1` не совпадает: `Xb.T @ dZ`.')
+    gb = np.asarray(var('grad_b1'), dtype=float)
+    if gb.shape == (256,):
+        fail('`grad_b1` — по числу на нейрон: суммируйте `dZ` по строкам, `axis=0`.')
+    same_array(gb, ref('grad_b1'), '`grad_b1` — `dZ.sum(axis=0)`.')
+    sb = var('share_blocked', 'number', 'числом')
+    if abs(sb - (1 - ref('share_blocked'))) < 1e-9:
+        fail('`share_blocked` — доля пар, где нейрон выключен (`Z <= 0`), а не включён.')
+    close(sb, ref('share_blocked'), 'Доля заблокированных пар — {expected}, а у вас {actual}.')
+    same_array(np.asarray(alt('grad_b1'), dtype=float), np.asarray(alt_ref('grad_b1'), dtype=float), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        dZ = np.outer(e, params['w2'])
+        grad_W1 = Xb.T @ dZ
+        grad_b1 = dZ.sum(axis=0)
+        share_blocked = (Z <= 0).mean()
+      expect: маску активных нейронов
+    - code: |
+        dZ = np.outer(e, params['w2']) * (Z > 0)
+        grad_W1 = Xb.T @ dZ
+        grad_b1 = dZ.sum(axis=1)
+        share_blocked = (Z <= 0).mean()
+      expect: axis=0
+
+- id: m8-l3-t4
+  title: Кривая обучения по эпохам
+  difficulty: main
+  introduces: []
+  uses: [epoch-batch, mlp]
+  statement: |
+    Обучите сеть `MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, random_state=42)` по одной эпохе через `partial_fit`, всего `n_epochs` эпох. После каждой эпохи добавляйте в список `history` MAE на validation **в евро**. Получите:
+
+    - `history` — список из `n_epochs` чисел;
+    - `best_epoch` — номер эпохи с наименьшей MAE (эпохи считаем с 1) и `best_mae`;
+    - `gain_last10` — на сколько евро MAE снизилась за последние 10 эпох: значение после 10-й эпохи минус значение после последней.
+  prelude: |
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.neural_network import MLPRegressor
+    from sklearn.metrics import mean_absolute_error
+    from sklearn.exceptions import ConvergenceWarning
+    warnings.filterwarnings('ignore', category=ConvergenceWarning)
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s, X_valid_s = scaler.transform(X_train), scaler.transform(X_valid)
+    unit = 10000
+    t_train = y_train.to_numpy() / unit
+    n_epochs = 20
+  starter: |
+    net = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, random_state=42)
+    history = []
+    for epoch in range(n_epochs):
+        ...
+        history.append(...)
+    best_epoch = ...
+    best_mae = ...
+    gain_last10 = ...
+    print([round(v) for v in history[::5]], best_epoch, round(best_mae), round(gain_last10))
+  solution: |
+    net = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, random_state=42)
+    history = []
+    for epoch in range(n_epochs):
+        net.partial_fit(X_train_s, t_train)
+        history.append(mean_absolute_error(y_valid, net.predict(X_valid_s) * unit))
+    best_epoch = int(np.argmin(history)) + 1
+    best_mae = min(history)
+    gain_last10 = history[9] - history[-1]
+    print([round(v) for v in history[::5]], best_epoch, round(best_mae), round(gain_last10))
+  explanation: |
+    - Первая эпоха — 8 378 евро: сеть только начала подстраиваться. К шестой эпохе MAE падает до 3 162, дальше улучшение замедляется.
+    - За последние 10 из 20 эпох MAE снизилась ещё на 165 евро (с 3 043 до 2 878), и лучшая эпоха — последняя: сеть всё ещё учится. Именно в такой ситуации `fit` с `max_iter=20` выдал бы ConvergenceWarning.
+    - `np.argmin` считает с нуля, а эпохи — с единицы, отсюда `+ 1`. По такой кривой в уроке 8.5 будем решать, когда остановить обучение.
+  hints:
+    - "Одна эпоха — `net.partial_fit(X_train_s, t_train)`."
+    - "MAE в евро: `mean_absolute_error(y_valid, net.predict(X_valid_s) * unit)`."
+    - "`best_epoch = int(np.argmin(history)) + 1`, `gain_last10 = history[9] - history[-1]`."
+  tests: |
+    import numpy as np
+    h = var('history', list, 'списком')
+    ensure(len(h) == ref('n_epochs'), '`history` — по одному значению на эпоху: {0} чисел, а у вас {1}.'.format(ref('n_epochs'), len(h)))
+    ha = np.asarray(h, dtype=float)
+    if ha.min() > 9000:
+        fail('MAE получилась около средней цены: сеть выдаёт цену в десятках тысяч евро — умножьте прогноз на `unit`, чтобы MAE была в евро.')
+    same_array(ha, np.asarray(ref('history')), 'MAE по эпохам не совпадает: одна эпоха — `partial_fit`, затем MAE на validation в евро.', rtol=1e-4)
+    be = int(var('best_epoch', 'number', 'числом'))
+    if be == int(ref('best_epoch')) - 1:
+        fail('Эпохи считаем с 1: `int(np.argmin(history)) + 1`.')
+    equal(be, int(ref('best_epoch')), 'Лучшая эпоха — {expected}, а у вас {actual}.')
+    close(var('best_mae', 'number', 'числом'), ref('best_mae'), 'Лучшая MAE — {expected}, а у вас {actual}.', rtol=1e-4)
+    close(var('gain_last10', 'number', 'числом'), ref('gain_last10'), '`gain_last10` — {expected}, а у вас {actual}: `history[9] - history[-1]`.', rtol=1e-3)
+    close(alt('best_mae'), alt_ref('best_mae'), HARDCODE_MSG, rtol=1e-4)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        net = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, random_state=42)
+        history = []
+        for epoch in range(n_epochs):
+            net.partial_fit(X_train_s, t_train)
+            history.append(mean_absolute_error(y_valid, net.predict(X_valid_s)))
+        best_epoch = int(np.argmin(history)) + 1
+        best_mae = min(history)
+        gain_last10 = history[9] - history[-1]
+      expect: в евро
+    - code: |
+        net = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, random_state=42)
+        history = []
+        for epoch in range(n_epochs):
+            net.partial_fit(X_train_s, t_train)
+            history.append(mean_absolute_error(y_valid, net.predict(X_valid_s) * unit))
+        best_epoch = int(np.argmin(history))
+        best_mae = min(history)
+        gain_last10 = history[9] - history[-1]
+      expect: считаем с 1
+
+- id: m8-l3-t5
+  title: Свой цикл обучения
+  difficulty: star
+  introduces: []
+  uses: [backpropagation, epoch-batch, gradient-descent]
+  statement: |
+    Функции `init`, `forward` и `backward` — те же, что в уроке. Напишите цикл обучения сети по мини-батчам: `n_epochs = 10`, `batch_size = 256`, `lr = 0.05`, генератор `rng = np.random.default_rng(42)` и начальные веса `params = init(42)` уже созданы.
+
+    В каждой эпохе: получите новый порядок строк `rng.permutation(len(X_train_s))` (ровно один вызов за эпоху), пройдите по порциям из `batch_size` номеров, на каждой посчитайте градиенты `backward` и сдвиньте **все** параметры против градиента. После эпохи добавьте в `history` MAE на validation в евро (прогноз — `forward(params, X_valid_s)[2] * unit`). Посчитайте и `steps_done` — сколько шагов сделано всего.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s, X_valid_s = scaler.transform(X_train), scaler.transform(X_valid)
+    unit = 10000
+    t_train = y_train.to_numpy() / unit
+
+    def init(seed=42, hidden=16):
+        r = np.random.default_rng(seed)
+        return {'W1': r.normal(0, np.sqrt(2 / 4), size=(4, hidden)), 'b1': np.zeros(hidden),
+                'w2': r.normal(0, np.sqrt(1 / hidden), size=hidden), 'b2': 0.0}
+
+    def forward(p, X):
+        Z = X @ p['W1'] + p['b1']
+        H = np.maximum(Z, 0)
+        return Z, H, H @ p['w2'] + p['b2']
+
+    def backward(p, X, t):
+        Z, H, pred = forward(p, X)
+        e = 2 * (pred - t) / len(t)
+        dZ = np.outer(e, p['w2']) * (Z > 0)
+        return {'W1': X.T @ dZ, 'b1': dZ.sum(axis=0), 'w2': H.T @ e, 'b2': e.sum()}
+
+    n_epochs, batch_size, lr = 10, 256, 0.05
+    rng = np.random.default_rng(42)
+    params = init(42)
+  starter: |
+    history = []
+    steps_done = 0
+    for epoch in range(n_epochs):
+        order = ...
+        for start in range(0, len(order), batch_size):
+            idx = ...
+            grads = ...
+            for name in params:
+                params[name] = ...
+            steps_done += 1
+        history.append(...)
+    print([round(v) for v in history], steps_done)
+  solution: |
+    history = []
+    steps_done = 0
+    for epoch in range(n_epochs):
+        order = rng.permutation(len(X_train_s))
+        for start in range(0, len(order), batch_size):
+            idx = order[start:start + batch_size]
+            grads = backward(params, X_train_s[idx], t_train[idx])
+            for name in params:
+                params[name] = params[name] - lr * grads[name]
+            steps_done += 1
+        history.append(mean_absolute_error(y_valid, forward(params, X_valid_s)[2] * unit))
+    print([round(v) for v in history], steps_done)
+  explanation: |
+    - За 10 эпох сделано 760 шагов, по 76 за эпоху. Уже после первой эпохи MAE около 3 150 евро — лучше линейной регрессии (4 270).
+    - Дальше кривая колеблется около 3 100–3 150: шаг постоянный, и каждый батч тянет веса в свою сторону. Помогают меньший шаг под конец обучения или оптимизатор Adam, как в MLPRegressor.
+    - Это вся «магия» обучения нейросети: перемешать, нарезать на батчи, посчитать градиенты обратным распространением, сдвинуть веса. В больших библиотеках (PyTorch, Keras) градиенты считаются автоматически, но цикл тот же.
+  hints:
+    - "Порядок строк эпохи — `order = rng.permutation(len(X_train_s))`, порция — `idx = order[start:start + batch_size]`."
+    - "Градиенты — `backward(params, X_train_s[idx], t_train[idx])`; шаг — `params[name] - lr * grads[name]`."
+    - "После эпохи — `mean_absolute_error(y_valid, forward(params, X_valid_s)[2] * unit)`."
+  tests: |
+    import numpy as np
+    h = var('history', list, 'списком')
+    ensure(len(h) == ref('n_epochs'), '`history` — по одному значению на эпоху: {0} чисел, а у вас {1}.'.format(ref('n_epochs'), len(h)))
+    ha = np.asarray(h, dtype=float)
+    ensure(np.isfinite(ha).all(), 'В `history` есть бесконечность или NaN: проверьте знак шага — `params[name] - lr * grads[name]`.')
+    if ha.min() > 9000:
+        fail('MAE получилась около средней цены: прогноз `forward(params, X_valid_s)[2]` — в десятках тысяч евро, умножьте его на `unit`, чтобы MAE была в евро.')
+    equal(int(var('steps_done', 'number', 'числом')), int(ref('steps_done')), 'Всего шагов — {expected}, а у вас {actual}: по одному на каждую порцию в каждой эпохе.')
+
+    def run(shuffle):
+        r = np.random.default_rng(42)
+        p = ref('init')(42)
+        n = len(ref('X_train_s'))
+        out = []
+        for _ in range(ref('n_epochs')):
+            order = r.permutation(n) if shuffle else np.arange(n)
+            for s in range(0, n, ref('batch_size')):
+                idx = order[s:s + ref('batch_size')]
+                g = ref('backward')(p, ref('X_train_s')[idx], ref('t_train')[idx])
+                for k in p:
+                    p[k] = p[k] - ref('lr') * g[k]
+            out.append(float(np.abs(ref('y_valid').to_numpy() - ref('forward')(p, ref('X_valid_s'))[2] * ref('unit')).mean()))
+        return np.array(out)
+
+    if np.allclose(ha, run(False), rtol=1e-6):
+        fail('Строки не перемешаны: в начале каждой эпохи получите новый порядок `rng.permutation(len(X_train_s))`.')
+    same_array(ha, np.asarray(ref('history')), 'MAE по эпохам не совпадает. Проверьте: один вызов `rng.permutation` в начале эпохи, порции `order[start:start + batch_size]`, шаг для всех параметров.', rtol=1e-6)
+    p = var('params', dict, 'словарём')
+    same_array(np.asarray(p['W1'], dtype=float), ref('params')['W1'], 'Веса `W1` после обучения не совпадают с ожидаемыми.', rtol=1e-6)
+    close(alt('history')[-1], alt_ref('history')[-1], HARDCODE_MSG, rtol=1e-6)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        history = []
+        steps_done = 0
+        for epoch in range(n_epochs):
+            order = np.arange(len(X_train_s))
+            for start in range(0, len(order), batch_size):
+                idx = order[start:start + batch_size]
+                grads = backward(params, X_train_s[idx], t_train[idx])
+                for name in params:
+                    params[name] = params[name] - lr * grads[name]
+                steps_done += 1
+            history.append(mean_absolute_error(y_valid, forward(params, X_valid_s)[2] * unit))
+      expect: перемешаны
+    - code: |
+        history = []
+        steps_done = 0
+        for epoch in range(n_epochs):
+            order = rng.permutation(len(X_train_s))
+            for start in range(0, len(order), batch_size):
+                idx = order[start:start + batch_size]
+                grads = backward(params, X_train_s[idx], t_train[idx])
+                for name in params:
+                    params[name] = params[name] - lr * grads[name]
+                steps_done += 1
+            history.append(mean_absolute_error(y_valid, forward(params, X_valid_s)[2]))
+      expect: в евро

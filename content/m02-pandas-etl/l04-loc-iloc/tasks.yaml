@@ -1,0 +1,337 @@
+- id: m2-l4-t1
+  title: Четыре текстовые колонки
+  difficulty: warmup
+  introduces: [pd-select-columns]
+  uses: [pd-dataframe]
+  statement: |
+    Получите `cols4` — таблицу (DataFrame) только с колонками `Make`, `Model`, `Style`, `Fuel_type` в этом порядке.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')   # загрузка — урок 2.1
+    df = raw.copy()
+  starter: |
+    cols4 = ...
+    print(cols4.shape)
+    cols4.head(3)
+  solution: |
+    cols4 = df[['Make', 'Model', 'Style', 'Fuel_type']]
+    print(cols4.shape)
+    cols4.head(3)
+  explanation: |
+    - Внутренние скобки — список имён колонок, внешние — выбор из таблицы.
+    - Выбор списком возвращает DataFrame с колонками в порядке списка.
+  alternatives:
+    - |
+      cols4 = df.loc[:, ['Make', 'Model', 'Style', 'Fuel_type']]
+  hints:
+    - Несколько колонок выбирают списком имён.
+    - "Двойные скобки: `df[[имя1, имя2, ...]]` — внутренние скобки задают список."
+    - "`cols4 = df[['Make', 'Model', 'Style', 'Fuel_type']]`."
+  tests: |
+    import pandas as pd
+    c = var('cols4', pd.DataFrame, 'таблицей DataFrame — выберите колонки списком в двойных скобках')
+    same_frame(c, ref('cols4'), 'Таблица `cols4` не совпадает с нужной.')
+  wrong:
+    - code: |
+        cols4 = df[['Make', 'Model', 'Fuel_type', 'Style']]
+      expect: Порядок колонок
+    - code: |
+        cols4 = df[['Make', 'Model', 'Style']]
+      expect: "Не хватает колонок ['Fuel_type']"
+
+- id: m2-l4-t2
+  title: Последние пять объявлений — год и цена
+  difficulty: warmup
+  introduces: [pd-loc-iloc, pd-select-columns]
+  uses: []
+  statement: |
+    Получите `last5` — последние пять строк таблицы только с колонками `Year` и `Price(euro)` (в этом порядке). Метки строк должны сохраниться.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+  starter: |
+    last5 = ...
+    last5
+  solution: |
+    last5 = df.iloc[-5:][['Year', 'Price(euro)']]
+    last5
+  explanation: |
+    - `df.iloc[-5:]` — последние пять строк по позиции, как срез `a[-5:]` у массива.
+    - `[['Year', 'Price(euro)']]` — затем выбор двух колонок списком; метки строк сохраняются.
+  alternatives:
+    - |
+      last5 = df[['Year', 'Price(euro)']].tail(5)
+    - |
+      last5 = df.loc[df.index[-5:], ['Year', 'Price(euro)']]
+  hints:
+    - Последние строки можно взять отрицательным срезом позиций или методом из урока 2.1, а колонки — списком.
+    - "`df.iloc[-5:]` или `.tail(5)`; колонки — `[['Year', 'Price(euro)']]`."
+    - "`last5 = df.iloc[-5:][['Year', 'Price(euro)']]`."
+  tests: |
+    import pandas as pd
+    t = var('last5', pd.DataFrame, 'таблицей DataFrame')
+    if len(t) != 5:
+        fail('В `last5` {0} строк, а нужно 5.'.format(len(t)))
+    same_frame(t, ref('last5'), 'Таблица `last5` не совпадает: нужны последние пять строк и колонки Year, Price(euro).')
+    same_frame(alt('last5'), alt_ref('last5'), 'На другой части данных последние строки другие — выбирайте их срезом, а не по вписанным меткам.')
+  wrong:
+    - code: |
+        last5 = df.iloc[:5][['Year', 'Price(euro)']]
+      expect: Метки строк
+    - code: |
+        last5 = df.iloc[-5:][['Price(euro)', 'Year']]
+      expect: Порядок колонок
+    - code: |
+        last5 = df.loc[41002:41006, ['Year', 'Price(euro)']]
+      expect: другой части данных
+
+- id: m2-l4-t3
+  title: Одна строка двумя способами
+  difficulty: main
+  introduces: [label-vs-position]
+  uses: []
+  statement: |
+    В таблице `index_example` три строки с метками 10, 20 и 30. Выберите **вторую** строку двумя способами:
+
+    - `by_label` — через `loc` по её метке;
+    - `by_position` — через `iloc` по её позиции.
+
+    Затем `same` — результат сравнения `by_label.equals(by_position)`.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+    index_example = df.head(3).copy()
+    index_example.index = [10, 20, 30]
+  starter: |
+    by_label = ...
+    by_position = ...
+    same = ...
+    print(same)
+    index_example
+  solution: |
+    by_label = index_example.loc[20]
+    by_position = index_example.iloc[1]
+    same = by_label.equals(by_position)
+    print(same)
+    index_example
+  explanation: |
+    - `loc[20]` — строка с **меткой** 20 (вторая строка таблицы).
+    - `iloc[1]` — строка на **позиции** 1, то есть вторая по порядку.
+    - Это одна и та же строка, поэтому `equals` даёт True. А `index_example.loc[1]` дал бы `KeyError`: метки 1 нет.
+  hints:
+    - Какая метка у второй строки? А какая у неё позиция, если считать с нуля?
+    - "Вторая строка: метка 20, позиция 1. `loc` — по метке, `iloc` — по позиции."
+    - "`by_label = index_example.loc[20]`, `by_position = index_example.iloc[1]`."
+  tests: |
+    import pandas as pd
+    a = var('by_label', pd.Series, 'строкой Series: выберите одну метку, а не список')
+    b = var('by_position', pd.Series, 'строкой Series: выберите одну позицию, а не список')
+    expected = ref('by_label')
+    if a.equals(ref('index_example').iloc[0]):
+        fail('В `by_label` попала первая строка. Вторая строка имеет метку 20: `index_example.loc[20]`.')
+    ensure(a.equals(expected), '`by_label` должна быть строкой с меткой 20: `index_example.loc[20]`.')
+    if b.equals(ref('index_example').iloc[2]):
+        fail('В `by_position` попала третья строка. Позиции считаются с нуля: вторая строка — `iloc[1]`.')
+    ensure(b.equals(expected), '`by_position` должна быть второй по порядку строкой: `index_example.iloc[1]`.')
+    ensure('.loc[' in source() and '.iloc[' in source(), 'Используйте оба способа: `loc` для `by_label` и `iloc` для `by_position`.')
+    equal(bool(var('same')), True, '`same` должно быть True — это одна и та же строка.')
+  wrong:
+    - code: |
+        by_label = index_example.loc[10]
+        by_position = index_example.iloc[1]
+        same = by_label.equals(by_position)
+      expect: первая строка
+    - code: |
+        by_label = index_example.loc[20]
+        by_position = index_example.iloc[2]
+        same = by_label.equals(by_position)
+      expect: третья строка
+    - code: |
+        by_label = index_example.loc[2]
+        by_position = index_example.iloc[1]
+        same = True
+      expect: Метки 2 нет в индексе
+
+- id: m2-l4-t4
+  title: Сколько строк в срезе
+  difficulty: main
+  introduces: [pd-loc-iloc]
+  uses: [np-slicing]
+  statement: |
+    Получите `part_loc = df.loc[100:200]` и `part_iloc = df.iloc[100:200]`, затем `n_loc` и `n_iloc` — число строк в каждом срезе и `extra_label` — метку строки, которая есть в `part_loc`, но отсутствует в `part_iloc`.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+  starter: |
+    part_loc = df.loc[100:200]
+    part_iloc = df.iloc[100:200]
+    n_loc = ...
+    n_iloc = ...
+    extra_label = ...
+    print(n_loc, n_iloc, extra_label)
+  solution: |
+    part_loc = df.loc[100:200]
+    part_iloc = df.iloc[100:200]
+    n_loc = len(part_loc)
+    n_iloc = len(part_iloc)
+    extra_label = part_loc.index[-1]
+    print(n_loc, n_iloc, extra_label)
+  explanation: |
+    - `loc[100:200]` включает обе границы: метки 100…200, это 101 строка.
+    - `iloc[100:200]` не включает правую позицию: позиции 100…199, 100 строк.
+    - Лишняя строка — последняя в `part_loc`, с меткой 200: `part_loc.index[-1]`.
+  alternatives:
+    - |
+      part_loc = df.loc[100:200]
+      part_iloc = df.iloc[100:200]
+      n_loc = part_loc.shape[0]
+      n_iloc = part_iloc.shape[0]
+      extra_label = [x for x in part_loc.index if x not in part_iloc.index][0]
+  hints:
+    - Число строк — `len(...)`. Какой срез включает правую границу?
+    - "`loc` включает правую метку, `iloc` — нет. Метки строк — `part_loc.index`."
+    - "`extra_label = part_loc.index[-1]` — последняя метка в срезе loc."
+  tests: |
+    equal(int(var('n_loc', 'number', 'числом')), int(ref('n_loc')), 'В `part_loc` {expected} строк, а у вас {actual}: loc включает обе границы.')
+    equal(int(var('n_iloc', 'number', 'числом')), int(ref('n_iloc')), 'В `part_iloc` {expected} строк, а у вас {actual}: iloc не включает правую позицию.')
+    equal(int(var('extra_label', 'number', 'числом')), int(ref('extra_label')), 'Лишняя метка — {expected}, а у вас {actual}. Это последняя метка среза loc.')
+  wrong:
+    - code: |
+        part_loc = df.loc[100:200]
+        part_iloc = df.iloc[100:200]
+        n_loc = 100
+        n_iloc = 100
+        extra_label = 200
+      expect: включает обе границы
+    - code: |
+        part_loc = df.loc[100:200]
+        part_iloc = df.iloc[100:200]
+        n_loc = len(part_loc)
+        n_iloc = len(part_iloc)
+        extra_label = part_loc.index[0]
+      expect: Лишняя метка
+
+- id: m2-l4-t5
+  kind: predict
+  title: Предскажите результат выбора
+  difficulty: main
+  introduces: [pd-loc-iloc, label-vs-position]
+  uses: []
+  statement: |
+    Не запуская код, ответьте, что получится. Первые строки таблицы: метки 0, 1, 2; `Make` — Toyota, Renault, Volkswagen; `Year` — 2011, 2014, 1998.
+  quiz:
+    - q: Что вернёт код?
+      code: |
+        df.loc[0:2, 'Year']
+      options:
+        - Series из трёх значений 2011, 2014, 1998
+        - Series из двух значений 2011, 2014
+        - DataFrame из трёх строк
+      answer: 0
+      explain: "`loc` включает правую метку 2, а одно имя колонки (не список) даёт Series."
+    - q: Что вернёт код?
+      code: |
+        df.iloc[2, 2]
+      options:
+        - "2014"
+        - "1998"
+        - Строку с меткой 2
+      answer: 1
+      explain: Третья строка (позиция 2) и третья колонка (позиция 2 — `Year`) — это 1998.
+    - q: Что произойдёт?
+      code: |
+        t = df.head(3).copy()
+        t.index = [10, 20, 30]
+        t.loc[0]
+      options:
+        - Выведется первая строка
+        - "Ошибка KeyError: 0 — метки 0 нет"
+        - Выведется пустая таблица
+      answer: 1
+      explain: После замены индекса меток 0, 1, 2 больше нет. Первую строку выбрал бы `t.iloc[0]`.
+    - q: Что вернёт код?
+      code: |
+        df.sort_values('Year').iloc[0]['Year']
+      options:
+        - Год первой строки файла — 2011
+        - Наименьший год в таблице
+        - Ошибку
+      answer: 1
+      explain: После сортировки первая по порядку строка — с наименьшим годом; `iloc` берёт её по позиции.
+  hints:
+    - "Для каждой строки кода определите: выбор по меткам (`loc`) или по позициям (`iloc`)?"
+    - "`loc` включает правую границу; позиции и колонки в `iloc` считаются с нуля; после сортировки позиции меняются, а метки — нет."
+    - "Ответы: три значения; 1998; KeyError; наименьший год."
+
+- id: m2-l4-t6
+  title: Контрольный вопрос учебника
+  difficulty: star
+  introduces: [pd-loc-iloc]
+  uses: [pd-sort-values]
+  statement: |
+    Возьмите строки таблицы с **позиции 69 по позицию 322 включительно** — получится `part`. Отсортируйте их по пробегу по убыванию (результат — `top`) и получите:
+
+    - `first_style` — тип кузова первой по порядку строки `top`;
+    - `first_label` — метку этой строки в индексе.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    df = raw.copy()
+  starter: |
+    part = ...
+    top = ...
+    first_style = ...
+    first_label = ...
+    print(len(part), first_style, first_label)
+  solution: |
+    part = df.iloc[69:323]
+    top = part.sort_values('Distance', ascending=False)
+    first_style = top.iloc[0]['Style']
+    first_label = top.index[0]
+    print(len(part), first_style, first_label)
+  explanation: |
+    - Позиции 69…322 включительно — срез `iloc[69:323]`: правая граница среза позиций не включается, поэтому пишем 323. Получается 254 строки.
+    - `sort_values('Distance', ascending=False)` — наибольший пробег сверху.
+    - `.iloc[0]` — первая по порядку строка, `['Style']` — её кузов. Её метка `top.index[0]` — не 0 и не 69: сортировка переставила строки вместе с метками.
+  alternatives:
+    - |
+      part = df.iloc[69:323]
+      first_label = part['Distance'].idxmax()
+      first_style = part.loc[first_label, 'Style']
+  hints:
+    - Срез позиций не включает правую границу. Какой номер нужно написать, чтобы позиция 322 попала в срез?
+    - "`df.iloc[69:323]`; после сортировки первую строку берут по позиции — `.iloc[0]`, а не `.loc[0]`."
+    - "`top = part.sort_values('Distance', ascending=False)`, `first_style = top.iloc[0]['Style']`, `first_label = top.index[0]`."
+  tests: |
+    import pandas as pd
+    p = var('part', pd.DataFrame, 'таблицей DataFrame')
+    if len(p) == len(ref('part')) - 1:
+        fail('В `part` {0} строк — позиция 322 не попала в срез. Правая граница iloc не включается: пишите `iloc[69:323]`.'.format(len(p)))
+    same_frame(p, ref('part'), 'В `part` должны быть строки с позиции 69 по 322 включительно.')
+    lab = var('first_label', 'number', 'числом — меткой из индекса')
+    if lab == ref('part').sort_values('Distance').index[0]:
+        fail('Похоже, сортировка шла по возрастанию: первой оказалась строка с наименьшим пробегом. Нужен `ascending=False`.')
+    equal(int(lab), int(ref('first_label')), 'Метка первой строки после сортировки — {expected}, а у вас {actual}. Это `top.index[0]`, а не позиция.')
+    equal(var('first_style', str, 'строкой'), ref('first_style'), 'Кузов первой строки после сортировки — {expected}, а у вас {actual}. Берите первую строку через `.iloc[0]`.')
+  wrong:
+    - code: |
+        part = df.iloc[69:322]
+        top = part.sort_values('Distance', ascending=False)
+        first_style = top.iloc[0]['Style']
+        first_label = top.index[0]
+      expect: позиция 322 не попала
+    - code: |
+        part = df.iloc[69:323]
+        top = part.sort_values('Distance')
+        first_style = top.iloc[0]['Style']
+        first_label = top.index[0]
+      expect: по возрастанию
+    - code: |
+        part = df.iloc[69:323]
+        top = part.sort_values('Distance', ascending=False)
+        first_style = top.iloc[0]['Style']
+        first_label = 0
+      expect: Метка первой строки

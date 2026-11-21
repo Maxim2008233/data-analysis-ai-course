@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 250" font-family="Inter, Arial, sans-serif" font-size="13" role="img" aria-label="Объём двигателя делится на три группы: в диапазоне 200–5000 (40 097 объявлений), вне диапазона с известным значением (705) и пропуски (205). Маска ~between отмечает и вторую, и третью группу — 910 строк">
+  <!-- ось -->
+  <line x1="40" y1="90" x2="600" y2="90" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.5"/>
+  <g font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor" fill-opacity="0.7">
+    <text x="40" y="112" text-anchor="middle">0</text>
+    <text x="96" y="112" text-anchor="middle">200</text>
+    <text x="480" y="112" text-anchor="middle">5000</text>
+    <text x="596" y="112" text-anchor="middle">9999</text>
+  </g>
+  <line x1="40" y1="84" x2="40" y2="96" stroke="currentColor" stroke-opacity="0.5"/>
+  <line x1="596" y1="84" x2="596" y2="96" stroke="currentColor" stroke-opacity="0.5"/>
+  <!-- диапазон -->
+  <rect x="96" y="70" width="384" height="40" rx="4" fill="#3d5bd9" fill-opacity="0.15" stroke="#3d5bd9"/>
+  <text x="288" y="58" text-anchor="middle" fill="#3d5bd9" font-weight="700">between(200, 5000) — 40 097</text>
+  <!-- вне диапазона -->
+  <rect x="40" y="76" width="56" height="28" rx="3" fill="#c2410c" fill-opacity="0.15" stroke="#c2410c" stroke-dasharray="4 3"/>
+  <rect x="480" y="76" width="116" height="28" rx="3" fill="#c2410c" fill-opacity="0.15" stroke="#c2410c" stroke-dasharray="4 3"/>
+  <text x="68" y="140" text-anchor="middle" fill="#c2410c" font-size="12">0 у электромобилей,</text>
+  <text x="68" y="156" text-anchor="middle" fill="#c2410c" font-size="12">опечатки</text>
+  <text x="538" y="140" text-anchor="middle" fill="#c2410c" font-size="12">большие двигатели,</text>
+  <text x="538" y="156" text-anchor="middle" fill="#c2410c" font-size="12">«заглушка» 9999</text>
+  <!-- пропуски -->
+  <rect x="640" y="70" width="90" height="40" rx="4" fill="none" stroke="currentColor" stroke-opacity="0.55" stroke-dasharray="2 3"/>
+  <text x="685" y="95" text-anchor="middle" font-family="JetBrains Mono, monospace" fill="currentColor">NaN</text>
+  <text x="685" y="58" text-anchor="middle" fill="currentColor" font-weight="700">пропуск — 205</text>
+  <text x="685" y="140" text-anchor="middle" fill="currentColor" fill-opacity="0.7" font-size="12">не входит ни в</text>
+  <text x="685" y="156" text-anchor="middle" fill="currentColor" fill-opacity="0.7" font-size="12">какой диапазон</text>
+  <!-- итог -->
+  <text x="40" y="196" fill="currentColor"><tspan font-family="JetBrains Mono, monospace" font-weight="700">~engine.between(200, 5000)</tspan> → 910 строк = 705 вне диапазона + 205 пропусков</text>
+  <text x="40" y="222" fill="currentColor"><tspan font-family="JetBrains Mono, monospace" font-weight="700">~engine.between(200, 5000) &amp; engine.notna()</tspan> → 705: только известные значения вне диапазона</text>
+</svg>

@@ -1,0 +1,495 @@
+- id: m10-l2-t1
+  title: Температура для четырёх вариантов
+  difficulty: warmup
+  introduces: [sampling-temperature]
+  uses: []
+  statement: |
+    Модель выбирает один из четырёх вариантов ответа с вероятностями `p`. Напишите функцию `with_temperature(p, T)` — вероятности после температуры T:
+
+    $$
+    q_i = \frac{p_i^{1/T}}{\sum_j p_j^{1/T}}
+    $$
+
+    Получите:
+
+    - `cold` — вероятности при T = 0.5;
+    - `hot` — при T = 2;
+    - `top_cold` — вероятность самого вероятного варианта при T = 0.5.
+  prelude: |
+    import numpy as np
+    p = np.array([0.5, 0.3, 0.15, 0.05])
+  starter: |
+    def with_temperature(p, T):
+        q = ...
+        return ...
+
+    cold = with_temperature(p, 0.5)
+    hot = ...
+    top_cold = ...
+    print(cold.round(3), hot.round(3), round(top_cold, 3))
+  solution: |
+    def with_temperature(p, T):
+        q = p ** (1 / T)
+        return q / q.sum()
+
+    cold = with_temperature(p, 0.5)
+    hot = with_temperature(p, 2)
+    top_cold = cold.max()
+    print(cold.round(3), hot.round(3), round(top_cold, 3))
+  explanation: |
+    - При T = 0.5 вероятности возводятся в квадрат: 0,25, 0,09, 0,0225 и 0,0025. Их сумма 0,365, и после деления на неё первый вариант получает 0,685 вместо 0,5.
+    - При T = 2 из вероятностей извлекается корень, и они выравниваются: 0,379, 0,294, 0,208, 0,12.
+    - Порядок вариантов не меняется, сумма всегда 1. Без деления на сумму получились бы числа, которые в сумме не дают единицу, — это уже не вероятности.
+  hints:
+    - "Возведение в степень в NumPy — `p ** (1 / T)`, сразу для всего массива."
+    - "Чтобы сумма стала 1, разделите массив на его сумму: `q / q.sum()`."
+    - "`hot = with_temperature(p, 2)`, `top_cold = cold.max()`."
+  tests: |
+    import numpy as np
+    f = var('with_temperature')
+    ensure(callable(f), '`with_temperature` должна быть функцией.')
+    rng = np.random.default_rng(5)
+    for T in [0.3, 1.5, 3.0]:
+        pp = rng.dirichlet(np.ones(6))
+        got = np.asarray(f(pp, T), dtype=float)
+        want = pp ** (1 / T) / (pp ** (1 / T)).sum()
+        ensure(got.shape == pp.shape, 'Функция должна вернуть массив той же длины, что и p.')
+        if np.allclose(got, pp):
+            fail('Вероятности не изменились. Делить p на T бесполезно: множитель сокращается при нормировке. Возводите в степень 1 / T.')
+        if abs(got.sum() - 1) > 1e-9:
+            fail('Сумма вероятностей после температуры должна быть 1 — разделите на сумму.')
+        if np.allclose(got, pp ** T / (pp ** T).sum()):
+            fail('Степень — 1 / T, а не T: при T < 1 сильные варианты должны становиться сильнее.')
+        same_array(got, want, 'with_temperature(p, {0}) даёт не те вероятности.'.format(T))
+    same_array(var('cold'), ref('cold'), '`cold` — вероятности при T = 0.5.')
+    same_array(var('hot'), ref('hot'), '`hot` — вероятности при T = 2.')
+    close(var('top_cold', 'number', 'числом'), ref('top_cold'), 'Вероятность самого вероятного варианта при T = 0.5 — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        def with_temperature(p, T):
+            q = p / T
+            return q / q.sum()
+        cold = with_temperature(p, 0.5)
+        hot = with_temperature(p, 2)
+        top_cold = cold.max()
+      expect: Делить p на T бесполезно
+    - code: |
+        def with_temperature(p, T):
+            q = p ** T
+            return q / q.sum()
+        cold = with_temperature(p, 0.5)
+        hot = with_temperature(p, 2)
+        top_cold = cold.max()
+      expect: Степень — 1 / T
+    - code: |
+        def with_temperature(p, T):
+            return p ** (1 / T)
+        cold = with_temperature(p, 0.5)
+        hot = with_temperature(p, 2)
+        top_cold = cold.max()
+      expect: разделите на сумму
+
+- id: m10-l2-t2
+  title: Сколько слов набирают 90 %
+  difficulty: main
+  introduces: []
+  uses: [sampling-temperature, n-gram]
+  statement: |
+    `next_dist(word)` — биграммная модель из урока: слова после `word` и их вероятности, от самого вероятного к редким. `with_temperature(p, T)` тоже готова. Для слова `WORD` и каждой температуры из `temps` посчитайте:
+
+    - `n90` — список: сколько самых вероятных слов вместе набирают не меньше 90 % вероятности;
+    - `top` — список: вероятность самого вероятного слова.
+
+    И ещё `n_words` — сколько разных слов встречалось после `WORD`.
+  prelude: |
+    import re
+    from collections import Counter
+    import numpy as np
+    with open('course_texts.txt', encoding='utf-8') as fh:
+        text = fh.read()
+    sentences = [s for s in re.split(r'(?<=[.!?…])\s+|\n', text) if s.strip()]
+    sents = [w for w in (re.findall(r'[а-яёa-z0-9]+', s.lower()) for s in sentences) if w]
+    bigrams = Counter()
+    for s in sents:
+        seq = ['<s>'] + s + ['</s>']
+        bigrams.update(zip(seq, seq[1:]))
+
+    def next_dist(word):
+        options = sorted(((b, c) for (a, b), c in bigrams.items() if a == word), key=lambda x: -x[1])
+        cands = [b for b, _ in options]
+        counts = np.array([c for _, c in options], dtype=float)
+        return cands, counts / counts.sum()
+
+    def with_temperature(p, T):
+        q = p ** (1 / T)
+        return q / q.sum()
+
+    WORD = 'модель'
+    temps = [0.5, 1, 2]
+  starter: |
+    cands, p = next_dist(WORD)
+    n_words = ...
+    n90, top = [], []
+    for T in temps:
+        q = with_temperature(p, T)
+        n90.append(...)
+        top.append(...)
+    print(n_words, n90, np.round(top, 3))
+  solution: |
+    cands, p = next_dist(WORD)
+    n_words = len(cands)
+    n90, top = [], []
+    for T in temps:
+        q = with_temperature(p, T)
+        n90.append(int(np.searchsorted(np.cumsum(q), 0.9)) + 1)
+        top.append(q[0])
+    print(n_words, n90, np.round(top, 3))
+  explanation: |
+    - `np.cumsum(q)` — накопленные суммы: вероятность первого слова, первых двух, первых трёх… `np.searchsorted(..., 0.9)` находит номер первой суммы, которая дотянулась до 0,9. Слов на одно больше, потому что номера идут с нуля.
+    - После «модель» встречалось 138 разных слов. При T = 0,5 90 % вероятности набирают 38 слов, при T = 1 — 115, при T = 2 — 122: чем выше температура, тем больше слов реально участвуют в выборе.
+    - Самое вероятное слово — «не» — при T = 0,5 получает 0,255, при T = 2 — только 0,024. Хвост редких слов при высокой температуре забирает почти всю вероятность.
+  hints:
+    - "`n_words = len(cands)`; слова уже отсортированы от самого вероятного."
+    - "Накопленная сумма — `np.cumsum(q)`. Ищите первую позицию, где она ≥ 0.9: `np.searchsorted(np.cumsum(q), 0.9)`."
+    - "Позиции считаются с нуля, поэтому слов на одно больше: `int(np.searchsorted(np.cumsum(q), 0.9)) + 1`. Самое вероятное слово — `q[0]`."
+  tests: |
+    import numpy as np
+    equal(int(var('n_words', 'number', 'числом')), ref('n_words'), 'После слова встречалось {expected} разных слов, а у вас {actual}.')
+    got = [int(x) for x in var('n90', list, 'списком')]
+    want = ref('n90')
+    ensure(len(got) == len(want), '`n90` — по числу на каждую температуру из `temps`.')
+    if [g + 1 for g in got] == want:
+        fail('Позиции в массиве считаются с нуля: слов на одно больше, чем номер позиции.')
+    if all(g == w + 1 for g, w in zip(got, want)):
+        fail('Слово, на котором накопленная сумма впервые дотянулась до 0,9, уже набирает 90 % — лишнее слово считать не нужно.')
+    equal(got, want, 'Слов, набирающих 90 % вероятности, — {expected}, а у вас {actual}.')
+    same_array(np.asarray(var('top', list, 'списком'), dtype=float), np.asarray(ref('top')), '`top` — вероятность самого вероятного слова при каждой температуре.')
+    equal([int(x) for x in alt('n90')], alt_ref('n90'), HARDCODE_MSG)
+  files: [course_texts.txt]
+  wrong:
+    - code: |
+        cands, p = next_dist(WORD)
+        n_words = len(cands)
+        n90, top = [], []
+        for T in temps:
+            q = with_temperature(p, T)
+            n90.append(int(np.searchsorted(np.cumsum(q), 0.9)))
+            top.append(q[0])
+      expect: считаются с нуля
+    - code: |
+        cands, p = next_dist(WORD)
+        n_words = len(cands)
+        n90, top = [], []
+        for T in temps:
+            q = with_temperature(p, T)
+            n90.append(int(np.searchsorted(np.cumsum(p), 0.9)) + 1)
+            top.append(q[0])
+      expect: набирающих 90 %
+
+- id: m10-l2-t3
+  title: top_p своими руками
+  difficulty: main
+  introduces: []
+  uses: [sampling-temperature]
+  statement: |
+    Напишите функцию `top_p_filter(p, top_p)`. Вероятности `p` отсортированы по убыванию. Самые вероятные слова, которые вместе набирают не меньше `top_p`, остаются, у остальных вероятность становится 0. Оставшиеся вероятности нормируются, чтобы сумма снова была 1. Функция возвращает массив той же длины.
+
+    Для слов после «в» (`cands`, `p` уже получены) найдите:
+
+    - `kept` — сколько слов остаётся при `top_p = 0.9`;
+    - `kept_cold` — сколько остаётся при `top_p = 0.9`, если сначала применить температуру 0.5 (`with_temperature` готова);
+    - `p_first` — вероятность самого вероятного слова после фильтра `top_p = 0.9` без температуры.
+  prelude: |
+    import re
+    from collections import Counter
+    import numpy as np
+    with open('course_texts.txt', encoding='utf-8') as fh:
+        text = fh.read()
+    sentences = [s for s in re.split(r'(?<=[.!?…])\s+|\n', text) if s.strip()]
+    sents = [w for w in (re.findall(r'[а-яёa-z0-9]+', s.lower()) for s in sentences) if w]
+    bigrams = Counter()
+    for s in sents:
+        seq = ['<s>'] + s + ['</s>']
+        bigrams.update(zip(seq, seq[1:]))
+
+    def next_dist(word):
+        options = sorted(((b, c) for (a, b), c in bigrams.items() if a == word), key=lambda x: -x[1])
+        cands = [b for b, _ in options]
+        counts = np.array([c for _, c in options], dtype=float)
+        return cands, counts / counts.sum()
+
+    def with_temperature(p, T):
+        q = p ** (1 / T)
+        return q / q.sum()
+
+    cands, p = next_dist('в')
+  starter: |
+    def top_p_filter(p, top_p):
+        before = np.cumsum(p) - p          # сколько вероятности набралось до каждого слова
+        keep = ...
+        q = np.where(keep, p, 0.0)
+        return ...
+
+    kept = int((top_p_filter(p, 0.9) > 0).sum())
+    kept_cold = ...
+    p_first = ...
+    print(kept, kept_cold, round(p_first, 4))
+  solution: |
+    def top_p_filter(p, top_p):
+        before = np.cumsum(p) - p          # сколько вероятности набралось до каждого слова
+        keep = before < top_p
+        q = np.where(keep, p, 0.0)
+        return q / q.sum()
+
+    kept = int((top_p_filter(p, 0.9) > 0).sum())
+    kept_cold = int((top_p_filter(with_temperature(p, 0.5), 0.9) > 0).sum())
+    p_first = top_p_filter(p, 0.9)[0]
+    print(kept, kept_cold, round(p_first, 4))
+  explanation: |
+    - Слово остаётся, если до него набралось меньше `top_p`. Значит, остаётся и слово, на котором сумма впервые дотягивается до `top_p`, — без него 90 % не набрать.
+    - При `top_p = 0.9` после «в» остаётся 329 слов из 447, а с температурой 0,5 — всего 56. Температура и `top_p` действуют вместе: сначала вероятности становятся резче, потом отрезается хвост, и в нём оказывается гораздо больше слов.
+    - Отрезав хвост, вероятности снова нормируют. У «уроке» было 0,049, а стало 0,0545 — примерно в 1/0,9 раза больше.
+  hints:
+    - "Слово остаётся, если вероятность всех слов до него меньше `top_p`: `keep = before < top_p`."
+    - "После `np.where` сумма меньше 1 — разделите на неё: `q / q.sum()`."
+    - "Для `kept_cold` передайте в фильтр `with_temperature(p, 0.5)`; `p_first` — элемент `[0]` результата `top_p_filter(p, 0.9)`."
+  tests: |
+    import numpy as np
+    f = var('top_p_filter')
+    ensure(callable(f), '`top_p_filter` должна быть функцией.')
+    base = np.array([0.5, 0.3, 0.2])
+    with np.errstate(all='ignore'):
+        small = np.asarray(f(base, 0.3), dtype=float)
+    ensure(small.shape == (3,), 'Функция должна вернуть массив той же длины, что и p.')
+    if np.isnan(small).any() or small.sum() == 0:
+        fail('При p = [0.5, 0.3, 0.2] и top_p = 0.3 должно остаться самое вероятное слово, а у вас не осталось ни одного. Слово, на котором сумма дотягивается до top_p, тоже остаётся.')
+    two = np.asarray(f(base, 0.6), dtype=float)
+    if np.allclose(two, [1, 0, 0]):
+        fail('При p = [0.5, 0.3, 0.2] и top_p = 0.6 остаются два слова: первого не хватает до 0.6. Слово, на котором сумма дотягивается до top_p, тоже остаётся.')
+    if np.allclose(two, [0.5, 0.3, 0]):
+        fail('Вероятности оставшихся слов нужно нормировать, чтобы сумма снова стала 1.')
+    same_array(two, [0.625, 0.375, 0], 'При p = [0.5, 0.3, 0.2] и top_p = 0.6 должно получиться [0.625, 0.375, 0].')
+    same_array(np.asarray(f(base, 1.0), dtype=float), base, 'При top_p = 1 должны остаться все слова.')
+    rng = np.random.default_rng(3)
+    pp = np.sort(rng.dirichlet(np.ones(20)))[::-1]
+    before = np.cumsum(pp) - pp
+    want = np.where(before < 0.7, pp, 0.0)
+    same_array(np.asarray(f(pp, 0.7), dtype=float), want / want.sum(), 'На других вероятностях при top_p = 0.7 функция работает неверно.')
+    equal(int(var('kept', 'number', 'числом')), ref('kept'), 'При top_p = 0.9 остаётся {expected} слов, а у вас {actual}.')
+    equal(int(var('kept_cold', 'number', 'числом')), ref('kept_cold'), 'С температурой 0.5 и top_p = 0.9 остаётся {expected} слов, а у вас {actual}.')
+    close(var('p_first', 'number', 'числом'), ref('p_first'), 'Вероятность самого вероятного слова после фильтра — {expected}, а у вас {actual}.')
+    equal(int(alt('kept_cold')), alt_ref('kept_cold'), HARDCODE_MSG)
+  files: [course_texts.txt]
+  wrong:
+    - code: |
+        def top_p_filter(p, top_p):
+            keep = np.cumsum(p) < top_p
+            q = np.where(keep, p, 0.0)
+            return q / q.sum()
+        kept = int((top_p_filter(p, 0.9) > 0).sum())
+        kept_cold = int((top_p_filter(with_temperature(p, 0.5), 0.9) > 0).sum())
+        p_first = top_p_filter(p, 0.9)[0]
+      expect: тоже остаётся
+    - code: |
+        def top_p_filter(p, top_p):
+            before = np.cumsum(p) - p
+            return np.where(before < top_p, p, 0.0)
+        kept = int((top_p_filter(p, 0.9) > 0).sum())
+        kept_cold = int((top_p_filter(with_temperature(p, 0.5), 0.9) > 0).sum())
+        p_first = top_p_filter(p, 0.9)[0]
+      expect: нормировать
+
+- id: m10-l2-t4
+  title: Где разошлись ответы GigaChat
+  difficulty: main
+  introduces: []
+  uses: [sampling-temperature]
+  statement: |
+    `records` — ответы GigaChat, записанные в ноутбуке курса. Первые четыре — ответы на один и тот же вопрос: `records[0]` и `records[1]` от модели GigaChat, `records[2]` и `records[3]` от GigaChat-2-Pro. Текст ответа — `records[i]['response']`.
+
+    Напишите функцию `same_start(a, b)` — сколько первых слов у текстов `a` и `b` совпадает. Слова — `re.findall(r'\w+', text)`: так знаки препинания и разметка не мешают. Получите:
+
+    - `n_giga` — сколько первых слов совпадает у двух ответов GigaChat;
+    - `n_pro` — у двух ответов GigaChat-2-Pro;
+    - `fork_giga` — кортеж из первых несовпавших слов двух ответов GigaChat: `(слово из records[0], слово из records[1])`.
+  prelude: |
+    import json
+    import re
+    with open('gigachat_notebook.json', encoding='utf-8') as fh:
+        records = json.load(fh)['records']
+  starter: |
+    def same_start(a, b):
+        wa, wb = re.findall(r'\w+', a), re.findall(r'\w+', b)
+        n = 0
+        for x, z in zip(wa, wb):          # слова на одинаковых позициях
+            if ...:
+                break
+            n += 1
+        return n
+
+    a, b = records[0]['response'], records[1]['response']
+    n_giga = same_start(a, b)
+    n_pro = ...
+    fork_giga = ...
+    print(n_giga, n_pro, fork_giga)
+  solution: |
+    def same_start(a, b):
+        wa, wb = re.findall(r'\w+', a), re.findall(r'\w+', b)
+        n = 0
+        for x, z in zip(wa, wb):          # слова на одинаковых позициях
+            if x != z:
+                break
+            n += 1
+        return n
+
+    a, b = records[0]['response'], records[1]['response']
+    n_giga = same_start(a, b)
+    n_pro = same_start(records[2]['response'], records[3]['response'])
+    fork_giga = (re.findall(r'\w+', a)[n_giga], re.findall(r'\w+', b)[n_giga])
+    print(n_giga, n_pro, fork_giga)
+  explanation: |
+    - Ответы GigaChat совпадают в трёх словах — «Prompt Engineering инжиниринг» — и расходятся на четвёртом: «запросов» против «подсказок». Ответы GigaChat-2-Pro одинаково начинаются с пяти слов, а дальше идут «разработки» и «формирования».
+    - `zip(wa, wb)` идёт по парам слов на одинаковых позициях и останавливается на конце более короткого текста. Поэтому, если один ответ — начало другого, функция не выйдет за край списка.
+    - Первое несовпавшее слово стоит на позиции `n_giga`: позиции считаются с нуля, а совпали позиции 0, 1 и 2. Дальше ответы различаются целиком, хотя модели задали один и тот же вопрос.
+  hints:
+    - "Цикл нужно прервать, как только слова пары различаются: `if x != z: break`."
+    - "`n_pro = same_start(records[2]['response'], records[3]['response'])`."
+    - "Первое несовпавшее слово — на позиции `n_giga` в каждом списке слов."
+  tests: |
+    f = var('same_start')
+    ensure(callable(f), '`same_start` должна быть функцией.')
+    equal(f('кот сидел на окне', 'кот сидел под окном'), 2, 'У «кот сидел на окне» и «кот сидел под окном» совпадают {expected} первых слова, а функция дала {actual}.')
+    equal(f('Да, конечно!', 'Да — конечно.'), 2, 'Знаки препинания не считаются: у «Да, конечно!» и «Да — конечно.» совпадают {expected} слова, а функция дала {actual}.')
+    equal(f('а б', 'а б в г'), 2, 'Если один текст — начало другого, совпадают все слова короткого: ожидалось {expected}, а получилось {actual}.')
+    equal(f('один', 'другой'), 0, 'У текстов с разным первым словом совпадает {expected} слов, а функция дала {actual}.')
+    equal(int(var('n_giga', 'number', 'числом')), ref('n_giga'), 'У ответов GigaChat совпадают {expected} первых слова, а у вас {actual}.')
+    equal(int(var('n_pro', 'number', 'числом')), ref('n_pro'), 'У ответов GigaChat-2-Pro совпадают {expected} первых слов, а у вас {actual}.')
+    fg = var('fork_giga', tuple, 'кортежем')
+    equal(tuple(fg), ref('fork_giga'), 'Первые несовпавшие слова — {expected}, а у вас {actual}.')
+  files: [gigachat_notebook.json]
+  wrong:
+    - code: |
+        def same_start(a, b):
+            wa, wb = a.split(), b.split()
+            n = 0
+            while n < min(len(wa), len(wb)) and wa[n] == wb[n]:
+                n += 1
+            return n
+        a, b = records[0]['response'], records[1]['response']
+        n_giga = same_start(a, b)
+        n_pro = same_start(records[2]['response'], records[3]['response'])
+        fork_giga = (re.findall(r'\w+', a)[n_giga], re.findall(r'\w+', b)[n_giga])
+      expect: Знаки препинания не считаются
+    - code: |
+        def same_start(a, b):
+            wa, wb = re.findall(r'\w+', a), re.findall(r'\w+', b)
+            n = 0
+            while n < min(len(wa), len(wb)) and wa[n] == wb[n]:
+                n += 1
+            return n
+        a, b = records[0]['response'], records[1]['response']
+        n_giga = same_start(a, b)
+        n_pro = same_start(records[2]['response'], records[3]['response'])
+        fork_giga = (re.findall(r'\w+', a)[n_giga - 1], re.findall(r'\w+', b)[n_giga - 1])
+      expect: Первые несовпавшие слова
+
+- id: m10-l2-t5
+  title: Выбирать случайно или брать лучший
+  difficulty: star
+  introduces: []
+  uses: [sampling-temperature, logits]
+  statement: |
+    Классификатор отзывов из урока 9.6 выдаёт логиты двух классов, `y` — правильные ответы. Представим, что класс мы не берём по наибольшему логиту, а выбираем случайно с вероятностями `softmax(logits / T)` — так языковая модель выбирает токен. Тогда отзыв `i` угадан с вероятностью `q[i, y[i]]`, а ожидаемая доля верных ответов — среднее этих вероятностей по отзывам.
+
+    Получите:
+
+    - `acc_greedy` — долю верных, если брать класс с наибольшим логитом;
+    - `acc_sample` — массив ожидаемых долей верных при случайном выборе для каждой температуры из `temps`;
+    - `extra_errors` — на сколько ошибок больше в среднем даёт случайный выбор при T = 1, чем выбор наибольшего логита, на всех отзывах. Число может быть дробным.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from transformers import AutoTokenizer, AutoModelForSequenceClassification
+    name = 'distilbert-base-uncased-finetuned-sst-2-english'
+    tokenizer = AutoTokenizer.from_pretrained(name)
+    model = AutoModelForSequenceClassification.from_pretrained(name)
+    reviews = pd.read_csv('reviews.csv')
+    logits = model(**tokenizer(list(reviews['text']), padding=True, truncation=True, return_tensors='np')).logits
+    y = reviews['label'].to_numpy()
+    temps = [0.1, 0.5, 1, 2, 5]
+
+    def softmax(z):
+        e = np.exp(z - z.max(axis=-1, keepdims=True))
+        return e / e.sum(axis=-1, keepdims=True)
+  starter: |
+    acc_greedy = ...
+
+    def expected_acc(T):
+        q = softmax(logits / T)
+        return ...
+
+    acc_sample = np.array([expected_acc(T) for T in temps])
+    extra_errors = ...
+    print(round(acc_greedy, 3), acc_sample.round(3), round(extra_errors, 2))
+  solution: |
+    acc_greedy = (logits.argmax(axis=1) == y).mean()
+
+    def expected_acc(T):
+        q = softmax(logits / T)
+        return q[np.arange(len(y)), y].mean()
+
+    acc_sample = np.array([expected_acc(T) for T in temps])
+    extra_errors = (acc_greedy - expected_acc(1)) * len(y)
+    print(round(acc_greedy, 3), acc_sample.round(3), round(extra_errors, 2))
+  explanation: |
+    - `q[np.arange(len(y)), y]` берёт у каждого отзыва вероятность его правильного класса: строка i, столбец y[i].
+    - Если брать наибольший логит, модель верна на 93,2 % отзывов. При T = 0,1 случайный выбор почти не хуже — 92,6 %. С ростом температуры ожидаемая доля верных падает: 90,5 % при T = 1 и 76,2 % при T = 5. Чем выше температура, тем ближе выбор к подбрасыванию монеты.
+    - При T = 1 случайный выбор в среднем даёт на 2,4 ошибки больше на 88 отзывах.
+    - Ошибается модель на тех же отзывах, где она не уверена: там случайный выбор чаще промахивается. Поэтому для задач с одним правильным ответом температуру ставят низкой.
+  hints:
+    - "Жадный выбор — `logits.argmax(axis=1)`; доля верных — `(... == y).mean()`."
+    - "Вероятность правильного класса каждого отзыва — `q[np.arange(len(y)), y]`."
+    - "Ошибок в среднем — доля ошибок × число отзывов: `(acc_greedy - expected_acc(1)) * len(y)`."
+  tests: |
+    import numpy as np
+    close(var('acc_greedy', 'number', 'числом'), ref('acc_greedy'), 'Доля верных при выборе наибольшего логита — {expected}, а у вас {actual}.')
+    acc = np.asarray(var('acc_sample'), dtype=float)
+    ensure(acc.shape == (len(ref('temps')),), '`acc_sample` — по числу на каждую температуру из `temps`, а у вас форма {0}.'.format(acc.shape))
+    if np.allclose(acc, acc[0]):
+        fail('`acc_sample` не зависит от температуры: делите логиты на T перед softmax.')
+    lg, yy = ref('logits'), ref('y')
+    pos = np.array([softmax_ref[:, 1].mean() for softmax_ref in [np.exp(lg / T - (lg / T).max(axis=1, keepdims=True)) / np.exp(lg / T - (lg / T).max(axis=1, keepdims=True)).sum(axis=1, keepdims=True) for T in ref('temps')]])
+    if np.allclose(acc, pos):
+        fail('Нужна вероятность правильного класса `y[i]` каждого отзыва, а не вероятность класса POSITIVE.')
+    same_array(acc, ref('acc_sample'), '`acc_sample` — ожидаемая доля верных при случайном выборе для каждой температуры.')
+    ee = var('extra_errors', 'number', 'числом')
+    if abs(ee - ref('extra_errors') / len(yy)) < 1e-9:
+        fail('`extra_errors` — число ошибок на всех отзывах, а не доля: умножьте разницу долей на число отзывов.')
+    close(ee, ref('extra_errors'), 'Лишних ошибок при T = 1 в среднем — {expected}, а у вас {actual}.')
+    close(alt('extra_errors'), alt_ref('extra_errors'), HARDCODE_MSG)
+  files: [reviews.csv, distilbert_vocab.txt, sst2_logits.json]
+  wrong:
+    - code: |
+        acc_greedy = (logits.argmax(axis=1) == y).mean()
+        def expected_acc(T):
+            q = softmax(logits / T)
+            return q[:, 1].mean()
+        acc_sample = np.array([expected_acc(T) for T in temps])
+        extra_errors = (acc_greedy - expected_acc(1)) * len(y)
+      expect: а не вероятность класса POSITIVE
+    - code: |
+        acc_greedy = (logits.argmax(axis=1) == y).mean()
+        def expected_acc(T):
+            q = softmax(logits)
+            return q[np.arange(len(y)), y].mean()
+        acc_sample = np.array([expected_acc(T) for T in temps])
+        extra_errors = (acc_greedy - expected_acc(1)) * len(y)
+      expect: не зависит от температуры
+    - code: |
+        acc_greedy = (logits.argmax(axis=1) == y).mean()
+        def expected_acc(T):
+            q = softmax(logits / T)
+            return q[np.arange(len(y)), y].mean()
+        acc_sample = np.array([expected_acc(T) for T in temps])
+        extra_errors = acc_greedy - expected_acc(1)
+      expect: а не доля

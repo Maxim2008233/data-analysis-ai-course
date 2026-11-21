@@ -1,0 +1,437 @@
+- id: m12-l0-t1
+  title: Вырезать кусок картинки
+  difficulty: warmup
+  introduces: []
+  uses: [np-slicing, view-copy]
+  statement: |
+    Напишите функцию `crop(img, top, left, height, width)`: она возвращает кусок двумерного массива `img` — `height` строк начиная со строки `top` и `width` столбцов начиная со столбца `left`.
+
+    - Если кусок выходит за край картинки, он обрезается краем — без ошибки. Отрицательные `top` и `left` считаются нулём: картинка не «заворачивается» с другого конца.
+    - Функция возвращает **копию**: изменения куска не должны менять исходную картинку.
+
+    Получите `piece` — кусок `scene` от строки 5 и столбца 7 размером 18 × 21.
+  prelude: |
+    import numpy as np
+    h, w = 40, 60
+    scene = np.zeros((h, w))
+    scene[8:20, 10:25] = 0.9
+    yy, xx = np.ogrid[:h, :w]
+    scene[(yy - 26) ** 2 + (xx - 42) ** 2 <= 8 ** 2] = 0.6
+    scene = scene + 0.05 * np.random.default_rng(0).random((h, w))
+  starter: |
+    def crop(img, top, left, height, width):
+        top, left = max(top, 0), ...
+        return img[top:top + height, ...].copy()
+
+    piece = crop(scene, 5, 7, 18, 21)
+    print(piece.shape, piece.max().round(2))
+  solution: |
+    def crop(img, top, left, height, width):
+        top, left = max(top, 0), max(left, 0)
+        return img[top:top + height, left:left + width].copy()
+
+    piece = crop(scene, 5, 7, 18, 21)
+    print(piece.shape, piece.max().round(2))
+  explanation: |
+    - Срез NumPy сам останавливается на краю массива: `img[35:50]` у картинки из 40 строк даст строки 35–39. Поэтому выход за правый и нижний край не требует проверок.
+    - С отрицательным началом так нельзя: `img[-3:10]` — это «от третьей с конца строки», и срез получится пустым или чужим. Поэтому `max(top, 0)`.
+    - `.copy()` нужен потому, что срез — это **вид** на те же данные (урок 1.4): без копии `piece[:] = 0` закрасило бы и исходную картинку.
+  hints:
+    - "Начало столбцов — `max(left, 0)`, как и для строк."
+    - "Срез — `img[top:top + height, left:left + width]`."
+    - "Копия — `.copy()` в конце."
+  tests: |
+    import numpy as np
+    f = var('crop')
+    ensure(callable(f), '`crop` должна быть функцией.')
+    a = np.arange(30).reshape(5, 6)
+    same_array(f(a, 1, 2, 2, 3), np.array([[8, 9, 10], [14, 15, 16]]), 'crop(a, 1, 2, 2, 3) для массива 5 × 6 (0…29) должна вернуть строки 1–2 и столбцы 2–4.')
+    got = f(a, 3, 4, 10, 10)
+    ensure(got.shape == (2, 2), 'Кусок, выходящий за край, обрезается краем: crop(a, 3, 4, 10, 10) — форма (2, 2), а у вас {0}.'.format(got.shape))
+    neg = f(a, -2, -1, 3, 2)
+    if neg.shape != (3, 2):
+        fail('Отрицательные top и left считаются нулём: crop(a, -2, -1, 3, 2) — строки 0–2 и столбцы 0–1, форма (3, 2), а у вас {0}.'.format(neg.shape))
+    same_array(neg, a[:3, :2], 'crop(a, -2, -1, 3, 2) — строки 0–2 и столбцы 0–1.')
+    piece = f(a, 0, 0, 2, 2)
+    piece[:] = -1
+    ensure(a[0, 0] == 0, 'Изменение куска поменяло исходный массив: верните копию (`.copy()`).')
+    same_array(var('piece'), ref('piece'), 'Кусок scene не совпадает с ожидаемым.')
+  files: []
+  wrong:
+    - code: |
+        def crop(img, top, left, height, width):
+            return img[top:top + height, left:left + width].copy()
+        piece = crop(scene, 5, 7, 18, 21)
+      expect: считаются нулём
+    - code: |
+        def crop(img, top, left, height, width):
+            top, left = max(top, 0), max(left, 0)
+            return img[top:top + height, left:left + width]
+        piece = crop(scene, 5, 7, 18, 21)
+      expect: верните копию
+
+- id: m12-l0-t2
+  title: Рамка вокруг яркого
+  difficulty: warmup
+  introduces: []
+  uses: [bool-mask, axis]
+  statement: |
+    Напишите функцию `bright_box(img, threshold)`: номера первой и последней строки и первого и последнего столбца, где есть пиксели ярче `threshold`, — кортеж `(top, left, bottom, right)` из чисел `int`, границы включительно. Если ярких пикселей нет, функция возвращает `None`.
+
+    Получите `box` для `scene` с порогом 0,5 и `box_dim` — для порога 0,95 (ярче не бывает ни один пиксель, кроме случайно светлых в прямоугольнике).
+  prelude: |
+    import numpy as np
+    h, w = 40, 60
+    scene = np.zeros((h, w))
+    scene[8:20, 10:25] = 0.9
+    yy, xx = np.ogrid[:h, :w]
+    scene[(yy - 26) ** 2 + (xx - 42) ** 2 <= 8 ** 2] = 0.6
+    scene = scene + 0.05 * np.random.default_rng(0).random((h, w))
+  starter: |
+    def bright_box(img, threshold):
+        mask = img > threshold
+        if not mask.any():
+            return None
+        rows = np.nonzero(mask.any(axis=...))[0]
+        cols = np.nonzero(mask.any(axis=...))[0]
+        return int(rows[0]), int(cols[0]), ..., ...
+
+    box = bright_box(scene, 0.5)
+    box_dim = bright_box(scene, 0.95)
+    print(box, box_dim)
+  solution: |
+    def bright_box(img, threshold):
+        mask = img > threshold
+        if not mask.any():
+            return None
+        rows = np.nonzero(mask.any(axis=1))[0]
+        cols = np.nonzero(mask.any(axis=0))[0]
+        return int(rows[0]), int(cols[0]), int(rows[-1]), int(cols[-1])
+
+    box = bright_box(scene, 0.5)
+    box_dim = bright_box(scene, 0.95)
+    print(box, box_dim)
+  explanation: |
+    - `mask.any(axis=1)` — для каждой строки «есть ли в ней яркий пиксель»; `np.nonzero` даёт номера таких строк, и первая с последней — верх и низ рамки. Для столбцов — `axis=0`.
+    - Порог 0,5 захватывает и прямоугольник, и круг — рамка от строки 8 до 34 и от столбца 10 до 50 обнимает оба объекта сразу. Отделять объекты друг от друга будем в уроке 12.2.
+    - Ярче 0,95 нет ни одного пикселя: шум добавляет к 0,9 меньше 0,05. Поэтому `box_dim` — `None`, и проверка `mask.any()` защищает от ошибки индексации пустого массива.
+  hints:
+    - "Строки, где есть яркое, — `mask.any(axis=1)`; столбцы — `mask.any(axis=0)`."
+    - "Последний элемент массива номеров — `rows[-1]`."
+    - "Без ярких пикселей `rows` пуст и `rows[0]` даст ошибку — поэтому сначала `if not mask.any(): return None`."
+  tests: |
+    import numpy as np
+    f = var('bright_box')
+    ensure(callable(f), '`bright_box` должна быть функцией.')
+    a = np.zeros((6, 8))
+    a[2, 3] = 1
+    a[4, 6] = 1
+    got = f(a, 0.5)
+    if got == (3, 2, 6, 4):
+        fail('Перепутаны оси: строки — axis=1 (сворачиваем строку), столбцы — axis=0.')
+    equal(got, (2, 3, 4, 6), 'Для двух ярких пикселей (2, 3) и (4, 6) рамка — {expected}, а у вас {actual}.')
+    ensure(all(type(v) is int for v in got), 'Границы рамки — числа int.')
+    equal(f(np.zeros((3, 3)), 0.5), None, 'Без ярких пикселей — None.')
+    equal(var('box', tuple, 'кортежем'), ref('box'), 'Рамка яркого на scene — {expected}, а у вас {actual}.')
+    equal(var('box_dim'), None, 'Ярче 0.95 на scene нет ни одного пикселя — нужен None.')
+  files: []
+  wrong:
+    - code: |
+        def bright_box(img, threshold):
+            mask = img > threshold
+            if not mask.any():
+                return None
+            rows = np.nonzero(mask.any(axis=0))[0]
+            cols = np.nonzero(mask.any(axis=1))[0]
+            return int(rows[0]), int(cols[0]), int(rows[-1]), int(cols[-1])
+        box = bright_box(scene, 0.5)
+        box_dim = bright_box(scene, 0.95)
+      expect: Перепутаны оси
+    - code: |
+        def bright_box(img, threshold):
+            mask = img > threshold
+            rows = np.nonzero(mask.any(axis=1))[0]
+            cols = np.nonzero(mask.any(axis=0))[0]
+            return int(rows[0]), int(cols[0]), int(rows[-1]), int(cols[-1])
+        box = bright_box(scene, 0.5)
+        box_dim = None
+      expect: IndexError
+
+- id: m12-l0-t3
+  title: Растянуть яркость
+  difficulty: main
+  introduces: []
+  uses: [vectorization, broadcasting]
+  statement: |
+    Тусклую картинку делают контрастнее, растягивая яркость: самое тёмное значение становится 0, самое светлое — 1. Напишите функцию `normalize(img)`: `(img - min) / (max - min)` для всего массива сразу, без циклов. Если картинка одноцветная (max = min), функция возвращает массив нулей той же формы — без деления на ноль.
+
+    Получите `dim_norm` — растянутую картинку `dim` (это `scene`, сжатая в узкий диапазон яркости) и `gain` — во сколько раз вырос разброс яркости (`dim_norm.std() / dim.std()`).
+  prelude: |
+    import numpy as np
+    h, w = 40, 60
+    scene = np.zeros((h, w))
+    scene[8:20, 10:25] = 0.9
+    yy, xx = np.ogrid[:h, :w]
+    scene[(yy - 26) ** 2 + (xx - 42) ** 2 <= 8 ** 2] = 0.6
+    scene = scene + 0.05 * np.random.default_rng(0).random((h, w))
+    dim = 0.4 + 0.1 * scene                       # тусклая картинка: яркость от 0,4 до 0,5
+  starter: |
+    def normalize(img):
+        lo, hi = img.min(), img.max()
+        if ...:
+            return np.zeros_like(img, dtype=float)
+        return ...
+
+    dim_norm = normalize(dim)
+    gain = dim_norm.std() / dim.std()
+    print(dim.min().round(3), dim.max().round(3), '→', dim_norm.min(), dim_norm.max(), '| разброс вырос в', round(gain, 1), 'раза')
+  solution: |
+    def normalize(img):
+        lo, hi = img.min(), img.max()
+        if hi == lo:
+            return np.zeros_like(img, dtype=float)
+        return (img - lo) / (hi - lo)
+
+    dim_norm = normalize(dim)
+    gain = dim_norm.std() / dim.std()
+    print(dim.min().round(3), dim.max().round(3), '→', dim_norm.min(), dim_norm.max(), '| разброс вырос в', round(gain, 1), 'раза')
+  explanation: |
+    - `img - lo` вычитает одно число из каждого пикселя, а деление на `hi - lo` делит каждый — это вычисления сразу над всем массивом (урок 1.4), без цикла по 2400 пикселям.
+    - Проверка `hi == lo` защищает одноцветную картинку: иначе получилось бы 0 / 0 = `nan` во всех пикселях.
+    - Разброс вырос примерно в 10,5 раза: тусклая картинка занимала диапазон 0,4–0,495 шириной около 0,095, а деление на ширину растягивает его до 0–1. Растяжение не добавляет деталей, а только делает видимыми те, что были.
+  hints:
+    - "Одноцветная картинка — `hi == lo`."
+    - "Растяжение — `(img - lo) / (hi - lo)`."
+    - "`np.zeros_like(img, dtype=float)` — массив нулей той же формы."
+  tests: |
+    import numpy as np
+    f = var('normalize')
+    ensure(callable(f), '`normalize` должна быть функцией.')
+    a = np.array([[2.0, 4.0], [6.0, 10.0]])
+    same_array(f(a), np.array([[0.0, 0.25], [0.5, 1.0]]), 'normalize([[2, 4], [6, 10]]) — [[0, 0.25], [0.5, 1]].')
+    with np.errstate(all='ignore'):
+        flat = np.asarray(f(np.full((2, 3), 7.0)))
+    ensure(not np.isnan(flat).any(), 'Для одноцветной картинки получилось nan: при max = min верните массив нулей.')
+    same_array(flat, np.zeros((2, 3)), 'Одноцветная картинка — массив нулей той же формы.')
+    ints = f(np.array([[0, 128], [255, 64]], dtype=np.uint8))
+    close(float(ints[1, 0]), 1.0, 'Картинка uint8 0…255 тоже растягивается до 0…1: самый яркий пиксель — 1.')
+    close(float(ints[0, 1]), 128 / 255, 'Пиксель 128 картинки uint8 должен стать 128/255, а у вас {actual}.')
+    same_array(np.asarray(var('dim_norm')), ref('dim_norm'), 'Растянутая картинка не совпадает с ожидаемой.')
+    close(var('gain', 'number', 'числом'), ref('gain'), 'Разброс вырос в {expected} раза, а у вас {actual}.')
+  files: []
+  wrong:
+    - code: |
+        def normalize(img):
+            lo, hi = img.min(), img.max()
+            return (img - lo) / (hi - lo)
+        dim_norm = normalize(dim)
+        gain = dim_norm.std() / dim.std()
+      expect: nan
+    - code: |
+        def normalize(img):
+            lo, hi = img.min(), img.max()
+            if hi == lo:
+                return np.zeros_like(img, dtype=float)
+            return img / hi
+        dim_norm = normalize(dim)
+        gain = dim_norm.std() / dim.std()
+      expect: "[[0, 0.25], [0.5, 1]]"
+
+- id: m12-l0-t4
+  title: Вычесть неровный фон
+  difficulty: main
+  introduces: []
+  uses: [broadcasting, axis]
+  statement: |
+    На фотографии фон часто неровный: одна сторона светлее другой. Если фон в каждом столбце примерно одинаков, его можно оценить медианой столбца — объекты занимают меньшую часть столбца и медиану не сдвигают. Напишите функцию `remove_background(img)`: из каждого столбца вычесть его медиану (без цикла) и отрицательные значения заменить нулём (`np.clip`).
+
+    Получите `cleaned` для картинки `lit` — это `scene`, к которой добавлено освещение, плавно растущее слева направо, — и `left_right` — средние яркости левой и правой половины `cleaned` (кортеж из двух чисел).
+  prelude: |
+    import numpy as np
+    h, w = 40, 60
+    scene = np.zeros((h, w))
+    scene[8:20, 10:25] = 0.9
+    yy, xx = np.ogrid[:h, :w]
+    scene[(yy - 26) ** 2 + (xx - 42) ** 2 <= 8 ** 2] = 0.6
+    scene = scene + 0.05 * np.random.default_rng(0).random((h, w))
+    light = np.linspace(0, 0.8, w)                # освещение растёт слева направо
+    lit = scene + light                           # (40, 60) + (60,) → свет добавлен к каждой строке
+  starter: |
+    def remove_background(img):
+        background = np.median(img, axis=...)
+        return np.clip(..., 0, None)
+
+    cleaned = remove_background(lit)
+    left_right = (float(cleaned[:, :30].mean()), float(cleaned[:, 30:].mean()))
+    print('было:', round(float(lit[:, :30].mean()), 3), round(float(lit[:, 30:].mean()), 3), '| стало:', [round(v, 3) for v in left_right])
+  solution: |
+    def remove_background(img):
+        background = np.median(img, axis=0)
+        return np.clip(img - background, 0, None)
+
+    cleaned = remove_background(lit)
+    left_right = (float(cleaned[:, :30].mean()), float(cleaned[:, 30:].mean()))
+    print('было:', round(float(lit[:, :30].mean()), 3), round(float(lit[:, 30:].mean()), 3), '| стало:', [round(v, 3) for v in left_right])
+  explanation: |
+    - `np.median(img, axis=0)` — по одной медиане на столбец, 60 чисел. `img - background` вычитает их из каждой строки: массив `(60,)` растягивается на все 40 строк (broadcasting, урок 1.10).
+    - В каждом столбце объект занимает меньше половины строк, поэтому медиана — это яркость фона в этом столбце, вместе со светом.
+    - До очистки правая половина была светлее левой почти на 0,4 — из-за освещения. После очистки разница — от объектов, а не от света: в левой половине яркий прямоугольник, в правой — тусклый круг.
+  hints:
+    - "Медиана каждого столбца — `np.median(img, axis=0)`."
+    - "Вычитание — `img - background`: форма (40, 60) минус (60,)."
+    - "Отрицательные — в ноль: `np.clip(…, 0, None)`."
+  tests: |
+    import numpy as np
+    f = var('remove_background')
+    ensure(callable(f), '`remove_background` должна быть функцией.')
+    bg = np.tile(np.array([0.1, 0.5, 0.9]), (5, 1))
+    obj = bg.copy()
+    obj[1, 0] += 0.4
+    got = np.asarray(f(obj))
+    if got.shape != (5, 3):
+        fail('Форма картинки должна сохраниться: (5, 3), а у вас {0}.'.format(got.shape))
+    if abs(got[1, 0] - 0.4) > 1e-9 and abs(got[1, 0]) < 1e-9:
+        fail('Похоже, вычтены медианы строк, а не столбцов: фон одинаков в каждом столбце — `axis=0`.')
+    expected = np.zeros((5, 3))
+    expected[1, 0] = 0.4
+    same_array(got, expected, 'Для фона 0.1 | 0.5 | 0.9 по столбцам и одного яркого пикселя должен остаться только этот пиксель (0.4).')
+    neg = np.asarray(f(np.array([[1.0], [0.0], [2.0]])))
+    ensure((neg >= 0).all(), 'Отрицательные значения после вычитания нужно заменить нулём (np.clip).')
+    same_array(np.asarray(var('cleaned')), ref('cleaned'), 'Очищенная картинка не совпадает с ожидаемой.')
+    lr = var('left_right', tuple, 'кортежем')
+    close(lr[0], ref('left_right')[0], 'Средняя яркость левой половины — {expected}, а у вас {actual}.')
+    close(lr[1], ref('left_right')[1], 'Средняя яркость правой половины — {expected}, а у вас {actual}.')
+  files: []
+  wrong:
+    - code: |
+        def remove_background(img):
+            background = np.median(img, axis=1, keepdims=True)
+            return np.clip(img - background, 0, None)
+        cleaned = remove_background(lit)
+        left_right = (float(cleaned[:, :30].mean()), float(cleaned[:, 30:].mean()))
+      expect: медианы строк
+    - code: |
+        def remove_background(img):
+            return img - np.median(img, axis=0)
+        cleaned = remove_background(lit)
+        left_right = (float(cleaned[:, :30].mean()), float(cleaned[:, 30:].mean()))
+      expect: np.clip
+
+- id: m12-l0-t5
+  title: Частота тона по сменам знака
+  difficulty: main
+  introduces: []
+  uses: [digital-audio, vectorization]
+  statement: |
+    Напишите функцию `zero_cross_freq(x, rate)`: оценка частоты звука по числу смен знака. Отсчёт считается положительным, если он не меньше нуля (`x >= 0`). Смена знака — когда соседние отсчёты по этому признаку разные. Частота = смены / 2 / длительность, где длительность = число отсчётов / `rate`. Без циклов.
+
+    Получите `f_tone` — оценку для чистого тона `tone` (523 Гц, нота до второй октавы) и `f_mix` — для смеси `mix` того же тона с более высоким тоном 1 600 Гц вдвое тише.
+  prelude: |
+    import numpy as np
+    rate = 8000
+    t = np.arange(rate) / rate                     # 1 секунда
+    tone = np.sin(2 * np.pi * 523 * t)
+    mix = tone + 0.5 * np.sin(2 * np.pi * 1600 * t)
+  starter: |
+    def zero_cross_freq(x, rate):
+        positive = x >= 0
+        crossings = ...
+        duration = len(x) / rate
+        return float(crossings / 2 / duration)
+
+    f_tone = zero_cross_freq(tone, rate)
+    f_mix = zero_cross_freq(mix, rate)
+    print(round(f_tone, 1), round(f_mix, 1))
+  solution: |
+    def zero_cross_freq(x, rate):
+        positive = x >= 0
+        crossings = np.sum(positive[1:] != positive[:-1])
+        duration = len(x) / rate
+        return float(crossings / 2 / duration)
+
+    f_tone = zero_cross_freq(tone, rate)
+    f_mix = zero_cross_freq(mix, rate)
+    print(round(f_tone, 1), round(f_mix, 1))
+  explanation: |
+    - `positive[1:] != positive[:-1]` сравнивает каждый отсчёт со следующим сразу для всего массива: два сдвинутых на один элемент среза. Сумма маски — число смен знака.
+    - Для чистого тона оценка почти точная: около 523 Гц.
+    - Для смеси оценка далека и от 523, и от 1 600 Гц: высокий тон добавляет лишние переходы через ноль. По сменам знака нельзя понять, из каких частот сложен звук. А речь — как раз смесь многих частот. Разложить звук на частоты умеет преобразование Фурье — урок 12.5.
+  hints:
+    - "Соседние отсчёты — срезы `positive[1:]` и `positive[:-1]`."
+    - "Смены — `np.sum(positive[1:] != positive[:-1])`."
+    - "Длительность 1 секунда: 8000 отсчётов при 8000 Гц."
+  tests: |
+    import numpy as np
+    f = var('zero_cross_freq')
+    ensure(callable(f), '`zero_cross_freq` должна быть функцией.')
+    r = 1000
+    t = np.arange(2 * r) / r
+    got = f(np.sin(2 * np.pi * 50 * t + 0.1), r)
+    if abs(got - 100) < 3:
+        fail('Частота вышла вдвое больше: за период синусоида меняет знак два раза — делите смены на 2.')
+    close(got, 50.0, 'Для тона 50 Гц длительностью 2 с ожидалась частота около 50, а у вас {actual}.', atol=1.0)
+    equal(f(np.array([1.0, 2.0, 3.0]), 3), 0.0, 'Без смен знака частота — 0.')
+    close(f(np.array([1.0, -1.0, 1.0, -1.0]), 4), 1.5, 'Для [1, −1, 1, −1] при 4 Гц: 3 смены за 1 с → 1.5 Гц, а у вас {actual}.')
+    close(var('f_tone', 'number', 'числом'), ref('f_tone'), 'Оценка частоты чистого тона — {expected}, а у вас {actual}.')
+    close(var('f_mix', 'number', 'числом'), ref('f_mix'), 'Оценка частоты смеси — {expected}, а у вас {actual}.')
+  files: []
+  wrong:
+    - code: |
+        def zero_cross_freq(x, rate):
+            positive = x >= 0
+            crossings = np.sum(positive[1:] != positive[:-1])
+            return float(crossings / (len(x) / rate))
+        f_tone = zero_cross_freq(tone, rate)
+        f_mix = zero_cross_freq(mix, rate)
+      expect: делите смены на 2
+    - code: |
+        def zero_cross_freq(x, rate):
+            positive = x >= 0
+            crossings = np.sum(positive)
+            return float(crossings / 2 / (len(x) / rate))
+        f_tone = zero_cross_freq(tone, rate)
+        f_mix = zero_cross_freq(mix, rate)
+      expect: около 50
+
+- id: m12-l0-t6
+  kind: quiz
+  title: Честная проверка модели
+  difficulty: main
+  introduces: []
+  uses: [train-valid-test, data-leakage, baseline-model]
+  statement: |
+    Вспомните, как проверяют модели, — это понадобится в уроках о классификации текстов и о рисках ИИ.
+  quiz:
+    - q: Модель верно отвечает на 99 % обучающих примеров. Что это говорит о новых данных?
+      options:
+        - Почти ничего — модель могла запомнить ответы; нужна проверочная часть
+        - На новых данных тоже будет около 99 %
+        - На новых данных будет не меньше 90 %
+      answer: 0
+      explain: Качество на обучающей части завышено переобучением. О новых данных говорит только часть, которую модель не видела.
+    - q: Валидационная и тестовая части — для чего каждая?
+      options:
+        - На валидационной выбирают модель и гиперпараметры, тестовую открывают один раз в конце
+        - Это одно и то же, просто разные названия
+        - На тестовой подбирают гиперпараметры, а валидационную открывают в конце
+      answer: 0
+      explain: Если выбирать модель по тестовой части, она перестаёт быть честной оценкой — выбор подстроился под неё.
+    - q: Где есть утечка данных? Выберите все.
+      options:
+        - StandardScaler обучили на всех данных, а потом разбили их на обучение и проверку
+        - Чтобы предсказать, вернёт ли покупатель товар, взяли признак «сумма возврата»
+        - Пропуски заполнили средним, посчитанным только по обучающей части
+        - Фотографии одного человека попали и в обучение, и в проверку
+      answer: [0, 1, 3]
+      explain: "Масштабирование по всем данным подсматривает в проверку, «сумма возврата» известна только после ответа, похожие фото одного человека модель узнаёт. Заполнение средним по обучающей части — правильный способ."
+    - q: Уходят 8 % клиентов. Модель предсказания ухода верна в 91 % случаев. Что сделать сначала?
+      options:
+        - Сравнить с ориентиром «никто не уйдёт» — он верен в 92 % случаев
+        - Признать модель хорошей — 91 % это много
+        - Добавить в модель побольше признаков
+      answer: 0
+      explain: Ориентир «всегда самый частый класс» здесь лучше модели. 91 % без сравнения с ориентиром ничего не значит.
+  hints:
+    - "Обучающую часть модель видела, проверочную — нет: только по ней видно качество на новых данных."
+    - "Утечка — всё, что модель не сможет знать при настоящем применении: ответ, свойства проверочных данных, почти копии объектов."
+    - "Ответы: 1 — почти ничего; 2 — валидация для выбора, тест в конце; 3 — масштабирование, сумма возврата и фото одного человека; 4 — сравнить с ориентиром."

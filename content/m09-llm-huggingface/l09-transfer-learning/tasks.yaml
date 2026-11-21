@@ -1,0 +1,435 @@
+- id: m9-l9-t1
+  title: Признаки и части
+  difficulty: warmup
+  introduces: [transfer-learning]
+  uses: [zero-shot, pd-value-counts]
+  statement: |
+    `X` — векторы CLIP всех картинок, `y` — их группы, `dev` и `test` — маски частей. Оставьте только картинки трёх больших групп (маска `big`) и получите:
+
+    - `X_train`, `y_train` — признаки и группы картинок из `dev`;
+    - `X_test`, `y_test` — то же для картинок из `test`;
+    - `train_share` — Series: доля каждой группы в обучающей части.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    images = pd.read_csv('zs_public.csv')
+    X = np.load('zs_public.npy').astype(np.float32)
+    y = images['group'].to_numpy()
+    dev = (images.groupby('class').cumcount() % 2 == 0).to_numpy()
+    test = ~dev
+    big = images['group'].isin(['Animalia', 'Dishes', 'Other']).to_numpy()
+  starter: |
+    X_train, y_train = ..., ...
+    X_test, y_test = ..., ...
+    train_share = ...
+    print(X_train.shape, X_test.shape)
+    print(train_share.round(3))
+  solution: |
+    X_train, y_train = X[dev & big], y[dev & big]
+    X_test, y_test = X[test & big], y[test & big]
+    train_share = pd.Series(y_train).value_counts(normalize=True)
+    print(X_train.shape, X_test.shape)
+    print(train_share.round(3))
+  explanation: |
+    - Маски соединяют через `&`: картинка должна быть и в нужной части, и в одной из трёх групп. Получается по 343 картинки в каждой части, у каждой — 512 признаков.
+    - Животных 44 %, блюд 29 %, предметов 27 %. Части одинаковые по составу: от каждого класса — по одной картинке в каждую.
+    - Сами признаки мы не придумывали: их «выучил» CLIP на сотнях миллионов картинок. Это и есть перенос обучения.
+  hints:
+    - "Маска обучающей части — `dev & big`, проверочной — `test & big`."
+    - "`X[dev & big]` и `y[dev & big]` — строки и метки нужных картинок."
+    - "Доли — `pd.Series(y_train).value_counts(normalize=True)`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    xt = np.asarray(var('X_train'), dtype=float)
+    if xt.shape[0] == int(ref('dev').sum()):
+        fail('Оставьте только три большие группы: маска `dev & big`, а не просто `dev`.')
+    same_array(xt, np.asarray(ref('X_train'), dtype=float), '`X_train` — признаки картинок из `dev` трёх больших групп.')
+    equal(list(var('y_train')), list(ref('y_train')), '`y_train` — группы тех же картинок.')
+    same_array(np.asarray(var('X_test'), dtype=float), np.asarray(ref('X_test'), dtype=float), '`X_test` — признаки картинок из `test` трёх больших групп.')
+    equal(list(var('y_test')), list(ref('y_test')), '`y_test` — группы проверочных картинок.')
+    ts = var('train_share', pd.Series, 'Series')
+    if abs(float(ts.sum()) - 1) > 1e-9:
+        fail('`train_share` — доли, их сумма 1: `value_counts(normalize=True)`.')
+    same_array(ts.reindex(ref('train_share').index).to_numpy(dtype=float), ref('train_share').to_numpy(dtype=float), '`train_share` — доля каждой группы в обучающей части.')
+    equal(len(alt('y_train')), len(alt_ref('y_train')), HARDCODE_MSG)
+  files: [zs_public.csv, zs_public.npy]
+  wrong:
+    - code: |
+        X_train, y_train = X[dev], y[dev]
+        X_test, y_test = X[test], y[test]
+        train_share = pd.Series(y_train).value_counts(normalize=True)
+      expect: три большие группы
+    - code: |
+        X_train, y_train = X[dev & big], y[dev & big]
+        X_test, y_test = X[test & big], y[test & big]
+        train_share = pd.Series(y_train).value_counts()
+      expect: сумма 1
+
+- id: m9-l9-t2
+  title: Линейный зонд
+  difficulty: main
+  introduces: []
+  uses: [transfer-learning, binary-classification]
+  statement: |
+    Обучите логистическую регрессию (`LogisticRegression(max_iter=1000)`) узнавать группу картинки по признакам CLIP. Получите:
+
+    - `probe` — обученную модель;
+    - `acc` — долю верных ответов на `X_test`;
+    - `errors_by_group` — Series: сколько ошибок пришлось на каждую настоящую группу;
+    - `wrong_classes` — список классов картинок, на которых модель ошиблась, по алфавиту.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.linear_model import LogisticRegression
+    images = pd.read_csv('zs_public.csv')
+    X = np.load('zs_public.npy').astype(np.float32)
+    y = images['group'].to_numpy()
+    dev = (images.groupby('class').cumcount() % 2 == 0).to_numpy()
+    big = images['group'].isin(['Animalia', 'Dishes', 'Other']).to_numpy()
+    train_g, test_g = dev & big, ~dev & big
+    X_train, y_train, X_test, y_test = X[train_g], y[train_g], X[test_g], y[test_g]
+    test_classes = images.loc[test_g, 'class'].to_numpy()
+  starter: |
+    probe = ...
+    pred = probe.predict(X_test)
+    acc = ...
+    wrong = pred != y_test
+    errors_by_group = ...
+    wrong_classes = ...
+    print(round(acc, 3), errors_by_group.to_dict())
+    print(wrong_classes)
+  solution: |
+    probe = LogisticRegression(max_iter=1000).fit(X_train, y_train)
+    pred = probe.predict(X_test)
+    acc = (pred == y_test).mean()
+    wrong = pred != y_test
+    errors_by_group = pd.Series(y_test[wrong]).value_counts()
+    wrong_classes = sorted(test_classes[wrong])
+    print(round(acc, 3), errors_by_group.to_dict())
+    print(wrong_classes)
+  explanation: |
+    - Доля верных 0,959 — по 343 обучающим картинкам. Модель училась минуты, а признаки CLIP — недели на сотнях миллионов картинок.
+    - Все 14 ошибок — в группе Other: ibis, emu, beaver, okapi и другие животные. Модель отнесла их к Animalia, и по содержанию картинки она права. Группа здесь говорит о происхождении класса, а не о том, что изображено.
+    - Это частая картина в реальных данных: часть «ошибок» — спорная разметка или неудачная постановка задачи.
+  hints:
+    - "`LogisticRegression(max_iter=1000).fit(X_train, y_train)`."
+    - "Ошибки по группам — `pd.Series(y_test[wrong]).value_counts()`."
+    - "Классы ошибок — `sorted(test_classes[wrong])`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    pr = var('probe')
+    ensure(hasattr(pr, 'predict') and hasattr(pr, 'coef_'), '`probe` — обученная `LogisticRegression`: вызовите `.fit(X_train, y_train)`.')
+    close(var('acc', 'number', 'числом'), ref('acc'), 'Доля верных на test — {expected}, а у вас {actual}.')
+    eg = var('errors_by_group', pd.Series, 'Series')
+    equal({str(k): int(v) for k, v in eg.items() if v}, {str(k): int(v) for k, v in ref('errors_by_group').items()}, 'Ошибки по настоящим группам — {expected}, а у вас {actual}.')
+    wc = list(var('wrong_classes', list, 'списком'))
+    if sorted(wc) == list(ref('wrong_classes')) and wc != list(ref('wrong_classes')):
+        fail('Отсортируйте классы по алфавиту: `sorted(...)`.')
+    equal(wc, list(ref('wrong_classes')), 'Модель ошиблась на классах {expected}, а у вас {actual}.')
+    close(alt('acc'), alt_ref('acc'), HARDCODE_MSG)
+  files: [zs_public.csv, zs_public.npy]
+  wrong:
+    - code: |
+        probe = LogisticRegression(max_iter=1000).fit(X_train, y_train)
+        pred = probe.predict(X_test)
+        acc = (pred == y_test).mean()
+        wrong = pred != y_test
+        errors_by_group = pd.Series(pred[wrong]).value_counts()
+        wrong_classes = sorted(test_classes[wrong])
+      expect: настоящим группам
+    - code: |
+        probe = LogisticRegression(max_iter=1000).fit(X_train, y_train)
+        pred = probe.predict(X_train)
+        acc = (pred == y_train).mean()
+        wrong = probe.predict(X_test) != y_test
+        errors_by_group = pd.Series(y_test[wrong]).value_counts()
+        wrong_classes = sorted(test_classes[wrong])
+      expect: Доля верных на test
+
+- id: m9-l9-t3
+  title: Сколько нужно примеров
+  difficulty: main
+  introduces: []
+  uses: [transfer-learning, binary-classification]
+  statement: |
+    Напишите функцию `probe_acc(k, seed)`: она случайно выбирает по `k` обучающих картинок каждой из трёх групп (генератор `np.random.default_rng(seed)`, функция `rng.choice(..., size=k, replace=False)`, группы в порядке `groups`), обучает на них `LogisticRegression(max_iter=1000)` и возвращает долю верных на `X_test`. Получите `curve` — Series: для каждого `k` из `ks` среднюю долю верных по пяти запускам с `seed` от 0 до 4.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.linear_model import LogisticRegression
+    images = pd.read_csv('zs_public.csv')
+    X = np.load('zs_public.npy').astype(np.float32)
+    y = images['group'].to_numpy()
+    dev = (images.groupby('class').cumcount() % 2 == 0).to_numpy()
+    big = images['group'].isin(['Animalia', 'Dishes', 'Other']).to_numpy()
+    X_train, y_train = X[dev & big], y[dev & big]
+    X_test, y_test = X[~dev & big], y[~dev & big]
+    groups = ['Animalia', 'Dishes', 'Other']
+    ks = [2, 5, 10, 20, 50]
+  starter: |
+    def probe_acc(k, seed):
+        rng = np.random.default_rng(seed)
+        pick = np.concatenate([rng.choice(np.where(y_train == g)[0], size=k, replace=False) for g in groups])
+        model = ...
+        return ...
+
+    curve = pd.Series({k: ... for k in ks})
+    print(curve.round(3))
+  solution: |
+    def probe_acc(k, seed):
+        rng = np.random.default_rng(seed)
+        pick = np.concatenate([rng.choice(np.where(y_train == g)[0], size=k, replace=False) for g in groups])
+        model = LogisticRegression(max_iter=1000).fit(X_train[pick], y_train[pick])
+        return (model.predict(X_test) == y_test).mean()
+
+    curve = pd.Series({k: np.mean([probe_acc(k, s) for s in range(5)]) for k in ks})
+    print(curve.round(3))
+  explanation: |
+    - Двух картинок на группу — шести размеченных примеров — хватает на 87 % верных, пятидесяти — на 93 %. Дальше рост медленный: остаются «животные в группе Other», которых по картинке не отличить.
+    - Пять запусков с разными `seed` нужны потому, что при двух-пяти примерах результат сильно зависит от того, какие картинки попались. Среднее надёжнее одного запуска.
+    - Учить с нуля нейросеть, которая по пикселям отличает еду от животных, пришлось бы на тысячах картинок. Здесь признаки уже готовы.
+  hints:
+    - "Обучите модель на выбранных строках: `LogisticRegression(max_iter=1000).fit(X_train[pick], y_train[pick])`."
+    - "Доля верных — `(model.predict(X_test) == y_test).mean()`."
+    - "Среднее по запускам — `np.mean([probe_acc(k, s) for s in range(5)])`."
+  tests: |
+    import pandas as pd
+    f = var('probe_acc')
+    ensure(callable(f), '`probe_acc` должна быть функцией.')
+    g = ref('probe_acc')
+    for k, s in [(3, 7), (8, 11)]:
+        close(float(f(k, s)), float(g(k, s)), 'probe_acc(' + str(k) + ', ' + str(s) + ') — {expected}, а у вас {actual}.')
+    cv = var('curve', pd.Series, 'Series')
+    ensure(list(cv.index) == list(ref('curve').index), '`curve` — Series с индексом из `ks`: [2, 5, 10, 20, 50].')
+    same_array(cv.to_numpy(dtype=float), ref('curve').to_numpy(dtype=float), '`curve` — средняя доля верных по пяти запускам для каждого k.')
+    same_array(alt('curve').to_numpy(dtype=float), alt_ref('curve').to_numpy(dtype=float), HARDCODE_MSG)
+  files: [zs_public.csv, zs_public.npy]
+  wrong:
+    - code: |
+        def probe_acc(k, seed):
+            rng = np.random.default_rng(seed)
+            pick = np.concatenate([rng.choice(np.where(y_train == g)[0], size=k, replace=False) for g in groups])
+            model = LogisticRegression(max_iter=1000).fit(X_train[pick], y_train[pick])
+            return (model.predict(X_train) == y_train).mean()
+        curve = pd.Series({k: np.mean([probe_acc(k, s) for s in range(5)]) for k in ks})
+      expect: "probe_acc("
+    - code: |
+        def probe_acc(k, seed):
+            rng = np.random.default_rng(seed)
+            pick = np.concatenate([rng.choice(np.where(y_train == g)[0], size=k, replace=False) for g in groups])
+            model = LogisticRegression(max_iter=1000).fit(X_train[pick], y_train[pick])
+            return (model.predict(X_test) == y_test).mean()
+        curve = pd.Series({k: probe_acc(k, 0) for k in ks})
+      expect: по пяти запускам
+
+- id: m9-l9-t4
+  title: Пример или название
+  difficulty: main
+  introduces: []
+  uses: [transfer-learning, prompt-template]
+  statement: |
+    Сравните два описания класса для CLIP: **прототип** — среднее векторов картинок класса из `dev`, нормированное к длине 1, — и **название** в шаблоне `photo_group` (матрица `names`). Кандидаты — только классы с той же группой и языком (`allowed`). Получите:
+
+    - `proto` — матрицу прототипов 349 × 512 (порядок классов — как в `classes`; если у класса нет картинок в `dev`, его строка остаётся нулевой);
+    - `acc_proto` и `acc_names` — долю верных ответов на картинках `test` для прототипов и для названий;
+    - `gap` — `acc_names − acc_proto`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    images = pd.read_csv('zs_public.csv')
+    X = np.load('zs_public.npy').astype(np.float32)
+    dev = (images.groupby('class').cumcount() % 2 == 0).to_numpy()
+    test = ~dev
+    with np.load('zs_prompts.npz') as data:
+        prompts = pd.DataFrame({k: [str(x) for x in data[k]] for k in ['class', 'group', 'language', 'variant']})
+        prompt_emb = data['emb'].astype(np.float32)
+    raw = prompts[prompts['variant'] == 'raw']
+    classes = raw['class'].to_numpy()
+    allowed = (images['group'].to_numpy()[:, None] == raw['group'].to_numpy()[None, :]) & (images['language'].to_numpy()[:, None] == raw['language'].to_numpy()[None, :])
+    names = prompt_emb[(prompts['variant'] == 'photo_group').to_numpy()]
+    y_class = images['class'].to_numpy()
+  starter: |
+    proto = np.zeros((len(classes), X.shape[1]), dtype=np.float32)
+    for j, c in enumerate(classes):
+        rows = X[dev & (y_class == c)]
+        if len(rows):
+            v = ...
+            proto[j] = ...
+
+    def test_acc(E):
+        pred = classes[np.where(allowed, X @ E.T, -np.inf).argmax(axis=1)]
+        return ...
+
+    acc_proto = test_acc(proto)
+    acc_names = test_acc(names)
+    gap = ...
+    print(round(acc_proto, 3), round(acc_names, 3), round(gap, 3))
+  solution: |
+    proto = np.zeros((len(classes), X.shape[1]), dtype=np.float32)
+    for j, c in enumerate(classes):
+        rows = X[dev & (y_class == c)]
+        if len(rows):
+            v = rows.mean(axis=0)
+            proto[j] = v / np.linalg.norm(v)
+
+    def test_acc(E):
+        pred = classes[np.where(allowed, X @ E.T, -np.inf).argmax(axis=1)]
+        return (pred == y_class)[test].mean()
+
+    acc_proto = test_acc(proto)
+    acc_names = test_acc(names)
+    gap = acc_names - acc_proto
+    print(round(acc_proto, 3), round(acc_names, 3), round(gap, 3))
+  explanation: |
+    - У большинства классов в `dev` одна картинка, и прототип — это её вектор. Классы с четырьмя картинками получают среднее двух.
+    - Прототипы дают 0,558, названия — 0,873: разница 31 пункт. Название описывает класс точнее, чем одна случайная фотография с фоном и посторонними деталями.
+    - Считать точность прототипов на `dev` нельзя: там каждая картинка и есть прототип своего класса, и ответ почти всегда «верный».
+  hints:
+    - "Прототип — `rows.mean(axis=0)`, затем деление на `np.linalg.norm(v)`."
+    - "Точность на test — `(pred == y_class)[test].mean()`."
+    - "`gap = acc_names - acc_proto`."
+  tests: |
+    import numpy as np
+    pr = np.asarray(var('proto'), dtype=float)
+    ensure(pr.shape == ref('proto').shape, '`proto` — матрица 349 × 512, а у вас {0}.'.format(pr.shape))
+    norms = np.linalg.norm(pr, axis=1)
+    if not np.all((np.abs(norms - 1) < 1e-4) | (norms < 1e-9)):
+        fail('Строки `proto` должны иметь длину 1: нормируйте среднее векторов.')
+    same_array(pr, np.asarray(ref('proto'), dtype=float), '`proto` — нормированное среднее векторов картинок класса из `dev`.', atol=1e-5)
+    ap = var('acc_proto', 'number', 'числом')
+    if ap > 0.95:
+        fail('Точность прототипов считают на картинках `test`: на `dev` прототип — это сама картинка.')
+    close(ap, ref('acc_proto'), 'Доля верных у прототипов — {expected}, а у вас {actual}.')
+    close(var('acc_names', 'number', 'числом'), ref('acc_names'), 'Доля верных у названий — {expected}, а у вас {actual}.')
+    close(var('gap', 'number', 'числом'), ref('gap'), 'Разница — {expected}, а у вас {actual}.')
+    close(alt('gap'), alt_ref('gap'), HARDCODE_MSG)
+  files: [zs_public.csv, zs_public.npy, zs_prompts.npz]
+  wrong:
+    - code: |
+        proto = np.zeros((len(classes), X.shape[1]), dtype=np.float32)
+        for j, c in enumerate(classes):
+            rows = X[dev & (y_class == c)]
+            if len(rows):
+                proto[j] = rows.mean(axis=0)
+        def test_acc(E):
+            pred = classes[np.where(allowed, X @ E.T, -np.inf).argmax(axis=1)]
+            return (pred == y_class)[test].mean()
+        acc_proto = test_acc(proto)
+        acc_names = test_acc(names)
+        gap = acc_names - acc_proto
+      expect: длину 1
+    - code: |
+        proto = np.zeros((len(classes), X.shape[1]), dtype=np.float32)
+        for j, c in enumerate(classes):
+            rows = X[dev & (y_class == c)]
+            if len(rows):
+                v = rows.mean(axis=0)
+                proto[j] = v / np.linalg.norm(v)
+        def test_acc(E):
+            pred = classes[np.where(allowed, X @ E.T, -np.inf).argmax(axis=1)]
+            return (pred == y_class)[dev].mean()
+        acc_proto = test_acc(proto)
+        acc_names = test_acc(names)
+        gap = acc_names - acc_proto
+      expect: картинках `test`
+
+- id: m9-l9-t5
+  title: Регуляризация и число примеров
+  difficulty: star
+  introduces: []
+  uses: [transfer-learning, regularization]
+  statement: |
+    У `LogisticRegression` сила регуляризации задаётся параметром `C`: чем он **меньше**, тем сильнее штраф за большие коэффициенты (C — обратная величина к α из урока 7.6). Проверим, как штраф влияет на зонд при разном числе примеров. Для каждого `C` из `Cs` получите долю верных на `X_test`:
+
+    - при обучении на всех обучающих картинках;
+    - при обучении на 5 картинках каждой группы — среднее по выборкам `picks5` (пять готовых наборов номеров).
+
+    Сохраните результат в `table` — DataFrame с индексом `Cs` и столбцами `all` и `k5`. Получите `best_C_all` и `best_C_k5` — значения `C` с наибольшей долей верных в каждом столбце.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.linear_model import LogisticRegression
+    images = pd.read_csv('zs_public.csv')
+    X = np.load('zs_public.npy').astype(np.float32)
+    y = images['group'].to_numpy()
+    dev = (images.groupby('class').cumcount() % 2 == 0).to_numpy()
+    big = images['group'].isin(['Animalia', 'Dishes', 'Other']).to_numpy()
+    X_train, y_train = X[dev & big], y[dev & big]
+    X_test, y_test = X[~dev & big], y[~dev & big]
+    Cs = [0.01, 0.1, 1, 10, 100]
+    picks5 = []
+    for seed in range(5):
+        rng = np.random.default_rng(seed)
+        picks5.append(np.concatenate([rng.choice(np.where(y_train == g)[0], size=5, replace=False) for g in ['Animalia', 'Dishes', 'Other']]))
+  starter: |
+    def acc_with(C, rows):
+        model = LogisticRegression(C=C, max_iter=1000).fit(X_train[rows], y_train[rows])
+        return ...
+
+    all_rows = np.arange(len(y_train))
+    table = pd.DataFrame({'all': [... for C in Cs],
+                          'k5': [... for C in Cs]}, index=Cs)
+    best_C_all = ...
+    best_C_k5 = ...
+    print(table.round(3))
+    print(best_C_all, best_C_k5)
+  solution: |
+    def acc_with(C, rows):
+        model = LogisticRegression(C=C, max_iter=1000).fit(X_train[rows], y_train[rows])
+        return (model.predict(X_test) == y_test).mean()
+
+    all_rows = np.arange(len(y_train))
+    table = pd.DataFrame({'all': [acc_with(C, all_rows) for C in Cs],
+                          'k5': [np.mean([acc_with(C, p) for p in picks5]) for C in Cs]}, index=Cs)
+    best_C_all = table['all'].idxmax()
+    best_C_k5 = table['k5'].idxmax()
+    print(table.round(3))
+    print(best_C_all, best_C_k5)
+  explanation: |
+    - На всех 343 картинках слабый штраф лучше: при C = 100 доля верных 0,988 против 0,959 при C = 1 по умолчанию. При C = 0,01 модель почти не может разделять группы (0,44): признаки CLIP — маленькие числа, и сильный штраф не даёт коэффициентам вырасти.
+    - На 15 картинках C почти не важен: от 0,89 до 0,91, а лучший — C = 1. Когда примеров мало, свободная модель легко подстраивается под случайные особенности выборки.
+    - Здесь мы смотрели на test, чтобы увидеть закономерность. В настоящей работе C выбирают кросс-валидацией на обучающей части (урок 6.8), а test трогают один раз.
+  hints:
+    - "Доля верных модели — `(model.predict(X_test) == y_test).mean()`."
+    - "Столбец `k5` — `np.mean([acc_with(C, p) for p in picks5])` для каждого C."
+    - "Лучший C — `table['all'].idxmax()` и `table['k5'].idxmax()`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.linear_model import LogisticRegression
+    tb = var('table', pd.DataFrame, 'таблицей')
+    ensure(list(tb.columns)[:2] == ['all', 'k5'] or set(['all', 'k5']) <= set(tb.columns), 'В `table` нужны столбцы `all` и `k5`.')
+    ensure([float(i) for i in tb.index] == [float(c) for c in ref('Cs')], 'Индекс `table` — значения C из `Cs`.')
+    same_array(tb['all'].to_numpy(dtype=float), ref('table')['all'].to_numpy(dtype=float), 'Столбец `all` — доля верных при обучении на всех картинках.')
+    k5 = tb['k5'].to_numpy(dtype=float)
+    single = np.array([float((LogisticRegression(C=C, max_iter=1000).fit(ref('X_train')[ref('picks5')[0]], ref('y_train')[ref('picks5')[0]]).predict(ref('X_test')) == ref('y_test')).mean()) for C in ref('Cs')])
+    if np.allclose(k5, single) and not np.allclose(k5, ref('table')['k5'].to_numpy(dtype=float)):
+        fail('Столбец `k5` — среднее по всем пяти наборам `picks5`, а не по одному.')
+    same_array(k5, ref('table')['k5'].to_numpy(dtype=float), 'Столбец `k5` — средняя доля верных по пяти наборам из 15 картинок.')
+    close(float(var('best_C_all')), float(ref('best_C_all')), 'Лучший C на всех картинках — {expected}, а у вас {actual}.')
+    close(float(var('best_C_k5')), float(ref('best_C_k5')), 'Лучший C на 15 картинках — {expected}, а у вас {actual}.')
+    same_array(alt('table')['all'].to_numpy(dtype=float), alt_ref('table')['all'].to_numpy(dtype=float), HARDCODE_MSG)
+  files: [zs_public.csv, zs_public.npy]
+  wrong:
+    - code: |
+        def acc_with(C, rows):
+            model = LogisticRegression(C=C, max_iter=1000).fit(X_train[rows], y_train[rows])
+            return (model.predict(X_test) == y_test).mean()
+        all_rows = np.arange(len(y_train))
+        table = pd.DataFrame({'all': [acc_with(C, all_rows) for C in Cs],
+                              'k5': [acc_with(C, picks5[0]) for C in Cs]}, index=Cs)
+        best_C_all = table['all'].idxmax()
+        best_C_k5 = table['k5'].idxmax()
+      expect: всем пяти наборам
+    - code: |
+        def acc_with(C, rows):
+            model = LogisticRegression(C=C, max_iter=1000).fit(X_train[rows], y_train[rows])
+            return (model.predict(X_test) == y_test).mean()
+        all_rows = np.arange(len(y_train))
+        table = pd.DataFrame({'all': [acc_with(C, all_rows) for C in Cs],
+                              'k5': [np.mean([acc_with(C, p) for p in picks5]) for C in Cs]}, index=Cs)
+        best_C_all = table['all'].idxmin()
+        best_C_k5 = table['k5'].idxmax()
+      expect: Лучший C на всех

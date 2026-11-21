@@ -1,0 +1,330 @@
+- id: m3-l5-t1
+  title: Топливо и коробка передач
+  difficulty: warmup
+  introduces: [pd-crosstab]
+  uses: [pd-pivot-table]
+  statement: |
+    Получите `fuel_trans` — таблицу сочетаний: типы топлива по строкам, тип коробки (`Transmission`) по колонкам, в ячейках — число объявлений. Затем `n_diesel_manual` — число дизелей с механикой.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')   # результат модуля 2
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    fuel_trans = ...
+    n_diesel_manual = ...
+    print(n_diesel_manual)
+    fuel_trans
+  solution: |
+    fuel_trans = pd.crosstab(df['Fuel_type'], df['Transmission'])
+    n_diesel_manual = fuel_trans.loc['Diesel', 'Manual']
+    print(n_diesel_manual)
+    fuel_trans
+  explanation: |
+    - `pd.crosstab(строки, колонки)` считает объявления каждого сочетания топлива и коробки.
+    - Ячейку выбирают по меткам строки и колонки: `.loc['Diesel', 'Manual']`.
+  alternatives:
+    - |
+      fuel_trans = pd.pivot_table(df, index='Fuel_type', columns='Transmission', aggfunc='size', fill_value=0)
+      n_diesel_manual = int(fuel_trans.loc['Diesel', 'Manual'])
+  hints:
+    - Таблицу сочетаний двух категорий даёт одна функция pandas.
+    - "`pd.crosstab(df['Fuel_type'], df['Transmission'])`; ячейка — `.loc['Diesel', 'Manual']`."
+    - "`n_diesel_manual = fuel_trans.loc['Diesel', 'Manual']`."
+  tests: |
+    import pandas as pd
+    t = var('fuel_trans', pd.DataFrame, 'таблицей DataFrame')
+    if t.shape == ref('fuel_trans').shape[::-1]:
+        fail('Строки и колонки перепутаны: топливо — по строкам (первый аргумент), коробка — по колонкам.')
+    same_frame(t, ref('fuel_trans'), 'Таблица сочетаний не совпадает.', check_dtype=False)
+    close(var('n_diesel_manual', 'number', 'числом'), ref('n_diesel_manual'), 'Дизелей с механикой — {expected}, а у вас {actual}.')
+    close(alt('n_diesel_manual'), alt_ref('n_diesel_manual'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        fuel_trans = pd.crosstab(df['Transmission'], df['Fuel_type'])
+        n_diesel_manual = fuel_trans.loc['Manual', 'Diesel']
+      expect: перепутаны
+    - code: |
+        fuel_trans = pd.crosstab(df['Fuel_type'], df['Transmission'])
+        n_diesel_manual = fuel_trans.loc['Diesel', 'Automatic']
+      expect: Дизелей с механикой
+
+- id: m3-l5-t2
+  title: Доля автоматов по типам топлива
+  difficulty: main
+  introduces: [pd-crosstab, count-vs-share]
+  uses: []
+  statement: |
+    Получите `auto_share` — долю автоматических коробок среди объявлений **каждого типа топлива** (Series, значения от 0 до 1) и `most_auto_fuel` — тип топлива, у которого эта доля наибольшая.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    auto_share = ...
+    most_auto_fuel = ...
+    print(most_auto_fuel)
+    auto_share.round(3)
+  solution: |
+    auto_share = pd.crosstab(df['Fuel_type'], df['Transmission'], normalize='index')['Automatic']
+    most_auto_fuel = auto_share.idxmax()
+    print(most_auto_fuel)
+    auto_share.round(3)
+  explanation: |
+    - `normalize='index'` делит каждую строку (тип топлива) на её сумму: доли коробок внутри топлива.
+    - Колонка `'Automatic'` — доля автоматов для каждого топлива.
+    - Знаменатель доли — все объявления этого типа топлива.
+  alternatives:
+    - |
+      auto_share = (df['Transmission'] == 'Automatic').groupby(df['Fuel_type']).mean()
+      most_auto_fuel = auto_share.idxmax()
+  hints:
+    - Нужны доли внутри строки — какой параметр `crosstab` их даёт?
+    - "`pd.crosstab(df['Fuel_type'], df['Transmission'], normalize='index')`, затем колонка `'Automatic'`."
+    - "`most_auto_fuel = auto_share.idxmax()`."
+  tests: |
+    import pandas as pd
+    s = var('auto_share', pd.Series, 'Series долей')
+    if (s > 1).any():
+        fail('В `auto_share` количества, а нужны доли: `normalize=\'index\'`.')
+    if abs(float(s.sum()) - 1.0) < 1e-9 and abs(float(ref('auto_share').sum()) - 1.0) > 1e-6:
+        fail('Доли в сумме дают 1 — похоже, это доли по колонке (`normalize=\'columns\'`). Нужна доля автоматов внутри каждого типа топлива: `normalize=\'index\'`.')
+    same_frame(s, ref('auto_share'), 'Доли автоматов по типам топлива не совпадают.')
+    equal(var('most_auto_fuel'), ref('most_auto_fuel'), 'Наибольшая доля автоматов — у {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        auto_share = pd.crosstab(df['Fuel_type'], df['Transmission'], normalize='columns')['Automatic']
+        most_auto_fuel = auto_share.idxmax()
+      expect: normalize='index'
+    - code: |
+        auto_share = pd.crosstab(df['Fuel_type'], df['Transmission'])['Automatic']
+        most_auto_fuel = auto_share.idxmax()
+      expect: нужны доли
+
+- id: m3-l5-t3
+  title: Больше всего SUV или наибольшая доля SUV
+  difficulty: main
+  introduces: [count-vs-share]
+  uses: [group-size-caution, pd-bool-filter]
+  statement: |
+    Ответьте на два разных вопроса:
+
+    - `most_suv_count` — марка с наибольшим **числом** SUV;
+    - `most_suv_share` — марка с наибольшей **долей** SUV среди своих объявлений, если рассматривать только марки, у которых **не менее 30** объявлений.
+
+    Затем `same_answer` — совпадают ли ответы (True/False).
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+    style_count = pd.crosstab(df['Make'], df['Style'])
+  starter: |
+    style_share = ...
+    n_make = ...
+    most_suv_count = ...
+    most_suv_share = ...
+    same_answer = ...
+    print(most_suv_count, most_suv_share, same_answer)
+  solution: |
+    style_share = pd.crosstab(df['Make'], df['Style'], normalize='index')
+    n_make = style_count.sum(axis=1)
+    most_suv_count = style_count['SUV'].idxmax()
+    most_suv_share = style_share.loc[n_make >= 30, 'SUV'].idxmax()
+    same_answer = most_suv_count == most_suv_share
+    print(most_suv_count, most_suv_share, same_answer)
+  explanation: |
+    - Число SUV — колонка таблицы количеств; доля — колонка таблицы с `normalize='index'`.
+    - `n_make` — размер каждой марки (сумма строки); маска `n_make >= 30` убирает марки с горсткой объявлений.
+    - Ответы разные: крупная группа лидирует по количеству, а по доле — марка, где SUV особенно типичны.
+  hints:
+    - Для доли нужна таблица `normalize='index'`, для отбора марок — их размер (сумма строки таблицы количеств).
+    - "`n_make = style_count.sum(axis=1)`; `style_share.loc[n_make >= 30, 'SUV'].idxmax()`."
+    - "`most_suv_count = style_count['SUV'].idxmax()`, `same_answer = most_suv_count == most_suv_share`."
+  tests: |
+    equal(var('most_suv_count'), ref('most_suv_count'), 'Больше всего SUV у {expected}, а у вас {actual}.')
+    s = var('most_suv_share')
+    full = ref('style_share')['SUV'].idxmax()
+    if s == full and full != ref('most_suv_share'):
+        fail('У марки {0} доля SUV рекордная, но объявлений меньше 30. Отберите марки с `n_make >= 30` до поиска максимума.'.format(s))
+    equal(s, ref('most_suv_share'), 'Наибольшая доля SUV (марки с 30+ объявлениями) — у {expected}, а у вас {actual}.')
+    equal(bool(var('same_answer')), bool(ref('same_answer')), '`same_answer` должно быть {expected}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        style_share = pd.crosstab(df['Make'], df['Style'], normalize='index')
+        n_make = style_count.sum(axis=1)
+        most_suv_count = style_count['SUV'].idxmax()
+        most_suv_share = style_count.loc[n_make >= 30, 'SUV'].idxmax()
+        same_answer = most_suv_count == most_suv_share
+      expect: Наибольшая доля SUV
+    - code: |
+        style_share = pd.crosstab(df['Make'], df['Style'], normalize='columns')
+        n_make = style_count.sum(axis=1)
+        most_suv_count = style_count['SUV'].idxmax()
+        most_suv_share = style_share.loc[n_make >= 30, 'SUV'].idxmax()
+        same_answer = most_suv_count == most_suv_share
+      expect: Наибольшая доля SUV
+
+- id: m3-l5-t4
+  title: Три знаменателя одной ячейки
+  difficulty: main
+  introduces: [pd-crosstab, count-vs-share]
+  uses: []
+  statement: |
+    Для сочетания «Toyota и Hatchback» получите три доли:
+
+    - `share_in_make` — какая часть объявлений Toyota — хэтчбеки;
+    - `share_in_style` — какая часть всех хэтчбеков — Toyota;
+    - `share_of_all` — какая часть всех объявлений — «Toyota и хэтчбек».
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    share_in_make = ...
+    share_in_style = ...
+    share_of_all = ...
+    print(round(share_in_make, 3), round(share_in_style, 3), round(share_of_all, 4))
+  solution: |
+    share_in_make = pd.crosstab(df['Make'], df['Style'], normalize='index').loc['Toyota', 'Hatchback']
+    share_in_style = pd.crosstab(df['Make'], df['Style'], normalize='columns').loc['Toyota', 'Hatchback']
+    share_of_all = pd.crosstab(df['Make'], df['Style'], normalize=True).loc['Toyota', 'Hatchback']
+    print(round(share_in_make, 3), round(share_in_style, 3), round(share_of_all, 4))
+  explanation: |
+    - `normalize='index'` — знаменатель: все объявления Toyota.
+    - `normalize='columns'` — знаменатель: все хэтчбеки.
+    - `normalize=True` — знаменатель: вся таблица. Числитель во всех трёх случаях один и тот же.
+  alternatives:
+    - |
+      both = ((df['Make'] == 'Toyota') & (df['Style'] == 'Hatchback')).sum()
+      share_in_make = both / (df['Make'] == 'Toyota').sum()
+      share_in_style = both / (df['Style'] == 'Hatchback').sum()
+      share_of_all = both / len(df)
+  hints:
+    - Числитель один — число Toyota-хэтчбеков. Меняется только знаменатель.
+    - "`normalize='index'`, `normalize='columns'` и `normalize=True`; ячейка — `.loc['Toyota', 'Hatchback']`."
+    - "`share_in_style = pd.crosstab(df['Make'], df['Style'], normalize='columns').loc['Toyota', 'Hatchback']`."
+  tests: |
+    a = var('share_in_make', 'number', 'числом')
+    b = var('share_in_style', 'number', 'числом')
+    if abs(float(a) - float(ref('share_in_style'))) < 1e-12 and abs(float(b) - float(ref('share_in_make'))) < 1e-12:
+        fail('Доли перепутаны: внутри марки — `normalize=\'index\'`, внутри кузова — `normalize=\'columns\'`.')
+    close(a, ref('share_in_make'), 'Доля хэтчбеков среди Toyota — {expected}, а у вас {actual}.')
+    close(b, ref('share_in_style'), 'Доля Toyota среди хэтчбеков — {expected}, а у вас {actual}.')
+    close(var('share_of_all', 'number', 'числом'), ref('share_of_all'), 'Доля «Toyota и хэтчбек» от всех объявлений — {expected}, а у вас {actual}.')
+    close(alt('share_in_make'), alt_ref('share_in_make'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        share_in_make = pd.crosstab(df['Make'], df['Style'], normalize='columns').loc['Toyota', 'Hatchback']
+        share_in_style = pd.crosstab(df['Make'], df['Style'], normalize='index').loc['Toyota', 'Hatchback']
+        share_of_all = pd.crosstab(df['Make'], df['Style'], normalize=True).loc['Toyota', 'Hatchback']
+      expect: перепутаны
+    - code: |
+        share_in_make = pd.crosstab(df['Make'], df['Style'], normalize='index').loc['Toyota', 'Hatchback']
+        share_in_style = pd.crosstab(df['Make'], df['Style'], normalize='columns').loc['Toyota', 'Hatchback']
+        share_of_all = share_in_make
+      expect: от всех объявлений
+
+- id: m3-l5-t5
+  kind: quiz
+  title: Число, доля и пустые ячейки
+  difficulty: main
+  introduces: [count-vs-share]
+  uses: []
+  statement: |
+    Выберите корректные формулировки и решения.
+  quiz:
+    - q: "В отчёте написано: «SUV — 15,5 %». Чего не хватает?"
+      options:
+        - Знаменателя — от чего посчитана доля (объявлений марки, всех SUV или всех объявлений)
+        - Ничего, доля понятна сама по себе
+        - Округления до целых
+      answer: 0
+      explain: Одна и та же ячейка даёт разные доли при разных знаменателях.
+    - q: У марки 2 объявления, оба — кабриолеты. Её «доля кабриолетов 100 %» — рекорд?
+      options:
+        - Да, это лучший показатель в таблице
+        - Нет — доля по двум объявлениям ненадёжна; сравнивают только группы достаточного размера
+        - Да, если марка дорогая
+      answer: 1
+      explain: Перед поиском максимума доли отбирают группы с достаточным числом записей.
+    - q: Как заполнить пустые сочетания в сводной таблице медианных цен?
+      options:
+        - Нулями, чтобы не было пропусков
+        - Оставить NaN и показать рядом таблицу количеств
+        - Средней ценой по всей таблице
+      answer: 1
+      explain: Ноль — это «цена 0 евро», а средняя — выдуманное значение. Пустая ячейка значит «нет объявлений».
+  hints:
+    - Вспомните три варианта `normalize` и правило о размере групп из урока 3.3.
+    - "У доли называют знаменатель; доля по 2 записям ненадёжна; пустая ячейка цены — NaN."
+    - "Ответы: знаменателя; нет, ненадёжна; оставить NaN."
+
+- id: m3-l5-t6
+  title: Как ноль искажает сводную цен
+  difficulty: star
+  introduces: [pd-crosstab]
+  uses: [pd-pivot-table, mean-median]
+  statement: |
+    Постройте две сводные медианных цен «марка × топливо»: `prices_nan` — без заполнения пустых ячеек и `prices_zero` — с `fill_value=0`. Получите:
+
+    - `n_empty` — число пустых ячеек в `prices_nan`;
+    - `hybrid_mean_nan` и `hybrid_mean_zero` — среднее по колонке `'Hybrid'` в каждой сводной;
+    - `distortion` — на сколько процентов среднее с нулями меньше правильного: `(hybrid_mean_nan − hybrid_mean_zero) / hybrid_mean_nan * 100`.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    prices_nan = ...
+    prices_zero = ...
+    n_empty = ...
+    hybrid_mean_nan = ...
+    hybrid_mean_zero = ...
+    distortion = ...
+    print(n_empty, round(hybrid_mean_nan), round(hybrid_mean_zero), round(distortion, 1))
+  solution: |
+    prices_nan = df.pivot_table(index='Make', columns='Fuel_type', values='Price', aggfunc='median')
+    prices_zero = df.pivot_table(index='Make', columns='Fuel_type', values='Price', aggfunc='median', fill_value=0)
+    n_empty = prices_nan.isna().sum().sum()
+    hybrid_mean_nan = prices_nan['Hybrid'].mean()
+    hybrid_mean_zero = prices_zero['Hybrid'].mean()
+    distortion = (hybrid_mean_nan - hybrid_mean_zero) / hybrid_mean_nan * 100
+    print(n_empty, round(hybrid_mean_nan), round(hybrid_mean_zero), round(distortion, 1))
+  explanation: |
+    - `mean()` по колонке со значениями `NaN` пропуски пропускает — среднее считается по маркам, у которых гибриды есть.
+    - С `fill_value=0` нули участвуют в среднем как «цена 0» — среднее занижается.
+    - Процент искажения показывает, насколько неверным стал бы вывод из сводной с нулями.
+  hints:
+    - Две сводные отличаются только параметром `fill_value`. Пропуски посчитайте через `isna()`.
+    - "`df.pivot_table(index='Make', columns='Fuel_type', values='Price', aggfunc='median')` и то же с `fill_value=0`; пустые — `.isna().sum().sum()`."
+    - "`distortion = (hybrid_mean_nan - hybrid_mean_zero) / hybrid_mean_nan * 100`."
+  tests: |
+    close(var('n_empty', 'number', 'числом'), ref('n_empty'), 'Пустых ячеек — {expected}, а у вас {actual}.')
+    m1 = var('hybrid_mean_nan', 'number', 'числом')
+    m0 = var('hybrid_mean_zero', 'number', 'числом')
+    if abs(float(m1) - float(m0)) < 1e-9:
+        fail('Средние совпали — проверьте, что во второй сводной задан `fill_value=0`.')
+    close(m1, ref('hybrid_mean_nan'), 'Среднее по колонке Hybrid без заполнения — {expected}, а у вас {actual}.')
+    close(m0, ref('hybrid_mean_zero'), 'Среднее с нулями — {expected}, а у вас {actual}.')
+    close(var('distortion', 'number', 'числом'), ref('distortion'), 'Искажение — {expected} %, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        prices_nan = df.pivot_table(index='Make', columns='Fuel_type', values='Price', aggfunc='median')
+        prices_zero = prices_nan
+        n_empty = prices_nan.isna().sum().sum()
+        hybrid_mean_nan = prices_nan['Hybrid'].mean()
+        hybrid_mean_zero = prices_zero['Hybrid'].mean()
+        distortion = 0
+      expect: fill_value=0
+    - code: |
+        prices_nan = df.pivot_table(index='Make', columns='Fuel_type', values='Price', aggfunc='median')
+        prices_zero = df.pivot_table(index='Make', columns='Fuel_type', values='Price', aggfunc='median', fill_value=0)
+        n_empty = prices_nan.isna().sum()
+        hybrid_mean_nan = prices_nan['Hybrid'].mean()
+        hybrid_mean_zero = prices_zero['Hybrid'].mean()
+        distortion = (hybrid_mean_nan - hybrid_mean_zero) / hybrid_mean_nan * 100
+      expect: числом

@@ -1,0 +1,500 @@
+- id: b1-l4-t1
+  title: Стандартизация и ковариация
+  difficulty: warmup
+  introduces: []
+  uses: [standard-scaler]
+  statement: |
+    Напишите без циклов и без sklearn:
+
+    - `standardize(X)` — каждый столбец минус его среднее, делённое на его стандартное отклонение (`X.std(axis=0)`, как в `StandardScaler`);
+    - `covariance(Z)` — ковариационную матрицу столбцов центрированной матрицы `Z`: Zᵀ·Z / (n − 1), где n — число строк.
+
+    Для числовых признаков машин `X` получите `Xs = standardize(X)`, `C = covariance(Xs)`, `cov_year_price` — ковариацию года и цены и `strongest_pair` — кортеж из двух названий признаков с наибольшей по модулю ковариацией вне диагонали (в порядке `num`).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    cars = pd.read_csv('cars_processed.csv')
+    num = ['Year', 'Distance', 'Engine', 'Price', 'km_year']
+    X = cars[num].to_numpy(dtype=float)
+  starter: |
+    def standardize(X):
+        return ...
+
+    def covariance(Z):
+        return ...
+
+    Xs = standardize(X)
+    C = covariance(Xs)
+    cov_year_price = float(C[num.index('Year'), num.index('Price')])
+    off = np.abs(C - np.diag(np.diag(C)))
+    i, j = np.unravel_index(np.argmax(off), off.shape)
+    strongest_pair = (num[min(i, j)], num[max(i, j)])
+    print(np.round(C, 2), round(cov_year_price, 3), strongest_pair)
+  solution: |
+    def standardize(X):
+        return (X - X.mean(axis=0)) / X.std(axis=0)
+
+    def covariance(Z):
+        return Z.T @ Z / (len(Z) - 1)
+
+    Xs = standardize(X)
+    C = covariance(Xs)
+    cov_year_price = float(C[num.index('Year'), num.index('Price')])
+    off = np.abs(C - np.diag(np.diag(C)))
+    i, j = np.unravel_index(np.argmax(off), off.shape)
+    strongest_pair = (num[min(i, j)], num[max(i, j)])
+    print(np.round(C, 2), round(cov_year_price, 3), strongest_pair)
+  explanation: |
+    - `X.mean(axis=0)` и `X.std(axis=0)` — по столбцам; вычитание и деление растягиваются на все строки (broadcasting, урок 1.10).
+    - `Z.T @ Z` — сумма произведений для каждой пары столбцов; у центрированных столбцов, делённая на n − 1, это ковариация. На диагонали — разброс каждого стандартизованного признака, почти 1.
+    - Сильнее всего связаны год и цена (0,50): новые машины дороже. Следом идут пробег и пробег за год (0,49). PCA объединит такие связанные признаки в общие компоненты.
+  hints:
+    - "Стандартизация — `(X - X.mean(axis=0)) / X.std(axis=0)`."
+    - "Ковариация центрированных столбцов — `Z.T @ Z / (len(Z) - 1)`."
+    - "Сравнить себя можно с `np.cov(Xs, rowvar=False)` — должно совпасть."
+  tests: |
+    import numpy as np
+    s = var('standardize')
+    c = var('covariance')
+    ensure(callable(s) and callable(c), '`standardize` и `covariance` должны быть функциями.')
+    no_loops('Обойдитесь без цикла: среднее и отклонение по столбцам — axis=0, ковариация — матричное произведение.')
+    A = np.array([[1.0, 10.0], [2.0, 30.0], [3.0, 20.0]])
+    sa = np.asarray(s(A))
+    same_array(sa.mean(axis=0), [0, 0], 'После стандартизации среднее каждого столбца — 0.')
+    if np.allclose(sa.std(axis=0, ddof=1), 1) and not np.allclose(sa.std(axis=0), 1):
+        fail('Стандартное отклонение берут как в StandardScaler — X.std(axis=0), без ddof=1.')
+    same_array(sa.std(axis=0), [1, 1], 'После стандартизации отклонение каждого столбца — 1.')
+    Z = A - A.mean(axis=0)
+    got = np.asarray(c(Z))
+    if np.allclose(got, Z.T @ Z / len(Z)):
+        fail('Ковариацию делят на n − 1, а не на n: так считает np.cov.')
+    same_array(got, np.cov(Z, rowvar=False), 'Ковариация центрированной матрицы должна совпасть с np.cov(Z, rowvar=False).')
+    same_array(np.asarray(var('C')), ref('C'), 'Ковариационная матрица признаков машин не совпадает с ожидаемой.')
+    close(var('cov_year_price', 'number', 'числом'), ref('cov_year_price'), 'Ковариация года и цены — {expected}, а у вас {actual}.')
+    equal(tuple(var('strongest_pair')), tuple(ref('strongest_pair')), 'Сильнее всего связаны {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def standardize(X):
+            return (X - X.mean(axis=0)) / X.std(axis=0)
+        def covariance(Z):
+            return Z.T @ Z / len(Z)
+        Xs = standardize(X)
+        C = covariance(Xs)
+        cov_year_price = float(C[num.index('Year'), num.index('Price')])
+        off = np.abs(C - np.diag(np.diag(C)))
+        i, j = np.unravel_index(np.argmax(off), off.shape)
+        strongest_pair = (num[min(i, j)], num[max(i, j)])
+      expect: на n − 1
+    - code: |
+        def standardize(X):
+            return (X - X.mean(axis=0)) / X.std(axis=0, ddof=1)
+        def covariance(Z):
+            return Z.T @ Z / (len(Z) - 1)
+        Xs = standardize(X)
+        C = covariance(Xs)
+        cov_year_price = float(C[num.index('Year'), num.index('Price')])
+        off = np.abs(C - np.diag(np.diag(C)))
+        i, j = np.unravel_index(np.argmax(off), off.shape)
+        strongest_pair = (num[min(i, j)], num[max(i, j)])
+      expect: без ddof=1
+
+- id: b1-l4-t2
+  title: Главные компоненты своими руками
+  difficulty: main
+  introduces: [pca]
+  uses: [standard-scaler]
+  statement: |
+    Ковариационная матрица `C` стандартизованных признаков машин уже посчитана. Найдите её собственные числа и векторы (`np.linalg.eigh`) и упорядочьте их **по убыванию** собственных чисел. У `eigh` векторы — столбцы матрицы.
+
+    Получите:
+
+    - `eigvals` — собственные числа по убыванию;
+    - `components` — матрицу, где столбцы — собственные векторы в том же порядке;
+    - `ratio` — долю разброса каждой компоненты;
+    - `k90` — сколько первых компонент нужно, чтобы накопленная доля была не меньше 0,9.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.preprocessing import StandardScaler
+    cars = pd.read_csv('cars_processed.csv')
+    num = ['Year', 'Distance', 'Engine', 'Price', 'km_year']
+    Xs = StandardScaler().fit_transform(cars[num].to_numpy(dtype=float))
+    C = np.cov(Xs, rowvar=False)
+  starter: |
+    vals, vecs = np.linalg.eigh(C)
+    order = ...
+    eigvals = vals[order]
+    components = vecs[:, order]
+    ratio = ...
+    k90 = int(np.argmax(np.cumsum(ratio) >= 0.9)) + 1
+    print(eigvals.round(3), ratio.round(3), k90)
+  solution: |
+    vals, vecs = np.linalg.eigh(C)
+    order = np.argsort(vals)[::-1]
+    eigvals = vals[order]
+    components = vecs[:, order]
+    ratio = eigvals / eigvals.sum()
+    k90 = int(np.argmax(np.cumsum(ratio) >= 0.9)) + 1
+    print(eigvals.round(3), ratio.round(3), k90)
+  explanation: |
+    - `np.linalg.eigh` — для симметричных матриц, а ковариационная матрица симметрична. Собственные числа она возвращает по возрастанию, поэтому `np.argsort(vals)[::-1]`.
+    - Векторы переставляются тем же порядком, что числа: столбец `vecs[:, k]` относится к числу `vals[k]`.
+    - Доля — собственное число, делённое на сумму всех. Сумма равна 5 — числу стандартизованных признаков. Три компоненты дают 89,5 %, чуть меньше 90 %, поэтому `k90` = 4. `np.argmax` по логической маске возвращает первую позицию, где условие выполнено.
+  hints:
+    - "Порядок по убыванию — `np.argsort(vals)[::-1]`."
+    - "Доля разброса — `eigvals / eigvals.sum()`."
+    - "Столбцы переставляются тем же порядком: `vecs[:, order]` — уже в заготовке."
+  tests: |
+    import numpy as np
+    ev = np.asarray(var('eigvals'), dtype=float)
+    if np.all(np.diff(ev) > 0):
+        fail('Собственные числа идут по возрастанию — так их возвращает eigh. Разверните порядок: np.argsort(vals)[::-1].')
+    same_array(ev, ref('eigvals'), 'Собственные числа по убыванию не совпадают с ожидаемыми.')
+    comp = np.asarray(var('components'), dtype=float)
+    same_array(np.abs(comp), np.abs(ref('components')), 'Столбцы components — собственные векторы в том же порядке, что числа (знак любой).')
+    same_array(np.asarray(var('ratio'), dtype=float), ref('ratio'), 'Доли разброса не совпадают с ожидаемыми.')
+    equal(int(var('k90', 'int', 'целым числом')), int(ref('k90')), 'Для 90 % нужно компонент: {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        vals, vecs = np.linalg.eigh(C)
+        order = np.argsort(vals)
+        eigvals = vals[order]
+        components = vecs[:, order]
+        ratio = eigvals / eigvals.sum()
+        k90 = int(np.argmax(np.cumsum(ratio) >= 0.9)) + 1
+      expect: по возрастанию
+    - code: |
+        vals, vecs = np.linalg.eigh(C)
+        order = np.argsort(vals)[::-1]
+        eigvals = vals[order]
+        components = vecs[order]
+        ratio = eigvals / eigvals.sum()
+        k90 = int(np.argmax(np.cumsum(ratio) >= 0.9)) + 1
+      expect: Столбцы components
+
+- id: b1-l4-t3
+  title: Доля дисперсии в sklearn
+  difficulty: main
+  introduces: [explained-variance]
+  uses: [pca]
+  statement: |
+    Сверьте свои компоненты с `PCA` из scikit-learn. Обучите `PCA()` на стандартизованных признаках `Xs`. Получите:
+
+    - `max_ratio_diff` — наибольшее расхождение между `explained_variance_ratio_` и вашими долями `ratio`;
+    - `same_axes` — `True`, если строки `components_` совпадают с вашими столбцами `components` с точностью до знака (сравните модули, `np.allclose`);
+    - `pc1_weights` — словарь «признак → вес в первой компоненте sklearn»;
+    - `pc1_main` — два признака с наибольшими по модулю весами в PC1, кортеж в порядке убывания модуля.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.decomposition import PCA
+    cars = pd.read_csv('cars_processed.csv')
+    num = ['Year', 'Distance', 'Engine', 'Price', 'km_year']
+    Xs = StandardScaler().fit_transform(cars[num].to_numpy(dtype=float))
+    vals, vecs = np.linalg.eigh(np.cov(Xs, rowvar=False))
+    order = np.argsort(vals)[::-1]
+    ratio = vals[order] / vals.sum()
+    components = vecs[:, order]
+  starter: |
+    pca = PCA().fit(Xs)
+    max_ratio_diff = float(np.abs(pca.explained_variance_ratio_ - ratio).max())
+    same_axes = bool(np.allclose(np.abs(pca.components_), ...))
+    pc1_weights = {name: float(w) for name, w in zip(num, ...)}
+    top2 = np.argsort(-np.abs(pca.components_[0]))[:2]
+    pc1_main = ...
+    print(max_ratio_diff, same_axes, pc1_weights, pc1_main)
+  solution: |
+    pca = PCA().fit(Xs)
+    max_ratio_diff = float(np.abs(pca.explained_variance_ratio_ - ratio).max())
+    same_axes = bool(np.allclose(np.abs(pca.components_), np.abs(components.T)))
+    pc1_weights = {name: float(w) for name, w in zip(num, pca.components_[0])}
+    top2 = np.argsort(-np.abs(pca.components_[0]))[:2]
+    pc1_main = (num[top2[0]], num[top2[1]])
+    print(max_ratio_diff, same_axes, pc1_weights, pc1_main)
+  explanation: |
+    - В sklearn компоненты — **строки** `components_`, а у `eigh` векторы — **столбцы**. Поэтому сравнивать надо с `components.T`.
+    - Знак собственного вектора произволен: sklearn выбирает его своим правилом. Поэтому сравнивают модули — оси одни и те же.
+    - Доли совпадают до ошибок округления. В первой компоненте сильнее всего цена и год, следом пробег с минусом: PC1 — «новая и дорогая против изъезженной». `explained_variance_ratio_` и есть объяснённая доля дисперсии.
+  hints:
+    - "Строки `components_` сравнивают со столбцами своей матрицы: `np.abs(components.T)`."
+    - "Веса PC1 — первая строка: `pca.components_[0]`."
+    - "`pc1_main = (num[top2[0]], num[top2[1]])`."
+  tests: |
+    close(var('max_ratio_diff', 'number', 'числом'), 0.0, 'Доли должны совпасть с вашими до ошибок округления, а расхождение {actual}.', atol=1e-9)
+    sa = var('same_axes')
+    equal(bool(sa), True, 'Оси должны совпасть с точностью до знака. В sklearn компоненты — строки components_, а у eigh — столбцы: сравните с components.T.')
+    pw = var('pc1_weights', dict, 'словарём')
+    for k, v in ref('pc1_weights').items():
+        close(pw[k], v, 'Вес признака ' + k + ' в PC1 — {expected}, а у вас {actual}.')
+    equal(tuple(var('pc1_main')), tuple(ref('pc1_main')), 'Главные признаки PC1 — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        pca = PCA().fit(Xs)
+        max_ratio_diff = float(np.abs(pca.explained_variance_ratio_ - ratio).max())
+        same_axes = bool(np.allclose(np.abs(pca.components_), np.abs(components)))
+        pc1_weights = {name: float(w) for name, w in zip(num, pca.components_[0])}
+        top2 = np.argsort(-np.abs(pca.components_[0]))[:2]
+        pc1_main = (num[top2[0]], num[top2[1]])
+      expect: сравните с components.T
+    - code: |
+        pca = PCA().fit(Xs)
+        max_ratio_diff = float(np.abs(pca.explained_variance_ratio_ - ratio).max())
+        same_axes = bool(np.allclose(np.abs(pca.components_), np.abs(components.T)))
+        pc1_weights = {name: float(w) for name, w in zip(num, pca.components_[:, 0])}
+        top2 = np.argsort(-np.abs(pca.components_[:, 0]))[:2]
+        pc1_main = (num[top2[0]], num[top2[1]])
+      expect: в PC1
+
+- id: b1-l4-t4
+  title: Машины на плоскости
+  difficulty: main
+  introduces: []
+  uses: [pca]
+  statement: |
+    Спроецируйте машины на первые две компоненты: `Z = PCA(n_components=2).fit_transform(Xs)`. Обучалась проекция без коробки передач. Проверим, связана ли с ней первая компонента:
+
+    - `pc1_auto`, `pc1_manual` — среднее PC1 у автоматов и у механики;
+    - `auto_right`, `auto_left` — доля автоматов среди машин с PC1 > 0 и с PC1 ≤ 0.
+
+    Знак компоненты произволен, поэтому сначала приведите его к договорённости: если у цены вес в PC1 отрицательный, умножьте `Z[:, 0]` на −1.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.decomposition import PCA
+    cars = pd.read_csv('cars_processed.csv')
+    num = ['Year', 'Distance', 'Engine', 'Price', 'km_year']
+    Xs = StandardScaler().fit_transform(cars[num].to_numpy(dtype=float))
+    auto = cars['AutoTransmission'].to_numpy()
+  starter: |
+    pca = PCA(n_components=2)
+    Z = pca.fit_transform(Xs)
+    if pca.components_[0, num.index('Price')] < 0:
+        Z[:, 0] = -Z[:, 0]
+    pc1 = Z[:, 0]
+    pc1_auto, pc1_manual = ...
+    auto_right = float(auto[pc1 > 0].mean())
+    auto_left = ...
+    print(round(pc1_auto, 3), round(pc1_manual, 3), round(auto_right, 3), round(auto_left, 3))
+  solution: |
+    pca = PCA(n_components=2)
+    Z = pca.fit_transform(Xs)
+    if pca.components_[0, num.index('Price')] < 0:
+        Z[:, 0] = -Z[:, 0]
+    pc1 = Z[:, 0]
+    pc1_auto, pc1_manual = float(pc1[auto].mean()), float(pc1[~auto].mean())
+    auto_right = float(auto[pc1 > 0].mean())
+    auto_left = float(auto[pc1 <= 0].mean())
+    print(round(pc1_auto, 3), round(pc1_manual, 3), round(auto_right, 3), round(auto_left, 3))
+  explanation: |
+    - `auto` — логический массив, поэтому `pc1[auto]` выбирает автоматы, а `pc1[~auto]` — механику (урок 1.5).
+    - У автоматов PC1 в среднем 0,76, у механики −0,64. Справа от нуля автоматы — 70 % машин, слева — 24 %. Первая компонента — «новая и дорогая» — связана с коробкой, хотя PCA её не видел.
+    - Это и есть польза обучения без учителя: структура данных подсказывает, какие признаки и группы важны. Но PCA не классификатор: граница по одной PC1 ошибается чаще, чем логистическая регрессия из урока Б.1.
+  hints:
+    - "Средние по группам — `pc1[auto].mean()` и `pc1[~auto].mean()`."
+    - "Доля автоматов слева — `auto[pc1 <= 0].mean()`."
+    - "Приведение знака уже есть в заготовке: от него зависят знаки средних."
+  tests: |
+    pa = var('pc1_auto', 'number', 'числом')
+    pm = var('pc1_manual', 'number', 'числом')
+    if pa < 0 < pm:
+        fail('Знак PC1 не приведён: у цены вес должен быть положительным. Иначе «новая и дорогая» оказывается слева.')
+    close(pa, ref('pc1_auto'), 'Среднее PC1 у автоматов — {expected}, а у вас {actual}.')
+    close(pm, ref('pc1_manual'), 'Среднее PC1 у механики — {expected}, а у вас {actual}.')
+    close(var('auto_right', 'number', 'числом'), ref('auto_right'), 'Доля автоматов справа — {expected}, а у вас {actual}.')
+    close(var('auto_left', 'number', 'числом'), ref('auto_left'), 'Доля автоматов слева — {expected}, а у вас {actual}.')
+    close(alt('auto_right'), alt_ref('auto_right'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        pca = PCA(n_components=2)
+        Z = pca.fit_transform(Xs)
+        if pca.components_[0, num.index('Price')] > 0:
+            Z[:, 0] = -Z[:, 0]
+        pc1 = Z[:, 0]
+        pc1_auto, pc1_manual = float(pc1[auto].mean()), float(pc1[~auto].mean())
+        auto_right = float(auto[pc1 > 0].mean())
+        auto_left = float(auto[pc1 <= 0].mean())
+      expect: Знак PC1 не приведён
+    - code: |
+        pca = PCA(n_components=2)
+        Z = pca.fit_transform(Xs)
+        if pca.components_[0, num.index('Price')] < 0:
+            Z[:, 0] = -Z[:, 0]
+        pc1 = Z[:, 0]
+        pc1_auto, pc1_manual = float(pc1[auto].mean()), float(pc1[~auto].mean())
+        auto_right = float(auto[pc1 > 0].mean())
+        auto_left = float((~auto)[pc1 <= 0].mean())
+      expect: Доля автоматов слева
+
+- id: b1-l4-t5
+  title: Сколько компонент оставить
+  difficulty: main
+  introduces: []
+  uses: [explained-variance, pca]
+  statement: |
+    Для k от 1 до 5 обучите `PCA(n_components=k)` на `Xs`, сожмите и восстановите данные (`inverse_transform(transform(Xs))`) и посчитайте среднюю квадратичную ошибку восстановления по всем ячейкам.
+
+    Получите:
+
+    - `errors` — список пяти ошибок;
+    - `kept` — список сохранённых долей разброса (`explained_variance_ratio_.sum()`);
+    - `k_min` — наименьшее k, при котором ошибка меньше 0,05;
+    - `identity_gap` — наибольший модуль разницы между ошибкой и потерянной долей 1 − `kept`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.decomposition import PCA
+    cars = pd.read_csv('cars_processed.csv')
+    num = ['Year', 'Distance', 'Engine', 'Price', 'km_year']
+    Xs = StandardScaler().fit_transform(cars[num].to_numpy(dtype=float))
+  starter: |
+    errors, kept = [], []
+    for k in range(1, 6):
+        p = PCA(n_components=k).fit(Xs)
+        back = ...
+        errors.append(float(np.mean((Xs - back) ** 2)))
+        kept.append(float(p.explained_variance_ratio_.sum()))
+    k_min = ...
+    identity_gap = float(np.max(np.abs(np.array(errors) - (1 - np.array(kept)))))
+    print(np.round(errors, 3), np.round(kept, 3), k_min, identity_gap)
+  solution: |
+    errors, kept = [], []
+    for k in range(1, 6):
+        p = PCA(n_components=k).fit(Xs)
+        back = p.inverse_transform(p.transform(Xs))
+        errors.append(float(np.mean((Xs - back) ** 2)))
+        kept.append(float(p.explained_variance_ratio_.sum()))
+    k_min = next(k for k, e in zip(range(1, 6), errors) if e < 0.05)
+    identity_gap = float(np.max(np.abs(np.array(errors) - (1 - np.array(kept)))))
+    print(np.round(errors, 3), np.round(kept, 3), k_min, identity_gap)
+  explanation: |
+    - `transform` переводит машины в координаты k компонент, `inverse_transform` возвращает их в пространство исходных признаков — с потерей того, что было в отброшенных компонентах.
+    - Ошибка падает с 0,629 для одной компоненты до 0 для пяти. Меньше 0,05 она впервые при k = 4 — тогда сохранено 97 % разброса.
+    - У стандартизованных признаков ошибка восстановления в точности равна потерянной доле разброса: каждый признак имеет разброс 1, и всё, что не попало в оставленные компоненты, становится ошибкой. Поэтому «доля дисперсии» и «качество сжатия» — одно и то же.
+  hints:
+    - "Восстановление — `p.inverse_transform(p.transform(Xs))`."
+    - "Первое k с ошибкой меньше 0,05 — `next(k for k, e in zip(range(1, 6), errors) if e < 0.05)`."
+    - "`identity_gap` уже посчитан в заготовке — он должен быть почти нулём."
+  tests: |
+    import numpy as np
+    er = var('errors', list, 'списком')
+    same_array(np.asarray(er, dtype=float), np.asarray(ref('errors'), dtype=float), 'Ошибки восстановления не совпадают: восстанавливайте inverse_transform(transform(Xs)).')
+    same_array(np.asarray(var('kept'), dtype=float), np.asarray(ref('kept'), dtype=float), 'Сохранённые доли не совпадают с ожидаемыми.')
+    km = var('k_min', 'int', 'целым числом')
+    equal(int(km), int(ref('k_min')), 'Наименьшее k с ошибкой меньше 0.05 — {expected}, а у вас {actual}.')
+    close(var('identity_gap', 'number', 'числом'), 0.0, 'Ошибка должна совпадать с потерянной долей разброса, а разница {actual}.', atol=1e-6)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        errors, kept = [], []
+        for k in range(1, 6):
+            p = PCA(n_components=k).fit(Xs)
+            back = p.transform(Xs)
+            errors.append(float(np.mean((Xs[:, :k] - back) ** 2)))
+            kept.append(float(p.explained_variance_ratio_.sum()))
+        k_min = next((k for k, e in zip(range(1, 6), errors) if e < 0.05), 5)
+        identity_gap = float(np.max(np.abs(np.array(errors) - (1 - np.array(kept)))))
+      expect: inverse_transform
+    - code: |
+        errors, kept = [], []
+        for k in range(1, 6):
+            p = PCA(n_components=k).fit(Xs)
+            back = p.inverse_transform(p.transform(Xs))
+            errors.append(float(np.mean((Xs - back) ** 2)))
+            kept.append(float(p.explained_variance_ratio_.sum()))
+        k_min = next(k for k, e in zip(range(1, 6), errors) if e < 0.2)
+        identity_gap = float(np.max(np.abs(np.array(errors) - (1 - np.array(kept)))))
+      expect: Наименьшее k
+
+- id: b1-l4-t6
+  title: Выброс на краю
+  difficulty: star
+  introduces: []
+  uses: [pca, standard-scaler]
+  statement: |
+    На плоскости главных компонент одна машина стоит далеко справа. Найдите её и оцените, насколько она необычна.
+
+    1. Посчитайте PC1 всех машин (`PCA(n_components=1)` на `Xs`, знак — так, чтобы у цены вес был положительным).
+    2. `outlier` — строка таблицы `cars` с наибольшим PC1; `outlier_model` — её модель (`Model`), `outlier_price` — цена.
+    3. `outlier_z` — на сколько стандартных отклонений PC1 этой машины выше среднего PC1.
+    4. `ratio_without` — доля разброса PC1, если убрать из данных машины дороже 200 000 евро и заново стандартизовать и обучить PCA.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.decomposition import PCA
+    cars = pd.read_csv('cars_processed.csv')
+    num = ['Year', 'Distance', 'Engine', 'Price', 'km_year']
+    Xs = StandardScaler().fit_transform(cars[num].to_numpy(dtype=float))
+  starter: |
+    pca = PCA(n_components=1).fit(Xs)
+    pc1 = pca.transform(Xs)[:, 0]
+    if pca.components_[0, num.index('Price')] < 0:
+        pc1 = -pc1
+    outlier = cars.iloc[int(np.argmax(pc1))]
+    outlier_model, outlier_price = outlier['Model'], float(outlier['Price'])
+    outlier_z = ...
+    clean = cars[cars['Price'] <= 200000]
+    Xc = StandardScaler().fit_transform(clean[num].to_numpy(dtype=float))
+    ratio_without = ...
+    print(outlier_model, outlier_price, round(outlier_z, 1), round(ratio_without, 3))
+  solution: |
+    pca = PCA(n_components=1).fit(Xs)
+    pc1 = pca.transform(Xs)[:, 0]
+    if pca.components_[0, num.index('Price')] < 0:
+        pc1 = -pc1
+    outlier = cars.iloc[int(np.argmax(pc1))]
+    outlier_model, outlier_price = outlier['Model'], float(outlier['Price'])
+    outlier_z = float((pc1.max() - pc1.mean()) / pc1.std())
+    clean = cars[cars['Price'] <= 200000]
+    Xc = StandardScaler().fit_transform(clean[num].to_numpy(dtype=float))
+    ratio_without = float(PCA(n_components=1).fit(Xc).explained_variance_ratio_[0])
+    print(outlier_model, outlier_price, round(outlier_z, 1), round(ratio_without, 3))
+  explanation: |
+    - Самая правая машина — Kia Sportage 2018 года за 490 000 евро. Такой цены у этой модели не бывает: почти наверняка лишний ноль в объявлении.
+    - Её PC1 выше среднего больше чем на 20 стандартных отклонений. Для данных, похожих на нормальные, это невозможно: такие точки — кандидаты в ошибки, их проверяют вручную.
+    - Выбросы тянут на себя и стандартизацию, и саму компоненту. Здесь без машин дороже 200 000 евро доля PC1 почти та же — 37,5 % против 37,1 %: на 32 тысячах машин несколько выбросов картину не ломают. На маленьких данных один такой объект мог бы развернуть компоненту. Поэтому перед PCA данные чистят, а на плоскости компонент ищут странные точки.
+  hints:
+    - "Отклонение от среднего в стандартных отклонениях — `(pc1.max() - pc1.mean()) / pc1.std()`."
+    - "Доля PC1 на очищенных данных — `PCA(n_components=1).fit(Xc).explained_variance_ratio_[0]`."
+    - "Строка с наибольшим PC1 — `cars.iloc[int(np.argmax(pc1))]`, она уже в заготовке."
+  tests: |
+    equal(str(var('outlier_model')), str(ref('outlier_model')), 'Самая необычная машина — {expected}, а у вас {actual}.')
+    close(var('outlier_price', 'number', 'числом'), ref('outlier_price'), 'Её цена — {expected}, а у вас {actual}.')
+    oz = var('outlier_z', 'number', 'числом')
+    if abs(oz - float(ref('pc1').max())) < 1e-9:
+        fail('Это само значение PC1. Нужно, на сколько стандартных отклонений оно выше среднего: (max − mean) / std.')
+    close(oz, ref('outlier_z'), 'Отклонение в стандартных отклонениях — {expected}, а у вас {actual}.')
+    close(var('ratio_without', 'number', 'числом'), ref('ratio_without'), 'Доля разброса PC1 без самых дорогих машин — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        pca = PCA(n_components=1).fit(Xs)
+        pc1 = pca.transform(Xs)[:, 0]
+        if pca.components_[0, num.index('Price')] < 0:
+            pc1 = -pc1
+        outlier = cars.iloc[int(np.argmax(pc1))]
+        outlier_model, outlier_price = outlier['Model'], float(outlier['Price'])
+        outlier_z = float(pc1.max())
+        clean = cars[cars['Price'] <= 200000]
+        Xc = StandardScaler().fit_transform(clean[num].to_numpy(dtype=float))
+        ratio_without = float(PCA(n_components=1).fit(Xc).explained_variance_ratio_[0])
+      expect: само значение PC1
+    - code: |
+        pca = PCA(n_components=1).fit(Xs)
+        pc1 = pca.transform(Xs)[:, 0]
+        if pca.components_[0, num.index('Price')] < 0:
+            pc1 = -pc1
+        outlier = cars.iloc[int(np.argmax(pc1))]
+        outlier_model, outlier_price = outlier['Model'], float(outlier['Price'])
+        outlier_z = float((pc1.max() - pc1.mean()) / pc1.std())
+        clean = cars[cars['Price'] <= 200000]
+        Xc = StandardScaler().fit_transform(clean[num].to_numpy(dtype=float))
+        ratio_without = float(PCA(n_components=1).fit(Xs).explained_variance_ratio_[0])
+      expect: без самых дорогих машин

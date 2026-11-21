@@ -1,0 +1,752 @@
+- id: m12-l7-t1
+  title: "Шаг 1. Как оценить голосовой канал"
+  difficulty: main
+  introduces: []
+  uses: [speech-recognition-models, recall-at-k]
+  statement: |
+    Напишите две функции оценки.
+
+    - `total_wer(refs, hyps)` — WER набора: сумма ошибок по словам, делённая на сумму слов эталонов. Ошибки фразы — `levenshtein(to_words(эталон), to_words(распознанное))`.
+    - `recall_at_3(queries)` — доля вопросов, для которых среди уроков трёх лучших найденных разделов есть урок из разметки `test[i]['lessons']`. Уроки лучших разделов возвращает функция `top_lessons(query, k)` — поиск из урока 11.9.
+
+    Получите `wer_heard` — WER распознанных вопросов `heard` относительно сказанных `said`, а также `recall_said` и `recall_heard` — долю найденных уроков по сказанным и по распознанным вопросам.
+  prelude: |
+    import json
+    import re
+    import numpy as np
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    with open('assistant_questions.json', encoding='utf-8') as fh:
+        questions = json.load(fh)['questions']
+    test = [q for q in questions if q['part'] == 'test' and q['about_course']]
+    said = [q['question'] for q in test]
+    heard = ['зачем нужна валидационная выборка', 'почему нельзя хранить ключ авторизации в коте', 'как заполнить пропуски в таблице',
+             'зачем стандарт изировать признаки', 'что показывает коэффициент дети нации', 'что такое эм бединг слова',
+             'чем фью шот отличается от зиро шот', 'зачем нужна логарифмическая шкала на графике', 'что делает функция активации в нейроне',
+             'что такое токен изатор', 'как сгруппировать таблицу и посчитать средней', 'что такое случайный вес',
+             'как читать бокс плот', 'как работает обратное распространение ошибки', 'чем эр эм эс и отличается от мае']
+
+    def to_words(text):
+        return re.findall(r'[a-zа-яё0-9]+', text.lower())
+
+    def levenshtein(a, b):
+        prev = list(range(len(b) + 1))
+        for i in range(1, len(a) + 1):
+            cur = [i] + [0] * len(b)
+            for j in range(1, len(b) + 1):
+                cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] != b[j - 1]))
+            prev = cur
+        return prev[-1]
+
+    texts = [d['lesson_title'] + '. ' + d['section'] + '. ' + d['text'] for d in docs]
+    lessons = [d['lesson'] for d in docs]
+    vectorizer = TfidfVectorizer(analyzer='char_wb', ngram_range=(3, 5))
+    X = vectorizer.fit_transform(texts)
+
+    def top_lessons(query, k=3):
+        scores = (X @ vectorizer.transform([query]).T).toarray().ravel()
+        return [lessons[i] for i in np.argsort(-scores)[:k]]
+  starter: |
+    def total_wer(refs, hyps):
+        errors = sum(... for r, h in zip(refs, hyps))
+        return errors / sum(len(to_words(r)) for r in refs)
+
+    def recall_at_3(queries):
+        hits = [any(l in q['lessons'] for l in ...) for query, q in zip(queries, test)]
+        return float(np.mean(hits))
+
+    wer_heard = total_wer(said, heard)
+    recall_said, recall_heard = recall_at_3(said), recall_at_3(heard)
+    print(round(wer_heard, 3), round(recall_said, 3), round(recall_heard, 3))
+  solution: |
+    def total_wer(refs, hyps):
+        errors = sum(levenshtein(to_words(r), to_words(h)) for r, h in zip(refs, hyps))
+        return errors / sum(len(to_words(r)) for r in refs)
+
+    def recall_at_3(queries):
+        hits = [any(l in q['lessons'] for l in top_lessons(query, 3)) for query, q in zip(queries, test)]
+        return float(np.mean(hits))
+
+    wer_heard = total_wer(said, heard)
+    recall_said, recall_heard = recall_at_3(said), recall_at_3(heard)
+    print(round(wer_heard, 3), round(recall_said, 3), round(recall_heard, 3))
+  explanation: |
+    - WER набора — сумма ошибок, делённая на сумму слов, а не среднее WER фраз (урок 12.5). Иначе короткая фраза с одной ошибкой весила бы столько же, сколько длинная.
+    - Распознаватель ошибся почти в каждом третьем слове: WER 0,306, 22 ошибки на 72 слова.
+    - Поиск при этом пострадал меньше: урок нашёлся для 14 вопросов из 15 по сказанному и для 13 по распознанному. Символьные n-граммы (урок 11.2) находят и «бокс плот», и «токен изатор» — куски слов те же. Потерялся только вопрос про few-shot: от «фью шот» и «зиро шот» не осталось ни одной общей буквы с латинским термином.
+    - Вопрос про коэффициент детерминации не находится даже в точной формулировке. В уроке 5.8 говорят «R²», а слова «детерминации» в текстах курса нет — поиск по буквам синонимов не знает.
+  hints:
+    - "Ошибки фразы — `levenshtein(to_words(r), to_words(h))`."
+    - "Уроки трёх лучших разделов — `top_lessons(query, 3)`."
+    - "Вопрос найден, если `any(l in q['lessons'] for l in top_lessons(query, 3))`."
+  tests: |
+    f = var('total_wer')
+    ensure(callable(f), '`total_wer` должна быть функцией.')
+    got = f(['а б', 'в г д е'], ['а', 'в г д е'])
+    if abs(got - 0.25) < 1e-9:
+        fail('Это среднее WER фраз (0.5 и 0). WER набора — сумма ошибок, делённая на сумму слов: 1 / 6.')
+    close(got, 1 / 6, 'Одна ошибка на 6 слов эталонов — WER {expected}, а у вас {actual}.')
+    close(f(['Привет, Мир!'], ['привет мир']), 0.0, 'Регистр и знаки — не ошибки: сравнивайте списки слов to_words. А у вас {actual}.')
+    g = var('recall_at_3')
+    ensure(callable(g), '`recall_at_3` должна быть функцией.')
+    close(var('wer_heard', 'number', 'числом'), ref('wer_heard'), 'WER распознанных вопросов — {expected}, а у вас {actual}.')
+    close(var('recall_said', 'number', 'числом'), ref('recall_said'), 'Доля вопросов, для которых нашёлся урок, по сказанному — {expected}, а у вас {actual}.')
+    close(var('recall_heard', 'number', 'числом'), ref('recall_heard'), 'Доля вопросов, для которых нашёлся урок, по распознанному — {expected}, а у вас {actual}.')
+  files: [course_docs.json, assistant_questions.json]
+  wrong:
+    - code: |
+        def total_wer(refs, hyps):
+            return float(np.mean([levenshtein(to_words(r), to_words(h)) / len(to_words(r)) for r, h in zip(refs, hyps)]))
+        def recall_at_3(queries):
+            hits = [any(l in q['lessons'] for l in top_lessons(query, 3)) for query, q in zip(queries, test)]
+            return float(np.mean(hits))
+        wer_heard = total_wer(said, heard)
+        recall_said, recall_heard = recall_at_3(said), recall_at_3(heard)
+      expect: среднее WER фраз
+    - code: |
+        def total_wer(refs, hyps):
+            errors = sum(levenshtein(to_words(r), to_words(h)) for r, h in zip(refs, hyps))
+            return errors / sum(len(to_words(r)) for r in refs)
+        def recall_at_3(queries):
+            hits = [any(l in q['lessons'] for l in top_lessons(query, 1)) for query, q in zip(queries, test)]
+            return float(np.mean(hits))
+        wer_heard = total_wer(said, heard)
+        recall_said, recall_heard = recall_at_3(said), recall_at_3(heard)
+      expect: нашёлся урок
+
+- id: m12-l7-t2
+  title: "Шаг 2. Словарь терминов"
+  difficulty: main
+  introduces: []
+  uses: [speech-recognition-models, named-entities]
+  statement: |
+    Латинских терминов курса распознаватель не знает и записывает их по звучанию. Словарь `LEXICON` сопоставляет звучание с термином: `'фью шот': 'few-shot'`. Это тот же лексикон, что у распознавателя (урок 12.5), только применённый после распознавания.
+
+    Напишите функцию `apply_lexicon(text, lexicon)`: каждое звучание из словаря заменить термином.
+
+    - Звучание ищется как целые слова: `\b` по краям. Иначе «мае» найдётся внутри «понимаем».
+    - Длинные звучания заменяются раньше коротких. Иначе «эм эс и» (MSE) испортит «эр эм эс и» (RMSE).
+
+    Получите `lexed` — распознанные вопросы после замены, а также `wer_lex` и `recall_lex`. Функции `total_wer` и `recall_at_3` из шага 1 уже есть.
+  prelude: |
+    import json
+    import re
+    import numpy as np
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    with open('assistant_questions.json', encoding='utf-8') as fh:
+        questions = json.load(fh)['questions']
+    test = [q for q in questions if q['part'] == 'test' and q['about_course']]
+    said = [q['question'] for q in test]
+    heard = ['зачем нужна валидационная выборка', 'почему нельзя хранить ключ авторизации в коте', 'как заполнить пропуски в таблице',
+             'зачем стандарт изировать признаки', 'что показывает коэффициент дети нации', 'что такое эм бединг слова',
+             'чем фью шот отличается от зиро шот', 'зачем нужна логарифмическая шкала на графике', 'что делает функция активации в нейроне',
+             'что такое токен изатор', 'как сгруппировать таблицу и посчитать средней', 'что такое случайный вес',
+             'как читать бокс плот', 'как работает обратное распространение ошибки', 'чем эр эм эс и отличается от мае']
+
+    def to_words(text):
+        return re.findall(r'[a-zа-яё0-9]+', text.lower())
+
+    def levenshtein(a, b):
+        prev = list(range(len(b) + 1))
+        for i in range(1, len(a) + 1):
+            cur = [i] + [0] * len(b)
+            for j in range(1, len(b) + 1):
+                cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] != b[j - 1]))
+            prev = cur
+        return prev[-1]
+
+    texts = [d['lesson_title'] + '. ' + d['section'] + '. ' + d['text'] for d in docs]
+    lessons = [d['lesson'] for d in docs]
+    vectorizer = TfidfVectorizer(analyzer='char_wb', ngram_range=(3, 5))
+    X = vectorizer.fit_transform(texts)
+
+    def top_lessons(query, k=3):
+        scores = (X @ vectorizer.transform([query]).T).toarray().ravel()
+        return [lessons[i] for i in np.argsort(-scores)[:k]]
+
+    def total_wer(refs, hyps):
+        errors = sum(levenshtein(to_words(r), to_words(h)) for r, h in zip(refs, hyps))
+        return errors / sum(len(to_words(r)) for r in refs)
+
+    def recall_at_3(queries):
+        return float(np.mean([any(l in q['lessons'] for l in top_lessons(query, 3)) for query, q in zip(queries, test)]))
+
+    LEXICON = {'фью шот': 'few-shot', 'зиро шот': 'zero-shot', 'ван шот': 'one-shot', 'эм эс и': 'MSE', 'эр эм эс и': 'RMSE',
+               'мае': 'MAE', 'эм бединг': 'эмбеддинг', 'гига чат': 'GigaChat', 'лэнг чейн': 'LangChain', 'нам пай': 'NumPy',
+               'пандас': 'pandas'}
+  starter: |
+    def apply_lexicon(text, lexicon):
+        for spoken in sorted(lexicon, key=...):
+            text = re.sub(..., lexicon[spoken], text)
+        return text
+
+    lexed = [apply_lexicon(h, LEXICON) for h in heard]
+    wer_lex, recall_lex = total_wer(said, lexed), recall_at_3(lexed)
+    print(round(wer_lex, 3), round(recall_lex, 3))
+  solution: |
+    def apply_lexicon(text, lexicon):
+        for spoken in sorted(lexicon, key=len, reverse=True):
+            text = re.sub(r'\b' + re.escape(spoken) + r'\b', lexicon[spoken], text)
+        return text
+
+    lexed = [apply_lexicon(h, LEXICON) for h in heard]
+    wer_lex, recall_lex = total_wer(said, lexed), recall_at_3(lexed)
+    print(round(wer_lex, 3), round(recall_lex, 3))
+  explanation: |
+    - `sorted(lexicon, key=len, reverse=True)` — звучания от длинных к коротким. В словаре «эм эс и» стоит раньше «эр эм эс и», и без сортировки «чем эр эм эс и» стало бы «чем эр MSE».
+    - `\b` с обеих сторон — звучание как целые слова, `re.escape` — на случай особых символов в звучании.
+    - WER упал вдвое — с 0,306 до 0,153, а поиск снова находит урок для вопроса о few-shot: 14 из 15, как по сказанному.
+    - Настоящие сервисы распознавания принимают такие подсказки сами — список слов и фраз, которые надо узнавать. Тогда термины распознаются сразу верно, а не чинятся после. Словарь собирают из справочника курса: каждый новый термин — ещё одна строка.
+  hints:
+    - "Длинные раньше коротких — `sorted(lexicon, key=len, reverse=True)`."
+    - "Шаблон звучания — `r'\\b' + re.escape(spoken) + r'\\b'`."
+    - "Замена — `re.sub(шаблон, lexicon[spoken], text)`."
+  tests: |
+    f = var('apply_lexicon')
+    ensure(callable(f), '`apply_lexicon` должна быть функцией.')
+    lex = {'эм эс и': 'MSE', 'эр эм эс и': 'RMSE', 'мае': 'MAE'}
+    got = f('чем эр эм эс и отличается от мае', lex)
+    if 'эр MSE' in got:
+        fail('«эм эс и» заменилось внутри «эр эм эс и». Заменяйте длинные звучания раньше коротких: sorted(lexicon, key=len, reverse=True).')
+    equal(got, 'чем RMSE отличается от MAE', 'Ожидалось {expected}, а у вас {actual}.')
+    got = f('понимаем мае', {'мае': 'MAE'})
+    if 'MAEм' in got:
+        fail('«мае» заменилось внутри слова «понимаем». Ищите звучание как целые слова: \\b с обеих сторон.')
+    equal(got, 'понимаем MAE', 'Ожидалось {expected}, а у вас {actual}.')
+    equal(f('без терминов', lex), 'без терминов', 'Текст без звучаний из словаря не меняется, а у вас {actual}.')
+    equal(var('lexed', list, 'списком'), ref('lexed'), 'Вопросы после словаря терминов — {expected}, а у вас {actual}.')
+    close(var('wer_lex', 'number', 'числом'), ref('wer_lex'), 'WER после словаря — {expected}, а у вас {actual}.')
+    close(var('recall_lex', 'number', 'числом'), ref('recall_lex'), 'Доля найденных уроков после словаря — {expected}, а у вас {actual}.')
+  files: [course_docs.json, assistant_questions.json]
+  wrong:
+    - code: |
+        def apply_lexicon(text, lexicon):
+            for spoken in lexicon:
+                text = re.sub(r'\b' + re.escape(spoken) + r'\b', lexicon[spoken], text)
+            return text
+        lexed = [apply_lexicon(h, LEXICON) for h in heard]
+        wer_lex, recall_lex = total_wer(said, lexed), recall_at_3(lexed)
+      expect: длинные звучания раньше коротких
+    - code: |
+        def apply_lexicon(text, lexicon):
+            for spoken in sorted(lexicon, key=len, reverse=True):
+                text = text.replace(spoken, lexicon[spoken])
+            return text
+        lexed = [apply_lexicon(h, LEXICON) for h in heard]
+        wer_lex, recall_lex = total_wer(said, lexed), recall_at_3(lexed)
+      expect: целые слова
+
+- id: m12-l7-t3
+  title: "Шаг 3. Склеить разорванные слова"
+  difficulty: main
+  introduces: []
+  uses: [speech-recognition-models]
+  statement: |
+    Длинные редкие слова распознаватель рвёт на части: «токен изатор». Напишите функцию `merge_split(words, known)`. Она идёт по списку слов слева направо:
+
+    - если слово и следующее за ним вместе образуют слово из множества `known`, а хотя бы одного из двух в `known` нет, — склеить их и перейти через одно;
+    - иначе оставить слово как есть.
+
+    `known` — все слова текстов курса. Получите:
+
+    - `fixed` — вопросы `lexed` (после словаря терминов) после склейки: слова через пробел;
+    - `wer_fixed` и `recall_fixed`;
+    - `still_wrong` — сказанные вопросы, у которых после всех исправлений WER больше нуля.
+  prelude: |
+    import json
+    import re
+    import numpy as np
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    with open('assistant_questions.json', encoding='utf-8') as fh:
+        questions = json.load(fh)['questions']
+    test = [q for q in questions if q['part'] == 'test' and q['about_course']]
+    said = [q['question'] for q in test]
+    heard = ['зачем нужна валидационная выборка', 'почему нельзя хранить ключ авторизации в коте', 'как заполнить пропуски в таблице',
+             'зачем стандарт изировать признаки', 'что показывает коэффициент дети нации', 'что такое эм бединг слова',
+             'чем фью шот отличается от зиро шот', 'зачем нужна логарифмическая шкала на графике', 'что делает функция активации в нейроне',
+             'что такое токен изатор', 'как сгруппировать таблицу и посчитать средней', 'что такое случайный вес',
+             'как читать бокс плот', 'как работает обратное распространение ошибки', 'чем эр эм эс и отличается от мае']
+
+    def to_words(text):
+        return re.findall(r'[a-zа-яё0-9]+', text.lower())
+
+    def levenshtein(a, b):
+        prev = list(range(len(b) + 1))
+        for i in range(1, len(a) + 1):
+            cur = [i] + [0] * len(b)
+            for j in range(1, len(b) + 1):
+                cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] != b[j - 1]))
+            prev = cur
+        return prev[-1]
+
+    texts = [d['lesson_title'] + '. ' + d['section'] + '. ' + d['text'] for d in docs]
+    lessons = [d['lesson'] for d in docs]
+    vectorizer = TfidfVectorizer(analyzer='char_wb', ngram_range=(3, 5))
+    X = vectorizer.fit_transform(texts)
+
+    def top_lessons(query, k=3):
+        scores = (X @ vectorizer.transform([query]).T).toarray().ravel()
+        return [lessons[i] for i in np.argsort(-scores)[:k]]
+
+    def total_wer(refs, hyps):
+        errors = sum(levenshtein(to_words(r), to_words(h)) for r, h in zip(refs, hyps))
+        return errors / sum(len(to_words(r)) for r in refs)
+
+    def recall_at_3(queries):
+        return float(np.mean([any(l in q['lessons'] for l in top_lessons(query, 3)) for query, q in zip(queries, test)]))
+
+    LEXICON = {'фью шот': 'few-shot', 'зиро шот': 'zero-shot', 'ван шот': 'one-shot', 'эм эс и': 'MSE', 'эр эм эс и': 'RMSE',
+               'мае': 'MAE', 'эм бединг': 'эмбеддинг', 'гига чат': 'GigaChat', 'лэнг чейн': 'LangChain', 'нам пай': 'NumPy',
+               'пандас': 'pandas'}
+
+    def apply_lexicon(text, lexicon):
+        for spoken in sorted(lexicon, key=len, reverse=True):
+            text = re.sub(r'\b' + re.escape(spoken) + r'\b', lexicon[spoken], text)
+        return text
+
+    lexed = [apply_lexicon(h, LEXICON) for h in heard]
+    known = {w for t in texts for w in to_words(t)}
+  starter: |
+    def merge_split(words, known):
+        out, i = [], 0
+        while i < len(words):
+            if i + 1 < len(words) and ...:
+                out.append(words[i] + words[i + 1])
+                i += 2
+            else:
+                out.append(words[i])
+                i += 1
+        return out
+
+    fixed = [' '.join(merge_split(to_words(t), known)) for t in lexed]
+    wer_fixed, recall_fixed = total_wer(said, fixed), recall_at_3(fixed)
+    still_wrong = ...
+    print(round(wer_fixed, 3), round(recall_fixed, 3), still_wrong)
+  solution: |
+    def merge_split(words, known):
+        out, i = [], 0
+        while i < len(words):
+            if i + 1 < len(words) and words[i] + words[i + 1] in known and (words[i] not in known or words[i + 1] not in known):
+                out.append(words[i] + words[i + 1])
+                i += 2
+            else:
+                out.append(words[i])
+                i += 1
+        return out
+
+    fixed = [' '.join(merge_split(to_words(t), known)) for t in lexed]
+    wer_fixed, recall_fixed = total_wer(said, fixed), recall_at_3(fixed)
+    still_wrong = [s for s, f in zip(said, fixed) if levenshtein(to_words(s), to_words(f)) > 0]
+    print(round(wer_fixed, 3), round(recall_fixed, 3), still_wrong)
+  explanation: |
+    - Условие «хотя бы одного из двух слов нет в словаре» защищает настоящие пары слов. «На пример» могли сказать и так — склеивать две известные части опасно. А «изатор» — не слово, значит, это обрывок.
+    - После склейки `i += 2`: следующее слово уже вошло в склеенное и второй раз не используется.
+    - «Токен изатор» и «бокс плот» склеились, WER упал до 0,097 — втрое меньше, чем у распознанного текста. Поиск находит урок по-прежнему для 14 вопросов из 15: символьным n-граммам разрывы почти не мешали.
+    - Остались пять вопросов с ошибками. «Стандарт изировать» склеить не получилось: слова «стандартизировать» в текстах курса нет. Остальные четыре ошибки — настоящие слова: «коте», «дети нации», «средней», «вес». Их по словарю не исправить. Нужна языковая модель, которая знает, что «случайный лес» встречается, а «случайный вес» — нет (урок 12.5), или подсказки распознавателю.
+  hints:
+    - "Склеенное слово — `words[i] + words[i + 1]`; оно должно быть в `known`."
+    - "Хотя бы одной части нет в словаре — `words[i] not in known or words[i + 1] not in known`."
+    - "`still_wrong` — `[s for s, f in zip(said, fixed) if levenshtein(to_words(s), to_words(f)) > 0]`."
+  tests: |
+    f = var('merge_split')
+    ensure(callable(f), '`merge_split` должна быть функцией.')
+    kn = {'токенизатор', 'токен', 'например', 'на', 'пример', 'боксплот', 'бокс', 'так'}
+    got = f(['что', 'такое', 'токен', 'изатор'], kn)
+    if got == ['что', 'такое', 'токенизатор', 'изатор']:
+        fail('После склейки следующее слово уже вошло в склеенное — переходите через одно: i += 2.')
+    equal(got, ['что', 'такое', 'токенизатор'], 'Ожидалось {expected}, а у вас {actual}.')
+    got = f(['на', 'пример', 'так'], kn)
+    if got == ['например', 'так']:
+        fail('Обе части — известные слова: «на пример» могли сказать и так. Склеивайте, только если хотя бы одной из частей нет в словаре.')
+    equal(got, ['на', 'пример', 'так'], 'Ожидалось {expected}, а у вас {actual}.')
+    got = f(['бокс', 'плот', 'плот'], kn)
+    if got == ['боксплот', 'плот', 'плот']:
+        fail('После склейки следующее слово уже вошло в склеенное — переходите через одно: i += 2.')
+    equal(got, ['боксплот', 'плот'], 'Ожидалось {expected}, а у вас {actual}.')
+    equal(f([], kn), [], 'Пустой список остаётся пустым.')
+    equal(var('fixed', list, 'списком'), ref('fixed'), 'Вопросы после склейки — {expected}, а у вас {actual}.')
+    close(var('wer_fixed', 'number', 'числом'), ref('wer_fixed'), 'WER после всех исправлений — {expected}, а у вас {actual}.')
+    close(var('recall_fixed', 'number', 'числом'), ref('recall_fixed'), 'Доля найденных уроков — {expected}, а у вас {actual}.')
+    equal(var('still_wrong', list, 'списком'), ref('still_wrong'), 'Вопросы с ошибками после исправлений — {expected}, а у вас {actual}.')
+  files: [course_docs.json, assistant_questions.json]
+  wrong:
+    - code: |
+        def merge_split(words, known):
+            out, i = [], 0
+            while i < len(words):
+                if i + 1 < len(words) and words[i] + words[i + 1] in known:
+                    out.append(words[i] + words[i + 1])
+                    i += 2
+                else:
+                    out.append(words[i])
+                    i += 1
+            return out
+        fixed = [' '.join(merge_split(to_words(t), known)) for t in lexed]
+        wer_fixed, recall_fixed = total_wer(said, fixed), recall_at_3(fixed)
+        still_wrong = [s for s, f in zip(said, fixed) if levenshtein(to_words(s), to_words(f)) > 0]
+      expect: Обе части — известные слова
+    - code: |
+        def merge_split(words, known):
+            out = []
+            for i in range(len(words)):
+                if i + 1 < len(words) and words[i] + words[i + 1] in known and (words[i] not in known or words[i + 1] not in known):
+                    out.append(words[i] + words[i + 1])
+                else:
+                    out.append(words[i])
+            return out
+        fixed = [' '.join(merge_split(to_words(t), known)) for t in lexed]
+        wer_fixed, recall_fixed = total_wer(said, fixed), recall_at_3(fixed)
+        still_wrong = [s for s, f in zip(said, fixed) if levenshtein(to_words(s), to_words(f)) > 0]
+      expect: переходите через одно
+
+- id: m12-l7-t4
+  title: "Шаг 4. Ответ голосом"
+  difficulty: main
+  introduces: []
+  uses: [speech-synthesis, document-search]
+  statement: |
+    Помощник отвечает ссылкой на урок, где искать ответ: «Об этом — в уроке 5.3.». Синтезатор прочитает «5.3» как попало, поэтому номер урока нужно написать словами: «пять точка три».
+
+    1. Напишите функцию `speak_lessons(text)`: каждый номер вида «модуль.урок» заменить словами через «точка». Обе части — числа до 999, их читает функция `say_number` из урока 12.5.
+    2. Для каждого исправленного вопроса `fixed` возьмите урок лучшего раздела — `top_lessons(вопрос, 1)[0]` — и составьте ответ `f'Об этом — в уроке {урок}.'`. Получите `answers` — ответы как текст и `spoken` — они же, готовые к синтезу.
+    3. `correct_share` — доля вопросов, у которых урок ответа есть в разметке `test[i]['lessons']`.
+  prelude: |
+    import json
+    import re
+    import numpy as np
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    with open('assistant_questions.json', encoding='utf-8') as fh:
+        questions = json.load(fh)['questions']
+    test = [q for q in questions if q['part'] == 'test' and q['about_course']]
+    fixed = ['зачем нужна валидационная выборка', 'почему нельзя хранить ключ авторизации в коте', 'как заполнить пропуски в таблице',
+             'зачем стандарт изировать признаки', 'что показывает коэффициент дети нации', 'что такое эмбеддинг слова',
+             'чем few shot отличается от zero shot', 'зачем нужна логарифмическая шкала на графике', 'что делает функция активации в нейроне',
+             'что такое токенизатор', 'как сгруппировать таблицу и посчитать средней', 'что такое случайный вес',
+             'как читать боксплот', 'как работает обратное распространение ошибки', 'чем rmse отличается от mae']
+    texts = [d['lesson_title'] + '. ' + d['section'] + '. ' + d['text'] for d in docs]
+    lessons = [d['lesson'] for d in docs]
+    vectorizer = TfidfVectorizer(analyzer='char_wb', ngram_range=(3, 5))
+    X = vectorizer.fit_transform(texts)
+
+    def top_lessons(query, k=3):
+        scores = (X @ vectorizer.transform([query]).T).toarray().ravel()
+        return [lessons[i] for i in np.argsort(-scores)[:k]]
+
+    ONES = ['ноль', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять', 'десять',
+            'одиннадцать', 'двенадцать', 'тринадцать', 'четырнадцать', 'пятнадцать', 'шестнадцать',
+            'семнадцать', 'восемнадцать', 'девятнадцать']
+    TENS = ['', '', 'двадцать', 'тридцать', 'сорок', 'пятьдесят', 'шестьдесят', 'семьдесят', 'восемьдесят', 'девяносто']
+    HUNDREDS = ['', 'сто', 'двести', 'триста', 'четыреста', 'пятьсот', 'шестьсот', 'семьсот', 'восемьсот', 'девятьсот']
+
+    def say_number(k):
+        """Число от 0 до 999 словами."""
+        if k == 0:
+            return 'ноль'
+        h, rest = divmod(k, 100)
+        parts = [HUNDREDS[h]] if h else []
+        if rest >= 20:
+            parts.append(TENS[rest // 10])
+            if rest % 10:
+                parts.append(ONES[rest % 10])
+        elif rest:
+            parts.append(ONES[rest])
+        return ' '.join(parts)
+  starter: |
+    def speak_lessons(text):
+        return re.sub(r'(\d+)\.(\d+)', lambda m: ..., text)
+
+    answers = [f'Об этом — в уроке {top_lessons(q, 1)[0]}.' for q in fixed]
+    spoken = [speak_lessons(a) for a in answers]
+    correct_share = ...
+    print(*spoken[:3], sep='\n')
+    print(correct_share)
+  solution: |
+    def speak_lessons(text):
+        return re.sub(r'(\d+)\.(\d+)', lambda m: say_number(int(m.group(1))) + ' точка ' + say_number(int(m.group(2))), text)
+
+    answers = [f'Об этом — в уроке {top_lessons(q, 1)[0]}.' for q in fixed]
+    spoken = [speak_lessons(a) for a in answers]
+    correct_share = float(np.mean([top_lessons(q, 1)[0] in t['lessons'] for q, t in zip(fixed, test)]))
+    print(*spoken[:3], sep='\n')
+    print(correct_share)
+  explanation: |
+    - Шаблон `(\d+)\.(\d+)` — две группы цифр через точку. `\d+` берёт и двузначные номера, поэтому «10.1» читается «десять точка один», а не «один ноль…».
+    - Точка в конце предложения не мешает: после неё нет цифры, и шаблон её не захватывает.
+    - Лучший раздел указывает на правильный урок в 12 случаях из 15 — 80 %, а среди трёх лучших нужный урок есть в 14 из 15. Поэтому в уроке 11.9 помощник смотрел на несколько разделов, а уверенность проверял порогом.
+    - Номер урока — короткая сущность, но без подготовки синтезатор прочитал бы «пять и три десятых». Каждый вид сущностей — числа, даты, проценты, номера — требует своего правила.
+  hints:
+    - "Части номера — `m.group(1)` и `m.group(2)`; обе превращаются в числа `int(...)` и читаются `say_number`."
+    - "Замена — `say_number(int(m.group(1))) + ' точка ' + say_number(int(m.group(2)))`."
+    - "`correct_share` — среднее от `top_lessons(q, 1)[0] in t['lessons']` по парам `zip(fixed, test)`."
+  tests: |
+    f = var('speak_lessons')
+    ensure(callable(f), '`speak_lessons` должна быть функцией.')
+    got = f('уроки 10.1 и 9.12')
+    if 'ноль' in got:
+        fail('Номера бывают двузначными: «10.1» — это «десять точка один». Берите все цифры подряд: (\\d+).')
+    if got == 'уроки десять один и девять двенадцать':
+        fail('Между частями номера — слово «точка».')
+    equal(got, 'уроки десять точка один и девять точка двенадцать', 'Ожидалось {expected}, а у вас {actual}.')
+    equal(f('Смотрите урок 5.3.'), 'Смотрите урок пять точка три.', 'Точка в конце предложения остаётся. Ожидалось {expected}, а у вас {actual}.')
+    equal(f('В 2026 году'), 'В 2026 году', 'Числа без точки — не номера уроков, их не трогаем. А у вас {actual}.')
+    equal(var('answers', list, 'списком'), ref('answers'), 'Ответы — {expected}, а у вас {actual}.')
+    equal(var('spoken', list, 'списком'), ref('spoken'), 'Ответы для синтеза — {expected}, а у вас {actual}.')
+    close(var('correct_share', 'number', 'числом'), ref('correct_share'), 'Доля верных ссылок — {expected}, а у вас {actual}.')
+  files: [course_docs.json, assistant_questions.json]
+  wrong:
+    - code: |
+        def speak_lessons(text):
+            return re.sub(r'(\d)\.(\d)', lambda m: say_number(int(m.group(1))) + ' точка ' + say_number(int(m.group(2))), text)
+        answers = [f'Об этом — в уроке {top_lessons(q, 1)[0]}.' for q in fixed]
+        spoken = [speak_lessons(a) for a in answers]
+        correct_share = float(np.mean([top_lessons(q, 1)[0] in t['lessons'] for q, t in zip(fixed, test)]))
+      expect: Номера бывают двузначными
+    - code: |
+        def speak_lessons(text):
+            return re.sub(r'(\d+)\.(\d+)', lambda m: say_number(int(m.group(1))) + ' ' + say_number(int(m.group(2))), text)
+        answers = [f'Об этом — в уроке {top_lessons(q, 1)[0]}.' for q in fixed]
+        spoken = [speak_lessons(a) for a in answers]
+        correct_share = float(np.mean([top_lessons(q, 1)[0] in t['lessons'] for q, t in zip(fixed, test)]))
+      expect: слово «точка»
+
+- id: m12-l7-t5
+  title: "Шаг 5. Что на картинке"
+  difficulty: main
+  introduces: []
+  uses: [zero-shot]
+  statement: |
+    Вторая ветка помощника — картинки. Напишите функцию `zero_shot(image_emb, text_emb, classes)`: для каждой картинки — класс подписи с наибольшим скалярным произведением векторов. Векторы нормированы, так что это косинусы (урок 9.7). Посчитайте все произведения сразу, одной матрицей.
+
+    Возьмите подписи варианта `'photo'` — «a photo of a elephant.» — и получите:
+
+    - `pred` — ответы для всех 706 картинок;
+    - `accuracy` — долю верных (правильный класс — столбец `class` таблицы `images`);
+    - `acc_by_language` — словарь «язык названия класса → доля верных» по столбцу `language`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    images = pd.read_csv('zs_public.csv')
+    image_emb = np.load('zs_public.npy').astype(np.float32)        # 706 × 512, строки длины 1
+    with np.load('zs_prompts.npz') as data:
+        prompt_variant = data['variant']
+        prompt_class = np.array([str(c) for c in data['class']])
+        prompt_emb = data['emb'].astype(np.float32)                 # 3490 × 512
+  starter: |
+    def zero_shot(image_emb, text_emb, classes):
+        S = ...
+        return np.asarray(classes)[S.argmax(axis=...)]
+
+    is_photo = prompt_variant == 'photo'
+    pred = zero_shot(image_emb, prompt_emb[is_photo], prompt_class[is_photo])
+    correct = pred == images['class'].to_numpy()
+    accuracy = float(correct.mean())
+    acc_by_language = ...
+    print(round(accuracy, 3), acc_by_language)
+  solution: |
+    def zero_shot(image_emb, text_emb, classes):
+        S = image_emb @ text_emb.T
+        return np.asarray(classes)[S.argmax(axis=1)]
+
+    is_photo = prompt_variant == 'photo'
+    pred = zero_shot(image_emb, prompt_emb[is_photo], prompt_class[is_photo])
+    correct = pred == images['class'].to_numpy()
+    accuracy = float(correct.mean())
+    acc_by_language = images.assign(ok=correct).groupby('language')['ok'].mean().to_dict()
+    print(round(accuracy, 3), acc_by_language)
+  explanation: |
+    - `image_emb @ text_emb.T` — матрица 706 × 349: косинус каждой картинки с каждой подписью. `argmax(axis=1)` — номер лучшей подписи в каждой строке, то есть для каждой картинки.
+    - С подписями «a photo of a …» по английским названиям CLIP узнаёт 79,9 % картинок. С подписями pipeline по исходным названиям было 59,5 % (урок 9.7).
+    - По языкам названий: английские — 81,8 %, латинские — 78,8 %, испанские — 50 %. В варианте `'photo'` подписи уже переведены на английский, но из 14 испанских картинок ошибок 7. Три из них — то же животное под латинским названием: «cocodrilo» → «crocodylus-niloticus», «flamenco» → «phoenicopterus-ruber». Такие ошибки исправляет не модель, а разметка (урок 9.7).
+    - Помощнику мало сказать, что на картинке: нужно знать, когда он не уверен. Это следующий шаг.
+  hints:
+    - "Все косинусы сразу — `image_emb @ text_emb.T`: строки — картинки, столбцы — подписи."
+    - "Лучшая подпись для каждой картинки — `S.argmax(axis=1)`."
+    - "Доли по языкам — `images.assign(ok=correct).groupby('language')['ok'].mean().to_dict()`."
+  tests: |
+    import numpy as np
+    f = var('zero_shot')
+    ensure(callable(f), '`zero_shot` должна быть функцией.')
+    img = np.array([[1.0, 0.0], [0.0, 1.0], [0.6, 0.8]])
+    txt = np.array([[1.0, 0.0], [0.0, 1.0]])
+    got = list(np.asarray(f(img, txt, ['a', 'b'])))
+    if len(got) == 2:
+        fail('Ответов столько, сколько подписей, а нужно — сколько картинок. Ищите максимум по строкам: argmax(axis=1).')
+    equal(got, ['a', 'b', 'b'], 'Для трёх картинок ожидалось {expected}, а у вас {actual}.')
+    acc = var('accuracy', 'number', 'числом')
+    if abs(acc - 0.595) < 0.005:
+        fail('Это доля верных с подписями pipeline. Возьмите подписи варианта photo: prompt_variant == "photo".')
+    close(acc, ref('accuracy'), 'Доля верных — {expected}, а у вас {actual}. Сравнивайте ответы со столбцом class таблицы images.')
+    by = var('acc_by_language', dict, 'словарём')
+    exp = ref('acc_by_language')
+    equal(sorted(by), sorted(exp), 'Языки — {expected}, а у вас {actual}.')
+    for k in exp:
+        close(by[k], exp[k], 'Доля верных для языка ' + k + ' — {expected}, а у вас {actual}.')
+  files: [zs_public.csv, zs_public.npy, zs_prompts.npz]
+  wrong:
+    - code: |
+        def zero_shot(image_emb, text_emb, classes):
+            S = image_emb @ text_emb.T
+            return np.asarray(classes)[S.argmax(axis=1)]
+        is_photo = prompt_variant == 'photo'
+        pred = zero_shot(image_emb, prompt_emb[is_photo], prompt_class[is_photo])
+        correct = pred == images['english'].to_numpy()
+        accuracy = float(correct.mean())
+        acc_by_language = images.assign(ok=correct).groupby('language')['ok'].mean().to_dict()
+      expect: столбцом class
+    - code: |
+        def zero_shot(image_emb, text_emb, classes):
+            S = image_emb @ text_emb.T
+            return np.asarray(classes)[S.argmax(axis=1)]
+        is_pipe = prompt_variant == 'pipeline'
+        pred = zero_shot(image_emb, prompt_emb[is_pipe], prompt_class[is_pipe])
+        correct = pred == images['class'].to_numpy()
+        accuracy = float(correct.mean())
+        acc_by_language = images.assign(ok=correct).groupby('language')['ok'].mean().to_dict()
+      expect: photo
+
+- id: m12-l7-t6
+  title: "Шаг 6. Не уверен — переспроси"
+  difficulty: main
+  introduces: []
+  uses: [zero-shot, ai-risks]
+  statement: |
+    Уверенность CLIP — вероятность лучшего класса: softmax от косинусов, умноженных на 100 (урок 9.7). Напишите функцию `confidence(S)`: для каждой строки матрицы косинусов `S` — наибольшую вероятность. Перед `np.exp` вычтите из каждой строки её максимум, иначе `exp` переполнится.
+
+    Помощник отвечает, только если уверенность не меньше порога, а иначе переспрашивает. Для порогов `ths` (0.05, 0.10, …, 0.95) найдите:
+
+    - `best_th` — наименьший порог, при котором доля верных среди отвеченных не меньше 0.9;
+    - `coverage` — долю картинок, на которые помощник при этом пороге ответит.
+
+    Косинусы `S` и маска верных ответов `correct` из шага 5 уже посчитаны.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    images = pd.read_csv('zs_public.csv')
+    image_emb = np.load('zs_public.npy').astype(np.float32)
+    with np.load('zs_prompts.npz') as data:
+        is_photo = data['variant'] == 'photo'
+        classes = np.array([str(c) for c in data['class'][is_photo]])
+        text_emb = data['emb'][is_photo].astype(np.float32)
+    S = image_emb @ text_emb.T
+    correct = classes[S.argmax(axis=1)] == images['class'].to_numpy()
+    ths = np.round(np.arange(0.05, 1.0, 0.05), 2)
+  starter: |
+    def confidence(S):
+        Z = 100 * S
+        Z = Z - ...
+        P = np.exp(Z)
+        P = P / P.sum(axis=1, keepdims=True)
+        return P.max(axis=1)
+
+    conf = confidence(S)
+    ok_ths = [th for th in ths if correct[conf >= th].mean() >= 0.9]
+    best_th = ...
+    coverage = float((conf >= best_th).mean())
+    print(best_th, round(coverage, 3), round(float(correct[conf >= best_th].mean()), 3))
+  solution: |
+    def confidence(S):
+        Z = 100 * S
+        Z = Z - Z.max(axis=1, keepdims=True)
+        P = np.exp(Z)
+        P = P / P.sum(axis=1, keepdims=True)
+        return P.max(axis=1)
+
+    conf = confidence(S)
+    ok_ths = [th for th in ths if correct[conf >= th].mean() >= 0.9]
+    best_th = float(min(ok_ths))
+    coverage = float((conf >= best_th).mean())
+    print(best_th, round(coverage, 3), round(float(correct[conf >= best_th].mean()), 3))
+  explanation: |
+    - `Z.max(axis=1, keepdims=True)` — максимум каждой строки столбцом, чтобы вычитание шло построчно. Softmax от этого не меняется, а `exp` больше не видит чисел вроде 1000.
+    - Без порога помощник отвечает на всё и прав в 79,9 % случаев. С порогом 0,55 он отвечает на 77,2 % картинок, зато прав в 90,5 % ответов. На оставшиеся 22,8 % он переспрашивает — и среди них ошибок было бы больше половины.
+    - Чем выше порог, тем точнее ответы и тем реже помощник решается ответить: при 0,9 — 98,3 % верных, но только на половину картинок. Где остановиться, решает цена ошибки (урок 12.6): неверный ответ про еду безобиден, а про ядовитый гриб — нет.
+  hints:
+    - "Максимум каждой строки столбцом — `Z.max(axis=1, keepdims=True)`."
+    - "Подходящие пороги уже в `ok_ths`; нужен наименьший — `min(ok_ths)`."
+    - "Доля отвеченных — `(conf >= best_th).mean()`."
+  tests: |
+    import numpy as np
+    f = var('confidence')
+    ensure(callable(f), '`confidence` должна быть функцией.')
+    got = np.asarray(f(np.array([[0.30, 0.28, 0.10], [0.2, 0.2, 0.2]])))
+    if abs(got[0] - 0.3573) < 0.01:
+        fail('Косинусы перед softmax умножают на 100 — как в CLIP. Без этого вероятности почти равны.')
+    same_array(got, [1 / (1 + np.exp(-2) + np.exp(-20)), 1 / 3], 'Для косинусов [0.30, 0.28, 0.10] уверенность ≈ 0.881, для трёх равных — 1/3.')
+    big = np.asarray(f(np.array([[10.0, 9.0]])))
+    ensure(np.isfinite(big).all(), 'Получилось nan: exp(1000) переполнился. Вычтите из каждой строки её максимум перед np.exp.')
+    close(var('best_th', 'number', 'числом'), ref('best_th'), 'Наименьший порог с долей верных не меньше 0.9 — {expected}, а у вас {actual}.')
+    close(var('coverage', 'number', 'числом'), ref('coverage'), 'При этом пороге помощник отвечает на долю {expected} картинок, а у вас {actual}.')
+  files: [zs_public.csv, zs_public.npy, zs_prompts.npz]
+  wrong:
+    - code: |
+        def confidence(S):
+            Z = S - S.max(axis=1, keepdims=True)
+            P = np.exp(Z)
+            P = P / P.sum(axis=1, keepdims=True)
+            return P.max(axis=1)
+        conf = confidence(S)
+        ok_ths = [th for th in ths if correct[conf >= th].mean() >= 0.9] or [0.95]
+        best_th = float(min(ok_ths))
+        coverage = float((conf >= best_th).mean())
+      expect: умножают на 100
+    - code: |
+        def confidence(S):
+            Z = 100 * S
+            Z = Z - Z.max(axis=1, keepdims=True)
+            P = np.exp(Z)
+            P = P / P.sum(axis=1, keepdims=True)
+            return P.max(axis=1)
+        conf = confidence(S)
+        ok_ths = [th for th in ths if correct[conf >= th].mean() >= 0.9]
+        best_th = float(max(ok_ths))
+        coverage = float((conf >= best_th).mean())
+      expect: Наименьший порог
+
+- id: m12-l7-t7
+  kind: quiz
+  title: "Шаг 7. Выводы"
+  difficulty: main
+  introduces: []
+  uses: [speech-recognition-models, ai-risks]
+  statement: |
+    Подведите итоги проекта.
+  quiz:
+    - q: Почему исправитель опечаток из урока 12.4 ухудшил распознанный текст?
+      options:
+        - Ошибки распознавания — настоящие слова, а редкие правильные слова исправитель меняет на частые
+        - Исправитель работает только с английским языком
+        - В распознанном тексте нет ошибок
+      answer: 0
+      explain: "WER вырос с 0,306 до 0,333: «валидационная» стала «валидационных», «фью шот» — «всю от». Инструмент выбирают под вид ошибок."
+    - q: Что дал словарь терминов?
+      options:
+        - WER упал вдвое, а поиск снова нашёл урок для вопроса о few-shot
+        - Поиск стал находить урок для всех 15 вопросов
+        - Ничего — поиск по n-граммам и так всё находил
+      answer: 0
+      explain: "Вопрос про коэффициент детерминации поиск не находит даже в точной формулировке: в уроке говорят «R²»."
+    - q: После всех исправлений остались «кот» вместо «код» и «вес» вместо «лес». Что поможет?
+      options:
+        - Языковая модель, которая знает, какие сочетания слов бывают, или подсказки распознавателю
+        - Ещё один проход исправителя опечаток
+        - Склейка слов с порогом поменьше
+      answer: 0
+      explain: Это настоящие слова — по словарю их не отличить. «Случайный лес» от «случайного веса» отличает знание о том, какие фразы встречаются (урок 12.5).
+    - q: С порогом уверенности 0,55 помощник отвечает только на 77 % картинок. Зачем отказываться от остальных?
+      options:
+        - Среди отвеченных 90,5 % верных против 80 % без порога; на сомнительных честнее переспросить
+        - Чтобы помощник работал быстрее
+        - Порог нужен только для отчёта
+      answer: 0
+      explain: Отказ от ответа — тоже решение. Его цена — неудобство пользователя, а цена уверенной ошибки бывает намного выше (урок 12.6).
+  hints:
+    - Вспомните шаги 1–3 и пример из урока.
+    - "Ошибки распознавания — настоящие слова; словарь терминов вернул вопрос о few-shot; «кот» и «вес» отличает только контекст; порог меняет охват на точность."
+    - "Ответы: первый вариант во всех четырёх вопросах."

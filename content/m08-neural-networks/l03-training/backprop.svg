@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 292" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="Обратное распространение ошибки в сети с одним скрытым слоем. Прямой проход слева направо: батч X из 256 строк и 4 признаков, Z = X·W1 + b1 (256 на 16), H = ReLU(Z), прогноз ŷ = H·w2 + b2, потери L — среднее квадратов ошибок. Обратный проход справа налево: ошибка выхода e = 2(ŷ − t)/n; градиенты выходного слоя ∂L/∂w2 = Hᵀ·e и ∂L/∂b2 = сумма e; ошибка скрытого слоя ∂L/∂H = e·w2ᵀ; ReLU пропускает её только у активных нейронов: ∂L/∂Z = ∂L/∂H · [Z > 0]; градиенты первого слоя ∂L/∂W1 = Xᵀ·∂L/∂Z и ∂L/∂b1 — сумма по строкам. Затем все параметры сдвигаются против своих градиентов; проход по всем батчам train — одна эпоха.">
+  <defs>
+    <marker id="bp-f" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#3d5bd9"/></marker>
+    <marker id="bp-b" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#c2410c"/></marker>
+  </defs>
+  <text x="12" y="20" fill="#3d5bd9" font-weight="700">Прямой проход →</text>
+  <rect x="12" y="30" width="136" height="50" rx="6" fill="#3d5bd9" fill-opacity="0.10" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="80.0" y="51" fill="currentColor" text-anchor="middle" font-weight="700"><tspan>вход X</tspan></text>
+  <text x="80.0" y="69" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11"><tspan>батч: 256 × 4</tspan></text>
+  <rect x="162" y="30" width="136" height="50" rx="6" fill="#3d5bd9" fill-opacity="0.10" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="230.0" y="51" fill="currentColor" text-anchor="middle" font-weight="700"><tspan>Z = X·W</tspan><tspan dy="3" font-size="9">1</tspan><tspan dy="-3"> + b</tspan><tspan dy="3" font-size="9">1</tspan><tspan dy="-3"></tspan></text>
+  <text x="230.0" y="69" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11"><tspan>256 × 16</tspan></text>
+  <rect x="312" y="30" width="136" height="50" rx="6" fill="#3d5bd9" fill-opacity="0.10" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="380.0" y="51" fill="currentColor" text-anchor="middle" font-weight="700"><tspan>H = ReLU(Z)</tspan></text>
+  <text x="380.0" y="69" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11"><tspan>256 × 16</tspan></text>
+  <rect x="462" y="30" width="136" height="50" rx="6" fill="#3d5bd9" fill-opacity="0.10" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="530.0" y="51" fill="currentColor" text-anchor="middle" font-weight="700"><tspan>ŷ = H·w</tspan><tspan dy="3" font-size="9">2</tspan><tspan dy="-3"> + b</tspan><tspan dy="3" font-size="9">2</tspan><tspan dy="-3"></tspan></text>
+  <text x="530.0" y="69" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11"><tspan>256 прогнозов</tspan></text>
+  <rect x="612" y="30" width="136" height="50" rx="6" fill="#3d5bd9" fill-opacity="0.10" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="680.0" y="51" fill="currentColor" text-anchor="middle" font-weight="700"><tspan>L = MSE(ŷ, t)</tspan></text>
+  <text x="680.0" y="69" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11"><tspan>среднее (ŷ − t)</tspan><tspan dy="-4" font-size="9">2</tspan><tspan dy="4"></tspan></text>
+  <line x1="150" y1="55.0" x2="160" y2="55.0" stroke="#3d5bd9" stroke-width="1.6" marker-end="url(#bp-f)"/>
+  <line x1="300" y1="55.0" x2="310" y2="55.0" stroke="#3d5bd9" stroke-width="1.6" marker-end="url(#bp-f)"/>
+  <line x1="450" y1="55.0" x2="460" y2="55.0" stroke="#3d5bd9" stroke-width="1.6" marker-end="url(#bp-f)"/>
+  <line x1="600" y1="55.0" x2="610" y2="55.0" stroke="#3d5bd9" stroke-width="1.6" marker-end="url(#bp-f)"/>
+  <text x="748" y="128" fill="#c2410c" font-weight="700" text-anchor="end">← Обратный проход: градиенты по правилу цепочки</text>
+  <line x1="80.0" y1="82" x2="80.0" y2="114" stroke="currentColor" stroke-opacity="0.25" stroke-dasharray="3 3"/>
+  <rect x="12" y="140" width="136" height="52" rx="6" fill="#c2410c" fill-opacity="0.10" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="80.0" y="161" fill="currentColor" text-anchor="middle" font-size="11" font-weight="700"><tspan>∂L/∂W</tspan><tspan dy="3" font-size="9">1</tspan><tspan dy="-3"> = X</tspan><tspan dy="-4" font-size="9">T</tspan><tspan dy="4">·∂L/∂Z</tspan></text>
+  <text x="80.0" y="180" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11"><tspan>∂L/∂b</tspan><tspan dy="3" font-size="9">1</tspan><tspan dy="-3"> — сумма строк</tspan></text>
+  <line x1="230.0" y1="82" x2="230.0" y2="114" stroke="currentColor" stroke-opacity="0.25" stroke-dasharray="3 3"/>
+  <rect x="162" y="140" width="136" height="52" rx="6" fill="#c2410c" fill-opacity="0.10" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="230.0" y="161" fill="currentColor" text-anchor="middle" font-size="11" font-weight="700"><tspan>∂L/∂Z = ∂L/∂H·[Z > 0]</tspan></text>
+  <text x="230.0" y="180" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11"><tspan>ReLU пропускает ошибку</tspan></text>
+  <line x1="380.0" y1="82" x2="380.0" y2="114" stroke="currentColor" stroke-opacity="0.25" stroke-dasharray="3 3"/>
+  <rect x="312" y="140" width="136" height="52" rx="6" fill="#c2410c" fill-opacity="0.10" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="380.0" y="161" fill="currentColor" text-anchor="middle" font-size="11" font-weight="700"><tspan>∂L/∂H = e·w</tspan><tspan dy="3" font-size="9">2</tspan><tspan dy="-7" font-size="9">T</tspan><tspan dy="4"></tspan></text>
+  <text x="380.0" y="180" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11"><tspan>ошибка — нейронам</tspan></text>
+  <line x1="530.0" y1="82" x2="530.0" y2="114" stroke="currentColor" stroke-opacity="0.25" stroke-dasharray="3 3"/>
+  <rect x="462" y="140" width="136" height="52" rx="6" fill="#c2410c" fill-opacity="0.10" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="530.0" y="161" fill="currentColor" text-anchor="middle" font-size="11" font-weight="700"><tspan>∂L/∂w</tspan><tspan dy="3" font-size="9">2</tspan><tspan dy="-3"> = H</tspan><tspan dy="-4" font-size="9">T</tspan><tspan dy="4">·e</tspan></text>
+  <text x="530.0" y="180" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11"><tspan>∂L/∂b</tspan><tspan dy="3" font-size="9">2</tspan><tspan dy="-3"> = сумма e</tspan></text>
+  <line x1="680.0" y1="82" x2="680.0" y2="114" stroke="currentColor" stroke-opacity="0.25" stroke-dasharray="3 3"/>
+  <rect x="612" y="140" width="136" height="52" rx="6" fill="#c2410c" fill-opacity="0.10" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="680.0" y="161" fill="currentColor" text-anchor="middle" font-size="11" font-weight="700"><tspan>e = 2(ŷ − t) / n</tspan></text>
+  <text x="680.0" y="180" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11"><tspan>ошибка выхода</tspan></text>
+  <line x1="160" y1="166.0" x2="150" y2="166.0" stroke="#c2410c" stroke-width="1.6" marker-end="url(#bp-b)"/>
+  <line x1="310" y1="166.0" x2="300" y2="166.0" stroke="#c2410c" stroke-width="1.6" marker-end="url(#bp-b)"/>
+  <line x1="460" y1="166.0" x2="450" y2="166.0" stroke="#c2410c" stroke-width="1.6" marker-end="url(#bp-b)"/>
+  <line x1="610" y1="166.0" x2="600" y2="166.0" stroke="#c2410c" stroke-width="1.6" marker-end="url(#bp-b)"/>
+  <line x1="12" y1="216" x2="748" y2="216" stroke="currentColor" stroke-opacity="0.2"/>
+  <text x="12" y="240" fill="currentColor"><tspan>Шаг градиентного спуска: каждый параметр сдвигается против своего градиента — W</tspan><tspan dy="3" font-size="9">1</tspan><tspan dy="-3"> ← W</tspan><tspan dy="3" font-size="9">1</tspan><tspan dy="-3"> − lr·∂L/∂W</tspan><tspan dy="3" font-size="9">1</tspan><tspan dy="-3">, …, b</tspan><tspan dy="3" font-size="9">2</tspan><tspan dy="-3"> ← b</tspan><tspan dy="3" font-size="9">2</tspan><tspan dy="-3"> − lr·∂L/∂b</tspan><tspan dy="3" font-size="9">2</tspan><tspan dy="-3">.</tspan></text>
+  <text x="12" y="262" fill="currentColor">Так для каждого мини-батча из 256 машин. Проход по всем батчам train (76 шагов) — одна эпоха,</text>
+  <text x="12" y="282" fill="currentColor">перед каждой эпохой строки перемешивают.</text>
+</svg>

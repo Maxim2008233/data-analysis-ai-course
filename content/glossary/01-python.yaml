@@ -1,0 +1,70 @@
+- id: py-variable
+  term: Переменная, типы
+  category: Python
+  aliases: [int, float, str, bool, type]
+  summary: Переменная — имя, которое ссылается на значение. Основные типы — целые `int`, дробные `float`, строки `str`, логические `bool` (`True`/`False`). Узнать тип — `type(x)`; привести — `int(...)`, `float(...)`, `str(...)`.
+  syntax: |
+    имя = значение
+    type(имя)
+  example: |
+    price = 7750.0
+    year = 2011
+    print(type(price), type(year))   # <class 'float'> <class 'int'>
+- id: py-fstring
+  term: f-строка, print
+  category: Python
+  aliases: [print, формат, format]
+  summary: "`print(a, b)` выводит значения через пробел. f-строка подставляет выражения в фигурных скобках: `f'{x}'`. После двоеточия — формат: `:.2f` — два знака после запятой, `:,` — разделитель тысяч, `:.1%` — проценты."
+  syntax: |
+    f'текст {выражение:формат}'
+  example: |
+    share = 0.31009
+    print(f'Доля дорогих: {share:.1%}')   # Доля дорогих: 31.0%
+- id: py-list
+  term: Список (list)
+  category: Python
+  aliases: [list, len, append, index]
+  summary: Упорядоченная коллекция. Индексы с 0, отрицательные — с конца. `len(lst)` — длина, `lst.append(x)` — добавить в конец, `lst.index(x)` — позиция первого вхождения. Умножение `lst * 2` **повторяет** список, а не умножает числа.
+  syntax: |
+    lst = [a, b, c]
+    lst[0]; lst[-1]; lst[1:3]
+  example: |
+    names = ['Year', 'Distance', 'Price(euro)']
+    names.index('Distance')    # 1
+    [1, 2] * 2                 # [1, 2, 1, 2]
+- id: py-dict
+  term: Словарь (dict)
+  category: Python
+  aliases: [dict, ключ, keys, items]
+  summary: Сопоставляет ключам значения. Обращение `d['ключ']`, добавление `d['новый'] = значение`, перебор пар — `for k, v in d.items():`.
+  example: |
+    stats = {'mean': 9727.1, 'median': 6600.0}
+    for name, value in stats.items():
+        print(name, value)
+- id: py-for
+  term: Цикл for, range, zip, enumerate
+  category: Python
+  aliases: [for, range, zip, enumerate, цикл]
+  summary: "`for x in коллекция:` выполняет блок для каждого элемента. `range(n)` — числа 0…n−1, `zip(a, b)` — пары элементов, `enumerate(a)` — пары (номер, элемент). В анализе данных циклы нужны для повторения опыта, а вычисления по массиву делает NumPy без цикла."
+  example: |
+    for i, name in enumerate(['Year', 'Price']):
+        print(i, name)
+- id: py-if
+  term: Условие if / elif / else
+  category: Python
+  aliases: [if, else, elif, условие]
+  summary: Выполняет блок, только если условие истинно. Сравнения — `==`, `!=`, `<`, `>`, `<=`, `>=`; связки для одиночных значений — `and`, `or`, `not` (для массивов — `&`, `|`, `~`).
+  example: |
+    price = 12000
+    if price > 10000:
+        print('дорого')
+    else:
+        print('недорого')
+- id: py-def
+  term: Функция (def, return)
+  category: Python
+  aliases: [def, return, функция]
+  summary: "`def имя(аргументы):` объявляет функцию, `return значение` возвращает результат. Без `return` функция возвращает `None`."
+  example: |
+    def share(mask):
+        return mask.sum() / mask.size

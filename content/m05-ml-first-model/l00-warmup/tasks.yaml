@@ -1,0 +1,309 @@
+- id: m5-l0-t1
+  title: X и y для оценки цены
+  difficulty: warmup
+  introduces: []
+  uses: [target-features, pd-select-columns]
+  statement: |
+    Получите `X` — таблицу входных признаков `Year`, `Distance`, `Engine`, `km_year` (в этом порядке) — и `y` — цену `Price`. Напечатайте формы обеих.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X = ...
+    y = ...
+    print(X.shape, y.shape)
+  solution: |
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X = df[features]
+    y = df['Price']
+    print(X.shape, y.shape)
+  explanation: |
+    - Список колонок в квадратных скобках — таблица признаков (урок 2.4); одна колонка — Series с ответами.
+    - Цены в `X` быть не должно: модель, которая видит ответ среди признаков, ничему не учится (урок 2.11).
+    - Форма `X` — (объектов, признаков), форма `y` — (объектов,): число строк совпадает.
+  hints:
+    - Признаки — таблица из нескольких колонок, ответ — одна колонка.
+    - "`X = df[features]`; `y = df['Price']`."
+    - "Проверьте: `X.shape` — (32067, 4), `y.shape` — (32067,)."
+  tests: |
+    import pandas as pd
+    X = var('X', pd.DataFrame, 'таблицей DataFrame')
+    if 'Price' in X.columns:
+        fail('Цена попала в признаки `X`. Ответ модели должен быть только в `y`.')
+    ensure(list(X.columns) == ['Year', 'Distance', 'Engine', 'km_year'], 'Колонки `X` должны быть Year, Distance, Engine, km_year — в этом порядке.')
+    y = var('y', pd.Series, 'Series — одной колонкой')
+    ensure(y.name == 'Price', '`y` должна быть колонкой `Price`.')
+    ensure(len(X) == len(y) == len(ref('df')), 'В `X` и `y` должны быть все строки таблицы.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        X = df[['Year', 'Distance', 'Engine', 'km_year', 'Price']]
+        y = df['Price']
+      expect: Цена попала
+    - code: |
+        X = df[['Year', 'Distance', 'Engine', 'km_year']]
+        y = df[['Price']]
+      expect: одной колонкой
+
+- id: m5-l0-t2
+  title: MAE и MAPE руками на пяти машинах
+  difficulty: warmup
+  introduces: []
+  uses: [metric-mae-mape, vectorization]
+  statement: |
+    Для пяти машин известны цены `y_true` и прогнозы `y_pred`. Получите массив ошибок `errors` = прогноз − цена, `mae` — среднюю абсолютную ошибку и `mape` — среднюю ошибку в процентах от настоящей цены.
+  prelude: |
+    import numpy as np
+    y_true = np.array([4200, 8000, 1600, 12500, 6900])
+    y_pred = np.array([5000, 7000, 3000, 12000, 6000])
+  starter: |
+    errors = ...
+    mae = ...
+    mape = ...
+    print(errors, mae, round(mape, 1))
+  solution: |
+    errors = y_pred - y_true
+    mae = np.abs(errors).mean()
+    mape = (np.abs(errors) / y_true).mean() * 100
+    print(errors, mae, round(mape, 1))
+  explanation: |
+    - Разность массивов считается поэлементно (урок 1.4): плюс — прогноз завышен, минус — занижен.
+    - MAE — среднее модулей ошибок: 920 евро; MAPE — среднее отношений модуля ошибки к цене × 100 (урок 3.7).
+    - Машина за 1 600 евро с ошибкой 1 400 даёт 87,5 % — одна дешёвая машина сильно раздувает MAPE.
+  hints:
+    - Ошибка — прогноз минус цена; для MAE берут модуль, для MAPE — делят модуль на настоящую цену.
+    - "`errors = y_pred - y_true`; `mae = np.abs(errors).mean()`."
+    - "`mape = (np.abs(errors) / y_true).mean() * 100`."
+  tests: |
+    import numpy as np
+    e = var('errors', np.ndarray, 'массивом NumPy')
+    if np.array_equal(e, ref('y_true') - ref('y_pred')):
+        fail('Знак ошибки перевёрнут: ошибка — прогноз минус цена, `y_pred - y_true`.')
+    same_array(e, ref('errors'), 'Ошибки не совпадают.')
+    m = var('mae', 'number', 'числом')
+    if abs(m - ref('errors').mean()) < 1e-9:
+        fail('Это среднее ошибок со знаком — плюсы и минусы сократились. MAE — среднее модулей: `np.abs(errors).mean()`.')
+    close(m, ref('mae'), 'MAE — {expected}, а у вас {actual}.')
+    p = var('mape', 'number', 'числом')
+    if p < 1:
+        fail('MAPE должна быть в процентах: умножьте на 100.')
+    close(p, ref('mape'), 'MAPE — {expected} %, а у вас {actual}.')
+  wrong:
+    - code: |
+        errors = y_pred - y_true
+        mae = errors.mean()
+        mape = (np.abs(errors) / y_true).mean() * 100
+      expect: среднее модулей
+    - code: |
+        errors = y_pred - y_true
+        mae = np.abs(errors).mean()
+        mape = (np.abs(errors) / y_pred).mean() * 100
+      expect: MAPE —
+
+- id: m5-l0-t3
+  title: Одно число для всех машин
+  difficulty: warmup
+  introduces: []
+  uses: [mean-median, metric-mae-mape]
+  statement: |
+    Самый простой «прогноз» — одно число для всех машин. Получите `mae_median` — MAE, если всем предсказать медиану цены, и `mae_mean` — если всем предсказать среднюю цену. Какое число даёт меньшую MAE?
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    y = df['Price']
+  starter: |
+    mae_median = ...
+    mae_mean = ...
+    print(round(mae_median), round(mae_mean))
+  solution: |
+    mae_median = (y - y.median()).abs().mean()
+    mae_mean = (y - y.mean()).abs().mean()
+    print(round(mae_median), round(mae_mean))
+  explanation: |
+    - Прогноз — одно число; ошибка — разность с каждой ценой, MAE — среднее модулей (урок 3.7).
+    - У медианы MAE меньше: из всех констант именно медиана даёт наименьшую среднюю абсолютную ошибку, а среднее — наименьшую квадратичную. Поэтому модель-ориентир в уроке 5.5 будет предсказывать медиану.
+  hints:
+    - Для каждой цены ошибка — цена минус одно и то же число; MAE — среднее модулей.
+    - "`(y - y.median()).abs().mean()`."
+    - "`mae_mean = (y - y.mean()).abs().mean()` — сравните два числа."
+  tests: |
+    close(var('mae_median', 'number', 'числом'), ref('mae_median'), 'MAE прогноза медианой — {expected}, а у вас {actual}.')
+    close(var('mae_mean', 'number', 'числом'), ref('mae_mean'), 'MAE прогноза средним — {expected}, а у вас {actual}.')
+    close(alt('mae_median'), alt_ref('mae_median'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        mae_median = (y - y.median()).mean()
+        mae_mean = (y - y.mean()).abs().mean()
+      expect: MAE прогноза медианой
+    - code: |
+        mae_median = (y - y.median()).abs().mean()
+        mae_mean = (y - y.median()).abs().mean()
+      expect: прогноза средним
+
+- id: m5-l0-t4
+  title: Стандартизация признаков через broadcasting
+  difficulty: main
+  introduces: []
+  uses: [broadcasting, std-var]
+  statement: |
+    Превратите таблицу признаков в массив `Xn` и стандартизируйте каждый столбец: `mu` — средние столбцов, `sigma` — стандартные отклонения столбцов, `Z` = (Xn − mu) / sigma. Это та же операция, которую в уроке 5.7 сделает `StandardScaler`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    X = df[['Year', 'Distance', 'Engine', 'km_year']]
+  starter: |
+    Xn = ...
+    mu = ...
+    sigma = ...
+    Z = ...
+    print(Z.mean(axis=0).round(6), Z.std(axis=0).round(6))
+  solution: |
+    Xn = X.to_numpy()
+    mu = Xn.mean(axis=0)
+    sigma = Xn.std(axis=0)
+    Z = (Xn - mu) / sigma
+    print(Z.mean(axis=0).round(6), Z.std(axis=0).round(6))
+  explanation: |
+    - `axis=0` — статистика по каждому столбцу (урок 1.10): четыре средних и четыре σ.
+    - Матрица (n, 4) минус строка (4,) — broadcasting: из каждого столбца вычитается его среднее.
+    - После стандартизации у каждого столбца среднее 0 и σ = 1, а единицы измерения (годы, километры, см³) исчезают.
+  hints:
+    - "Средние и σ нужны по столбцам — параметр `axis`."
+    - "`mu = Xn.mean(axis=0)`, `sigma = Xn.std(axis=0)`."
+    - "`Z = (Xn - mu) / sigma` — NumPy сам растянет строки на все объекты."
+  tests: |
+    import numpy as np
+    mu = var('mu')
+    ensure(np.ndim(mu) == 1 and len(mu) == 4, '`mu` — четыре средних, по одному на столбец (`axis=0`), а у вас {0}.'.format('одно число' if np.ndim(mu) == 0 else 'форма ' + str(np.shape(mu))))
+    same_array(mu, ref('mu'), 'Средние столбцов не совпадают.')
+    same_array(var('sigma', np.ndarray, 'массивом NumPy'), ref('sigma'), 'Стандартные отклонения столбцов не совпадают: `Xn.std(axis=0)`.', rtol=1e-4)
+    Z = var('Z', np.ndarray, 'массивом NumPy')
+    ensure(Z.shape == ref('Z').shape, 'Форма `Z` должна совпадать с формой `Xn`.')
+    ensure(np.allclose(Z.mean(axis=0), 0, atol=1e-6) and np.allclose(Z.std(axis=0), 1, atol=1e-3), 'После стандартизации у каждого столбца среднее 0 и σ = 1: `(Xn - mu) / sigma`.')
+    close(alt('mu')[0], alt_ref('mu')[0], HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        Xn = X.to_numpy()
+        mu = Xn.mean()
+        sigma = Xn.std()
+        Z = (Xn - mu) / sigma
+      expect: по одному на столбец
+    - code: |
+        Xn = X.to_numpy()
+        mu = Xn.mean(axis=0)
+        sigma = Xn.std(axis=0)
+        Z = Xn - mu
+      expect: σ = 1
+
+- id: m5-l0-t5
+  title: Случайная пятая часть строк
+  difficulty: main
+  introduces: []
+  uses: [rng-sample, pd-loc-iloc]
+  statement: |
+    Перемешайте номера строк генератором `rng = np.random.default_rng(42)`: `order = rng.permutation(len(df))`. Первые 20 % номеров (`n_test = len(df) // 5`) — отложенная часть `test_part`, остальные — `train_part` (таблицы через `iloc`). Проверьте, что части не пересекаются: `overlap` — число общих меток строк.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    rng = np.random.default_rng(42)
+  starter: |
+    order = rng.permutation(len(df))
+    n_test = ...
+    test_part = ...
+    train_part = ...
+    overlap = ...
+    print(len(train_part), len(test_part), overlap)
+  solution: |
+    order = rng.permutation(len(df))
+    n_test = len(df) // 5
+    test_part = df.iloc[order[:n_test]]
+    train_part = df.iloc[order[n_test:]]
+    overlap = len(train_part.index.intersection(test_part.index))
+    print(len(train_part), len(test_part), overlap)
+  explanation: |
+    - `permutation` — случайный порядок номеров строк без повторов (урок 1.9); срезы делят его на две части.
+    - `iloc` выбирает строки по позициям (урок 2.4); каждая строка попадает ровно в одну часть.
+    - `index.intersection` — общие метки: 0, значит, части не пересекаются. Так и работает `train_test_split` из урока 5.4.
+  hints:
+    - Отложенная часть — первые `n_test` номеров перемешанного порядка, обучающая — остальные.
+    - "`test_part = df.iloc[order[:n_test]]`; `train_part = df.iloc[order[n_test:]]`."
+    - "`overlap = len(train_part.index.intersection(test_part.index))`."
+  tests: |
+    import pandas as pd
+    te = var('test_part', pd.DataFrame, 'таблицей DataFrame')
+    tr = var('train_part', pd.DataFrame, 'таблицей DataFrame')
+    n = len(ref('df'))
+    ensure(len(te) == n // 5, 'В отложенной части должно быть {0} строк (`len(df) // 5`), а у вас {1}.'.format(n // 5, len(te)))
+    ensure(len(tr) + len(te) == n, 'Вместе части должны содержать все {0} строк.'.format(n))
+    ensure(list(te.index[:5]) == list(ref('test_part').index[:5]), 'Используйте перемешанный порядок `order`: отложенная часть — `df.iloc[order[:n_test]]`.')
+    equal(var('overlap', 'number', 'числом'), 0, 'Части не должны пересекаться: общих меток должно быть {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        order = rng.permutation(len(df))
+        n_test = len(df) // 5
+        test_part = df.iloc[:n_test]
+        train_part = df.iloc[n_test:]
+        overlap = len(train_part.index.intersection(test_part.index))
+      expect: перемешанный порядок
+    - code: |
+        order = rng.permutation(len(df))
+        n_test = len(df) // 5
+        test_part = df.iloc[order[:n_test]]
+        train_part = df.iloc[order]
+        overlap = len(train_part.index.intersection(test_part.index))
+      expect: все
+
+- id: m5-l0-t6
+  title: Прогноз по формуле
+  difficulty: main
+  introduces: []
+  uses: [pd-new-column, metric-mae-mape, vectorization]
+  statement: |
+    Попробуем «модель» из одной формулы: цена ≈ −1 400 000 + 700 · год выпуска. Добавьте в `df` колонку `formula_pred` с этим прогнозом и получите `n_negative` — число отрицательных прогнозов — и `mae` — среднюю абсолютную ошибку формулы.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    df['formula_pred'] = ...
+    n_negative = ...
+    mae = ...
+    print(n_negative, round(mae))
+  solution: |
+    df['formula_pred'] = -1_400_000 + 700 * df['Year']
+    n_negative = int((df['formula_pred'] < 0).sum())
+    mae = (df['Price'] - df['formula_pred']).abs().mean()
+    print(n_negative, round(mae))
+  explanation: |
+    - Формула применяется ко всей колонке сразу (уроки 1.4 и 2.8): каждая машина получает свой прогноз.
+    - Для машин старше 2000 года формула даёт **отрицательные** цены — у прямой нет ограничения «цена больше нуля».
+    - Числа −1 400 000 и 700 мы взяли «на глаз». В уроке 5.6 линейная регрессия подберёт их по данным — и столкнётся с той же проблемой.
+  hints:
+    - Новая колонка — формула от колонки `Year`; отрицательные — маска «меньше нуля».
+    - "`df['formula_pred'] = -1_400_000 + 700 * df['Year']`; `n_negative = int((df['formula_pred'] < 0).sum())`."
+    - "`mae = (df['Price'] - df['formula_pred']).abs().mean()`."
+  tests: |
+    import pandas as pd
+    d = var('df', pd.DataFrame, 'таблицей')
+    ensure('formula_pred' in d.columns, 'Добавьте в `df` колонку `formula_pred`.')
+    same_frame(d['formula_pred'], ref('df')['formula_pred'], 'Прогноз по формуле не совпадает: `-1_400_000 + 700 * df[\'Year\']`.')
+    close(var('n_negative', 'number', 'числом'), ref('n_negative'), 'Отрицательных прогнозов {expected}, а у вас {actual}.')
+    close(var('mae', 'number', 'числом'), ref('mae'), 'MAE формулы — {expected}, а у вас {actual}.')
+    close(alt('mae'), alt_ref('mae'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        df['formula_pred'] = -1_400_000 + 700 * df['Year']
+        n_negative = int((df['formula_pred'] <= 0).sum()) + 1
+        mae = (df['Price'] - df['formula_pred']).abs().mean()
+      expect: Отрицательных прогнозов
+    - code: |
+        df['formula_pred'] = -1_400_000 + 700 * df['Year']
+        n_negative = int((df['formula_pred'] < 0).sum())
+        mae = (df['Price'] - df['formula_pred']).mean()
+      expect: MAE формулы

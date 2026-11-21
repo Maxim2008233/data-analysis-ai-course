@@ -1,0 +1,335 @@
+- id: m7-l0-t1
+  title: Числовые и текстовые признаки
+  difficulty: warmup
+  introduces: []
+  uses: [feature-types, pd-value-counts]
+  statement: |
+    Разделите признаки таблицы `X` на `cat_cols` — список текстовых колонок и `num_cols` — список числовых (в порядке колонок `X`; логическая `AutoTransmission` не входит ни в один список). Затем `n_unique` — Series: число разных значений в каждой текстовой колонке.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X = df[features]
+  starter: |
+    cat_cols = ...
+    num_cols = ...
+    n_unique = ...
+    print(cat_cols, num_cols)
+    print(n_unique)
+  solution: |
+    cat_cols = X.select_dtypes(include=['object', 'string']).columns.tolist()
+    num_cols = X.select_dtypes(include='number').columns.tolist()
+    n_unique = X[cat_cols].nunique()
+    print(cat_cols, num_cols)
+    print(n_unique)
+  explanation: |
+    - `select_dtypes` выбирает колонки по типу: текст (в pandas 3 — тип `str`, ищется как `'string'`) и числа. Логический тип `bool` не входит ни туда, ни туда — его закодируем отдельно (урок 7.1).
+    - У модели 789 разных значений, у топлива — 6. От числа значений зависит выбор способа кодирования: 6 столбцов-индикаторов — немного, 789 — много.
+  hints:
+    - "Колонки нужного типа — `X.select_dtypes(include=...)`, их имена — `.columns.tolist()`."
+    - "Текстовые: `include=['object', 'string']`; числовые: `include='number'`."
+    - "Число разных значений по колонкам — `X[cat_cols].nunique()`."
+  tests: |
+    import pandas as pd
+    c = var('cat_cols', list, 'списком')
+    ensure('AutoTransmission' not in c, '`AutoTransmission` — логический признак (True/False), не текстовый.')
+    equal(c, ['Make', 'Model', 'Style', 'Fuel_type'], 'Текстовые колонки — {expected}, а у вас {actual}.')
+    n = var('num_cols', list, 'списком')
+    ensure('AutoTransmission' not in n, '`AutoTransmission` — логический, а не числовой признак: `select_dtypes(include=\'number\')` его не выбирает.')
+    equal(n, ['Year', 'Distance', 'Engine', 'km_year'], 'Числовые колонки — {expected}, а у вас {actual}.')
+    u = var('n_unique', pd.Series, 'Series')
+    same_array(u.to_numpy(), ref('n_unique').to_numpy(), 'Число разных значений не совпадает: `X[cat_cols].nunique()`.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        cat_cols = ['Make', 'Model', 'Style', 'Fuel_type', 'AutoTransmission']
+        num_cols = ['Year', 'Distance', 'Engine', 'km_year']
+        n_unique = X[cat_cols].nunique()
+      expect: логический признак
+    - code: |
+        cat_cols = X.select_dtypes(include=['object', 'string']).columns.tolist()
+        num_cols = X.select_dtypes(include='number').columns.tolist()
+        n_unique = X[cat_cols].count()
+      expect: Число разных значений
+
+- id: m7-l0-t2
+  title: "Коробка передач: True/False → 1/0"
+  difficulty: warmup
+  introduces: []
+  uses: [pd-map, pd-groupby]
+  statement: |
+    Получите `auto` — колонку коробки передач обучающей части в виде чисел: `True` → 1, `False` → 0 (через `map`). Посчитайте `auto_share` — долю автоматов и `median_by_auto` — медианную цену машин каждой группы (Series с индексом 0 и 1).
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    auto = ...
+    auto_share = ...
+    median_by_auto = ...
+    print(round(auto_share, 3))
+    print(median_by_auto)
+  solution: |
+    auto = X_train['AutoTransmission'].map({True: 1, False: 0})
+    auto_share = auto.mean()
+    median_by_auto = y_train.groupby(auto).median()
+    print(round(auto_share, 3))
+    print(median_by_auto)
+  explanation: |
+    - `map` со словарём заменяет каждое значение (урок 2.9); доля единиц — среднее колонки 0/1.
+    - Автоматов 46 %, их медианная цена — 11 899 евро против 4 499 у механики. Это связь, а не причина: автоматы чаще бывают у новых и дорогих машин.
+    - Группировать можно по Series той же длины: `y_train.groupby(auto)` — цены по группам коробки.
+  hints:
+    - "Замена по словарю — `X_train['AutoTransmission'].map({True: 1, False: 0})`."
+    - "Доля единиц — `.mean()` колонки 0/1."
+    - "Медиана цены по группам — `y_train.groupby(auto).median()`."
+  tests: |
+    import pandas as pd
+    a = var('auto', pd.Series, 'Series')
+    ensure(set(a.unique()) <= {0, 1}, '`auto` должна содержать только 0 и 1: `map({True: 1, False: 0})`.')
+    same_array(a.to_numpy(dtype=float), ref('auto').to_numpy(dtype=float), 'Коды коробки не совпадают: True → 1, False → 0.')
+    close(var('auto_share', 'number', 'числом'), ref('auto_share'), 'Доля автоматов — {expected}, а у вас {actual}.')
+    m = var('median_by_auto', pd.Series, 'Series')
+    ensure(list(m.index) == [0, 1], 'Индекс `median_by_auto` — коды 0 и 1: группируйте по `auto`.')
+    same_array(m.to_numpy(dtype=float), ref('median_by_auto').to_numpy(dtype=float), 'Медианные цены по группам не совпадают.')
+    close(alt('auto_share'), alt_ref('auto_share'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        auto = X_train['AutoTransmission'].map({True: 0, False: 1})
+        auto_share = auto.mean()
+        median_by_auto = y_train.groupby(auto).median()
+      expect: "True → 1"
+    - code: |
+        auto = X_train['AutoTransmission'].map({True: 1, False: 0})
+        auto_share = auto.mean()
+        median_by_auto = y_train.groupby(auto).mean()
+      expect: Медианные цены
+
+- id: m7-l0-t3
+  title: Редкие модели в обучающей части
+  difficulty: warmup
+  introduces: []
+  uses: [pd-value-counts, rare-categories, group-size-caution]
+  statement: |
+    Посчитайте по обучающей части `counts` — число машин каждой модели (`value_counts`), `n_models` — число разных моделей, `n_single` — сколько моделей встречается ровно один раз, и `rare_share` — долю **машин** train, у которых модель встречается меньше 5 раз.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    counts = ...
+    n_models = ...
+    n_single = ...
+    rare_share = ...
+    print(n_models, n_single, round(rare_share, 4))
+  solution: |
+    counts = X_train['Model'].value_counts()
+    n_models = len(counts)
+    n_single = int((counts == 1).sum())
+    rare_share = counts[counts < 5].sum() / len(X_train)
+    print(n_models, n_single, round(rare_share, 4))
+  explanation: |
+    - Моделей 725, из них 129 встречаются один раз. Но машин у редких моделей (меньше 5 в train) — всего 3 %: редких категорий много, а записей в них мало (урок 2.10).
+    - Для таких моделей любая статистика ненадёжна (урок 3.3): «средняя цена» одной машины — это просто её цена. Это главная трудность кодирования `Model`.
+  hints:
+    - "`counts = X_train['Model'].value_counts()`; число моделей — `len(counts)`."
+    - "Модели с одной машиной — маска `counts == 1` и её сумма."
+    - "Машин у редких моделей — сумма `counts` по маске `counts < 5`, делённая на число строк train."
+  tests: |
+    import pandas as pd
+    var('counts', pd.Series, 'Series')
+    equal(var('n_models', 'number', 'числом'), ref('n_models'), 'Разных моделей в train — {expected}, а у вас {actual}.')
+    equal(var('n_single', 'number', 'числом'), ref('n_single'), 'Моделей с одной машиной — {expected}, а у вас {actual}.')
+    r = var('rare_share', 'number', 'числом')
+    if abs(r - (ref('counts') < 5).mean()) < 1e-9:
+        fail('Это доля **моделей**. Нужна доля **машин**: сумма `counts` редких моделей, делённая на `len(X_train)`.')
+    close(r, ref('rare_share'), 'Доля машин редких моделей — {expected}, а у вас {actual}.')
+    close(alt('rare_share'), alt_ref('rare_share'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        counts = X_train['Model'].value_counts()
+        n_models = len(counts)
+        n_single = int((counts == 1).sum())
+        rare_share = (counts < 5).mean()
+      expect: доля **моделей**
+    - code: |
+        counts = X['Model'].value_counts()
+        n_models = len(counts)
+        n_single = int((counts == 1).sum())
+        rare_share = counts[counts < 5].sum() / len(X)
+      expect: Разных моделей в train
+
+- id: m7-l0-t4
+  title: Цена как у машин той же модели
+  difficulty: warmup
+  introduces: []
+  uses: [group-estimate, pd-groupby]
+  statement: |
+    Оцените цену машин validation средней ценой машин **той же модели** в обучающей части: `model_mean` — Series средних по моделям (только train), `estimate` — оценки для validation (для моделей, которых нет в train, — общая средняя цена train), `n_unknown` — сколько машин validation получили общую среднюю, и `mae` — MAE оценок.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    model_mean = ...
+    mapped = X_valid['Model'].map(model_mean)
+    n_unknown = ...
+    estimate = ...
+    mae = ...
+    print(n_unknown, round(mae, 1))
+  solution: |
+    model_mean = y_train.groupby(X_train['Model']).mean()
+    mapped = X_valid['Model'].map(model_mean)
+    n_unknown = int(mapped.isna().sum())
+    estimate = mapped.fillna(y_train.mean())
+    mae = (estimate - y_valid).abs().mean()
+    print(n_unknown, round(mae, 1))
+  explanation: |
+    - Средние считаются **только по train** — validation не участвует в подготовке оценки, иначе это утечка (урок 5.4).
+    - 46 машин validation — модели, которых нет в train; им достаётся общая средняя цена.
+    - MAE ≈ 4 382: одна модель без года и пробега — слабая оценка. В уроке 7.5 эта идея вернётся как Target Encoding — признак «средняя цена модели» рядом с числовыми признаками.
+  hints:
+    - "Средние по моделям на train — `y_train.groupby(X_train['Model']).mean()`."
+    - "Машины без оценки — пропуски после `map`: `mapped.isna().sum()`; заполнить — `fillna(y_train.mean())`."
+    - "MAE — среднее модулей ошибок: `(estimate - y_valid).abs().mean()`."
+  tests: |
+    import pandas as pd
+    m = var('model_mean', pd.Series, 'Series')
+    ensure(len(m) == len(ref('model_mean')), 'Средние нужны по моделям **train**: их {0}, а у вас {1}. Группируйте `y_train` по `X_train[\'Model\']`.'.format(len(ref('model_mean')), len(m)))
+    equal(var('n_unknown', 'number', 'числом'), ref('n_unknown'), 'Машин с неизвестной моделью — {expected}, а у вас {actual}.')
+    e = var('estimate', pd.Series, 'Series')
+    ensure(not e.isna().any(), 'В `estimate` остались пропуски — заполните их общей средней ценой train.')
+    close(var('mae', 'number', 'числом'), ref('mae'), 'MAE оценки — {expected}, а у вас {actual}.')
+    close(alt('mae'), alt_ref('mae'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        model_mean = y.groupby(X['Model']).mean()
+        mapped = X_valid['Model'].map(model_mean)
+        n_unknown = int(mapped.isna().sum())
+        estimate = mapped.fillna(y_train.mean())
+        mae = (estimate - y_valid).abs().mean()
+      expect: "**train**"
+    - code: |
+        model_mean = y_train.groupby(X_train['Model']).mean()
+        mapped = X_valid['Model'].map(model_mean)
+        n_unknown = int(mapped.isna().sum())
+        estimate = mapped.fillna(0)
+        mae = (estimate - y_valid).abs().mean()
+      expect: MAE оценки
+
+- id: m7-l0-t5
+  title: Боксплот цен дизельных машин
+  difficulty: warmup
+  introduces: []
+  uses: [boxplot-rule]
+  statement: |
+    Для дизельных машин обучающей части (`Fuel_type == 'Diesel'`) посчитайте `q1`, `q3`, `iqr`, `upper` — верхнюю границу уса по правилу 1,5·IQR, и `n_above` — сколько цен выше этой границы.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    diesel = y_train[X_train['Fuel_type'] == 'Diesel']
+    q1 = ...
+    q3 = ...
+    iqr = ...
+    upper = ...
+    n_above = ...
+    print(q1, q3, iqr, upper, n_above)
+  solution: |
+    diesel = y_train[X_train['Fuel_type'] == 'Diesel']
+    q1 = diesel.quantile(0.25)
+    q3 = diesel.quantile(0.75)
+    iqr = q3 - q1
+    upper = q3 + 1.5 * iqr
+    n_above = int((diesel > upper).sum())
+    print(q1, q3, iqr, upper, n_above)
+  explanation: |
+    - Ящик боксплота — от Q1 до Q3, ус тянется до последней цены не дальше Q3 + 1,5·IQR, всё выше — отдельные точки (урок 4.6).
+    - У дизельных машин 582 цены (6,4 %) выше 25 625 евро — дорогие машины, на которых модели ошибаются сильнее всего (урок 5.9). Боксплоты пригодятся в уроке 7.8 — для ошибок моделей.
+  hints:
+    - "Квартили — `diesel.quantile(0.25)` и `diesel.quantile(0.75)`."
+    - "Верхняя граница уса — `q3 + 1.5 * iqr`."
+    - "Число цен выше — сумма маски `diesel > upper`."
+  tests: |
+    close(var('q1', 'number', 'числом'), ref('q1'), 'Q1 — {expected}, а у вас {actual}.')
+    close(var('q3', 'number', 'числом'), ref('q3'), 'Q3 — {expected}, а у вас {actual}.')
+    close(var('iqr', 'number', 'числом'), ref('iqr'), 'IQR — {expected}, а у вас {actual}.')
+    u = var('upper', 'number', 'числом')
+    if abs(u - (ref('q3') + ref('iqr'))) < 1e-6:
+        fail('Граница уса — Q3 плюс **1,5**·IQR.')
+    close(u, ref('upper'), 'Верхняя граница уса — {expected}, а у вас {actual}.')
+    equal(var('n_above', 'number', 'числом'), ref('n_above'), 'Цен выше границы — {expected}, а у вас {actual}.')
+    close(alt('upper'), alt_ref('upper'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        diesel = y_train[X_train['Fuel_type'] == 'Diesel']
+        q1 = diesel.quantile(0.25)
+        q3 = diesel.quantile(0.75)
+        iqr = q3 - q1
+        upper = q3 + iqr
+        n_above = int((diesel > upper).sum())
+      expect: "**1,5**"
+    - code: |
+        diesel = y_train[X_train['Fuel_type'] == 'Diesel']
+        q1 = diesel.quantile(0.25)
+        q3 = diesel.quantile(0.75)
+        iqr = q3 - q1
+        upper = q3 + 1.5 * iqr
+        n_above = int((diesel >= q3).sum())
+      expect: Цен выше границы
+
+- id: m7-l0-t6
+  kind: quiz
+  title: Числа или категории
+  difficulty: warmup
+  introduces: []
+  uses: [feature-types]
+  statement: |
+    Разберёмся, что модели нужно знать о признаках.
+  quiz:
+    - q: Можно ли передать колонку `Make` (Toyota, BMW…) в `LinearRegression` как есть?
+      options:
+        - Нет — модели scikit-learn работают с числами, текст нужно закодировать
+        - Да, модель сама превратит текст в числа
+        - Да, но только для деревьев
+      answer: 0
+      explain: При fit с текстовой колонкой scikit-learn выдаст ошибку «could not convert string to float».
+    - q: Модель «Joice» встречается в train один раз, за 2 500 евро. Насколько надёжна оценка «средняя цена Joice = 2 500»?
+      options:
+        - Ненадёжна — это цена одной машины, а не типичная цена модели
+        - Надёжна — других данных о модели нет
+        - Надёжна, если машина из train
+      answer: 0
+      explain: Статистика маленькой группы почти случайна (урок 3.3); кодирование редких категорий — отдельная задача.
+    - q: Год выпуска — числовой или категориальный признак?
+      options:
+        - Числовой — у годов есть порядок и разности имеют смысл
+        - Категориальный — годов всего несколько десятков
+        - Ни то ни другое
+      answer: 0
+      explain: Модели используют, что 2015 больше 2010 на 5 лет; марка таких свойств не имеет.
+  hints:
+    - Вспомните, с чем работают модели scikit-learn и почему маленькие группы опасны.
+    - "Текст нужно кодировать; одна машина — не типичная цена; у годов есть порядок."
+    - "Ответы: нет; ненадёжна; числовой."

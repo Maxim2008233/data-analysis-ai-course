@@ -1,0 +1,415 @@
+- id: m1-l11-t1
+  title: "Шаг 1. Размер и качество"
+  difficulty: main
+  introduces: []
+  uses: [nan-inf, bool-mask]
+  statement: |
+    Получите:
+
+    - `n_total` — общее число записей;
+    - `known_distance` — маску конечных пробегов и `n_known` — их число;
+    - `n_zero` — число конечных пробегов, равных 0;
+    - `n_million` — число конечных пробегов больше 1 000 000 км.
+
+    `n_total − n_known` — это пропуски, а `n_zero` и `n_million` — значения для проверки, а не пропуски.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]
+  starter: |
+    n_total = ...
+    known_distance = ...
+    n_known = ...
+    distance_values = distance[known_distance]
+    n_zero = ...
+    n_million = ...
+    print(n_total, n_known, n_zero, n_million)
+  solution: |
+    n_total = X.shape[0]
+    known_distance = np.isfinite(distance)
+    n_known = known_distance.sum()
+    distance_values = distance[known_distance]
+    n_zero = (distance_values == 0).sum()
+    n_million = (distance_values > 1_000_000).sum()
+    print(n_total, n_known, n_zero, n_million)
+  explanation: |
+    - `X.shape[0]` — число записей; маска `np.isfinite` отделяет пригодные пробеги.
+    - Нулевые и гигантские пробеги считаем по `distance_values` — они есть, но требуют интерпретации.
+  hints:
+    - Число записей — размер оси 0; пригодные значения — маска «конечно»; остальное — маски сравнения.
+    - "`X.shape[0]`, `np.isfinite(distance)`, `(distance_values == 0).sum()`, `(distance_values > 1_000_000).sum()`."
+    - "`n_zero = (distance_values == 0).sum()`, `n_million = (distance_values > 1_000_000).sum()`."
+  tests: |
+    close(var('n_total', 'number', 'числом'), ref('n_total'), 'n_total должно быть {expected}, а у вас {actual}.')
+    close(var('n_known', 'number', 'числом'), ref('n_known'), 'n_known должно быть {expected}, а у вас {actual}.')
+    close(var('n_zero', 'number', 'числом'), ref('n_zero'), 'n_zero должно быть {expected}, а у вас {actual}. Сравнивайте на равенство нулю.')
+    close(var('n_million', 'number', 'числом'), ref('n_million'), 'n_million должно быть {expected}, а у вас {actual}.')
+    close(alt('n_million'), alt_ref('n_million'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        n_total = X.size
+        known_distance = np.isfinite(distance)
+        n_known = known_distance.sum()
+        distance_values = distance[known_distance]
+        n_zero = (distance_values == 0).sum()
+        n_million = (distance_values > 1_000_000).sum()
+      expect: n_total
+    - code: |
+        n_total = X.shape[0]
+        known_distance = np.isfinite(distance)
+        n_known = known_distance.sum()
+        distance_values = distance[known_distance]
+        n_zero = (distance_values < 1000).sum()
+        n_million = (distance_values > 1_000_000).sum()
+      expect: n_zero
+
+- id: m1-l11-t2
+  title: "Шаг 2. Статистический портрет пробега"
+  difficulty: main
+  introduces: []
+  uses: [mean-median, quantiles-iqr, std-var]
+  statement: |
+    Соберите словарь `portrait` со статистиками конечных пробегов (км) с ключами:
+
+    `'mean'`, `'median'`, `'min'`, `'max'`, `'std'` (ddof=0), `'q1'`, `'q3'`, `'iqr'`.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    distance = X[:, 1]
+    distance_values = distance[np.isfinite(distance)]
+  starter: |
+    q1, q3 = np.quantile(distance_values, [0.25, 0.75])
+    portrait = {
+        'mean': ...,
+        'median': ...,
+        'min': ...,
+        'max': ...,
+        'std': ...,
+        'q1': q1,
+        'q3': q3,
+        'iqr': ...,
+    }
+    for name, value in portrait.items():
+        print(f'{name:>6}: {value:,.0f} км')
+  solution: |
+    q1, q3 = np.quantile(distance_values, [0.25, 0.75])
+    portrait = {
+        'mean': np.mean(distance_values),
+        'median': np.median(distance_values),
+        'min': np.min(distance_values),
+        'max': np.max(distance_values),
+        'std': np.std(distance_values, ddof=0),
+        'q1': q1,
+        'q3': q3,
+        'iqr': q3 - q1,
+    }
+    for name, value in portrait.items():
+        print(f'{name:>6}: {value:,.0f} км')
+  explanation: |
+    - Каждое значение словаря — одна статистика из уроков 1.6–1.7.
+    - Обратите внимание: среднее (≈ 457 тыс. км) почти втрое больше медианы (168 тыс. км), а стандартное отклонение — миллионы км: виноваты гигантские пробеги. IQR к ним устойчив.
+  hints:
+    - Заполните словарь функциями NumPy для центра, крайних значений и разброса.
+    - "`np.mean`, `np.median`, `np.min`, `np.max`, `np.std(..., ddof=0)`; IQR = q3 − q1."
+    - "Например, `'median': np.median(distance_values)`, `'iqr': q3 - q1`."
+  tests: |
+    p = var('portrait', 'dict', 'словарём')
+    keys = ['mean', 'median', 'min', 'max', 'std', 'q1', 'q3', 'iqr']
+    missing = [k for k in keys if k not in p]
+    ensure(not missing, 'В словаре не хватает ключей: %s.' % missing)
+    names = {'mean': 'Среднее', 'median': 'Медиана', 'min': 'Минимум', 'max': 'Максимум', 'std': 'Стандартное отклонение', 'q1': 'Q1', 'q3': 'Q3', 'iqr': 'IQR'}
+    rp = ref('portrait')
+    for k in keys:
+        ensure(p[k] is not Ellipsis, 'Значение «%s» всё ещё равно ... — вычислите его.' % k)
+        close(p[k], rp[k], names[k] + ': ожидалось {expected}, а у вас {actual}.')
+    ap = alt('portrait')
+    close(ap['median'], alt_ref('portrait')['median'], HARDCODE_MSG)
+  wrong:
+    - code: |
+        q1, q3 = np.quantile(distance_values, [0.25, 0.75])
+        portrait = {'mean': np.mean(distance_values), 'median': np.median(distance_values), 'min': np.min(distance_values),
+                    'max': np.max(distance_values), 'std': np.std(distance_values, ddof=0), 'q1': q1, 'q3': q3, 'iqr': np.ptp(distance_values)}
+      expect: IQR
+    - code: |
+        q1, q3 = np.quantile(distance_values, [0.25, 0.75])
+        portrait = {'mean': np.median(distance_values), 'median': np.median(distance_values), 'min': np.min(distance_values),
+                    'max': np.max(distance_values), 'std': np.std(distance_values, ddof=0), 'q1': q1, 'q3': q3, 'iqr': q3 - q1}
+      expect: Среднее
+
+- id: m1-l11-t3
+  title: "Шаг 3. Пробег старых и новых машин"
+  difficulty: main
+  introduces: []
+  uses: [joint-mask, group-compare, quantiles-iqr]
+  statement: |
+    Для групп **до 2015** и **с 2015 включительно** (общая маска конечных года и пробега) получите:
+
+    - `n_old`, `n_new` — размеры групп;
+    - `median_old`, `median_new` — медианные пробеги;
+    - `q_old`, `q_new` — массивы `[Q1, Q3]` пробега в каждой группе.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]
+  starter: |
+    known = ...
+    old = ...
+    new = ...
+    n_old, n_new = old.sum(), new.sum()
+    median_old = ...
+    median_new = ...
+    q_old = ...
+    q_new = ...
+    print(n_old, median_old, q_old)
+    print(n_new, median_new, q_new)
+  solution: |
+    known = np.isfinite(year) & np.isfinite(distance)
+    old = known & (year < 2015)
+    new = known & (year >= 2015)
+    n_old, n_new = old.sum(), new.sum()
+    median_old = np.median(distance[old])
+    median_new = np.median(distance[new])
+    q_old = np.quantile(distance[old], [0.25, 0.75])
+    q_new = np.quantile(distance[new], [0.25, 0.75])
+    print(n_old, median_old, q_old)
+    print(n_new, median_new, q_new)
+  explanation: |
+    - Общая маска сохраняет пары «год — пробег» одного объявления; группы не пересекаются.
+    - У новых машин медианный пробег примерно вдвое ниже — ожидаемо, но это описание данных, а не доказательство причины (на пробег влияют и способ эксплуатации, и состав объявлений).
+  hints:
+    - Сначала общая маска по году и пробегу, затем две непересекающиеся группы.
+    - "`known = np.isfinite(year) & np.isfinite(distance)`; группы `< 2015` и `>= 2015`; квартили — `np.quantile(..., [0.25, 0.75])`."
+    - "`median_old = np.median(distance[old])`, `q_old = np.quantile(distance[old], [0.25, 0.75])`."
+  tests: |
+    import numpy as np
+    no, nn = var('n_old', 'number', 'числом'), var('n_new', 'number', 'числом')
+    if no + nn > ref('known').sum():
+        fail('Группы пересекаются — сумма размеров больше числа строк. Используйте < 2015 и >= 2015.')
+    close(no, ref('n_old'), 'n_old должно быть {expected}, а у вас {actual}.')
+    close(nn, ref('n_new'), 'n_new должно быть {expected}, а у вас {actual}.')
+    close(var('median_old', 'number', 'числом'), ref('median_old'), 'median_old должна быть {expected}, а у вас {actual}.')
+    close(var('median_new', 'number', 'числом'), ref('median_new'), 'median_new должна быть {expected}, а у вас {actual}.')
+    same_array(var('q_old', 'ndarray', 'массивом [Q1, Q3]'), ref('q_old'), 'q_old должен быть массивом [Q1, Q3] пробега группы до 2015.')
+    same_array(var('q_new', 'ndarray', 'массивом [Q1, Q3]'), ref('q_new'), 'q_new должен быть массивом [Q1, Q3] пробега группы с 2015.')
+    close(alt('median_new'), alt_ref('median_new'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        known = np.isfinite(year) & np.isfinite(distance)
+        old = known & (year <= 2015)
+        new = known & (year >= 2015)
+        n_old, n_new = old.sum(), new.sum()
+        median_old = np.median(distance[old])
+        median_new = np.median(distance[new])
+        q_old = np.quantile(distance[old], [0.25, 0.75])
+        q_new = np.quantile(distance[new], [0.25, 0.75])
+      expect: пересекаются
+    - code: |
+        known = np.isfinite(year) & np.isfinite(distance)
+        old = known & (year < 2015)
+        new = known & (year >= 2015)
+        n_old, n_new = old.sum(), new.sum()
+        median_old = np.median(distance[old])
+        median_new = np.median(distance[new])
+        q_old = np.quantile(distance[old], [0.1, 0.9])
+        q_new = np.quantile(distance[new], [0.1, 0.9])
+      expect: q_old
+
+- id: m1-l11-t4
+  title: "Шаг 4. Изменчивость медианы пробега"
+  difficulty: main
+  introduces: []
+  uses: [rng-sample, sampling-variability, mean-median]
+  statement: |
+    Одним генератором с seed **2024** выполните 5 случайных выборов по 100 **разных** конечных пробегов. Получите:
+
+    - `full_median` — медиану всех конечных пробегов;
+    - `sample_medians` — массив пяти медиан частей;
+    - `max_gap` — наибольшее по модулю отклонение медианы части от `full_median`.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    distance = X[:, 1]
+    distance_values = distance[np.isfinite(distance)]
+  starter: |
+    rng = np.random.default_rng(2024)
+    full_median = ...
+    medians = []
+    for experiment in range(5):
+        ...
+    sample_medians = np.array(medians)
+    max_gap = ...
+    print(full_median, sample_medians, max_gap)
+  solution: |
+    rng = np.random.default_rng(2024)
+    full_median = np.median(distance_values)
+    medians = []
+    for experiment in range(5):
+        positions = rng.choice(distance_values.size, size=100, replace=False)
+        medians.append(np.median(distance_values[positions]))
+    sample_medians = np.array(medians)
+    max_gap = np.max(np.abs(sample_medians - full_median))
+    print(full_median, sample_medians, max_gap)
+  explanation: |
+    - Генератор создан один раз — каждый вызов `rng.choice` даёт новые позиции.
+    - `np.abs(sample_medians - full_median)` — модули отклонений (вектор минус число), `np.max` — наибольшее.
+  hints:
+    - "В цикле: позиции, медиана части, добавление в список. После цикла — наибольший модуль отклонения."
+    - "`rng.choice(distance_values.size, size=100, replace=False)`; отклонения — `np.abs(sample_medians - full_median)`."
+    - "`max_gap = np.max(np.abs(sample_medians - full_median))`"
+  tests: |
+    import numpy as np
+    close(var('full_median', 'number', 'числом'), ref('full_median'), 'full_median должна быть {expected}, а у вас {actual}.')
+    sm = var('sample_medians', 'ndarray', 'массивом NumPy')
+    ensure(sm.shape == (5,), 'Нужно 5 медиан, а форма %s.' % (sm.shape,))
+    ensure(np.ptp(sm) > 0, 'Все медианы одинаковые — генератор пересоздаётся в цикле? Создайте его один раз.')
+    same_array(sm, ref('sample_medians'), 'Медианы частей не совпадают с ожидаемыми для seed 2024 (один вызов rng.choice(..., size=100, replace=False) на повтор).')
+    g = var('max_gap', 'number', 'числом')
+    ensure(g >= 0, 'max_gap должен быть неотрицательным — возьмите модуль отклонения.')
+    close(g, ref('max_gap'), 'max_gap должен быть {expected}, а у вас {actual}.')
+    ensure('abs' in source(), 'Возьмите модуль отклонений через np.abs(...): медиана части может оказаться и ниже медианы файла.')
+  wrong:
+    - code: |
+        rng = np.random.default_rng(2024)
+        full_median = np.median(distance_values)
+        medians = []
+        for experiment in range(5):
+            positions = rng.choice(distance_values.size, size=100, replace=False)
+            medians.append(np.median(distance_values[positions]))
+        sample_medians = np.array(medians)
+        max_gap = np.max(sample_medians - full_median)
+      expect: np.abs
+    - code: |
+        full_median = np.median(distance_values)
+        medians = []
+        for experiment in range(5):
+            rng = np.random.default_rng(2024)
+            positions = rng.choice(distance_values.size, size=100, replace=False)
+            medians.append(np.median(distance_values[positions]))
+        sample_medians = np.array(medians)
+        max_gap = np.max(np.abs(sample_medians - full_median))
+      expect: одинаковые
+
+- id: m1-l11-t5
+  kind: quiz
+  title: "Шаг 5. Отчёт аналитика"
+  difficulty: main
+  introduces: []
+  uses: [mean-median, group-compare, sampling-variability]
+  statement: |
+    По результатам шагов 1–4 выберите утверждения, которые можно включить в отчёт. Помните правила: говорите о «наборе объявлений», подкрепляйте слова числами, не объявляйте причинность и не называйте крайние значения ошибками только по величине.
+  quiz:
+    - q: Какие утверждения о типичном пробеге корректны? Выберите все.
+      options:
+        - Типичный пробег в этом наборе — около 168 тыс. км (медиана)
+        - Средний пробег 457 тыс. км хорошо описывает типичную машину
+        - Среднее почти втрое больше медианы из-за небольшого числа огромных пробегов
+        - Половина машин в наборе имеет пробег больше 457 тыс. км
+      answer: [0, 2]
+      explain: Медиана устойчива к гигантским пробегам; среднее ими завышено. Больше медианы — половина машин, а не больше среднего.
+    - q: Как корректно описать 831 запись с пробегом 0 км и 623 записи с пробегом больше 1 млн км?
+      options:
+        - Это ошибки, их нужно удалить из файла
+        - Это значения, требующие интерпретации — проверим их, прежде чем решать, как обрабатывать
+        - Пробег 0 км означает, что машина новая
+      answer: 1
+      explain: Ноль может значить «не указан», огромный пробег — опечатку или особую технику. Без проверки — не удаляем и не делаем выводов.
+    - q: Какой вывод о группах допустим?
+      options:
+        - Год выпуска уменьшает пробег вдвое
+        - В этом наборе у машин 2015 года и новее медианный пробег примерно вдвое ниже, чем у более старых
+        - Новые машины меньше ездят, потому что их владельцы бережнее
+      answer: 1
+      explain: Сравнение групп описательное — причины и мотивы оно не доказывает.
+    - q: Медианы пяти случайных частей по 100 пробегов различаются. Что это значит?
+      options:
+        - Вычисления содержат ошибку
+        - Статистика зависит от того, какие записи попали в часть; по 100 записям оценка заметно «дрожит»
+        - Медиана файла неверна
+      answer: 1
+      explain: Это выборочная изменчивость; в выводе указываем, по скольким записям посчитано число.
+  hints:
+    - "Проверьте каждое утверждение: опирается ли оно на число, описывает ли данные, нет ли причинного языка."
+    - "Медиана описывает типичное значение при выбросах; крайние значения — на проверку; группы — описательно."
+    - "Верны: медиана 168 тыс. и объяснение разницы со средним; «требуют интерпретации»; описательная формулировка о группах; изменчивость из-за выбора записей."
+
+- id: m1-l11-t6
+  title: "Что разбросано сильнее: пробег или объём двигателя?"
+  difficulty: star
+  introduces: []
+  uses: [quantiles-iqr, mean-median, nan-inf]
+  statement: |
+    Сравнивать разброс признаков в разных единицах (км и см³) напрямую нельзя. Используйте **относительный разброс** — IQR, делённый на медиану. Для конечных значений получите:
+
+    - `rel_spread_distance` — IQR / медиана для пробега;
+    - `rel_spread_engine` — IQR / медиана для объёма двигателя;
+    - `more_variable` — строку `'distance'` или `'engine'`: у какого признака относительный разброс больше.
+
+    Решение должно работать на любых данных: строку выбирайте сравнением, а не вписывайте.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()
+    year, distance, engine, price = X[:, 0], X[:, 1], X[:, 2], X[:, 3]
+  starter: |
+    def rel_spread(values):
+        values = values[np.isfinite(values)]
+        ...
+
+    rel_spread_distance = rel_spread(distance)
+    rel_spread_engine = rel_spread(engine)
+    more_variable = ...
+    print(round(rel_spread_distance, 3), round(rel_spread_engine, 3), more_variable)
+  solution: |
+    def rel_spread(values):
+        values = values[np.isfinite(values)]
+        q1, q3 = np.quantile(values, [0.25, 0.75])
+        return (q3 - q1) / np.median(values)
+
+    rel_spread_distance = rel_spread(distance)
+    rel_spread_engine = rel_spread(engine)
+    more_variable = 'distance' if rel_spread_distance > rel_spread_engine else 'engine'
+    print(round(rel_spread_distance, 3), round(rel_spread_engine, 3), more_variable)
+  explanation: |
+    - Функция берёт конечные значения, считает квартили и делит IQR на медиану — получается безразмерное число.
+    - Условное выражение `'a' if условие else 'b'` выбирает строку по результату сравнения.
+  hints:
+    - Внутри функции посчитайте Q1, Q3 и медиану конечных значений и верните безразмерное отношение.
+    - "`q1, q3 = np.quantile(values, [0.25, 0.75])`; `return (q3 - q1) / np.median(values)`; строка — через сравнение."
+    - "`more_variable = 'distance' if rel_spread_distance > rel_spread_engine else 'engine'`"
+  tests: |
+    import numpy as np
+    f = var('rel_spread')
+    ensure(callable(f), 'rel_spread должна быть функцией.')
+    test_values = np.array([1., 2., 3., 4., 100., np.nan])
+    got = f(test_values)
+    ensure(got is not None, 'Функция rel_spread ничего не возвращает — добавьте return.')
+    close(got, ref('rel_spread')(test_values), 'rel_spread на тестовом массиве [1, 2, 3, 4, 100, nan] должна вернуть {expected}, а вернула {actual}. Отношение: (Q3 − Q1) / медиана по конечным значениям.')
+    close(var('rel_spread_distance', 'number', 'числом'), ref('rel_spread_distance'), 'rel_spread_distance должно быть {expected}, а у вас {actual}.')
+    close(var('rel_spread_engine', 'number', 'числом'), ref('rel_spread_engine'), 'rel_spread_engine должно быть {expected}, а у вас {actual}.')
+    mv = var('more_variable', 'str', 'строкой')
+    ensure(mv in ('distance', 'engine'), "more_variable должна быть 'distance' или 'engine', а у вас %r." % mv)
+    equal(mv, ref('more_variable'), 'Сильнее разброшен {expected}, а у вас {actual}.')
+    ensure('if' in source() or '>' in source() or 'max' in source(), 'Выбирайте строку сравнением, а не вписывайте вручную.')
+  wrong:
+    - code: |
+        def rel_spread(values):
+            values = values[np.isfinite(values)]
+            q1, q3 = np.quantile(values, [0.25, 0.75])
+            return (q3 - q1) / np.mean(values)
+        rel_spread_distance = rel_spread(distance)
+        rel_spread_engine = rel_spread(engine)
+        more_variable = 'distance' if rel_spread_distance > rel_spread_engine else 'engine'
+      expect: тестовом массиве
+    - code: |
+        def rel_spread(values):
+            values = values[np.isfinite(values)]
+            q1, q3 = np.quantile(values, [0.25, 0.75])
+            return (q3 - q1) / np.median(values)
+        rel_spread_distance = rel_spread(distance)
+        rel_spread_engine = rel_spread(engine)
+        more_variable = 'distance'
+      expect: сравнением

@@ -1,0 +1,377 @@
+- id: m5-l2-t1
+  title: Прогноз по параметрам модели
+  difficulty: warmup
+  introduces: [param-model]
+  uses: [vectorization, py-functions]
+  statement: |
+    Напишите функцию `predict(x, w0, w1)`, которая возвращает прогнозы линейной модели ŷ = w0 + w1 · x для массива `x`. Затем получите `y_hat` — прогнозы для года выпуска `x` при `w0 = -2400`, `w1 = 1.2` (цена в тысячах евро).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    x = df.loc[df['Year'] >= 2005, 'Year'].to_numpy()
+  starter: |
+    def predict(x, w0, w1):
+        ...
+
+    y_hat = predict(x, -2400, 1.2)
+    print(y_hat[:5])
+  solution: |
+    def predict(x, w0, w1):
+        return w0 + w1 * x
+
+    y_hat = predict(x, -2400, 1.2)
+    print(y_hat[:5])
+  explanation: |
+    - Формула применяется ко всему массиву сразу (урок 1.4): каждый год получает свой прогноз.
+    - Одна и та же функция с другими `w0`, `w1` даёт другую прямую — это и есть семейство моделей; обучение выберет одну пару.
+  hints:
+    - Функция возвращает значение формулы линейной модели для всего массива.
+    - "`return w0 + w1 * x`."
+    - "`y_hat = predict(x, -2400, 1.2)`."
+  tests: |
+    import numpy as np
+    f = var('predict')
+    ensure(callable(f), '`predict` должна быть функцией.')
+    xs = np.array([0.0, 1.0, 2.0, 10.0])
+    got = f(xs, 1.0, 2.0)
+    ensure(got is not None, 'Функция ничего не вернула — добавьте `return`.')
+    same_array(np.asarray(got), 1.0 + 2.0 * xs, 'predict(x, 1, 2) для x = [0, 1, 2, 10] должна вернуть [1, 3, 5, 21].')
+    same_array(np.asarray(f(xs, -3.0, 0.5)), -3.0 + 0.5 * xs, 'Проверьте формулу ŷ = w0 + w1 · x.')
+    same_array(var('y_hat', None, 'массивом'), ref('y_hat'), 'Прогнозы `y_hat` для w0 = −2400, w1 = 1,2 не совпадают.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def predict(x, w0, w1):
+            return w1 + w0 * x
+
+        y_hat = predict(x, -2400, 1.2)
+      expect: "[1, 3, 5, 21]"
+    - code: |
+        def predict(x, w0, w1):
+            y_hat = w0 + w1 * x
+
+        y_hat = predict(x, -2400, 1.2)
+      expect: return
+
+- id: m5-l2-t2
+  title: Лучшая прямая из кандидатов
+  difficulty: main
+  introduces: [loss-mse]
+  uses: [vectorization, param-model]
+  statement: |
+    Для каждой прямой-кандидата `(w0, w1)` из списка `candidates` посчитайте MSE на данных `x` (год) и `y` (цена, тыс. евро): массив `mse_values` в порядке списка. Затем `best` — номер кандидата с наименьшим MSE.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    recent = df[df['Year'] >= 2005]
+    x = recent['Year'].to_numpy()
+    y = recent['Price'].to_numpy() / 1000
+    candidates = [(-2800, 1.4), (-2400, 1.2), (-3200, 1.6), (-2000, 1.0)]
+  starter: |
+    mse_values = np.array([... for w0, w1 in candidates])
+    best = ...
+    print(mse_values.round(1), best)
+  solution: |
+    mse_values = np.array([((w0 + w1 * x - y) ** 2).mean() for w0, w1 in candidates])
+    best = int(mse_values.argmin())
+    print(mse_values.round(1), best)
+  explanation: |
+    - Для каждой пары параметров: прогнозы → ошибки → квадраты → среднее (MSE).
+    - `argmin` — номер кандидата с наименьшими потерями (урок 1.6). Сравнение по функции потерь заменяет «на глаз».
+  hints:
+    - "Для одной пары: `((w0 + w1 * x - y) ** 2).mean()`; соберите значения для всех пар списком."
+    - "`mse_values = np.array([((w0 + w1 * x - y) ** 2).mean() for w0, w1 in candidates])`."
+    - "`best = int(mse_values.argmin())` — наименьшие потери."
+  tests: |
+    import numpy as np
+    m = var('mse_values', np.ndarray, 'массивом NumPy')
+    ensure(len(m) == len(ref('candidates')), 'Нужно по значению MSE на каждого кандидата.')
+    e = ref('mse_values')
+    if np.allclose(m, [np.abs(w0 + w1 * ref('x') - ref('y')).mean() for w0, w1 in ref('candidates')]):
+        fail('Посчитана MAE. Нужна MSE — среднее **квадратов** ошибок.')
+    same_array(m, e, 'Значения MSE не совпадают: среднее квадратов разностей прогноза и цены.')
+    b = var('best', 'number', 'числом')
+    if b == int(e.argmax()):
+        fail('Выбран кандидат с наибольшими потерями. Лучший — с наименьшим MSE: `argmin`.')
+    equal(int(b), int(ref('best')), 'Лучший кандидат — номер {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        mse_values = np.array([np.abs(w0 + w1 * x - y).mean() for w0, w1 in candidates])
+        best = int(mse_values.argmin())
+      expect: MAE
+    - code: |
+        mse_values = np.array([((w0 + w1 * x - y) ** 2).mean() for w0, w1 in candidates])
+        best = int(mse_values.argmax())
+      expect: наибольшими потерями
+
+- id: m5-l2-t3
+  title: Наименьшие квадраты для пробега
+  difficulty: main
+  introduces: [loss-mse]
+  uses: [vectorization, pd-bool-filter]
+  statement: |
+    Для машин 2005 года и новее подберите методом наименьших квадратов прямую «пробег (тыс. км) → цена (тыс. евро)»: `w1, w0 = np.polyfit(distance_k, y, 1)`. Получите также `mse` этой прямой. Каким получился знак наклона?
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    recent = df[df['Year'] >= 2005]
+    distance_k = recent['Distance'].to_numpy() / 1000
+    y = recent['Price'].to_numpy() / 1000
+  starter: |
+    w1, w0 = ...
+    mse = ...
+    print(round(w1, 4), round(w0, 2), round(mse, 1))
+  solution: |
+    w1, w0 = np.polyfit(distance_k, y, 1)
+    mse = ((w0 + w1 * distance_k - y) ** 2).mean()
+    print(round(w1, 4), round(w0, 2), round(mse, 1))
+  explanation: |
+    - `np.polyfit(x, y, 1)` возвращает коэффициенты прямой от старшей степени к младшей: сначала наклон, потом сдвиг.
+    - Наклон отрицательный: каждые 1 000 км пробега прогноз дешевле примерно на 46 евро. Это средняя тенденция в данных, а не цена «износа» конкретной машины.
+    - MSE прямой по пробегу больше, чем по году: год выпуска объясняет цену лучше.
+  hints:
+    - "`np.polyfit(x, y, 1)` подбирает прямую; первый результат — наклон, второй — сдвиг."
+    - "`w1, w0 = np.polyfit(distance_k, y, 1)`."
+    - "`mse = ((w0 + w1 * distance_k - y) ** 2).mean()`."
+  tests: |
+    w1 = var('w1', 'number', 'числом')
+    w0 = var('w0', 'number', 'числом')
+    if abs(w1 - ref('w0')) < 1e-6 and abs(w0 - ref('w1')) < 1e-6:
+        fail('Параметры перепутаны: `np.polyfit` возвращает сначала наклон, потом сдвиг — `w1, w0 = np.polyfit(...)`.')
+    close(w1, ref('w1'), 'Наклон — {expected}, а у вас {actual}.', rtol=1e-4)
+    close(w0, ref('w0'), 'Сдвиг — {expected}, а у вас {actual}.', rtol=1e-4)
+    close(var('mse', 'number', 'числом'), ref('mse'), 'MSE прямой — {expected}, а у вас {actual}.', rtol=1e-4)
+    close(alt('w1'), alt_ref('w1'), HARDCODE_MSG, rtol=1e-4)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        w0, w1 = np.polyfit(distance_k, y, 1)
+        mse = ((w0 + w1 * distance_k - y) ** 2).mean()
+      expect: перепутаны
+    - code: |
+        w1, w0 = np.polyfit(distance_k, y, 1)
+        mse = ((w0 + w1 * distance_k - y) ** 2).sum()
+      expect: MSE прямой
+
+- id: m5-l2-t4
+  kind: quiz
+  title: Параметры, потери и шаг
+  difficulty: main
+  introduces: [param-model, loss-mse, gradient-descent]
+  uses: []
+  statement: |
+    Проверьте понимание обучения модели.
+  quiz:
+    - q: Сколько параметров у линейной модели с четырьмя признаками?
+      options:
+        - "4"
+        - "5: четыре коэффициента и сдвиг"
+        - Столько, сколько объектов в данных
+      answer: 1
+      explain: "ŷ = w₀ + w₁x₁ + w₂x₂ + w₃x₃ + w₄x₄ — пять чисел."
+    - q: Цена в тысячах евро. В каких единицах MSE?
+      options:
+        - В тысячах евро
+        - В квадратных тысячах евро — поэтому для отчёта берут корень (RMSE) или MAE
+        - В процентах
+      answer: 1
+      explain: Квадрат ошибки — квадрат единиц; корень возвращает исходные единицы.
+    - q: При градиентном спуске потери с каждым шагом растут. Что вероятнее всего не так?
+      options:
+        - Слишком большой шаг lr — спуск «перепрыгивает» минимум
+        - Слишком много данных
+        - Модель слишком простая
+      answer: 0
+      explain: Уменьшите lr; помогает и стандартизация признаков.
+  hints:
+    - Посчитайте параметры формулы, вспомните единицы квадрата и что делает слишком длинный шаг.
+    - "Коэффициенты + сдвиг; MSE — в квадратных единицах; рост потерь — большой lr."
+    - "Ответы: 5; квадратные тысячи евро; слишком большой lr."
+
+- id: m5-l2-t5
+  title: Один шаг градиентного спуска
+  difficulty: main
+  introduces: [gradient-descent]
+  uses: [vectorization, loss-mse]
+  statement: |
+    Начните с `w0 = w1 = 0` и сделайте **один** шаг градиентного спуска с `lr = 0.1` для модели ŷ = w0 + w1 · z (z — стандартизированный год, y — цена в тыс. евро):
+
+    - `loss_before` — MSE в начальной точке;
+    - `grad_w1` = 2 · среднее((ŷ − y) · z), `grad_w0` = 2 · среднее(ŷ − y);
+    - новые `w1`, `w0` = старые − lr · градиент;
+    - `loss_after` — MSE после шага.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    recent = df[df['Year'] >= 2005]
+    year = recent['Year'].to_numpy()
+    z = (year - year.mean()) / year.std()      # стандартизированный год
+    y = recent['Price'].to_numpy() / 1000
+  starter: |
+    w0, w1, lr = 0.0, 0.0, 0.1
+    error = ...
+    loss_before = ...
+    grad_w1 = ...
+    grad_w0 = ...
+    w1 = ...
+    w0 = ...
+    loss_after = ...
+    print(round(loss_before, 1), round(loss_after, 1))
+  solution: |
+    w0, w1, lr = 0.0, 0.0, 0.1
+    error = w0 + w1 * z - y
+    loss_before = (error ** 2).mean()
+    grad_w1 = 2 * (error * z).mean()
+    grad_w0 = 2 * error.mean()
+    w1 = w1 - lr * grad_w1
+    w0 = w0 - lr * grad_w0
+    loss_after = ((w0 + w1 * z - y) ** 2).mean()
+    print(round(loss_before, 1), round(loss_after, 1))
+  explanation: |
+    - Ошибка ŷ − y считается для всех машин сразу; MSE — среднее квадратов.
+    - Градиенты отрицательные: прогноз 0 слишком мал, и шаг против градиента увеличивает параметры.
+    - После одного шага потери уменьшились примерно с 264 до 203; 300 таких шагов приводят к минимуму (урок).
+  hints:
+    - Ошибка — прогноз минус ответ; градиенты — по формулам из условия; шаг — против градиента.
+    - "`grad_w1 = 2 * (error * z).mean()`; `grad_w0 = 2 * error.mean()`."
+    - "`w1 = w1 - lr * grad_w1`; `w0 = w0 - lr * grad_w0`; `loss_after = ((w0 + w1 * z - y) ** 2).mean()`."
+  tests: |
+    close(var('loss_before', 'number', 'числом'), ref('loss_before'), 'Потери в начальной точке — {expected}, а у вас {actual}.')
+    close(var('grad_w1', 'number', 'числом'), ref('grad_w1'), 'Градиент по w1 — {expected}, а у вас {actual}: `2 * (error * z).mean()`.')
+    close(var('grad_w0', 'number', 'числом'), ref('grad_w0'), 'Градиент по w0 — {expected}, а у вас {actual}: `2 * error.mean()`.')
+    nw1 = var('w1', 'number', 'числом')
+    if abs(nw1 + ref('w1')) < 1e-9 and abs(nw1) > 1e-9:
+        fail('Шаг сделан по градиенту, а нужно против: `w1 - lr * grad_w1`.')
+    close(nw1, ref('w1'), 'Новое w1 — {expected}, а у вас {actual}.')
+    close(var('w0', 'number', 'числом'), ref('w0'), 'Новое w0 — {expected}, а у вас {actual}.')
+    la = var('loss_after', 'number', 'числом')
+    close(la, ref('loss_after'), 'Потери после шага — {expected}, а у вас {actual}.')
+    ensure(la < var('loss_before', 'number', 'числом'), 'После шага против градиента потери должны уменьшиться.')
+    close(alt('loss_after'), alt_ref('loss_after'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        w0, w1, lr = 0.0, 0.0, 0.1
+        error = w0 + w1 * z - y
+        loss_before = (error ** 2).mean()
+        grad_w1 = 2 * (error * z).mean()
+        grad_w0 = 2 * error.mean()
+        w1 = w1 + lr * grad_w1
+        w0 = w0 + lr * grad_w0
+        loss_after = ((w0 + w1 * z - y) ** 2).mean()
+      expect: против
+    - code: |
+        w0, w1, lr = 0.0, 0.0, 0.1
+        error = w0 + w1 * z - y
+        loss_before = (error ** 2).mean()
+        grad_w1 = 2 * error.mean()
+        grad_w0 = 2 * error.mean()
+        w1 = w1 - lr * grad_w1
+        w0 = w0 - lr * grad_w0
+        loss_after = ((w0 + w1 * z - y) ** 2).mean()
+      expect: Градиент по w1
+
+- id: m5-l2-t6
+  title: Градиентный спуск целиком и слишком большой шаг
+  difficulty: star
+  introduces: [gradient-descent]
+  uses: [vectorization, py-functions, py-loops]
+  statement: |
+    Напишите функцию `gradient_descent(z, y, lr, steps)`: начинает с `w0 = w1 = 0`, делает `steps` шагов градиентного спуска и возвращает тройку `(w0, w1, losses)`, где `losses` — список MSE **до** каждого шага. Затем запустите её с `lr = 0.1` и `lr = 1.1` по 300 шагов и получите `diverges` — `True`, если при `lr = 1.1` последние потери больше первых.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    recent = df[df['Year'] >= 2005]
+    year = recent['Year'].to_numpy()
+    z = (year - year.mean()) / year.std()
+    y = recent['Price'].to_numpy() / 1000
+  starter: |
+    def gradient_descent(z, y, lr, steps):
+        w0, w1 = 0.0, 0.0
+        losses = []
+        for _ in range(steps):
+            ...
+        return w0, w1, losses
+
+    w0, w1, losses = gradient_descent(z, y, 0.1, 300)
+    _, _, losses_big = gradient_descent(z, y, 1.1, 300)
+    diverges = ...
+    print(round(w0, 3), round(w1, 3), diverges)
+  solution: |
+    def gradient_descent(z, y, lr, steps):
+        w0, w1 = 0.0, 0.0
+        losses = []
+        for _ in range(steps):
+            error = w0 + w1 * z - y
+            losses.append((error ** 2).mean())
+            w1 = w1 - lr * 2 * (error * z).mean()
+            w0 = w0 - lr * 2 * error.mean()
+        return w0, w1, losses
+
+    w0, w1, losses = gradient_descent(z, y, 0.1, 300)
+    _, _, losses_big = gradient_descent(z, y, 1.1, 300)
+    diverges = losses_big[-1] > losses_big[0]
+    print(round(w0, 3), round(w1, 3), diverges)
+  explanation: |
+    - Каждый шаг: ошибки → потери в список → оба параметра против градиента. Градиенты считаются по одной и той же ошибке — до обновления параметров.
+    - С `lr = 0.1` параметры сходятся к решению метода наименьших квадратов (сравните с `np.polyfit(z, y, 1)`).
+    - С `lr = 1.1` каждый шаг перелетает минимум всё дальше: потери растут — спуск **расходится**.
+  hints:
+    - "В цикле: `error = w0 + w1 * z - y`, затем `losses.append(...)`, затем обновления обоих параметров по одной и той же `error`."
+    - "`w1 = w1 - lr * 2 * (error * z).mean()`; `w0 = w0 - lr * 2 * error.mean()`."
+    - "`diverges = losses_big[-1] > losses_big[0]`."
+  tests: |
+    import numpy as np
+    f = var('gradient_descent')
+    ensure(callable(f), '`gradient_descent` должна быть функцией.')
+    zz = np.array([-1.0, 0.0, 1.0])
+    yy = np.array([1.0, 2.0, 3.0])
+    res = f(zz, yy, 0.1, 500)
+    ensure(isinstance(res, tuple) and len(res) == 3, 'Функция должна вернуть тройку `(w0, w1, losses)`.')
+    w0_, w1_, ls = res
+    ensure(len(ls) == 500, 'В `losses` должно быть по значению на каждый шаг (500 для 500 шагов), а у вас {0}.'.format(len(ls)))
+    ensure(abs(w0_ - 2.0) < 1e-3 and abs(w1_ - 1.0) < 1e-3, 'Для точек (−1; 1), (0; 2), (1; 3) спуск должен прийти к w0 = 2, w1 = 1, а у вас w0 = {0:.3f}, w1 = {1:.3f}.'.format(w0_, w1_))
+    ensure(abs(ls[0] - np.mean(yy ** 2)) < 1e-9, '`losses[0]` — потери **до** первого шага (при w0 = w1 = 0).')
+    a, b = np.polyfit(ref('z'), ref('y'), 1)
+    close(var('w1', 'number', 'числом'), a, 'С lr = 0.1 за 300 шагов w1 должен прийти к решению МНК ≈ {expected}, а у вас {actual}.', rtol=1e-3)
+    close(var('w0', 'number', 'числом'), b, 'С lr = 0.1 за 300 шагов w0 должен прийти к ≈ {expected}, а у вас {actual}.', rtol=1e-3)
+    equal(bool(var('diverges', None, 'логическим значением')), True, 'При lr = 1.1 спуск расходится: последние потери больше первых — `diverges` должно быть {expected}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def gradient_descent(z, y, lr, steps):
+            w0, w1 = 0.0, 0.0
+            losses = []
+            for _ in range(steps):
+                error = w0 + w1 * z - y
+                losses.append((error ** 2).mean())
+                w1 = w1 - lr * 2 * (error * z).mean()
+                error = w0 + w1 * z - y
+                w0 = w0 - lr * 2 * (error * z).mean()
+            return w0, w1, losses
+
+        w0, w1, losses = gradient_descent(z, y, 0.1, 300)
+        _, _, losses_big = gradient_descent(z, y, 1.1, 300)
+        diverges = losses_big[-1] > losses_big[0]
+      expect: должен прийти к w0 = 2
+    - code: |
+        def gradient_descent(z, y, lr, steps):
+            w0, w1 = 0.0, 0.0
+            losses = []
+            for _ in range(steps):
+                error = w0 + w1 * z - y
+                w1 = w1 - lr * 2 * (error * z).mean()
+                w0 = w0 - lr * 2 * error.mean()
+                losses.append(((w0 + w1 * z - y) ** 2).mean())
+            return w0, w1, losses
+
+        w0, w1, losses = gradient_descent(z, y, 0.1, 300)
+        _, _, losses_big = gradient_descent(z, y, 1.1, 300)
+        diverges = losses_big[-1] > losses_big[0]
+      expect: "**до** первого шага"

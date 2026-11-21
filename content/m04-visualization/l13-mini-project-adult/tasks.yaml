@@ -1,0 +1,575 @@
+- id: m4-l13-t1
+  title: "Шаг 1. Проверка данных и целевая доля"
+  difficulty: main
+  introduces: []
+  uses: [pd-new-column, pd-isna-duplicated, eda-questions]
+  statement: |
+    Перед графиками — проверка (урок 3.1). Добавьте в `adult` логическую колонку `high` — доход выше 50K (`salary` равно `'>50K'`) — и получите:
+
+    - `high_share` — долю людей с доходом выше 50K;
+    - `unknown` — сколько значений `'?'` в колонках `workclass`, `occupation`, `native-country` (Series: индекс — колонки);
+    - `n_dup` — число полных повторов строк.
+  prelude: |
+    import pandas as pd
+    adult = pd.read_csv('adult.csv')
+  starter: |
+    adult['high'] = ...
+    high_share = ...
+    unknown = ...
+    n_dup = ...
+    print(round(high_share, 3))
+    print(unknown)
+    print(n_dup)
+  solution: |
+    adult['high'] = adult['salary'] == '>50K'
+    high_share = adult['high'].mean()
+    unknown = (adult[['workclass', 'occupation', 'native-country']] == '?').sum()
+    n_dup = int(adult.duplicated().sum())
+    print(round(high_share, 3))
+    print(unknown)
+    print(n_dup)
+  explanation: |
+    - Сравнение колонки со строкой даёт логическую колонку (урок 2.8); её среднее — доля `True`.
+    - Неизвестные значения здесь записаны знаком `'?'`, а не пропуском: `isna()` их не найдёт. Сравнение таблицы из трёх колонок с `'?'` и `sum()` считает их по каждой колонке.
+    - 24 полных повтора в переписи — это могут быть разные люди с одинаковыми ответами; удалять их без причины не будем, но в отчёте упомянем.
+  hints:
+    - "Доля — среднее логической колонки; неизвестные значения — сравнение с `'?'`, а не `isna()`."
+    - "`unknown = (adult[['workclass', 'occupation', 'native-country']] == '?').sum()`."
+    - "`adult['high'] = adult['salary'] == '>50K'`; повторы — `adult.duplicated().sum()`."
+  tests: |
+    import pandas as pd
+    a = var('adult', pd.DataFrame, 'таблицей')
+    ensure('high' in a.columns, 'Добавьте в `adult` колонку `high`.')
+    ensure(str(a['high'].dtype) == 'bool', 'Колонка `high` должна быть логической: `adult[\'salary\'] == \'>50K\'`.')
+    close(var('high_share', 'number', 'числом'), ref('high_share'), 'Доля дохода выше 50K — {expected}, а у вас {actual}.')
+    u = var('unknown', pd.Series, 'Series')
+    if (u == 0).all():
+        fail('Неизвестные значения записаны знаком `\'?\'`, а не пропуском: сравните колонки с `\'?\'`, а не используйте `isna()`.')
+    same_frame(u, ref('unknown'), 'Число значений `?` по колонкам не совпадает.')
+    close(var('n_dup', 'number', 'числом'), ref('n_dup'), 'Полных повторов {expected}, а у вас {actual}.')
+    close(alt('high_share'), alt_ref('high_share'), HARDCODE_MSG)
+  files: [adult.csv]
+  wrong:
+    - code: |
+        adult['high'] = adult['salary'] == '>50K'
+        high_share = adult['high'].mean()
+        unknown = adult[['workclass', 'occupation', 'native-country']].isna().sum()
+        n_dup = int(adult.duplicated().sum())
+      expect: "`'?'`"
+    - code: |
+        adult['high'] = adult['salary'] == '>50K'
+        high_share = adult['high'].sum()
+        unknown = (adult[['workclass', 'occupation', 'native-country']] == '?').sum()
+        n_dup = int(adult.duplicated().sum())
+      expect: Доля дохода
+
+- id: m4-l13-t2
+  kind: plot
+  title: "Шаг 2. Слайд 1: кто в данных"
+  difficulty: main
+  introduces: []
+  uses: [mpl-bar-labels, color-emphasis, takeaway-title]
+  statement: |
+    Получите `parts` — восемь самых частых уровней образования и в конце строку `'Остальные'`, и `share_top3` — долю трёх самых частых уровней в процентах. Нарисуйте `parts` горизонтальными столбцами: первая строка сверху (`ax.invert_yaxis()`), восемь уровней — цветом `'#3973a5'`, «Остальные» — `'lightgray'`, у столбцов — доли в процентах. Заголовок — ровно `f'Три самых частых уровня образования — {share_top3:.0f}% записей'`.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    adult = pd.read_csv('adult.csv')
+  starter: |
+    counts = adult['education'].value_counts()
+    parts = ...
+    parts['Остальные'] = ...
+    share_top3 = ...
+    fig, ax = plt.subplots(figsize=(10, 4))
+    bars = ax.barh(parts.index, parts.values, color=...)
+    ax.invert_yaxis()
+    ax.bar_label(bars, labels=[f'{100 * n / len(adult):.1f}%' for n in parts], padding=4)
+    ax.set_xlim(0, parts.max() * 1.25)
+    ax.set_title(...)
+    ax.set_xlabel('Число людей')
+    plt.show()
+  solution: |
+    counts = adult['education'].value_counts()
+    parts = counts.head(8).copy()
+    parts['Остальные'] = len(adult) - parts.sum()
+    share_top3 = 100 * counts.head(3).sum() / len(adult)
+    fig, ax = plt.subplots(figsize=(10, 4))
+    bars = ax.barh(parts.index, parts.values, color=['#3973a5'] * 8 + ['lightgray'])
+    ax.invert_yaxis()
+    ax.bar_label(bars, labels=[f'{100 * n / len(adult):.1f}%' for n in parts], padding=4)
+    ax.set_xlim(0, parts.max() * 1.25)
+    ax.set_title(f'Три самых частых уровня образования — {share_top3:.0f}% записей')
+    ax.set_xlabel('Число людей')
+    plt.show()
+  explanation: |
+    - Восемь самых частых уровней и «Остальные» (урок 4.3); `copy()` — чтобы новая строка не меняла `counts`.
+    - Порядок «как в таблице» и `invert_yaxis()` — лидер сверху, «Остальные» внизу и серым.
+    - Заголовок-вывод с числом из данных (урок 4.12): выборка сосредоточена в трёх уровнях — школа, неоконченный колледж и бакалавриат.
+  hints:
+    - "Восемь уровней — `head(8)`, «Остальные» — все записи минус их сумма; доля трёх — от числа всех записей."
+    - "`parts['Остальные'] = len(adult) - parts.sum()`; `share_top3 = 100 * counts.head(3).sum() / len(adult)`; цвета — `['#3973a5'] * 8 + ['lightgray']`."
+    - "`ax.set_title(f'Три самых частых уровня образования — {share_top3:.0f}% записей')`."
+  tests: |
+    import pandas as pd
+    from matplotlib.colors import to_hex
+    p = var('parts', pd.Series, 'Series')
+    ensure(len(p) == 9 and p.index[-1] == 'Остальные', 'В `parts` должно быть девять строк: восемь уровней и `\'Остальные\'` последней.')
+    same_frame(p, ref('parts'), 'Значения `parts` не совпадают.')
+    ax = axes()
+    bars = [b for b in ax.patches if type(b).__name__ == 'Rectangle']
+    ensure(len(bars) == 9, 'Столбцов должно быть 9.')
+    ensure(ax.yaxis_inverted(), 'Первая строка должна быть сверху: `ax.invert_yaxis()`.')
+    colors = [to_hex(b.get_facecolor()) for b in bars]
+    ensure(colors[-1] == to_hex('lightgray') and set(colors[:8]) == {to_hex('#3973a5')}, 'Восемь уровней — `\'#3973a5\'`, «Остальные» — `\'lightgray\'`.')
+    want = 'Три самых частых уровня образования — {0:.0f}% записей'.format(ref('share_top3'))
+    equal(ax.get_title(), want, 'Заголовок должен быть «{expected}», а у вас «{actual}».')
+    close(alt('share_top3'), alt_ref('share_top3'), HARDCODE_MSG)
+  files: [adult.csv]
+  wrong:
+    - code: |
+        counts = adult['education'].value_counts()
+        parts = counts.head(8).copy()
+        parts['Остальные'] = len(adult) - parts.sum()
+        share_top3 = 100 * counts.head(3).sum() / len(adult)
+        fig, ax = plt.subplots()
+        bars = ax.barh(parts.index, parts.values, color=['#3973a5'] * 8 + ['lightgray'])
+        ax.invert_yaxis()
+        ax.set_title('Образование')
+        plt.show()
+      expect: Заголовок должен быть
+    - code: |
+        counts = adult['education'].value_counts()
+        parts = counts.head(8).copy()
+        parts['Остальные'] = len(adult) - parts.sum()
+        share_top3 = 100 * counts.head(3).sum() / len(adult)
+        fig, ax = plt.subplots()
+        bars = ax.barh(parts.index, parts.values, color='#3973a5')
+        ax.invert_yaxis()
+        ax.set_title(f'Три самых частых уровня образования — {share_top3:.0f}% записей')
+        plt.show()
+      expect: "`'lightgray'`"
+
+- id: m4-l13-t3
+  kind: plot
+  title: "Шаг 3. Слайд 2: образование и доход"
+  difficulty: main
+  introduces: []
+  uses: [pd-agg, group-size-caution, takeaway-title]
+  statement: |
+    Получите `by_edu` — для каждого уровня образования (группировка по `['education-num', 'education']`, затем `reset_index()`) число людей `n` и долю дохода выше 50K в процентах `share`; оставьте уровни **не менее чем с 300** людьми, порядок — по `education-num`. Нарисуйте горизонтальные столбцы `share` с подписями-названиями уровней (`by_edu['education']`) — снизу самый низкий уровень образования. Заголовок — ровно `f'Доход выше 50K: {hs:.0f}% у выпускников школы и {ba:.0f}% у бакалавров'`, где `hs` и `ba` — доли для `'HS-grad'` и `'Bachelors'`.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    adult = pd.read_csv('adult.csv')
+    adult['high'] = adult['salary'] == '>50K'   # шаг 1
+  starter: |
+    by_edu = ...
+    by_edu = by_edu[...]
+    hs = ...
+    ba = ...
+    fig, ax = plt.subplots(figsize=(9, 5))
+    bars = ax.barh(by_edu['education'], by_edu['share'])
+    ax.bar_label(bars, fmt='%.0f%%', padding=3)
+    ax.set_title(...)
+    ax.set_xlabel('Доля дохода выше 50K, %')
+    plt.show()
+  solution: |
+    by_edu = (adult.groupby(['education-num', 'education'])
+                   .agg(n=('high', 'size'), share=('high', 'mean'))
+                   .reset_index())
+    by_edu['share'] = 100 * by_edu['share']
+    by_edu = by_edu[by_edu['n'] >= 300]
+    hs = by_edu.loc[by_edu['education'] == 'HS-grad', 'share'].iloc[0]
+    ba = by_edu.loc[by_edu['education'] == 'Bachelors', 'share'].iloc[0]
+    fig, ax = plt.subplots(figsize=(9, 5))
+    bars = ax.barh(by_edu['education'], by_edu['share'])
+    ax.bar_label(bars, fmt='%.0f%%', padding=3)
+    ax.set_title(f'Доход выше 50K: {hs:.0f}% у выпускников школы и {ba:.0f}% у бакалавров')
+    ax.set_xlabel('Доля дохода выше 50K, %')
+    plt.show()
+  explanation: |
+    - Группировка по номеру и названию уровня сохраняет порядок образования; среднее логической колонки — доля (урок 3.2).
+    - Уровни с малым числом людей (`Preschool` — 51, `1st-4th` — 168) отброшены: их доли ненадёжны (урок 3.3).
+    - `loc[условие, 'share'].iloc[0]` — значение доли для нужного уровня. Доля растёт с уровнем образования от нескольких процентов до трёх четвертей у докторов наук.
+  hints:
+    - "Именованная агрегация по колонке `high`: `size` — число людей, `mean` — доля; затем × 100 и фильтр `n >= 300`."
+    - "`hs = by_edu.loc[by_edu['education'] == 'HS-grad', 'share'].iloc[0]` — так же для `'Bachelors'`."
+    - "`adult.groupby(['education-num', 'education']).agg(n=('high', 'size'), share=('high', 'mean')).reset_index()`."
+  tests: |
+    import pandas as pd
+    b = var('by_edu', pd.DataFrame, 'таблицей DataFrame')
+    ensure({'education', 'n', 'share'} <= set(b.columns), 'В `by_edu` нужны колонки `education`, `n` и `share` (после `reset_index()`).')
+    if b['share'].max() <= 1:
+        fail('Доля должна быть в процентах: умножьте на 100.')
+    if (b['n'] < 300).any():
+        fail('Оставьте уровни образования не менее чем с 300 людьми: `by_edu[by_edu[\'n\'] >= 300]`.')
+    same_frame(b[['education', 'n', 'share']].reset_index(drop=True), ref('by_edu')[['education', 'n', 'share']].reset_index(drop=True), 'Таблица `by_edu` не совпадает (порядок — по `education-num`).')
+    ax = axes()
+    bars = [x for x in ax.patches if type(x).__name__ == 'Rectangle']
+    ensure(len(bars) == len(ref('by_edu')), 'Нарисуйте столбцы для всех уровней из `by_edu`.')
+    names = [t.get_text() for t in ax.get_yticklabels()]
+    ensure(names == list(ref('by_edu')['education']), 'Подписи столбцов — названия уровней по порядку образования, снизу самый низкий.')
+    want = 'Доход выше 50K: {0:.0f}% у выпускников школы и {1:.0f}% у бакалавров'.format(ref('hs'), ref('ba'))
+    equal(ax.get_title(), want, 'Заголовок должен быть «{expected}», а у вас «{actual}».')
+    close(alt('ba'), alt_ref('ba'), HARDCODE_MSG)
+  files: [adult.csv]
+  wrong:
+    - code: |
+        by_edu = adult.groupby(['education-num', 'education']).agg(n=('high', 'size'), share=('high', 'mean')).reset_index()
+        by_edu['share'] = 100 * by_edu['share']
+        hs = by_edu.loc[by_edu['education'] == 'HS-grad', 'share'].iloc[0]
+        ba = by_edu.loc[by_edu['education'] == 'Bachelors', 'share'].iloc[0]
+        fig, ax = plt.subplots()
+        ax.barh(by_edu['education'], by_edu['share'])
+        ax.set_title(f'Доход выше 50K: {hs:.0f}% у выпускников школы и {ba:.0f}% у бакалавров')
+        plt.show()
+      expect: не менее чем с 300
+    - code: |
+        by_edu = adult.groupby(['education-num', 'education']).agg(n=('high', 'size'), share=('high', 'mean')).reset_index()
+        by_edu = by_edu[by_edu['n'] >= 300]
+        hs = by_edu.loc[by_edu['education'] == 'HS-grad', 'share'].iloc[0]
+        ba = by_edu.loc[by_edu['education'] == 'Bachelors', 'share'].iloc[0]
+        fig, ax = plt.subplots()
+        ax.barh(by_edu['education'], by_edu['share'])
+        ax.set_title(f'Доход выше 50K: {hs:.0f}% у выпускников школы и {ba:.0f}% у бакалавров')
+        plt.show()
+      expect: в процентах
+
+- id: m4-l13-t4
+  kind: plot
+  title: "Шаг 4. Слайд 3: возраст и доход"
+  difficulty: main
+  introduces: []
+  uses: [pd-groupby, pd-agg, takeaway-title]
+  statement: |
+    Разбейте людей по десятилетиям возраста: `decade = adult['age'] // 10 * 10` (20 — это 20–29 лет). Получите `share_by_decade` — долю дохода выше 50K в процентах для десятилетий, где **не меньше 200** человек, и `best` — десятилетие с наибольшей долей. Нарисуйте `share_by_decade` линией с маркерами, подпишите оси. Заголовок — ровно `f'Чаще всего доход выше 50K — у людей {best}–{best + 9} лет ({share_by_decade.max():.0f}%)'`.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    adult = pd.read_csv('adult.csv')
+    adult['high'] = adult['salary'] == '>50K'   # шаг 1
+  starter: |
+    decade = adult['age'] // 10 * 10
+    stats = adult.groupby(decade)['high'].agg(['size', 'mean'])
+    share_by_decade = ...
+    best = ...
+    fig, ax = plt.subplots(figsize=(9, 3.5))
+    ax.plot(...)
+    ax.set(title=..., xlabel=..., ylabel=...)
+    plt.show()
+  solution: |
+    decade = adult['age'] // 10 * 10
+    stats = adult.groupby(decade)['high'].agg(['size', 'mean'])
+    share_by_decade = 100 * stats.loc[stats['size'] >= 200, 'mean']
+    best = int(share_by_decade.idxmax())
+    fig, ax = plt.subplots(figsize=(9, 3.5))
+    ax.plot(share_by_decade.index, share_by_decade.values, 'o-')
+    ax.set(title=f'Чаще всего доход выше 50K — у людей {best}–{best + 9} лет ({share_by_decade.max():.0f}%)',
+           xlabel='Возраст: начало десятилетия', ylabel='Доля дохода выше 50K, %')
+    plt.show()
+  explanation: |
+    - `// 10 * 10` округляет возраст вниз до десятков (урок 0.6): 37 → 30.
+    - Группировка по Series `decade` работает так же, как по колонке; малые группы (80+ лет) отброшены.
+    - `idxmax()` — метка с наибольшей долей. Доля растёт до 40–59 лет и снижается к пенсионному возрасту: возраст связан с опытом и стажем, но и с поколением — это не «эффект возраста» в чистом виде.
+  hints:
+    - "Доля — среднее `high` в группе × 100; оставьте строки `stats` с `size >= 200`."
+    - "`share_by_decade = 100 * stats.loc[stats['size'] >= 200, 'mean']`; `best = int(share_by_decade.idxmax())`."
+    - "`ax.plot(share_by_decade.index, share_by_decade.values, 'o-')`; заголовок — f-строка из условия."
+  tests: |
+    import pandas as pd
+    s = var('share_by_decade', pd.Series, 'Series')
+    if s.max() <= 1:
+        fail('Доля должна быть в процентах: умножьте на 100.')
+    if len(s) > len(ref('share_by_decade')):
+        fail('Оставьте десятилетия не менее чем с 200 людьми.')
+    same_frame(s, ref('share_by_decade'), 'Доли по десятилетиям не совпадают.')
+    equal(int(var('best', None, 'числом')), int(ref('best')), 'Наибольшая доля — в десятилетии {expected}, а у вас {actual}.')
+    ax = axes()
+    lines = ax.get_lines()
+    ensure(len(lines) >= 1, 'Нарисуйте линию: `ax.plot(...)`.')
+    same_array(lines[0].get_ydata(), ref('share_by_decade').values, 'Линия должна показывать доли по десятилетиям.')
+    ensure(lines[0].get_marker() not in (None, 'None', ''), 'Добавьте маркеры: `\'o-\'`.')
+    b = int(ref('best'))
+    want = 'Чаще всего доход выше 50K — у людей {0}–{1} лет ({2:.0f}%)'.format(b, b + 9, ref('share_by_decade').max())
+    equal(ax.get_title(), want, 'Заголовок должен быть «{expected}», а у вас «{actual}».')
+    ensure(ax.get_xlabel().strip() != '' and ax.get_ylabel().strip() != '', 'Подпишите обе оси.')
+  files: [adult.csv]
+  wrong:
+    - code: |
+        decade = adult['age'] // 10 * 10
+        stats = adult.groupby(decade)['high'].agg(['size', 'mean'])
+        share_by_decade = 100 * stats['mean']
+        best = int(share_by_decade.idxmax())
+        fig, ax = plt.subplots()
+        ax.plot(share_by_decade.index, share_by_decade.values, 'o-')
+        ax.set(title=f'Чаще всего доход выше 50K — у людей {best}–{best + 9} лет ({share_by_decade.max():.0f}%)', xlabel='Возраст', ylabel='Доля, %')
+        plt.show()
+      expect: не менее чем с 200
+    - code: |
+        decade = adult['age'] // 10 * 10
+        stats = adult.groupby(decade)['high'].agg(['size', 'mean'])
+        share_by_decade = 100 * stats.loc[stats['size'] >= 200, 'mean']
+        best = int(share_by_decade.idxmax())
+        fig, ax = plt.subplots()
+        ax.plot(share_by_decade.index, share_by_decade.values, 'o-')
+        ax.set(title='Доля дохода выше 50K по возрасту', xlabel='Возраст', ylabel='Доля, %')
+        plt.show()
+      expect: Заголовок должен быть
+
+- id: m4-l13-t5
+  kind: plot
+  title: "Шаг 5. Часы работы в двух группах"
+  difficulty: main
+  introduces: []
+  uses: [dist-views, conditional-dist, takeaway-title]
+  statement: |
+    Получите `share_over40` — долю людей, работающих **больше 40 часов** в неделю, в процентах — отдельно для каждой группы `salary` (Series: индекс — `<=50K`, `>50K`). Нарисуйте ECDF часов работы с цветом по группе дохода (`sns.ecdfplot(..., hue='salary')`). Заголовок — ровно `f'Больше 40 часов в неделю работают {a:.0f}% людей с доходом выше 50K и {b:.0f}% остальных'`, где `a` и `b` — значения `share_over40` для `'>50K'` и `'<=50K'`.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    adult = pd.read_csv('adult.csv')
+  starter: |
+    over40 = ...
+    share_over40 = ...
+    a, b = share_over40['>50K'], share_over40['<=50K']
+    fig, ax = plt.subplots(figsize=(9, 3.5))
+    sns.ecdfplot(...)
+    ax.set(title=..., xlabel='Часов в неделю', ylabel='Доля людей')
+    plt.show()
+  solution: |
+    over40 = adult['hours-per-week'] > 40
+    share_over40 = 100 * over40.groupby(adult['salary']).mean()
+    a, b = share_over40['>50K'], share_over40['<=50K']
+    fig, ax = plt.subplots(figsize=(9, 3.5))
+    sns.ecdfplot(data=adult, x='hours-per-week', hue='salary', ax=ax)
+    ax.set(title=f'Больше 40 часов в неделю работают {a:.0f}% людей с доходом выше 50K и {b:.0f}% остальных',
+           xlabel='Часов в неделю', ylabel='Доля людей')
+    plt.show()
+  explanation: |
+    - Маска «больше 40 часов», сгруппированная по колонке `salary`, — доля таких людей в каждой группе (урок 3.2).
+    - ECDF двух групп (урок 4.6): у группы с высоким доходом кривая правее — при любом числе часов доля «не больше x» у неё меньше.
+    - Медиана часов в обеих группах — 40 (полная неделя), поэтому разница видна не в центре, а в правой части распределения; ECDF показывает это лучше, чем медианы.
+  hints:
+    - "Маска «больше 40» и её среднее по группам `salary`, × 100."
+    - "`share_over40 = 100 * (adult['hours-per-week'] > 40).groupby(adult['salary']).mean()`."
+    - "`sns.ecdfplot(data=adult, x='hours-per-week', hue='salary', ax=ax)`; заголовок — f-строка из условия."
+  tests: |
+    import pandas as pd
+    s = var('share_over40', pd.Series, 'Series')
+    if s.max() <= 1:
+        fail('Доля должна быть в процентах: умножьте на 100.')
+    same_frame(s, ref('share_over40'), 'Доли работающих больше 40 часов по группам не совпадают (строго больше 40).', check_like=True)
+    ax = axes()
+    lines = [l for l in ax.get_lines() if len(l.get_ydata()) > 50]
+    ensure(len(lines) == 2, 'Нарисуйте ECDF для двух групп дохода: `sns.ecdfplot(..., hue=\'salary\')`.')
+    want = 'Больше 40 часов в неделю работают {0:.0f}% людей с доходом выше 50K и {1:.0f}% остальных'.format(ref('a'), ref('b'))
+    equal(ax.get_title(), want, 'Заголовок должен быть «{expected}», а у вас «{actual}».')
+    close(alt('a'), alt_ref('a'), HARDCODE_MSG)
+  files: [adult.csv]
+  wrong:
+    - code: |
+        over40 = adult['hours-per-week'] >= 40
+        share_over40 = 100 * over40.groupby(adult['salary']).mean()
+        a, b = share_over40['>50K'], share_over40['<=50K']
+        fig, ax = plt.subplots()
+        sns.ecdfplot(data=adult, x='hours-per-week', hue='salary', ax=ax)
+        ax.set(title=f'Больше 40 часов в неделю работают {a:.0f}% людей с доходом выше 50K и {b:.0f}% остальных')
+        plt.show()
+      expect: строго больше 40
+    - code: |
+        over40 = adult['hours-per-week'] > 40
+        share_over40 = 100 * over40.groupby(adult['salary']).mean()
+        a, b = share_over40['>50K'], share_over40['<=50K']
+        fig, ax = plt.subplots()
+        sns.ecdfplot(data=adult, x='hours-per-week', ax=ax)
+        ax.set(title=f'Больше 40 часов в неделю работают {a:.0f}% людей с доходом выше 50K и {b:.0f}% остальных')
+        plt.show()
+      expect: двух групп
+
+- id: m4-l13-t6
+  kind: quiz
+  title: "Шаг 6. Выводы и границы"
+  difficulty: main
+  introduces: []
+  uses: [data-story, viz-question]
+  statement: |
+    Сформулируйте выводы истории корректно.
+  quiz:
+    - q: "Доля дохода выше 50K у бакалавров — 41 %, у выпускников школы — 16 %. Какой вывод корректен?"
+      options:
+        - Диплом бакалавра увеличивает доход в 2,5 раза
+        - В выборке 1994 года доля высокого дохода у бакалавров в 2,5 раза выше; это связь, а не доказанная причина
+        - Выпускники школы не могут зарабатывать больше 50K
+      answer: 1
+      explain: Образование связано с возрастом, профессией, регионом; график показывает связь, а не причину.
+    - q: "Мы не учитывали веса `fnlwgt`. Что это значит для выводов?"
+      options:
+        - Ничего не меняется
+        - Доли описывают выборку, а не всё население США
+        - Все доли нужно умножить на вес
+      answer: 1
+      explain: Веса переписи пересчитывают выборку на население; без них мы говорим только о выборке.
+    - q: Каким должен быть последний слайд этой истории?
+      options:
+        - Ещё одним графиком распределения возраста
+        - Предложением (например, где уточнить профориентацию) и границами выводов (1994 год, связь ≠ причина, без весов)
+        - Таблицей всех 32 561 записей
+      answer: 1
+      explain: История заканчивается действием и честными ограничениями (урок 4.12).
+  hints:
+    - Вспомните границы выводов из урока 4.1 и устройство истории из урока 4.12.
+    - "Связь ≠ причина; без весов — только выборка; финал — предложение и границы."
+    - "Ответы: «связь, а не причина»; «доли описывают выборку»; «предложение и границы»."
+
+- id: m4-l13-t7
+  kind: plot
+  title: "Шаг 7. ★ Два фактора сразу: образование и часы"
+  difficulty: star
+  introduces: []
+  uses: [pd-apply, pd-pivot-table, heatmap-shares]
+  statement: |
+    Покажите на одном графике, как доля высокого дохода зависит **сразу** от образования и от часов работы.
+
+    - Функция `edu_group(n)` по номеру образования возвращает `'без диплома школы'` (номер до 8 включительно), `'школа'` (9), `'колледж'` (10–12) или `'высшее'` (13 и выше); функция `hours_group(h)` — `'до 35'` (меньше 35 часов), `'35–45'` (от 35 до 45 включительно) или `'больше 45'`.
+    - Добавьте колонки `edu_group` и `hours_group` через `apply`, колонку `high` и получите `table` — сводную долю дохода выше 50K: группы образования по строкам в порядке из списка выше, группы часов по колонкам в порядке `'до 35'`, `'35–45'`, `'больше 45'`.
+    - Нарисуйте `table` тепловой картой с подписями в процентах (`annot=True, fmt='.0%'`) и заголовком.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    adult = pd.read_csv('adult.csv')
+  starter: |
+    def edu_group(n):
+        ...
+
+    def hours_group(h):
+        ...
+
+    adult['high'] = adult['salary'] == '>50K'
+    adult['edu_group'] = ...
+    adult['hours_group'] = ...
+    rows = ['без диплома школы', 'школа', 'колледж', 'высшее']
+    cols = ['до 35', '35–45', 'больше 45']
+    table = ...
+    fig, ax = plt.subplots(figsize=(7, 3.5))
+    sns.heatmap(...)
+    ax.set(title=..., xlabel='Часов в неделю', ylabel='Образование')
+    plt.show()
+  solution: |
+    def edu_group(n):
+        if n <= 8:
+            return 'без диплома школы'
+        if n == 9:
+            return 'школа'
+        if n <= 12:
+            return 'колледж'
+        return 'высшее'
+
+    def hours_group(h):
+        if h < 35:
+            return 'до 35'
+        if h <= 45:
+            return '35–45'
+        return 'больше 45'
+
+    adult['high'] = adult['salary'] == '>50K'
+    adult['edu_group'] = adult['education-num'].apply(edu_group)
+    adult['hours_group'] = adult['hours-per-week'].apply(hours_group)
+    rows = ['без диплома школы', 'школа', 'колледж', 'высшее']
+    cols = ['до 35', '35–45', 'больше 45']
+    table = adult.pivot_table(index='edu_group', columns='hours_group', values='high', aggfunc='mean').loc[rows, cols]
+    fig, ax = plt.subplots(figsize=(7, 3.5))
+    sns.heatmap(table, annot=True, fmt='.0%', cmap='Blues', ax=ax)
+    ax.set(title='Доля дохода выше 50K растёт и с образованием, и с часами работы',
+           xlabel='Часов в неделю', ylabel='Образование')
+    plt.show()
+  explanation: |
+    - Функции с условиями (урок 0.8) превращают число в группу; `apply` применяет их к каждому значению колонки (урок 2.9).
+    - `pivot_table` со средним логической колонки — доля в каждой клетке (урок 3.4); `.loc[rows, cols]` ставит строки и колонки в нужном порядке.
+    - Тепловая карта показывает оба фактора сразу: от 1 % (без диплома, меньше 35 часов) до 63 % (высшее образование, больше 45 часов). Внутри каждой группы образования доля растёт с часами, а внутри каждой группы часов — с образованием.
+  hints:
+    - "Функции — цепочки `if`, которые возвращают название группы; колонки — `apply(edu_group)` и `apply(hours_group)`."
+    - "`table = adult.pivot_table(index='edu_group', columns='hours_group', values='high', aggfunc='mean').loc[rows, cols]`."
+    - "`sns.heatmap(table, annot=True, fmt='.0%', cmap='Blues', ax=ax)`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    eg = var('edu_group')
+    hg = var('hours_group')
+    ensure(callable(eg) and callable(hg), '`edu_group` и `hours_group` должны быть функциями.')
+    for n, want in [(1, 'без диплома школы'), (8, 'без диплома школы'), (9, 'школа'), (10, 'колледж'), (12, 'колледж'), (13, 'высшее'), (16, 'высшее')]:
+        equal(eg(n), want, 'edu_group({0}) должна вернуть «{1}», а вернула «{{actual}}».'.format(n, want))
+    for h, want in [(20, 'до 35'), (34, 'до 35'), (35, '35–45'), (45, '35–45'), (46, 'больше 45'), (99, 'больше 45')]:
+        equal(hg(h), want, 'hours_group({0}) должна вернуть «{1}», а вернула «{{actual}}».'.format(h, want))
+    t = var('table', pd.DataFrame, 'таблицей DataFrame')
+    ensure(list(t.index) == list(ref('rows')) and list(t.columns) == list(ref('cols')), 'Строки и колонки `table` должны идти в порядке списков `rows` и `cols`: `.loc[rows, cols]`.')
+    if t.values.max() > 1.5:
+        fail('В `table` должны быть доли (среднее `high`), а не количества: `aggfunc=\'mean\'`.')
+    same_frame(t, ref('table'), 'Сводная доля дохода выше 50K не совпадает.', check_index=False)
+    ax = axes()
+    meshes = [c for c in ax.collections if type(c).__name__ == 'QuadMesh']
+    ensure(len(meshes) >= 1, 'Нарисуйте тепловую карту: `sns.heatmap(table, ...)`.')
+    arr = np.asarray(meshes[0].get_array()).reshape(t.shape)
+    same_array(arr, ref('table').values, 'Цвета тепловой карты должны показывать доли из `table`.')
+    texts = [x.get_text() for x in ax.texts]
+    ensure(len(texts) >= t.size and all('%' in x for x in texts[:t.size]), 'Подпишите клетки процентами: `annot=True, fmt=\'.0%\'`.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+  files: [adult.csv]
+  wrong:
+    - code: |
+        def edu_group(n):
+            if n < 8:
+                return 'без диплома школы'
+            if n == 9:
+                return 'школа'
+            if n <= 12:
+                return 'колледж'
+            return 'высшее'
+
+        def hours_group(h):
+            if h < 35:
+                return 'до 35'
+            if h <= 45:
+                return '35–45'
+            return 'больше 45'
+
+        adult['high'] = adult['salary'] == '>50K'
+        adult['edu_group'] = adult['education-num'].apply(edu_group)
+        adult['hours_group'] = adult['hours-per-week'].apply(hours_group)
+        rows = ['без диплома школы', 'школа', 'колледж', 'высшее']
+        cols = ['до 35', '35–45', 'больше 45']
+        table = adult.pivot_table(index='edu_group', columns='hours_group', values='high', aggfunc='mean').loc[rows, cols]
+        fig, ax = plt.subplots()
+        sns.heatmap(table, annot=True, fmt='.0%', ax=ax)
+        ax.set(title='Доход')
+        plt.show()
+      expect: edu_group(8)
+    - code: |
+        def edu_group(n):
+            if n <= 8:
+                return 'без диплома школы'
+            if n == 9:
+                return 'школа'
+            if n <= 12:
+                return 'колледж'
+            return 'высшее'
+
+        def hours_group(h):
+            if h < 35:
+                return 'до 35'
+            if h <= 45:
+                return '35–45'
+            return 'больше 45'
+
+        adult['high'] = adult['salary'] == '>50K'
+        adult['edu_group'] = adult['education-num'].apply(edu_group)
+        adult['hours_group'] = adult['hours-per-week'].apply(hours_group)
+        rows = ['без диплома школы', 'школа', 'колледж', 'высшее']
+        cols = ['до 35', '35–45', 'больше 45']
+        table = adult.pivot_table(index='edu_group', columns='hours_group', values='high', aggfunc='mean')
+        fig, ax = plt.subplots()
+        sns.heatmap(table, annot=True, fmt='.0%', ax=ax)
+        ax.set(title='Доход')
+        plt.show()
+      expect: порядке списков

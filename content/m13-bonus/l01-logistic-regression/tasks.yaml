@@ -1,0 +1,503 @@
+- id: b1-l1-t1
+  title: Сигмоида внутри модели
+  difficulty: warmup
+  introduces: [logistic-regression]
+  uses: [binary-classification]
+  statement: |
+    Напишите две функции без циклов:
+
+    - `sigmoid(z)` — сигмоида 1 / (1 + e^−z) для числа или массива;
+    - `to_class(p, threshold=0.5)` — массив классов: 1, если вероятность не меньше порога, иначе 0 (целые числа).
+
+    Убедитесь, что логистическая регрессия — это сигмоида от линейной комбинации признаков. `model.decision_function(X_test)` возвращает z = w·x + b для каждой машины проверочной части. Получите:
+
+    - `max_diff` — наибольшее расхождение между `sigmoid(z)` и `model.predict_proba(X_test)[:, 1]`;
+    - `same_share` — долю машин, у которых `to_class(sigmoid(z))` совпадает с `model.predict(X_test)`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import make_pipeline
+    from sklearn.linear_model import LogisticRegression
+    cars = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'Price']
+    X, y = cars[features], cars['AutoTransmission'].astype(int)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    model = make_pipeline(StandardScaler(), LogisticRegression()).fit(X_train, y_train)
+  starter: |
+    def sigmoid(z):
+        return ...
+
+    def to_class(p, threshold=0.5):
+        return ...
+
+    z = model.decision_function(X_test)
+    max_diff = float(np.abs(sigmoid(z) - model.predict_proba(X_test)[:, 1]).max())
+    same_share = float(np.mean(to_class(sigmoid(z)) == model.predict(X_test)))
+    print(max_diff, same_share)
+  solution: |
+    def sigmoid(z):
+        return 1 / (1 + np.exp(-np.asarray(z, dtype=float)))
+
+    def to_class(p, threshold=0.5):
+        return (np.asarray(p) >= threshold).astype(int)
+
+    z = model.decision_function(X_test)
+    max_diff = float(np.abs(sigmoid(z) - model.predict_proba(X_test)[:, 1]).max())
+    same_share = float(np.mean(to_class(sigmoid(z)) == model.predict(X_test)))
+    print(max_diff, same_share)
+  explanation: |
+    - `np.exp` работает со всем массивом сразу, поэтому сигмоида без цикла считает вероятности для всех машин.
+    - Сравнение `p >= threshold` даёт логическую маску, `.astype(int)` превращает её в 0 и 1.
+    - Расхождение — 0: `predict_proba` логистической регрессии и есть сигмоида от `decision_function`. Классы совпадают у всех машин: порог 0,5 для вероятности — то же, что порог 0 для z.
+  hints:
+    - "Сигмоида — `1 / (1 + np.exp(-z))`; `np.asarray(z, dtype=float)` позволяет передать и число, и массив."
+    - "Класс — `(np.asarray(p) >= threshold).astype(int)`."
+    - "Порог включительный: вероятность, равная порогу, — класс 1."
+  tests: |
+    import numpy as np
+    f = var('sigmoid')
+    ensure(callable(f), '`sigmoid` должна быть функцией.')
+    close(float(f(0)), 0.5, 'Сигмоида от 0 — {expected}, а у вас {actual}.')
+    same_array(np.asarray(f(np.array([-2.0, 0.0, 2.0]))), [1 / (1 + np.exp(2)), 0.5, 1 / (1 + np.exp(-2))], 'Сигмоида от [−2, 0, 2] — [0.119, 0.5, 0.881].')
+    g = var('to_class')
+    ensure(callable(g), '`to_class` должна быть функцией.')
+    got = np.asarray(g(np.array([0.2, 0.5, 0.7]), 0.5))
+    if list(got) == [0, 0, 1]:
+        fail('Порог включительный: вероятность 0.5 при пороге 0.5 — класс 1. Используйте >=.')
+    equal([int(v) for v in got], [0, 1, 1], 'Классы для [0.2, 0.5, 0.7] при пороге 0.5 — {expected}, а у вас {actual}.')
+    equal([int(v) for v in g(np.array([0.2, 0.5, 0.7]), 0.6)], [0, 0, 1], 'При пороге 0.6 — {expected}, а у вас {actual}.')
+    close(var('max_diff', 'number', 'числом'), 0.0, 'Расхождение с predict_proba должно быть 0, а у вас {actual}.', atol=1e-9)
+    close(var('same_share', 'number', 'числом'), 1.0, 'Классы должны совпасть у всех машин, а у вас доля {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def sigmoid(z):
+            return 1 / (1 + np.exp(-np.asarray(z, dtype=float)))
+        def to_class(p, threshold=0.5):
+            return (np.asarray(p) > threshold).astype(int)
+        z = model.decision_function(X_test)
+        max_diff = float(np.abs(sigmoid(z) - model.predict_proba(X_test)[:, 1]).max())
+        same_share = float(np.mean(to_class(sigmoid(z)) == model.predict(X_test)))
+      expect: Порог включительный
+    - code: |
+        def sigmoid(z):
+            return 1 / (1 + np.exp(np.asarray(z, dtype=float)))
+        def to_class(p, threshold=0.5):
+            return (np.asarray(p) >= threshold).astype(int)
+        z = model.decision_function(X_test)
+        max_diff = float(np.abs(sigmoid(z) - model.predict_proba(X_test)[:, 1]).max())
+        same_share = float(np.mean(to_class(sigmoid(z)) == model.predict(X_test)))
+      expect: "[0.119, 0.5, 0.881]"
+
+- id: b1-l1-t2
+  title: Log loss своими руками
+  difficulty: main
+  introduces: [log-loss]
+  uses: [binary-classification]
+  statement: |
+    Напишите функцию `my_log_loss(y, p)` — среднюю логистическую функцию потерь: −log p для объектов класса 1 и −log(1 − p) для класса 0. Перед логарифмом обрежьте вероятности до отрезка [10⁻¹⁵; 1 − 10⁻¹⁵] (`np.clip`), иначе вероятность 0 у объекта класса 1 даст бесконечность.
+
+    Для проверочной части получите:
+
+    - `ll_model` — log loss вероятностей модели `p_test`;
+    - `ll_base` — log loss ориентира: для всех машин вероятность автомата равна доле автоматов в обучающей части;
+    - `ll_hard` — log loss, если вместо вероятностей подставить готовые классы `model.predict(X_test)` (0 и 1).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import make_pipeline
+    from sklearn.linear_model import LogisticRegression
+    cars = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'Price']
+    X, y = cars[features], cars['AutoTransmission'].astype(int)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    model = make_pipeline(StandardScaler(), LogisticRegression()).fit(X_train, y_train)
+    p_test = model.predict_proba(X_test)[:, 1]
+  starter: |
+    def my_log_loss(y, p):
+        y = np.asarray(y, dtype=float)
+        p = np.clip(np.asarray(p, dtype=float), 1e-15, 1 - 1e-15)
+        return ...
+
+    ll_model = my_log_loss(y_test, p_test)
+    ll_base = my_log_loss(y_test, np.full(len(y_test), ...))
+    ll_hard = my_log_loss(y_test, model.predict(X_test))
+    print(round(ll_model, 3), round(ll_base, 3), round(ll_hard, 3))
+  solution: |
+    def my_log_loss(y, p):
+        y = np.asarray(y, dtype=float)
+        p = np.clip(np.asarray(p, dtype=float), 1e-15, 1 - 1e-15)
+        return float(-np.mean(y * np.log(p) + (1 - y) * np.log(1 - p)))
+
+    ll_model = my_log_loss(y_test, p_test)
+    ll_base = my_log_loss(y_test, np.full(len(y_test), y_train.mean()))
+    ll_hard = my_log_loss(y_test, model.predict(X_test))
+    print(round(ll_model, 3), round(ll_base, 3), round(ll_hard, 3))
+  explanation: |
+    - `y * np.log(p) + (1 - y) * np.log(1 - p)` выбирает нужное слагаемое без условий: при y = 1 остаётся log p, при y = 0 — log(1 − p).
+    - Ориентир, который ничего не знает о машине, всем даёт одну вероятность — долю автоматов, 0,455. Его log loss 0,689 — почти log 2: классы почти равные.
+    - Модель снизила log loss до 0,435. А готовые классы вместо вероятностей дают 6,47 — в 15 раз хуже. Каждая из 19 % ошибок становится «уверенной» и стоит −log 10⁻¹⁵ ≈ 34,5. Поэтому для log loss нужны вероятности, а не классы.
+  hints:
+    - "Средняя потеря — `-np.mean(y * np.log(p) + (1 - y) * np.log(1 - p))`."
+    - "Ориентир — одна вероятность для всех: `y_train.mean()`."
+    - "Обрезка в заготовке уже есть — она и спасает от бесконечности в `ll_hard`."
+  tests: |
+    import numpy as np
+    f = var('my_log_loss')
+    ensure(callable(f), '`my_log_loss` должна быть функцией.')
+    close(f(np.array([1, 0, 1]), np.array([0.9, 0.2, 0.6])), float(-(np.log(0.9) + np.log(0.8) + np.log(0.6)) / 3), 'Для y = [1, 0, 1] и p = [0.9, 0.2, 0.6] log loss — {expected}, а у вас {actual}.')
+    v = f(np.array([0, 1]), np.array([1.0, 0.0]))
+    ensure(np.isfinite(v), 'Получилась бесконечность: обрежьте вероятности np.clip(p, 1e-15, 1 - 1e-15) перед логарифмом.')
+    close(v, float(-np.log(1e-15)), 'Две уверенные ошибки стоят по −log 1e−15 ≈ 34.5, а у вас {actual}.', rtol=1e-3)
+    close(var('ll_model', 'number', 'числом'), ref('ll_model'), 'Log loss модели — {expected}, а у вас {actual}.')
+    lb = var('ll_base', 'number', 'числом')
+    close(lb, ref('ll_base'), 'Log loss ориентира с долей автоматов из обучающей части — {expected}, а у вас {actual}.')
+    close(var('ll_hard', 'number', 'числом'), ref('ll_hard'), 'Log loss готовых классов — {expected}, а у вас {actual}.')
+    close(alt('ll_model'), alt_ref('ll_model'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def my_log_loss(y, p):
+            y = np.asarray(y, dtype=float)
+            p = np.asarray(p, dtype=float)
+            with np.errstate(divide='ignore', invalid='ignore'):
+                return float(-np.mean(y * np.log(p) + (1 - y) * np.log(1 - p)))
+        ll_model = my_log_loss(y_test, p_test)
+        ll_base = my_log_loss(y_test, np.full(len(y_test), y_train.mean()))
+        ll_hard = my_log_loss(y_test, model.predict(X_test))
+      expect: бесконечность
+    - code: |
+        def my_log_loss(y, p):
+            y = np.asarray(y, dtype=float)
+            p = np.clip(np.asarray(p, dtype=float), 1e-15, 1 - 1e-15)
+            return float(-np.mean(y * np.log(p) + (1 - y) * np.log(1 - p)))
+        ll_model = my_log_loss(y_test, p_test)
+        ll_base = my_log_loss(y_test, np.full(len(y_test), 0.5))
+        ll_hard = my_log_loss(y_test, model.predict(X_test))
+      expect: долей автоматов из обучающей части
+
+- id: b1-l1-t3
+  title: Категории помогают
+  difficulty: main
+  introduces: []
+  uses: [logistic-regression, column-transformer, one-hot-encoding]
+  statement: |
+    Добавьте к числовым признакам категории. Соберите конвейер: `make_column_transformer` — `StandardScaler` для числовых `features` и `OneHotEncoder(handle_unknown='ignore')` для категорий, затем `LogisticRegression(max_iter=2000)`. Обучите его на `Xa_train` и получите доли верных на `Xa_test`:
+
+    - `acc_fuel` — категория только `Fuel_type`;
+    - `acc_all` — категории `Fuel_type`, `Style` и `Make`;
+    - `gain` — на сколько процентных пунктов `acc_all` выше доли верных модели на одних числовых признаках `acc_num` (уже посчитана).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler, OneHotEncoder
+    from sklearn.compose import make_column_transformer
+    from sklearn.pipeline import make_pipeline
+    from sklearn.linear_model import LogisticRegression
+    cars = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'Price']
+    Xa = cars[features + ['Fuel_type', 'Style', 'Make']]
+    y = cars['AutoTransmission'].astype(int)
+    Xa_train, Xa_test, y_train, y_test = train_test_split(Xa, y, test_size=0.2, random_state=42, stratify=y)
+    acc_num = make_pipeline(StandardScaler(), LogisticRegression()).fit(Xa_train[features], y_train).score(Xa_test[features], y_test)
+  starter: |
+    def fit_score(cats):
+        model = make_pipeline(
+            make_column_transformer((StandardScaler(), features), (OneHotEncoder(handle_unknown='ignore'), cats)),
+            LogisticRegression(max_iter=2000))
+        model.fit(...)
+        return float(model.score(...))
+
+    acc_fuel = fit_score(['Fuel_type'])
+    acc_all = fit_score(['Fuel_type', 'Style', 'Make'])
+    gain = ...
+    print(round(acc_num, 4), round(acc_fuel, 4), round(acc_all, 4), round(gain, 1))
+  solution: |
+    def fit_score(cats):
+        model = make_pipeline(
+            make_column_transformer((StandardScaler(), features), (OneHotEncoder(handle_unknown='ignore'), cats)),
+            LogisticRegression(max_iter=2000))
+        model.fit(Xa_train, y_train)
+        return float(model.score(Xa_test, y_test))
+
+    acc_fuel = fit_score(['Fuel_type'])
+    acc_all = fit_score(['Fuel_type', 'Style', 'Make'])
+    gain = (acc_all - acc_num) * 100
+    print(round(acc_num, 4), round(acc_fuel, 4), round(acc_all, 4), round(gain, 1))
+  explanation: |
+    - `make_column_transformer` применяет к каждой группе колонок свой шаг (урок 7.2): числа стандартизует, категории кодирует One-Hot (урок 7.4). Колонки, которых нет в списках, отбрасываются.
+    - Тип топлива поднимает долю верных с 81,3 до 83,5 %: у гибридов коробка почти всегда автоматическая. Кузов и марка добавляют ещё 1,4 пункта — всего 3,6 пункта к числовой модели.
+    - `handle_unknown='ignore'` нужен для марки: редкая марка может не попасть в обучающую часть, и без этой настройки модель упала бы на проверке.
+  hints:
+    - "Модель учат на `Xa_train, y_train`, а оценивают на `Xa_test, y_test`."
+    - "`model.score` у классификатора — доля верных ответов."
+    - "Пункты — разница долей, умноженная на 100: `(acc_all - acc_num) * 100`."
+  tests: |
+    close(var('acc_fuel', 'number', 'числом'), ref('acc_fuel'), 'Доля верных с типом топлива — {expected}, а у вас {actual}.')
+    close(var('acc_all', 'number', 'числом'), ref('acc_all'), 'Доля верных с топливом, кузовом и маркой — {expected}, а у вас {actual}.')
+    g = var('gain', 'number', 'числом')
+    if abs(g - ref('gain') / 100) < 1e-9:
+        fail('Выигрыш нужен в процентных пунктах: умножьте разницу долей на 100.')
+    close(g, ref('gain'), 'Выигрыш — {expected} пункта, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def fit_score(cats):
+            model = make_pipeline(
+                make_column_transformer((StandardScaler(), features), (OneHotEncoder(handle_unknown='ignore'), cats)),
+                LogisticRegression(max_iter=2000))
+            model.fit(Xa_train, y_train)
+            return float(model.score(Xa_train, y_train))
+        acc_fuel = fit_score(['Fuel_type'])
+        acc_all = fit_score(['Fuel_type', 'Style', 'Make'])
+        gain = (acc_all - acc_num) * 100
+      expect: Доля верных с типом топлива
+    - code: |
+        def fit_score(cats):
+            model = make_pipeline(
+                make_column_transformer((StandardScaler(), features), (OneHotEncoder(handle_unknown='ignore'), cats)),
+                LogisticRegression(max_iter=2000))
+            model.fit(Xa_train, y_train)
+            return float(model.score(Xa_test, y_test))
+        acc_fuel = fit_score(['Fuel_type'])
+        acc_all = fit_score(['Fuel_type', 'Style', 'Make'])
+        gain = acc_all - acc_num
+      expect: процентных пунктах
+
+- id: b1-l1-t4
+  title: Во сколько раз растут шансы
+  difficulty: main
+  introduces: []
+  uses: [logistic-regression, standard-scaler]
+  statement: |
+    Модель `model` обучена на стандартизованных признаках `features`. Получите:
+
+    - `odds` — словарь «признак → во сколько раз растут шансы автомата, когда признак вырастает на одно стандартное отклонение» (exp коэффициента);
+    - `strongest` — признак с наибольшим по модулю коэффициентом;
+    - `p_cheap` и `p_dear` — вероятность автомата у машины 2010 года с пробегом 150 000 км и двигателем 1600 см³ при цене 5000 и 15 000 евро. Признаки передайте таблицей с колонками `features`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import make_pipeline
+    from sklearn.linear_model import LogisticRegression
+    cars = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'Price']
+    X, y = cars[features], cars['AutoTransmission'].astype(int)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    model = make_pipeline(StandardScaler(), LogisticRegression()).fit(X_train, y_train)
+  starter: |
+    coef = model[-1].coef_[0]
+    odds = {name: ... for name, c in zip(features, coef)}
+    strongest = features[int(np.argmax(...))]
+
+    def p_auto(price):
+        car = pd.DataFrame([{'Year': 2010, 'Distance': 150000, 'Engine': 1600, 'Price': price}])[features]
+        return float(model.predict_proba(car)[0, 1])
+
+    p_cheap, p_dear = p_auto(5000), p_auto(15000)
+    print(odds, strongest, round(p_cheap, 3), round(p_dear, 3))
+  solution: |
+    coef = model[-1].coef_[0]
+    odds = {name: float(np.exp(c)) for name, c in zip(features, coef)}
+    strongest = features[int(np.argmax(np.abs(coef)))]
+
+    def p_auto(price):
+        car = pd.DataFrame([{'Year': 2010, 'Distance': 150000, 'Engine': 1600, 'Price': price}])[features]
+        return float(model.predict_proba(car)[0, 1])
+
+    p_cheap, p_dear = p_auto(5000), p_auto(15000)
+    print(odds, strongest, round(p_cheap, 3), round(p_dear, 3))
+  explanation: |
+    - `model[-1]` — последний шаг конвейера, логистическая регрессия; `coef_[0]` — её коэффициенты в порядке признаков.
+    - Коэффициент меняет логарифм шансов, поэтому множитель шансов — `np.exp(c)`. У цены он 7,7, у объёма двигателя — 2,9, у года — 1,6, у пробега — 0,92: шансы чуть падают.
+    - Конвейер сам стандартизует новую машину теми же средними и отклонениями, что запомнил при обучении. При цене 5000 евро вероятность автомата 0,25, при 15 000 — 0,69. Вероятность растёт не пропорционально: сигмоида меняется быстрее всего около 0,5.
+  hints:
+    - "Множитель шансов — `np.exp(c)`."
+    - "Наибольший по модулю коэффициент — `np.argmax(np.abs(coef))`."
+    - "Вероятности уже считает функция `p_auto` из заготовки — она передаёт конвейеру таблицу с колонками в нужном порядке."
+  tests: |
+    import numpy as np
+    od = var('odds', dict, 'словарём')
+    ensure(set(od) == set(ref('features')), 'В odds нужны все четыре признака.')
+    for k, v in ref('odds').items():
+        if abs(od[k] - np.log(v)) < 1e-9:
+            fail('В odds — сами коэффициенты. Множитель шансов — exp(коэффициента).')
+        close(od[k], v, 'Множитель шансов для ' + k + ' — {expected}, а у вас {actual}.')
+    equal(var('strongest', str, 'строкой'), ref('strongest'), 'Самый сильный признак — {expected}, а у вас {actual}.')
+    close(var('p_cheap', 'number', 'числом'), ref('p_cheap'), 'Вероятность автомата при цене 5000 — {expected}, а у вас {actual}.')
+    close(var('p_dear', 'number', 'числом'), ref('p_dear'), 'Вероятность автомата при цене 15 000 — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        coef = model[-1].coef_[0]
+        odds = {name: float(c) for name, c in zip(features, coef)}
+        strongest = features[int(np.argmax(np.abs(coef)))]
+        def p_auto(price):
+            car = pd.DataFrame([{'Year': 2010, 'Distance': 150000, 'Engine': 1600, 'Price': price}])[features]
+            return float(model.predict_proba(car)[0, 1])
+        p_cheap, p_dear = p_auto(5000), p_auto(15000)
+      expect: exp(коэффициента)
+    - code: |
+        coef = model[-1].coef_[0]
+        odds = {name: float(np.exp(c)) for name, c in zip(features, coef)}
+        strongest = features[int(np.argmax(coef))]
+        def p_auto(price):
+            car = pd.DataFrame([{'Year': 2010, 'Distance': 150000, 'Engine': 1600, 'Price': price}])[features]
+            return float(model.predict_proba(car)[0, 0])
+        p_cheap, p_dear = p_auto(5000), p_auto(15000)
+      expect: Вероятность автомата при цене 5000
+
+- id: b1-l1-t5
+  title: Почему не линейная регрессия
+  difficulty: main
+  introduces: []
+  uses: [logistic-regression, sk-pipeline]
+  statement: |
+    Обучите на тех же признаках конвейер `StandardScaler` → `LinearRegression`, как будто 0 и 1 — обычные числа. Получите для проверочной части:
+
+    - `share_outside` — долю машин, у которых предсказание линейной регрессии меньше 0 или больше 1;
+    - `acc_linear` — долю верных, если считать автоматом предсказание не меньше 0,5;
+    - `acc_logistic` — долю верных логистической регрессии `model` (уже обучена).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import make_pipeline
+    from sklearn.linear_model import LogisticRegression, LinearRegression
+    cars = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'Price']
+    X, y = cars[features], cars['AutoTransmission'].astype(int)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    model = make_pipeline(StandardScaler(), LogisticRegression()).fit(X_train, y_train)
+  starter: |
+    lin = make_pipeline(StandardScaler(), LinearRegression()).fit(X_train, y_train)
+    p_lin = lin.predict(X_test)
+    share_outside = ...
+    acc_linear = ...
+    acc_logistic = float(model.score(X_test, y_test))
+    print(round(share_outside, 3), round(acc_linear, 3), round(acc_logistic, 3))
+  solution: |
+    lin = make_pipeline(StandardScaler(), LinearRegression()).fit(X_train, y_train)
+    p_lin = lin.predict(X_test)
+    share_outside = float(np.mean((p_lin < 0) | (p_lin > 1)))
+    acc_linear = float(np.mean((p_lin >= 0.5) == y_test))
+    acc_logistic = float(model.score(X_test, y_test))
+    print(round(share_outside, 3), round(acc_linear, 3), round(acc_logistic, 3))
+  explanation: |
+    - `(p_lin < 0) | (p_lin > 1)` — маска «не может быть вероятностью», её среднее — доля таких машин: 8 %.
+    - По доле верных линейная регрессия почти не уступает: 80,9 % против 81,3 %. Для порога достаточно, чтобы прямая шла в правильную сторону.
+    - Но её ответ нельзя прочитать как вероятность. Нельзя сказать «автомат с вероятностью 2,24». Нельзя посчитать log loss или выбрать порог под цену ошибок. Вдобавок дорогие машины с ответом 2 тянут прямую на себя и сдвигают её для всех остальных. Логистическая регрессия даёт настоящие вероятности.
+  hints:
+    - "Вне отрезка — `(p_lin < 0) | (p_lin > 1)`, доля — `np.mean(...)`."
+    - "Класс линейной регрессии — `p_lin >= 0.5`; сравните с `y_test`."
+    - "`acc_linear = float(np.mean((p_lin >= 0.5) == y_test))`."
+  tests: |
+    so = var('share_outside', 'number', 'числом')
+    if abs(so - float(((ref('p_lin') < 0)).mean())) < 1e-9 or abs(so - float(((ref('p_lin') > 1)).mean())) < 1e-9:
+        fail('Посчитана только одна сторона. Нужны и предсказания меньше 0, и больше 1: (p_lin < 0) | (p_lin > 1).')
+    close(so, ref('share_outside'), 'Доля предсказаний вне [0, 1] — {expected}, а у вас {actual}.')
+    close(var('acc_linear', 'number', 'числом'), ref('acc_linear'), 'Доля верных линейной регрессии с порогом 0.5 — {expected}, а у вас {actual}.')
+    close(var('acc_logistic', 'number', 'числом'), ref('acc_logistic'), 'Доля верных логистической регрессии — {expected}, а у вас {actual}.')
+    close(alt('share_outside'), alt_ref('share_outside'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        lin = make_pipeline(StandardScaler(), LinearRegression()).fit(X_train, y_train)
+        p_lin = lin.predict(X_test)
+        share_outside = float(np.mean(p_lin > 1))
+        acc_linear = float(np.mean((p_lin >= 0.5) == y_test))
+        acc_logistic = float(model.score(X_test, y_test))
+      expect: только одна сторона
+    - code: |
+        lin = make_pipeline(StandardScaler(), LinearRegression()).fit(X_train, y_train)
+        p_lin = lin.predict(X_test)
+        share_outside = float(np.mean((p_lin < 0) | (p_lin > 1)))
+        acc_linear = float(np.mean(np.round(p_lin) == y_test))
+        acc_logistic = float(model.score(X_test, y_test))
+      expect: с порогом 0.5
+
+- id: b1-l1-t6
+  title: Цена на границе
+  difficulty: star
+  introduces: []
+  uses: [logistic-regression, standard-scaler]
+  statement: |
+    При какой цене модель считает автомат и механику равновероятными для машины 2010 года с пробегом 150 000 км и двигателем 1600 см³?
+
+    Вероятность равна 0,5, когда z = 0. Внутри конвейера z = b + Σ wⱼ·(xⱼ − μⱼ) / σⱼ, где μ и σ — средние и стандартные отклонения шкалировщика (`model[0].mean_`, `model[0].scale_`), а w и b — коэффициенты и свободный член регрессии. Решите уравнение z = 0 относительно цены. Получите `price_50` и проверьте себя: `p_check` — вероятность автомата, которую модель даёт машине с этой ценой.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import make_pipeline
+    from sklearn.linear_model import LogisticRegression
+    cars = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'Price']
+    X, y = cars[features], cars['AutoTransmission'].astype(int)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    model = make_pipeline(StandardScaler(), LogisticRegression()).fit(X_train, y_train)
+  starter: |
+    scaler, lr = model[0], model[-1]
+    w = dict(zip(features, lr.coef_[0]))
+    mu = dict(zip(features, scaler.mean_))
+    sd = dict(zip(features, scaler.scale_))
+    car = {'Year': 2010, 'Distance': 150000, 'Engine': 1600}
+
+    rest = lr.intercept_[0] + sum(... for f in car)       # вклад всего, кроме цены
+    price_50 = ...
+    p_check = float(model.predict_proba(pd.DataFrame([{**car, 'Price': price_50}])[features])[0, 1])
+    print(round(price_50), round(p_check, 4))
+  solution: |
+    scaler, lr = model[0], model[-1]
+    w = dict(zip(features, lr.coef_[0]))
+    mu = dict(zip(features, scaler.mean_))
+    sd = dict(zip(features, scaler.scale_))
+    car = {'Year': 2010, 'Distance': 150000, 'Engine': 1600}
+
+    rest = lr.intercept_[0] + sum(w[f] * (car[f] - mu[f]) / sd[f] for f in car)
+    price_50 = float(mu['Price'] + sd['Price'] * (-rest) / w['Price'])
+    p_check = float(model.predict_proba(pd.DataFrame([{**car, 'Price': price_50}])[features])[0, 1])
+    print(round(price_50), round(p_check, 4))
+  explanation: |
+    - Вклад года, пробега и объёма — `w[f] * (car[f] - mu[f]) / sd[f]`: признак стандартизуется так же, как внутри конвейера.
+    - Из `rest + w_price·(price − μ)/σ = 0` получается `price = μ + σ·(−rest)/w_price`.
+    - Для такой машины граница — 10 733 евро. Дешевле — модель скажет «механика», дороже — «автомат». Граница решений логистической регрессии — прямая (плоскость) в пространстве признаков, и вдоль одной оси её можно найти обычной алгеброй (урок 8.7).
+  hints:
+    - "Вклад признака — `w[f] * (car[f] - mu[f]) / sd[f]`."
+    - "Уравнение `rest + w['Price'] * (price - mu['Price']) / sd['Price'] = 0` решается относительно `price`."
+    - "`price_50 = mu['Price'] + sd['Price'] * (-rest) / w['Price']`."
+  tests: |
+    pc = var('p_check', 'number', 'числом')
+    close(pc, 0.5, 'При найденной цене вероятность должна быть 0.5, а у вас {actual}. Проверьте знак и стандартизацию.', atol=1e-6)
+    close(var('price_50', 'number', 'числом'), ref('price_50'), 'Цена на границе — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        scaler, lr = model[0], model[-1]
+        w = dict(zip(features, lr.coef_[0]))
+        mu = dict(zip(features, scaler.mean_))
+        sd = dict(zip(features, scaler.scale_))
+        car = {'Year': 2010, 'Distance': 150000, 'Engine': 1600}
+        rest = lr.intercept_[0] + sum(w[f] * car[f] for f in car)
+        price_50 = float(mu['Price'] + sd['Price'] * (-rest) / w['Price'])
+        p_check = float(model.predict_proba(pd.DataFrame([{**car, 'Price': price_50}])[features])[0, 1])
+      expect: стандартизацию
+    - code: |
+        scaler, lr = model[0], model[-1]
+        w = dict(zip(features, lr.coef_[0]))
+        mu = dict(zip(features, scaler.mean_))
+        sd = dict(zip(features, scaler.scale_))
+        car = {'Year': 2010, 'Distance': 150000, 'Engine': 1600}
+        rest = lr.intercept_[0] + sum(w[f] * (car[f] - mu[f]) / sd[f] for f in car)
+        price_50 = float(mu['Price'] + sd['Price'] * rest / w['Price'])
+        p_check = float(model.predict_proba(pd.DataFrame([{**car, 'Price': price_50}])[features])[0, 1])
+      expect: знак

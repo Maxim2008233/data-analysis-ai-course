@@ -1,0 +1,445 @@
+- id: m4-l4-t1
+  kind: plot
+  title: Число и доля — два графика рядом
+  difficulty: warmup
+  introduces: [mpl-subplots]
+  uses: [mpl-bar-labels, pd-value-counts]
+  statement: |
+    Для **восьми самых частых типов кузова** нарисуйте рисунок из двух графиков в одну строку: слева — горизонтальные столбцы с числом объявлений, справа — с долей всех объявлений в процентах (лидер сверху на обоих). Подпишите каждый график своим заголовком и добавьте общий заголовок рисунка (`fig.suptitle`).
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    top = ...
+    share = ...
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+    axes[0].barh(...)
+    axes[1].barh(...)
+    axes[0].set_title(...)
+    axes[1].set_title(...)
+    fig.suptitle(...)
+    fig.tight_layout()
+    plt.show()
+  solution: |
+    top = df['Style'].value_counts().head(8).sort_values()
+    share = 100 * top / len(df)
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+    axes[0].barh(top.index, top.values)
+    axes[1].barh(share.index, share.values)
+    axes[0].set_title('Число объявлений')
+    axes[1].set_title('Доля всех объявлений, %')
+    fig.suptitle('Восемь самых частых типов кузова')
+    fig.tight_layout()
+    plt.show()
+  explanation: |
+    - `plt.subplots(1, 2)` — две оси в одну строку; массив одномерный: `axes[0]` и `axes[1]`.
+    - Каждую ось рисуют и подписывают её методами: `axes[0].barh(...)`, `axes[0].set_title(...)`.
+    - Доля — число объявлений кузова, делённое на все объявления, × 100.
+  hints:
+    - Две оси в одну строку; доля считается от числа всех объявлений.
+    - "`share = 100 * top / len(df)`; `axes[1].barh(share.index, share.values)`."
+    - "`top = df['Style'].value_counts().head(8).sort_values()`; заголовки — `axes[0].set_title(...)`, `fig.suptitle(...)`."
+  tests: |
+    fig = figures()[-1]
+    axs = plot_axes(fig)
+    ensure(len(axs) == 2, 'На рисунке должно быть два графика: `plt.subplots(1, 2)`, а у вас {0}.'.format(len(axs)))
+    exp_n = ref('top')
+    exp_s = ref('share')
+    for k, (ax, exp, what) in enumerate([(axs[0], exp_n, 'число объявлений'), (axs[1], exp_s, 'долю в процентах')]):
+        bars = [b for b in ax.patches if type(b).__name__ == 'Rectangle']
+        ensure(len(bars) == 8, 'На {0}-м графике должно быть 8 столбцов, а у вас {1}.'.format(k + 1, len(bars)))
+        ys = [b.get_y() + b.get_height() / 2 for b in bars]
+        widths = [w for _, w in sorted(zip(ys, [b.get_width() for b in bars]))]
+        if ax.yaxis_inverted():
+            widths = widths[::-1]
+        same_array(widths, exp.values, '{0}-й график должен показывать {1}, лидер сверху.'.format(k + 1, what))
+        ensure(ax.get_title().strip() != '', 'Подпишите {0}-й график: `axes[{1}].set_title(...)`.'.format(k + 1, k))
+    st = fig.get_suptitle()
+    ensure(st.strip() != '', 'Добавьте общий заголовок рисунка: `fig.suptitle(...)`.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        top = df['Style'].value_counts().head(8).sort_values()
+        share = top / len(df)
+        fig, axes = plt.subplots(1, 2)
+        axes[0].barh(top.index, top.values)
+        axes[1].barh(share.index, share.values)
+        axes[0].set_title('Число')
+        axes[1].set_title('Доля')
+        fig.suptitle('Кузова')
+        plt.show()
+      expect: долю в процентах
+    - code: |
+        top = df['Style'].value_counts().head(8).sort_values()
+        share = 100 * top / len(df)
+        fig, axes = plt.subplots(1, 2)
+        axes[0].barh(top.index, top.values)
+        axes[1].barh(share.index, share.values)
+        axes[0].set_title('Число')
+        axes[1].set_title('Доля')
+        plt.show()
+      expect: suptitle
+
+- id: m4-l4-t2
+  kind: plot
+  title: Диаграмма Парето по типам кузова
+  difficulty: main
+  introduces: [part-of-whole, mpl-subplots]
+  uses: [pd-value-counts]
+  statement: |
+    Нарисуйте диаграмму Парето для **всех типов кузова**: вертикальные столбцы числа объявлений по убыванию и на второй оси (`ax.twinx()`) — линию накопленной доли **всех** объявлений в процентах (`cum_share`). Границы второй оси — от 0 до 100. Подпишите обе оси Y и добавьте заголовок.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    ranked = ...
+    cum_share = ...
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.bar(ranked.index, ranked.values)
+    ax.tick_params(axis='x', rotation=60)
+    ax2 = ax.twinx()
+    ax2.plot(...)
+    ax.set(title=..., ylabel=...)
+    ax2.set(ylabel=..., ylim=...)
+    plt.show()
+  solution: |
+    ranked = df['Style'].value_counts()
+    cum_share = 100 * ranked.cumsum() / len(df)
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.bar(ranked.index, ranked.values)
+    ax.tick_params(axis='x', rotation=60)
+    ax2 = ax.twinx()
+    ax2.plot(ranked.index, cum_share.values, 'o-', color='tab:red')
+    ax.set(title='Типы кузова: число объявлений и накопленная доля', ylabel='Число объявлений')
+    ax2.set(ylabel='Накопленная доля объявлений, %', ylim=(0, 100))
+    plt.show()
+  explanation: |
+    - `value_counts()` уже по убыванию — порядок Парето.
+    - `cumsum()` — накопленная сумма; делим на число всех объявлений и умножаем на 100 — накопленная доля, последняя точка равна 100 %.
+    - `ax.twinx()` — вторые оси с общей осью X и своей шкалой Y справа: штуки и проценты не смешиваются.
+  hints:
+    - "Накопленная сумма — метод `cumsum()`; долю считайте от числа **всех** объявлений."
+    - "`cum_share = 100 * ranked.cumsum() / len(df)`; линия — на `ax2 = ax.twinx()`."
+    - "`ax2.plot(ranked.index, cum_share.values, 'o-', color='tab:red')`; `ax2.set(ylim=(0, 100), ylabel=...)`."
+  tests: |
+    import pandas as pd
+    cs = var('cum_share', pd.Series, 'Series')
+    if abs(cs.iloc[-1] - 1) < 1e-6:
+        fail('Накопленная доля заканчивается на 1, а нужны проценты: умножьте на 100.')
+    same_frame(cs, ref('cum_share'), 'Накопленная доля не совпадает: `100 * ranked.cumsum() / len(df)`.')
+    fig = figures()[-1]
+    axs = plot_axes(fig)
+    ensure(len(axs) >= 2, 'Линию накопленной доли рисуют на второй оси: `ax2 = ax.twinx()`.')
+    bar_ax = [a for a in axs if any(type(p).__name__ == 'Rectangle' for p in a.patches)]
+    line_ax = [a for a in axs if len(a.get_lines()) > 0]
+    ensure(bar_ax and line_ax, 'Нужны столбцы на одной оси и линия на второй.')
+    bars = [p for p in bar_ax[0].patches if type(p).__name__ == 'Rectangle']
+    same_array([b.get_height() for b in bars], ref('ranked').values, 'Столбцы должны показывать число объявлений по убыванию.')
+    la = line_ax[0]
+    ensure(la is not bar_ax[0], 'Линию нарисуйте на второй оси `ax2`, а не на оси со столбцами.')
+    same_array(la.get_lines()[0].get_ydata(), ref('cum_share').values, 'Линия должна показывать накопленную долю в процентах.')
+    lo, hi = la.get_ylim()
+    ensure(abs(lo) < 1e-6 and abs(hi - 100) < 1e-6, 'Задайте границы второй оси от 0 до 100: `ax2.set(ylim=(0, 100))`.')
+    ensure(bar_ax[0].get_ylabel().strip() != '' and la.get_ylabel().strip() != '', 'Подпишите обе оси Y — штуки слева, проценты справа.')
+    ensure(bar_ax[0].get_title().strip() != '', 'Добавьте заголовок.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        ranked = df['Style'].value_counts()
+        cum_share = ranked.cumsum() / len(df)
+        fig, ax = plt.subplots()
+        ax.bar(ranked.index, ranked.values)
+        ax2 = ax.twinx()
+        ax2.plot(ranked.index, cum_share.values, 'o-')
+        ax.set(title='Парето', ylabel='Число')
+        ax2.set(ylabel='Доля', ylim=(0, 1))
+        plt.show()
+      expect: проценты
+    - code: |
+        ranked = df['Style'].value_counts()
+        cum_share = 100 * ranked.cumsum() / len(df)
+        fig, ax = plt.subplots()
+        ax.bar(ranked.index, ranked.values)
+        ax2 = ax.twinx()
+        ax2.plot(ranked.index, cum_share.values, 'o-')
+        ax.set(title='Парето', ylabel='Число')
+        ax2.set(ylabel='Доля, %')
+        plt.show()
+      expect: от 0 до 100
+
+- id: m4-l4-t3
+  kind: plot
+  title: Кольцо из пяти частей
+  difficulty: main
+  introduces: [part-of-whole]
+  uses: [pd-value-counts]
+  statement: |
+    Получите `parts` — число объявлений четырёх самых частых типов топлива и в конце строку `'Другое'` со всеми остальными. Нарисуйте `parts` **кольцом**: `ax.pie` с шириной кольца `0.4` (`wedgeprops={'width': 0.4}`), подписями долей (`autopct='%1.0f%%'`) и названиями частей (`labels=` или легенда). Добавьте заголовок.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    parts = ...
+    parts['Другое'] = ...
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.pie(...)
+    ax.set_title(...)
+    plt.show()
+  solution: |
+    parts = df['Fuel_type'].value_counts().head(4)
+    parts['Другое'] = len(df) - parts.sum()
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.pie(parts.values, labels=parts.index, autopct='%1.0f%%', startangle=90,
+           wedgeprops={'width': 0.4, 'edgecolor': 'white'})
+    ax.set_title('Тип топлива: почти половина объявлений — дизель')
+    plt.show()
+  explanation: |
+    - Четыре самых частых значения и «Другое» — пять частей одного целого: столько кольцо ещё выдерживает.
+    - `wedgeprops={'width': 0.4}` вырезает середину круга — получается кольцо; `edgecolor='white'` разделяет секторы.
+    - `autopct='%1.0f%%'` подписывает доли целыми процентами, `labels=` — названия частей.
+  hints:
+    - «Другое» — все объявления минус четыре самых частых типа; кольцо — это `pie` с шириной сектора.
+    - "`parts['Другое'] = len(df) - parts.sum()`; `ax.pie(parts.values, labels=parts.index, autopct='%1.0f%%', wedgeprops={'width': 0.4})`."
+    - "`parts = df['Fuel_type'].value_counts().head(4)`."
+  tests: |
+    import pandas as pd
+    p = var('parts', pd.Series, 'Series')
+    ensure(len(p) == 5 and p.index[-1] == 'Другое', 'В `parts` должно быть пять строк, последняя — `\'Другое\'`.')
+    same_frame(p, ref('parts'), 'Значения `parts` не совпадают.')
+    ax = axes()
+    wedges = [w for w in ax.patches if type(w).__name__ == 'Wedge']
+    ensure(len(wedges) == 5, 'На кольце должно быть 5 секторов, а у вас {0}. Нарисуйте его методом `ax.pie(...)`.'.format(len(wedges)))
+    total = float(ref('parts').sum())
+    for w, v in zip(wedges, ref('parts').values):
+        ensure(abs((w.theta2 - w.theta1) - 360 * v / total) < 0.01, 'Углы секторов должны быть пропорциональны значениям `parts` — передайте их в `ax.pie` в том же порядке.')
+    ensure(all(w.width is not None and abs(w.width - 0.4) < 1e-6 for w in wedges), 'Сделайте из круга кольцо: `wedgeprops={\'width\': 0.4}`.')
+    texts = [t.get_text() for t in ax.texts]
+    leg = ax.get_legend()
+    if leg is not None:
+        texts += [t.get_text() for t in leg.get_texts()]
+    ensure('Другое' in texts and 'Diesel' in texts, 'Подпишите части кольца: `labels=parts.index` или легенда.')
+    ensure(any('%' in t for t in texts), 'Добавьте подписи долей: `autopct=\'%1.0f%%\'`.')
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        parts = df['Fuel_type'].value_counts().head(4)
+        parts['Другое'] = len(df) - parts.sum()
+        fig, ax = plt.subplots()
+        ax.pie(parts.values, labels=parts.index, autopct='%1.0f%%')
+        ax.set_title('Топливо')
+        plt.show()
+      expect: кольцо
+    - code: |
+        parts = df['Fuel_type'].value_counts().head(4)
+        parts['Другое'] = len(df) - parts.sum()
+        fig, ax = plt.subplots()
+        ax.pie(parts.values, labels=parts.index, wedgeprops={'width': 0.4})
+        ax.set_title('Топливо')
+        plt.show()
+      expect: подписи долей
+
+- id: m4-l4-t4
+  kind: plot
+  title: "Малые графики: состав топлива шести марок"
+  difficulty: main
+  introduces: [mpl-subplots]
+  uses: [pd-value-counts, pd-bool-filter, mpl-fig-ax]
+  statement: |
+    Сравните состав топлива **шести самых частых значений `Make`** серией маленьких графиков: рисунок `plt.subplots(2, 3)`, на каждой оси — горизонтальные столбцы числа объявлений по типам топлива одной марки (по возрастанию), заголовок оси — название марки. Марки идут в порядке частоты: первая — в `axes[0, 0]`. Добавьте общий заголовок рисунка.
+  prelude: |
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    top6 = ...
+    fig, axes = plt.subplots(2, 3, figsize=(13, 6))
+    for ax, make in zip(axes.flat, top6):
+        counts = ...
+        ax.barh(counts.index, counts.values)
+        ax.set_title(make)
+    fig.suptitle(...)
+    fig.tight_layout()
+    plt.show()
+  solution: |
+    top6 = df['Make'].value_counts().head(6).index
+    fig, axes = plt.subplots(2, 3, figsize=(13, 6))
+    for ax, make in zip(axes.flat, top6):
+        counts = df[df['Make'] == make]['Fuel_type'].value_counts().sort_values()
+        ax.barh(counts.index, counts.values)
+        ax.set_title(make)
+    fig.suptitle('Состав топлива у шести самых частых значений Make')
+    fig.tight_layout()
+    plt.show()
+  explanation: |
+    - `zip(axes.flat, top6)` идёт по осям и маркам парами: первая ось — первая марка (урок 0.8).
+    - Для каждой марки — фильтр строк и частоты топлива по возрастанию; заголовок оси — марка.
+    - Такая серия «малых графиков» позволяет сравнить сегменты, не смешивая их на одной оси.
+  hints:
+    - "Цикл по парам «ось, марка»: `for ax, make in zip(axes.flat, top6)`; внутри — частоты топлива одной марки."
+    - "`counts = df[df['Make'] == make]['Fuel_type'].value_counts().sort_values()`."
+    - "`top6 = df['Make'].value_counts().head(6).index`; общий заголовок — `fig.suptitle(...)`."
+  tests: |
+    fig = figures()[-1]
+    axs = plot_axes(fig)
+    ensure(len(axs) == 6, 'На рисунке должно быть 6 графиков — `plt.subplots(2, 3)`, а у вас {0}.'.format(len(axs)))
+    top6 = list(ref('top6'))
+    d = ref('df')
+    for ax, make in zip(axs, top6):
+        ensure(ax.get_title() == make, 'Графики должны идти в порядке частоты марок: ожидался заголовок «{0}», а у вас «{1}».'.format(make, ax.get_title()))
+        exp = d[d['Make'] == make]['Fuel_type'].value_counts().sort_values()
+        bars = [b for b in ax.patches if type(b).__name__ == 'Rectangle']
+        ensure(len(bars) == len(exp), 'У «{0}» должно быть {1} столбцов — по типам топлива этой марки, а у вас {2}.'.format(make, len(exp), len(bars)))
+        same_array([b.get_width() for b in bars], exp.values, 'Столбцы «{0}» должны показывать число объявлений по типам топлива по возрастанию.'.format(make))
+    ensure(fig.get_suptitle().strip() != '', 'Добавьте общий заголовок: `fig.suptitle(...)`.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        top6 = df['Make'].value_counts().head(6).index
+        fig, axes = plt.subplots(2, 3)
+        for ax, make in zip(axes.flat, top6):
+            counts = df['Fuel_type'].value_counts().sort_values()
+            ax.barh(counts.index, counts.values)
+            ax.set_title(make)
+        fig.suptitle('Топливо')
+        plt.show()
+      expect: по типам топлива
+    - code: |
+        top6 = sorted(df['Make'].value_counts().head(6).index)
+        fig, axes = plt.subplots(2, 3)
+        for ax, make in zip(axes.flat, top6):
+            counts = df[df['Make'] == make]['Fuel_type'].value_counts().sort_values()
+            ax.barh(counts.index, counts.values)
+            ax.set_title(make)
+        fig.suptitle('Топливо')
+        plt.show()
+      expect: порядке частоты
+
+- id: m4-l4-t5
+  kind: quiz
+  title: Какую форму выбрать
+  difficulty: main
+  introduces: [part-of-whole, mpl-subplots]
+  uses: []
+  statement: |
+    Выберите подходящее решение.
+  quiz:
+    - q: Нужно точно сравнить доли 12 типов кузова. Что выбрать?
+      options:
+        - Кольцо из 12 секторов
+        - Отсортированные горизонтальные столбцы
+        - Мозаику из 100 квадратов
+      answer: 1
+      explain: Длины сравниваются точнее углов и площадей; кольцо хорошо только для 3–6 частей.
+    - q: "Вопрос: «сколько марок покрывают 80 % объявлений?». Какой график отвечает на него прямо?"
+      options:
+        - Диаграмма Парето с накопленной долей
+        - Кольцо
+        - Линия средней цены по годам
+      answer: 0
+      explain: Линия накопленной доли показывает, на какой марке пересекается уровень 80 %.
+    - q: "После `fig, axes = plt.subplots(1, 3)` вызвали `plt.title('Цены')`. Где появится заголовок?"
+      options:
+        - Над всеми тремя графиками
+        - Только над последним графиком
+        - Нигде — будет ошибка
+      answer: 1
+      explain: "Короткие команды `plt.*` работают с текущими (последними) осями. Подписывайте оси их методами: `axes[0].set_title(...)`, общий заголовок — `fig.suptitle(...)`."
+  hints:
+    - Вспомните таблицу форм урока и то, с какими осями работают команды `plt.*`.
+    - "Точное сравнение — столбцы; «сколько категорий покрывают N %» — Парето; `plt.title` — последние оси."
+    - "Ответы: столбцы; Парето; только над последним."
+
+- id: m4-l4-t6
+  title: "Мозаика: ровно 100 квадратов"
+  difficulty: star
+  introduces: [part-of-whole]
+  uses: [pd-value-counts, pd-sort-values, pd-loc-assign]
+  statement: |
+    В мозаике «один квадрат ≈ 1 %» должно быть ровно 100 квадратов. Если просто округлить доли, сумма часто получается 99 или 101. Правило **наибольших остатков**: каждой части даём целую часть её доли, а недостающие до 100 квадраты раздаём частям с наибольшей дробной частью.
+
+    Для пяти самых частых типов кузова и строки `'Остальные'` (`parts`) получите `quota` — доли в процентах, `squares` — число квадратов у каждой части (целые числа, сумма ровно 100). Код рисования мозаики уже готов.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    parts = df['Style'].value_counts().head(5)
+    parts['Остальные'] = len(df) - parts.sum()
+    quota = ...
+    squares = ...            # целые части долей
+    remainder = ...          # сколько квадратов не хватает до 100
+    extra = ...              # метки частей с наибольшими дробными частями
+    squares.loc[extra] += 1
+    print(squares, squares.sum())
+
+    if squares.sum() == 100:  # мозаика 10 × 10
+        colors = list(plt.cm.tab10.colors[:5]) + ['lightgray']
+        cell_colors = np.repeat(np.array(colors, dtype=object), squares.values)
+        x, y = np.meshgrid(np.arange(10), np.arange(10))
+        fig, ax = plt.subplots(figsize=(7, 5))
+        ax.scatter(x.ravel(), -y.ravel(), c=list(cell_colors), marker='s', s=330)
+        ax.set(title='Один квадрат ≈ 1 % объявлений', aspect='equal')
+        ax.axis('off')
+        plt.show()
+  solution: |
+    parts = df['Style'].value_counts().head(5)
+    parts['Остальные'] = len(df) - parts.sum()
+    quota = 100 * parts / parts.sum()
+    squares = quota.astype(int)
+    remainder = 100 - squares.sum()
+    extra = (quota - squares).sort_values(ascending=False).index[:remainder]
+    squares.loc[extra] += 1
+    print(squares, squares.sum())
+
+    if squares.sum() == 100:
+        colors = list(plt.cm.tab10.colors[:5]) + ['lightgray']
+        cell_colors = np.repeat(np.array(colors, dtype=object), squares.values)
+        x, y = np.meshgrid(np.arange(10), np.arange(10))
+        fig, ax = plt.subplots(figsize=(7, 5))
+        ax.scatter(x.ravel(), -y.ravel(), c=list(cell_colors), marker='s', s=330)
+        ax.set(title='Один квадрат ≈ 1 % объявлений', aspect='equal')
+        ax.axis('off')
+        plt.show()
+  explanation: |
+    - `quota` — доли в процентах; `astype(int)` отбрасывает дробную часть (для положительных чисел это округление вниз).
+    - `remainder` — сколько квадратов потерялось при отбрасывании дробных частей.
+    - Дробные части `quota - squares` по убыванию: первые `remainder` меток получают ещё по квадрату через `loc` (урок 2.9).
+    - Простое `round()` здесь дало бы 99 квадратов: у SUV доля 9,499 % округлится вниз, хотя его дробная часть — среди наибольших.
+  hints:
+    - Целая часть — `astype(int)`; не хватает `100 - squares.sum()` квадратов; дробная часть — `quota - squares`.
+    - "`extra = (quota - squares).sort_values(ascending=False).index[:remainder]` — метки частей с наибольшими остатками."
+    - "`quota = 100 * parts / parts.sum()`; `squares = quota.astype(int)`; `remainder = 100 - squares.sum()`."
+  tests: |
+    import pandas as pd
+    import numpy as np
+    sq = var('squares', pd.Series, 'Series')
+    ensure(len(sq) == 6, 'В `squares` должно быть 6 частей — пять кузовов и «Остальные».')
+    ensure(np.allclose(sq.values, np.round(sq.values)), 'Число квадратов должно быть целым у каждой части.')
+    total = int(round(sq.sum()))
+    if total != 100:
+        fail('Сумма квадратов {0}, а должна быть ровно 100. Простое округление теряет или добавляет квадраты — раздайте недостающие по наибольшим дробным частям.'.format(total))
+    same_frame(var('quota', pd.Series, 'Series'), ref('quota'), 'Доли `quota` в процентах не совпадают.')
+    same_frame(sq.astype(int), ref('squares').astype(int), 'Квадраты распределены не по правилу наибольших остатков.')
+    same_frame(alt('squares').astype(int), alt_ref('squares').astype(int), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        parts = df['Style'].value_counts().head(5)
+        parts['Остальные'] = len(df) - parts.sum()
+        quota = 100 * parts / parts.sum()
+        squares = quota.round().astype(int)
+      expect: ровно 100
+    - code: |
+        parts = df['Style'].value_counts().head(5)
+        parts['Остальные'] = len(df) - parts.sum()
+        quota = 100 * parts / parts.sum()
+        squares = quota.astype(int)
+        remainder = 100 - squares.sum()
+        extra = (quota - squares).sort_values().index[:remainder]
+        squares.loc[extra] += 1
+      expect: наибольших остатков

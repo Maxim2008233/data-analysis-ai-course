@@ -1,0 +1,705 @@
+- id: m11-l4-t1
+  title: Разбор шага ReAct
+  difficulty: warmup
+  introduces: [react-loop]
+  uses: [structured-output]
+  statement: |
+    Напишите функцию `parse_step(reply)`: она разбирает ответ модели в формате ReAct и возвращает словарь.
+
+    - Всё, что модель написала начиная с `Observation:`, отбрасывается — результат инструмента пишет программа.
+    - Ключ `'thought'` — текст после `Thought:` до конца строки (без пробелов по краям) или пустая строка, если рассуждения нет.
+    - Если есть `Final Answer:`, добавляется ключ `'final'` — весь текст после него (без пробелов по краям; может занимать несколько строк).
+    - Иначе, если есть строка `Action:` с именем инструмента и следующая строка `Action Input:`, добавляются ключи `'action'` и `'input'`.
+    - Иначе добавляется ключ `'error'` со строкой-описанием проблемы.
+
+    Получите `steps` — результаты разбора ответов из списка `replies`.
+  prelude: |
+    import re
+    replies = [
+        'Thought: Нужно узнать расписание.\nAction: get_schedule\nAction Input: завтра',
+        'Thought: Всё известно.\nFinal Answer: Завтра три занятия.\nПервое — в 9:00.',
+        'Thought: Посчитаю.\nAction: calculate\nAction Input:  3 * 90  \nObservation: 300',
+        'Я думаю, надо посмотреть расписание.',
+        'Action: search_course\nAction Input: кросс-валидация',
+        'Thought: Отвечу сразу.\nAction: get_schedule\nObservation: всё готово\nFinal Answer: выдумка',
+    ]
+  starter: |
+    def parse_step(reply):
+        reply = reply.split('Observation:')[0]
+        thought = re.search(r'Thought:\s*(.+)', reply)
+        step = {'thought': thought.group(1).strip() if thought else ''}
+        final = re.search(r'Final Answer:\s*(.+)', reply, re.S)
+        if final:
+            step['final'] = ...
+            return step
+        action = re.search(r'Action:\s*(\w+)\s*\nAction Input:\s*(.+)', reply)
+        if action:
+            ...
+            return step
+        step['error'] = 'нет ни Action с Action Input, ни Final Answer'
+        return step
+
+    steps = [parse_step(r) for r in replies]
+    for s in steps:
+        print(s)
+  solution: |
+    def parse_step(reply):
+        reply = reply.split('Observation:')[0]
+        thought = re.search(r'Thought:\s*(.+)', reply)
+        step = {'thought': thought.group(1).strip() if thought else ''}
+        final = re.search(r'Final Answer:\s*(.+)', reply, re.S)
+        if final:
+            step['final'] = final.group(1).strip()
+            return step
+        action = re.search(r'Action:\s*(\w+)\s*\nAction Input:\s*(.+)', reply)
+        if action:
+            step['action'] = action.group(1)
+            step['input'] = action.group(2).strip()
+            return step
+        step['error'] = 'нет ни Action с Action Input, ни Final Answer'
+        return step
+
+    steps = [parse_step(r) for r in replies]
+    for s in steps:
+        print(s)
+  explanation: |
+    - `reply.split('Observation:')[0]` — всё до первого `Observation:`. В последнем ответе модель выдумала и результат, и Final Answer после него — оба отброшены, а `Action:` без `Action Input:` даёт ошибку формата.
+    - `re.S` позволяет точке захватывать переносы строк: Final Answer из двух строк попадает целиком.
+    - В `(.+)` после `Thought:` точка без `re.S` останавливается на конце строки — рассуждение не захватывает Action.
+    - Ответ без Thought (пятый) разбирается: рассуждение — пустая строка, а действие на месте. Строгость к формату нужна там, где без неё программа ошибётся, а не везде.
+  hints:
+    - "Final Answer — `final.group(1).strip()`."
+    - "Действие — `step['action'] = action.group(1)`, вход — `action.group(2).strip()`."
+    - "Обрезка выдуманного результата уже есть в первой строке функции."
+  tests: |
+    f = var('parse_step')
+    ensure(callable(f), '`parse_step` должна быть функцией.')
+    equal(f('Thought: т\nAction: tool_a\nAction Input: вход 1'), {'thought': 'т', 'action': 'tool_a', 'input': 'вход 1'}, 'Шаг с действием: ожидалось {expected}, а у вас {actual}.')
+    equal(f('Thought: готово\nFinal Answer: строка 1\nстрока 2  '), {'thought': 'готово', 'final': 'строка 1\nстрока 2'}, 'Final Answer из двух строк попадает целиком: ожидалось {expected}, а у вас {actual}.')
+    got = f('Thought: т\nAction: tool_a\nAction Input: x\nObservation: выдумка\nFinal Answer: тоже выдумка')
+    if 'final' in got:
+        fail('Final Answer после выдуманного Observation нужно отбросить: всё, начиная с `Observation:`, пишет программа, а не модель.')
+    equal(got, {'thought': 'т', 'action': 'tool_a', 'input': 'x'}, 'Ожидалось {expected}, а у вас {actual}.')
+    bad = f('Просто текст без формата.')
+    ensure('error' in bad and 'action' not in bad and 'final' not in bad, 'Ответ без Action и Final Answer — словарь с ключом `error`, а у вас {0}.'.format(bad))
+    equal(bad.get('thought'), '', 'Если Thought нет, рассуждение — пустая строка.')
+    equal(var('steps', list, 'списком'), ref('steps'), 'Результаты разбора ответов модели не совпадают с ожидаемыми.')
+  files: []
+  wrong:
+    - code: |
+        def parse_step(reply):
+            thought = re.search(r'Thought:\s*(.+)', reply)
+            step = {'thought': thought.group(1).strip() if thought else ''}
+            final = re.search(r'Final Answer:\s*(.+)', reply, re.S)
+            if final:
+                step['final'] = final.group(1).strip()
+                return step
+            action = re.search(r'Action:\s*(\w+)\s*\nAction Input:\s*(.+)', reply)
+            if action:
+                step['action'] = action.group(1)
+                step['input'] = action.group(2).strip()
+                return step
+            step['error'] = 'нет ни Action с Action Input, ни Final Answer'
+            return step
+        steps = [parse_step(r) for r in replies]
+      expect: выдуманного Observation
+    - code: |
+        def parse_step(reply):
+            reply = reply.split('Observation:')[0]
+            thought = re.search(r'Thought:\s*(.+)', reply)
+            step = {'thought': thought.group(1).strip() if thought else ''}
+            final = re.search(r'Final Answer:\s*(.+)', reply)
+            if final:
+                step['final'] = final.group(1).strip()
+                return step
+            action = re.search(r'Action:\s*(\w+)\s*\nAction Input:\s*(.+)', reply)
+            if action:
+                step['action'] = action.group(1)
+                step['input'] = action.group(2).strip()
+                return step
+            step['error'] = 'нет ни Action с Action Input, ни Final Answer'
+            return step
+        steps = [parse_step(r) for r in replies]
+      expect: из двух строк
+
+- id: m11-l4-t2
+  title: Безопасный вызов инструмента
+  difficulty: main
+  introduces: [ai-agent]
+  uses: [function-calling]
+  statement: |
+    Инструмент может не найтись, упасть с исключением или вернуть слишком длинный результат — а агент не должен падать. Напишите функцию `run_tool(tools, name, arg, max_chars=300)`, которая всегда возвращает строку-Observation:
+
+    - инструмента `name` нет в реестре `tools` → `'Ошибка: инструмента {name} нет. Есть: {имена через запятую и пробел}.'`;
+    - функция инструмента выбросила исключение → `'Ошибка инструмента {name}: {тип исключения}: {сообщение}'` (тип — `type(e).__name__`);
+    - иначе результат превращается в строку (`str`), и если он длиннее `max_chars`, обрезается до `max_chars` символов с добавлением `'…'`.
+
+    Реестр — как в уроке: `{'имя': {'func': функция, 'description': описание}}`. Получите `observations` — результаты для вызовов из списка `calls`.
+  prelude: |
+    def get_schedule(day):
+        table = {'завтра': '9:00 — История, ауд. 203; 11:00 — Мировая культура, онлайн; 14:00 — Консультация с группой Б-21, ауд. 105'}
+        return table[day.strip().lower()]
+
+    def word_count(text):
+        return len(text.split())
+
+    TOOLS = {'get_schedule': {'func': get_schedule, 'description': 'расписание на день'},
+             'word_count': {'func': word_count, 'description': 'число слов в тексте'}}
+    calls = [('get_schedule', 'завтра'), ('get_schedule', 'послезавтра'), ('calculator', '2 + 2'),
+             ('word_count', 'один два три'), ('get_schedule', 'Завтра')]
+  starter: |
+    def run_tool(tools, name, arg, max_chars=300):
+        if name not in tools:
+            return ...
+        try:
+            result = tools[name]['func'](arg)
+        except Exception as e:
+            return ...
+        text = str(result)
+        if len(text) > max_chars:
+            text = ...
+        return text
+
+    observations = [run_tool(TOOLS, name, arg) for name, arg in calls]
+    for o in observations:
+        print(o)
+    print(run_tool(TOOLS, 'get_schedule', 'завтра', max_chars=20))
+  solution: |
+    def run_tool(tools, name, arg, max_chars=300):
+        if name not in tools:
+            return f'Ошибка: инструмента {name} нет. Есть: {", ".join(tools)}.'
+        try:
+            result = tools[name]['func'](arg)
+        except Exception as e:
+            return f'Ошибка инструмента {name}: {type(e).__name__}: {e}'
+        text = str(result)
+        if len(text) > max_chars:
+            text = text[:max_chars] + '…'
+        return text
+
+    observations = [run_tool(TOOLS, name, arg) for name, arg in calls]
+    for o in observations:
+        print(o)
+    print(run_tool(TOOLS, 'get_schedule', 'завтра', max_chars=20))
+  explanation: |
+    - `", ".join(tools)` перебирает ключи словаря — имена инструментов. Модель увидит, какие инструменты есть, и сможет исправиться.
+    - `except Exception as e` ловит любую ошибку внутри инструмента: `get_schedule('послезавтра')` падает с `KeyError`, а агент получает понятный текст и продолжает работу.
+    - `str(result)` нужен, потому что инструмент может вернуть число (`word_count` вернул 3), а Observation — это текст.
+    - Обрезка — защита контекста: инструмент может вернуть целую страницу, а каждый символ в истории агент будет пересылать модели на всех следующих шагах (урок 11.7).
+  hints:
+    - "Нет инструмента — `f'Ошибка: инструмента {name} нет. Есть: {\", \".join(tools)}.'`."
+    - "Исключение — `f'Ошибка инструмента {name}: {type(e).__name__}: {e}'`."
+    - "Обрезка — `text[:max_chars] + '…'`."
+  tests: |
+    f = var('run_tool')
+    ensure(callable(f), '`run_tool` должна быть функцией.')
+    def boom(x):
+        raise ValueError('плохой вход')
+    reg = {'echo': {'func': lambda x: x, 'description': 'повтор'},
+           'boom': {'func': boom, 'description': 'падает'},
+           'num': {'func': lambda x: 42, 'description': 'число'}}
+    equal(f(reg, 'echo', 'привет'), 'привет', 'Результат инструмента возвращается как есть: {expected}, а у вас {actual}.')
+    equal(f(reg, 'nope', 'x'), 'Ошибка: инструмента nope нет. Есть: echo, boom, num.', 'Неизвестный инструмент: ожидалось {expected}, а у вас {actual}.')
+    try:
+        got = f(reg, 'boom', 'x')
+    except Exception as e:
+        fail('Исключение внутри инструмента вылетело наружу ({0}): агент не должен падать — верните ошибку текстом.'.format(type(e).__name__))
+    equal(got, 'Ошибка инструмента boom: ValueError: плохой вход', 'Ошибка внутри инструмента: ожидалось {expected}, а у вас {actual}.')
+    equal(f(reg, 'num', 'x'), '42', 'Результат-число превращается в строку: ожидалось {expected}, а у вас {actual}.')
+    equal(f(reg, 'echo', 'а' * 10, max_chars=4), 'аааа…', 'Длинный результат обрезается до max_chars символов с «…»: ожидалось {expected}, а у вас {actual}.')
+    equal(f(reg, 'echo', 'а' * 4, max_chars=4), 'аааа', 'Результат длиной ровно max_chars не обрезается.')
+    equal(var('observations', list, 'списком'), ref('observations'), 'Результаты вызовов — {expected}, а у вас {actual}.')
+  files: []
+  wrong:
+    - code: |
+        def run_tool(tools, name, arg, max_chars=300):
+            if name not in tools:
+                return f'Ошибка: инструмента {name} нет. Есть: {", ".join(tools)}.'
+            text = str(tools[name]['func'](arg))
+            if len(text) > max_chars:
+                text = text[:max_chars] + '…'
+            return text
+        observations = [run_tool(TOOLS, name, arg) for name, arg in calls[:1]]
+      expect: вылетело наружу
+    - code: |
+        def run_tool(tools, name, arg, max_chars=300):
+            if name not in tools:
+                return f'Ошибка: инструмента {name} нет. Есть: {", ".join(tools)}.'
+            try:
+                result = tools[name]['func'](arg)
+            except Exception as e:
+                return f'Ошибка инструмента {name}: {type(e).__name__}: {e}'
+            return str(result)[:max_chars]
+        observations = [run_tool(TOOLS, name, arg) for name, arg in calls]
+      expect: с «…»
+
+- id: m11-l4-t3
+  title: Цикл агента
+  difficulty: main
+  introduces: []
+  uses: [react-loop, ai-agent, llm-chain]
+  statement: |
+    Соберите цикл агента `run_agent(question, model, tools, max_steps=5)`. Готовы `react_prompt(tools)`, `parse_step(reply)` (словарь, как в первом задании) и `run_tool(tools, name, arg)` (как во втором). Функция возвращает кортеж `(ответ, шаги)`, где шаги — список кортежей `(инструмент, вход, Observation)`:
+
+    1. история начинается с `react_prompt(tools) + f'Question: {question}\n'`;
+    2. на каждом шаге модель получает всю историю (`model.invoke(history).content`), а в историю дописывается её ответ — без всего, что начиная с `Observation:` (обрезанный справа от пробелов и с переносом строки в конце);
+    3. Final Answer → вернуть его и шаги; действие → `run_tool`, шаг в список и `Observation: …\n` в историю; ошибка формата → `Observation: Ошибка формата: …\n` с текстом ошибки из `parse_step`, без шага в списке;
+    4. если за `max_steps` шагов ответа нет — вернуть `'Не удалось ответить за отведённое число шагов.'` и шаги.
+
+    Проверьте на тестовой модели `model`: получите `answer` и `steps` для вопроса о минутах занятий.
+  prelude: |
+    import re
+    from langchain_core.language_models import FakeListChatModel
+
+    def get_schedule(day):
+        table = {'завтра': '9:00 — История, ауд. 203; 11:00 — Мировая культура, онлайн; 14:00 — Консультация с группой Б-21, ауд. 105'}
+        return table.get(day.strip().lower(), f'Нет расписания на «{day}».')
+
+    def calculate(expression):
+        if not re.fullmatch(r'[\d\s+\-*/().]+', expression) or '**' in expression:
+            return 'Ошибка: допустимы только числа, + - * / и скобки'
+        return str(eval(expression, {'__builtins__': {}}, {}))
+
+    TOOLS = {'get_schedule': {'func': get_schedule, 'description': 'расписание занятий; вход — день'},
+             'calculate': {'func': calculate, 'description': 'калькулятор; вход — выражение'}}
+
+    def react_prompt(tools):
+        lines = '\n'.join(f'- {name}: {t["description"]}' for name, t in tools.items())
+        return ('Ответь на вопрос пользователя. Тебе доступны инструменты:\n' + lines + '\n\nФормат: Thought, Action, '
+                'Action Input, Observation (её допишет программа), …, Final Answer.\n\n')
+
+    def parse_step(reply):
+        reply = reply.split('Observation:')[0]
+        thought = re.search(r'Thought:\s*(.+)', reply)
+        step = {'thought': thought.group(1).strip() if thought else ''}
+        final = re.search(r'Final Answer:\s*(.+)', reply, re.S)
+        if final:
+            step['final'] = final.group(1).strip()
+        else:
+            action = re.search(r'Action:\s*(\w+)\s*\nAction Input:\s*(.+)', reply)
+            if action:
+                step['action'], step['input'] = action.group(1), action.group(2).strip()
+            else:
+                step['error'] = 'нет ни Action с Action Input, ни Final Answer'
+        return step
+
+    def run_tool(tools, name, arg, max_chars=300):
+        if name not in tools:
+            return f'Ошибка: инструмента {name} нет. Есть: {", ".join(tools)}.'
+        try:
+            text = str(tools[name]['func'](arg))
+        except Exception as e:
+            return f'Ошибка инструмента {name}: {type(e).__name__}: {e}'
+        return text if len(text) <= max_chars else text[:max_chars] + '…'
+
+    model = FakeListChatModel(responses=[
+        'Thought: Узнаю расписание.\nAction: get_schedule\nAction Input: завтра\nObservation: два занятия',
+        'Thought: Посчитаю минуты.\nAction: calculator\nAction Input: 3 * 90',
+        'Thought: Нужен calculate.\nAction: calculate\nAction Input: 3 * 90',
+        'Thought: Готово.\nFinal Answer: Завтра у вас 270 минут занятий.',
+    ])
+  starter: |
+    def run_agent(question, model, tools, max_steps=5):
+        history = react_prompt(tools) + f'Question: {question}\n'
+        steps = []
+        for _ in range(max_steps):
+            reply = model.invoke(history).content
+            step = parse_step(reply)
+            history += ...
+            if 'final' in step:
+                return step['final'], steps
+            if 'action' in step:
+                observation = ...
+                steps.append((step['action'], step['input'], observation))
+            else:
+                observation = 'Ошибка формата: ' + step['error']
+            history += f'Observation: {observation}\n'
+        return 'Не удалось ответить за отведённое число шагов.', steps
+
+    answer, steps = run_agent('Сколько минут займут мои занятия завтра, если каждое идёт 90 минут?', model, TOOLS)
+    print(answer)
+    for s in steps:
+        print(s)
+  solution: |
+    def run_agent(question, model, tools, max_steps=5):
+        history = react_prompt(tools) + f'Question: {question}\n'
+        steps = []
+        for _ in range(max_steps):
+            reply = model.invoke(history).content
+            step = parse_step(reply)
+            history += reply.split('Observation:')[0].rstrip() + '\n'
+            if 'final' in step:
+                return step['final'], steps
+            if 'action' in step:
+                observation = run_tool(tools, step['action'], step['input'])
+                steps.append((step['action'], step['input'], observation))
+            else:
+                observation = 'Ошибка формата: ' + step['error']
+            history += f'Observation: {observation}\n'
+        return 'Не удалось ответить за отведённое число шагов.', steps
+
+    answer, steps = run_agent('Сколько минут займут мои занятия завтра, если каждое идёт 90 минут?', model, TOOLS)
+    print(answer)
+    for s in steps:
+        print(s)
+  explanation: |
+    - В историю идёт ответ модели без выдуманного результата: `reply.split('Observation:')[0]`. Иначе на следующем шаге модель увидела бы своё «два занятия» как настоящий результат инструмента.
+    - Вызов инструмента — только через `run_tool`: неизвестный `calculator` превращается в Observation с ошибкой, и на следующем шаге модель исправилась.
+    - Шагов три: расписание, неудачный и удачный вызов калькулятора. Список шагов — журнал агента: по нему видно, что он делал и почему ответил именно так.
+  hints:
+    - "Ответ модели в историю — `reply.split('Observation:')[0].rstrip() + '\\n'`."
+    - "Результат инструмента — `run_tool(tools, step['action'], step['input'])`."
+    - "Проверьте себя: вторая строка `model.calls[1]` должна содержать `Observation:` с настоящим расписанием."
+  tests: |
+    from langchain_core.language_models import FakeListChatModel
+    f = var('run_agent')
+    ensure(callable(f), '`run_agent` должна быть функцией.')
+    reg = {'echo': {'func': lambda x: 'эхо: ' + x, 'description': 'повтор'}}
+    m = FakeListChatModel(responses=['Thought: а\nAction: echo\nAction Input: привет\nObservation: выдумка', 'Thought: б\nFinal Answer: готово'])
+    got = f('вопрос', m, reg)
+    ensure(isinstance(got, tuple) and len(got) == 2, '`run_agent` должна вернуть кортеж (ответ, шаги), а вернула {0}.'.format(got))
+    equal(got[0], 'готово', 'Ответ — текст после Final Answer: {expected}, а у вас {actual}.')
+    equal(got[1], [('echo', 'привет', 'эхо: привет')], 'Шаги — список (инструмент, вход, Observation): ожидалось {expected}, а у вас {actual}.')
+    ensure(len(m.calls) == 2, 'Модель должна быть вызвана 2 раза, а вызвана {0}.'.format(len(m.calls)))
+    second = m.calls[1][-1].content
+    if 'выдумка' in second:
+        fail('Во второй запрос попал выдуманный моделью Observation («выдумка»): в историю дописывается ответ модели только до `Observation:`.')
+    ensure('Observation: эхо: привет' in second, 'Во втором запросе модель должна увидеть настоящий результат: «Observation: эхо: привет».')
+    ensure(second.startswith(m.calls[0][-1].content), 'Каждый следующий запрос содержит всю историю: начало второго запроса должно совпадать с первым.')
+    m3 = FakeListChatModel(responses=['Thought: думаю'])
+    got3 = f('вопрос', m3, reg, max_steps=3)
+    equal(got3, ('Не удалось ответить за отведённое число шагов.', []), 'Если Final Answer нет, после max_steps шагов — {expected}, а у вас {actual}.')
+    ensure(len(m3.calls) == 3, 'При max_steps=3 модель вызывается 3 раза, а у вас {0}.'.format(len(m3.calls)))
+    ensure('Observation: Ошибка формата' in m3.calls[1][-1].content, 'Ошибка формата возвращается модели строкой «Observation: Ошибка формата: …».')
+    equal(var('answer', str, 'строкой'), ref('answer'), 'Ответ агента — {expected}, а у вас {actual}.')
+    equal(var('steps', list, 'списком'), ref('steps'), 'Шаги агента — {expected}, а у вас {actual}.')
+  files: []
+  wrong:
+    - code: |
+        def run_agent(question, model, tools, max_steps=5):
+            history = react_prompt(tools) + f'Question: {question}\n'
+            steps = []
+            for _ in range(max_steps):
+                reply = model.invoke(history).content
+                step = parse_step(reply)
+                history += reply + '\n'
+                if 'final' in step:
+                    return step['final'], steps
+                if 'action' in step:
+                    observation = run_tool(tools, step['action'], step['input'])
+                    steps.append((step['action'], step['input'], observation))
+                else:
+                    observation = 'Ошибка формата: ' + step['error']
+                history += f'Observation: {observation}\n'
+            return 'Не удалось ответить за отведённое число шагов.', steps
+        answer, steps = run_agent('Сколько минут займут мои занятия завтра, если каждое идёт 90 минут?', model, TOOLS)
+      expect: выдуманный моделью
+    - code: |
+        def run_agent(question, model, tools, max_steps=5):
+            steps = []
+            for _ in range(max_steps):
+                history = react_prompt(tools) + f'Question: {question}\n'
+                reply = model.invoke(history).content
+                step = parse_step(reply)
+                if 'final' in step:
+                    return step['final'], steps
+                if 'action' in step:
+                    observation = run_tool(tools, step['action'], step['input'])
+                    steps.append((step['action'], step['input'], observation))
+            return 'Не удалось ответить за отведённое число шагов.', steps
+        answer, steps = run_agent('Сколько минут займут мои занятия завтра, если каждое идёт 90 минут?', model, TOOLS)
+      expect: настоящий результат
+
+- id: m11-l4-t4
+  title: Новый инструмент
+  difficulty: main
+  introduces: []
+  uses: [ai-agent, document-search]
+  statement: |
+    Дайте агенту инструмент `lesson_info(number)`: по номеру урока (строке вроде `'10.2'`, возможно с пробелами по краям) он возвращает строку `'Урок {номер} «{название}». Разделы: {заголовки разделов через «; »}.'` — разделы в порядке документов `docs`. Если урока нет — `'Урока {номер} нет в курсе.'` (номер без пробелов по краям).
+
+    Зарегистрируйте его в реестре `TOOLS` под именем `'lesson_info'` с непустым описанием, из которого понятно, что подавать на вход. Затем запустите агента: получите `answer` — ответ на вопрос из переменной `question`.
+  prelude: |
+    import json
+    import re
+    from langchain_core.language_models import FakeListChatModel
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    TOOLS = {}
+
+    def react_prompt(tools):
+        lines = '\n'.join(f'- {name}: {t["description"]}' for name, t in tools.items())
+        return 'Тебе доступны инструменты:\n' + lines + '\n\nФормат: Thought, Action, Action Input, Observation, Final Answer.\n\n'
+
+    def run_agent(question, model, tools, max_steps=5):
+        history = react_prompt(tools) + f'Question: {question}\n'
+        for _ in range(max_steps):
+            reply = model.invoke(history).content.split('Observation:')[0].rstrip()
+            history += reply + '\n'
+            final = re.search(r'Final Answer:\s*(.+)', reply, re.S)
+            if final:
+                return final.group(1).strip()
+            action = re.search(r'Action:\s*(\w+)\s*\nAction Input:\s*(.+)', reply)
+            name, arg = (action.group(1), action.group(2).strip()) if action else (None, None)
+            observation = tools[name]['func'](arg) if name in tools else f'Ошибка: инструмента {name} нет.'
+            history += f'Observation: {observation}\n'
+        return 'Не удалось ответить.'
+
+    question = 'Какие разделы в уроке 10.6?'
+    model = FakeListChatModel(responses=[
+        'Thought: Посмотрю оглавление урока.\nAction: lesson_info\nAction Input: 10.6',
+        'Thought: Оглавление есть.\nFinal Answer: В уроке 10.6 «Вызов функций: модель просит программу» семь разделов: от «Зачем это нужно» и «Описание функции» до «Типичных ошибок» и «Что запомнить».',
+    ])
+  starter: |
+    def lesson_info(number):
+        number = number.strip()
+        sections = [d['section'] for d in docs if d['lesson'] == number]
+        if not sections:
+            return ...
+        title = next(d['lesson_title'] for d in docs if d['lesson'] == number)
+        return ...
+
+    TOOLS['lesson_info'] = {'func': lesson_info, 'description': ...}
+    print(lesson_info('10.6'))
+    print(lesson_info(' 99.9 '))
+    answer = run_agent(question, model, TOOLS)
+    print(answer)
+    print(model.calls[1][-1].content[-300:])
+  solution: |
+    def lesson_info(number):
+        number = number.strip()
+        sections = [d['section'] for d in docs if d['lesson'] == number]
+        if not sections:
+            return f'Урока {number} нет в курсе.'
+        title = next(d['lesson_title'] for d in docs if d['lesson'] == number)
+        return f'Урок {number} «{title}». Разделы: {"; ".join(sections)}.'
+
+    TOOLS['lesson_info'] = {'func': lesson_info,
+                            'description': 'название урока курса и заголовки его разделов; вход — номер урока, например 10.2'}
+    print(lesson_info('10.6'))
+    print(lesson_info(' 99.9 '))
+    answer = run_agent(question, model, TOOLS)
+    print(answer)
+    print(model.calls[1][-1].content[-300:])
+  explanation: |
+    - Инструмент — обычная функция над данными курса: отбор разделов по номеру урока, как фильтр в pandas, только списком.
+    - Описание говорит модели, что делает инструмент и **что подать на вход**. Без примера номера модель вполне может отправить «урок про функции» вместо «10.6».
+    - Чтобы добавить агенту умение, достаточно одной записи в реестре: `react_prompt(TOOLS)` сам включит инструмент в инструкцию, а цикл найдёт его по имени.
+    - Ответ тестовой модели заготовлен, а Observation во втором запросе — настоящий: оглавление урока 10.6 из базы знаний.
+  hints:
+    - "Нет урока — `f'Урока {number} нет в курсе.'`."
+    - "Разделы через «; » — `'; '.join(sections)`."
+    - "Регистрация — `TOOLS['lesson_info'] = {'func': lesson_info, 'description': '…; вход — номер урока, например 10.2'}`."
+  tests: |
+    import re
+    f = var('lesson_info')
+    ensure(callable(f), '`lesson_info` должна быть функцией.')
+    got = f('10.1')
+    ensure(isinstance(got, str) and got.startswith('Урок 10.1 «'), 'Строка должна начинаться с «Урок 10.1 «…», а у вас {0!r}.'.format(got))
+    equal(got, ref('lesson_info')('10.1'), 'Для урока 10.1 ожидалось {expected}, а у вас {actual}.')
+    equal(f(' 0.6 '), ref('lesson_info')('0.6'), 'Пробелы вокруг номера не мешают: для « 0.6 » ожидалось {expected}, а у вас {actual}.')
+    equal(f('99.9'), 'Урока 99.9 нет в курсе.', 'Для несуществующего урока — {expected}, а у вас {actual}.')
+    equal(f(' 42.1 '), 'Урока 42.1 нет в курсе.', 'Номер в сообщении — без пробелов по краям: {expected}, а у вас {actual}.')
+    tools = var('TOOLS', dict, 'словарём')
+    ensure('lesson_info' in tools, 'Инструмент нужно зарегистрировать в `TOOLS` под именем «lesson_info».')
+    entry = tools['lesson_info']
+    ensure(entry.get('func') is f, 'В реестре по ключу «func» должна лежать функция `lesson_info`.')
+    desc = entry.get('description')
+    ensure(isinstance(desc, str) and len(desc.strip()) >= 15, 'Нужно описание инструмента (строка хотя бы из 15 символов): модель узнаёт об инструменте только из него.')
+    ensure(re.search(r'\d+\.\d+|номер', desc), 'В описании скажите, что подавать на вход: номер урока, например 10.2.')
+    equal(var('answer', str, 'строкой'), ref('answer'), 'Ответ агента — {expected}, а у вас {actual}.')
+  files: [course_docs.json]
+  wrong:
+    - code: |
+        def lesson_info(number):
+            sections = [d['section'] for d in docs if d['lesson'] == number]
+            if not sections:
+                return f'Урока {number} нет в курсе.'
+            title = next(d['lesson_title'] for d in docs if d['lesson'] == number)
+            return f'Урок {number} «{title}». Разделы: {"; ".join(sections)}.'
+        TOOLS['lesson_info'] = {'func': lesson_info, 'description': 'оглавление урока; вход — номер урока, например 10.2'}
+        answer = run_agent(question, model, TOOLS)
+      expect: Пробелы вокруг номера
+    - code: |
+        def lesson_info(number):
+            number = number.strip()
+            sections = [d['section'] for d in docs if d['lesson'] == number]
+            if not sections:
+                return f'Урока {number} нет в курсе.'
+            title = next(d['lesson_title'] for d in docs if d['lesson'] == number)
+            return f'Урок {number} «{title}». Разделы: {"; ".join(sections)}.'
+        TOOLS['lesson_info'] = {'func': lesson_info, 'description': 'полезный инструмент'}
+        answer = run_agent(question, model, TOOLS)
+      expect: что подавать на вход
+
+- id: m11-l4-t5
+  title: Агент ходит по кругу
+  difficulty: star
+  introduces: []
+  uses: [react-loop]
+  statement: |
+    Модель иногда снова и снова вызывает один и тот же инструмент с тем же входом. Добавьте в цикл защиту — функция `run_agent_guarded(question, model, tools, max_steps=6)`, возвращает `(ответ, число_вызовов_инструментов)`:
+
+    - перед вызовом проверьте, был ли уже вызов с той же парой (инструмент, вход). Если был — инструмент **не вызывается**, а Observation: `'Ты уже вызывал {инструмент} с этим входом. Результат: {прошлый результат}. Используй его или напиши Final Answer.'`;
+    - если такой повтор случился уже второй раз за работу агента, остановитесь и верните `('Агент зациклился: повторяет одно и то же действие.', число_вызовов)`;
+    - остальное — как в цикле агента: Final Answer → ответ; ошибка формата или неизвестный инструмент → Observation с ошибкой.
+
+    `parse_step` и `run_tool` уже есть. Получите `result` для тестовой модели `model`, которая трижды просит одно и то же.
+  prelude: |
+    import re
+    from langchain_core.language_models import FakeListChatModel
+
+    def parse_step(reply):
+        reply = reply.split('Observation:')[0]
+        final = re.search(r'Final Answer:\s*(.+)', reply, re.S)
+        if final:
+            return {'final': final.group(1).strip()}
+        action = re.search(r'Action:\s*(\w+)\s*\nAction Input:\s*(.+)', reply)
+        if action:
+            return {'action': action.group(1), 'input': action.group(2).strip()}
+        return {'error': 'нет ни Action с Action Input, ни Final Answer'}
+
+    def run_tool(tools, name, arg):
+        if name not in tools:
+            return f'Ошибка: инструмента {name} нет. Есть: {", ".join(tools)}.'
+        return str(tools[name]['func'](arg))
+
+    calls_made = []
+    def get_schedule(day):
+        calls_made.append(day)
+        return '9:00 — История; 11:00 — Мировая культура; 14:00 — Консультация'
+
+    TOOLS = {'get_schedule': {'func': get_schedule, 'description': 'расписание; вход — день'}}
+    model = FakeListChatModel(responses=['Thought: Посмотрю расписание.\nAction: get_schedule\nAction Input: завтра'])
+  starter: |
+    def run_agent_guarded(question, model, tools, max_steps=6):
+        history = f'Question: {question}\n'
+        done = {}                      # (инструмент, вход) → результат
+        repeats = 0
+        n_calls = 0
+        for _ in range(max_steps):
+            reply = model.invoke(history).content
+            history += reply.split('Observation:')[0].rstrip() + '\n'
+            step = parse_step(reply)
+            if 'final' in step:
+                return step['final'], n_calls
+            if 'action' in step:
+                key = (step['action'], step['input'])
+                if key in done:
+                    ...
+                else:
+                    observation = run_tool(tools, *key)
+                    done[key] = observation
+                    n_calls += 1
+            else:
+                observation = 'Ошибка формата: ' + step['error']
+            history += f'Observation: {observation}\n'
+        return 'Не удалось ответить за отведённое число шагов.', n_calls
+
+    result = run_agent_guarded('Что у меня завтра?', model, TOOLS)
+    print(result, '| настоящих вызовов get_schedule:', len(calls_made))
+  solution: |
+    def run_agent_guarded(question, model, tools, max_steps=6):
+        history = f'Question: {question}\n'
+        done = {}                      # (инструмент, вход) → результат
+        repeats = 0
+        n_calls = 0
+        for _ in range(max_steps):
+            reply = model.invoke(history).content
+            history += reply.split('Observation:')[0].rstrip() + '\n'
+            step = parse_step(reply)
+            if 'final' in step:
+                return step['final'], n_calls
+            if 'action' in step:
+                key = (step['action'], step['input'])
+                if key in done:
+                    repeats += 1
+                    if repeats == 2:
+                        return 'Агент зациклился: повторяет одно и то же действие.', n_calls
+                    observation = (f'Ты уже вызывал {key[0]} с этим входом. Результат: {done[key]}. '
+                                   'Используй его или напиши Final Answer.')
+                else:
+                    observation = run_tool(tools, *key)
+                    done[key] = observation
+                    n_calls += 1
+            else:
+                observation = 'Ошибка формата: ' + step['error']
+            history += f'Observation: {observation}\n'
+        return 'Не удалось ответить за отведённое число шагов.', n_calls
+
+    result = run_agent_guarded('Что у меня завтра?', model, TOOLS)
+    print(result, '| настоящих вызовов get_schedule:', len(calls_made))
+  explanation: |
+    - Словарь `done` помнит каждую пару (инструмент, вход) и её результат. Повтор не тратит вызов инструмента — а это бывает и деньги, и действие во внешнем мире: дважды отправленное письмо не отзовёшь.
+    - Первый повтор — подсказка модели с прошлым результатом: возможно, она просто не заметила его в длинной истории. Второй повтор — остановка: агент застрял, и честнее сказать об этом, чем жечь шаги до `max_steps`.
+    - Тестовая модель трижды попросила одно и то же. Настоящий вызов был один, на третьем шаге агент остановился.
+  hints:
+    - "Повтор: `repeats += 1`; при `repeats == 2` — `return 'Агент зациклился: повторяет одно и то же действие.', n_calls`."
+    - "Иначе Observation — подсказка с прошлым результатом `done[key]`."
+    - "Не вызывайте `run_tool` для повтора: проверьте себя по `len(calls_made)`."
+  tests: |
+    from langchain_core.language_models import FakeListChatModel
+    f = var('run_agent_guarded')
+    ensure(callable(f), '`run_agent_guarded` должна быть функцией.')
+    log = []
+    def tool(x):
+        log.append(x)
+        return 'R' + x
+    reg = {'t': {'func': tool, 'description': 'инструмент'}}
+    m = FakeListChatModel(responses=['Action: t\nAction Input: 1', 'Action: t\nAction Input: 1', 'Final Answer: готово'])
+    got = f('в', m, reg)
+    equal(log, ['1'], 'Повторный вызов с тем же входом не должен доходить до инструмента: вызовы — {actual}, а нужен один.')
+    equal(got, ('готово', 1), 'После одного повтора агент продолжает работу: ожидалось {expected}, а у вас {actual}.')
+    second_obs = m.calls[2][-1].content
+    ensure('Ты уже вызывал t с этим входом. Результат: R1.' in second_obs, 'При повторе Observation — подсказка с прошлым результатом: «Ты уже вызывал t с этим входом. Результат: R1. …».')
+    log.clear()
+    m2 = FakeListChatModel(responses=['Action: t\nAction Input: 1', 'Action: t\nAction Input: 2', 'Action: t\nAction Input: 1', 'Action: t\nAction Input: 2', 'Final Answer: x'])
+    got2 = f('в', m2, reg)
+    equal(got2, ('Агент зациклился: повторяет одно и то же действие.', 2), 'Второй повтор за работу агента (даже другой пары) — остановка: ожидалось {expected}, а у вас {actual}.')
+    equal(len(m2.calls), 4, 'Остановка — на втором повторе, сразу: модель вызывается 4 раза, а у вас {actual}.')
+    equal(var('result', tuple, 'кортежем'), ref('result'), 'Результат для тестовой модели — {expected}, а у вас {actual}.')
+  files: []
+  wrong:
+    - code: |
+        def run_agent_guarded(question, model, tools, max_steps=6):
+            history = f'Question: {question}\n'
+            n_calls = 0
+            for _ in range(max_steps):
+                reply = model.invoke(history).content
+                history += reply.split('Observation:')[0].rstrip() + '\n'
+                step = parse_step(reply)
+                if 'final' in step:
+                    return step['final'], n_calls
+                if 'action' in step:
+                    observation = run_tool(tools, step['action'], step['input'])
+                    n_calls += 1
+                else:
+                    observation = 'Ошибка формата: ' + step['error']
+                history += f'Observation: {observation}\n'
+            return 'Не удалось ответить за отведённое число шагов.', n_calls
+        result = run_agent_guarded('Что у меня завтра?', model, TOOLS)
+      expect: не должен доходить до инструмента
+    - code: |
+        def run_agent_guarded(question, model, tools, max_steps=6):
+            history = f'Question: {question}\n'
+            done = {}
+            n_calls = 0
+            for _ in range(max_steps):
+                reply = model.invoke(history).content
+                history += reply.split('Observation:')[0].rstrip() + '\n'
+                step = parse_step(reply)
+                if 'final' in step:
+                    return step['final'], n_calls
+                if 'action' in step:
+                    key = (step['action'], step['input'])
+                    if key in done:
+                        return 'Агент зациклился: повторяет одно и то же действие.', n_calls
+                    observation = run_tool(tools, *key)
+                    done[key] = observation
+                    n_calls += 1
+                else:
+                    observation = 'Ошибка формата: ' + step['error']
+                history += f'Observation: {observation}\n'
+            return 'Не удалось ответить за отведённое число шагов.', n_calls
+        result = run_agent_guarded('Что у меня завтра?', model, TOOLS)
+      expect: После одного повтора

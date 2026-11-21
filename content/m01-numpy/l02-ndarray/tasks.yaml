@@ -1,0 +1,272 @@
+- id: m1-l2-t1
+  title: Сколько записей и признаков
+  difficulty: warmup
+  introduces: [shape-dtype]
+  uses: [np-genfromtxt]
+  statement: |
+    Матрица `X` уже прочитана. Получите две переменные — `n_rows` (число записей) и `n_features` (число признаков) — из атрибута `shape`. Не вписывайте числа вручную.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()   # чтение числовых столбцов — урок 1.1
+  preludeNote: Матрица читается так же, как в [уроке 1.1](/learn/m01-numpy/l01-question-to-table) — через `np.genfromtxt`.
+  starter: |
+    n_rows, n_features = ...
+    print('Записей:', n_rows, 'признаков:', n_features)
+  solution: |
+    n_rows, n_features = X.shape
+    print('Записей:', n_rows, 'признаков:', n_features)
+  explanation: |
+    - `X.shape` — кортеж `(41007, 4)`.
+    - Запись `a, b = кортеж` распаковывает его: первое число попадает в `n_rows`, второе — в `n_features`.
+  hints:
+    - Какой атрибут массива хранит размеры по осям?
+    - "Атрибут `X.shape` — кортеж из двух чисел; его можно распаковать в две переменные."
+    - "`n_rows, n_features = X.shape`"
+  tests: |
+    r = var('n_rows', 'int', 'целым числом')
+    f = var('n_features', 'int', 'целым числом')
+    if r == ref('n_rows') * ref('n_features'):
+        fail('n_rows равно числу всех ячеек. Число записей — размер оси 0, то есть X.shape[0], а не X.size.')
+    equal(r, ref('n_rows'), 'Записей должно быть {expected}, а у вас {actual}.')
+    equal(f, ref('n_features'), 'Признаков должно быть {expected}, а у вас {actual}.')
+    equal(alt('n_rows'), alt_ref('n_rows'), 'На другой части данных n_rows = {actual}, а должно быть {expected}. Похоже, число вписано вручную — возьмите его из X.shape.')
+  wrong:
+    - code: |
+        n_rows, n_features = 41007, 4
+      expect: вписано вручную
+    - code: |
+        n_rows, n_features = X.size, X.ndim
+      expect: не X.size
+
+- id: m1-l2-t2
+  title: Номера всех записей
+  difficulty: warmup
+  introduces: [shape-dtype]
+  uses: []
+  statement: |
+    Создайте вектор `row_id` с номерами записей матрицы `X`: 0, 1, 2, …, последний номер. Длина вектора должна совпадать с числом записей.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()   # чтение числовых столбцов — урок 1.1
+  starter: |
+    row_id = ...
+    print(row_id[:3], row_id[-1], row_id.shape)
+  solution: |
+    row_id = np.arange(X.shape[0])
+    print(row_id[:3], row_id[-1], row_id.shape)
+  explanation: |
+    - `X.shape[0]` — число записей (размер оси 0).
+    - `np.arange(n)` создаёт числа от 0 до `n − 1` — ровно по одному номеру на запись.
+  hints:
+    - Нужна функция NumPy, которая создаёт последовательность 0, 1, 2, … заданной длины.
+    - "`np.arange(n)` — числа от 0 до n − 1; число записей — `X.shape[0]` или `len(X)`."
+    - "`row_id = np.arange(X.shape[0])`"
+  tests: |
+    import numpy as np
+    rid = var('row_id', 'ndarray', 'массивом NumPy')
+    ensure(rid.ndim == 1, 'row_id должен быть вектором (одна ось), а у него осей: %d.' % rid.ndim)
+    exp = ref('row_id')
+    ensure(len(rid) == len(exp), 'Длина row_id %d, а записей %d. Нужно по одному номеру на каждую запись.' % (len(rid), len(exp)))
+    ensure(rid[0] == 0, 'Номера должны начинаться с 0, а первый номер у вас %s.' % rid[0])
+    same_array(rid, exp, 'Номера должны идти подряд: 0, 1, 2, …')
+    same_array(alt('row_id'), alt_ref('row_id'), 'На другой части данных длина не совпала — вычисляйте длину из X.')
+  wrong:
+    - code: |
+        row_id = np.arange(1, X.shape[0] + 1)
+      expect: начинаться с 0
+    - code: |
+        row_id = np.arange(41007)
+      expect: другой части данных
+
+- id: m1-l2-t3
+  title: Массив из списка и его тип
+  difficulty: main
+  introduces: [ndarray]
+  uses: []
+  statement: |
+    Дан список цен `price_list` (целые числа). Получите:
+
+    - `prices` — массив NumPy из этого списка;
+    - `prices_float` — тот же массив, приведённый к дробному типу `float`;
+    - `float_dtype` — тип элементов `prices_float` (атрибут массива).
+  prelude: |
+    import numpy as np
+    price_list = [7750, 8550, 2200, 6550, 4100]
+  starter: |
+    prices = ...
+    prices_float = ...
+    float_dtype = ...
+    print(prices, prices.dtype)
+    print(prices_float, float_dtype)
+  solution: |
+    prices = np.array(price_list)
+    prices_float = prices.astype(float)
+    float_dtype = prices_float.dtype
+    print(prices, prices.dtype)
+    print(prices_float, float_dtype)
+  explanation: |
+    - `np.array(price_list)` создаёт массив; из целых чисел получается целочисленный тип.
+    - `.astype(float)` возвращает **новый** массив дробного типа — исходный `prices` не меняется.
+    - `.dtype` — атрибут с типом элементов: `float64`.
+  hints:
+    - Массив создаётся функцией NumPy из списка; тип меняется методом массива.
+    - "`np.array(список)`, метод `.astype(float)`, атрибут `.dtype` — см. справочник «dtype»."
+    - "`prices = np.array(price_list)`, `prices_float = prices.astype(float)`, `float_dtype = prices_float.dtype`."
+  tests: |
+    import numpy as np
+    p = var('prices', 'ndarray', 'массивом NumPy (np.array)')
+    same_array(p, np.array([7750, 8550, 2200, 6550, 4100]), 'prices должен содержать цены из списка в том же порядке.')
+    pf = var('prices_float', 'ndarray', 'массивом NumPy')
+    ensure(pf.dtype.kind == 'f', 'prices_float должен иметь дробный тип (float), а у него %s. Используйте .astype(float).' % pf.dtype)
+    same_array(pf, p.astype(float), 'В prices_float должны быть те же значения, что и в prices.')
+    d = var('float_dtype')
+    ensure(str(d) == 'float64', 'float_dtype должен быть типом элементов prices_float (float64), а у вас %r. Возьмите атрибут .dtype.' % (d,))
+    ensure(p.dtype.kind == 'i', 'Массив prices изменился и стал дробным. astype должен создавать новый массив, а prices — остаться целочисленным.')
+  wrong:
+    - code: |
+        prices = np.array(price_list)
+        prices_float = prices
+        float_dtype = prices_float.dtype
+      expect: дробный тип
+    - code: |
+        prices = price_list
+        prices_float = np.array(price_list, dtype=float)
+        float_dtype = prices_float.dtype
+      expect: массивом NumPy
+
+- id: m1-l2-t4
+  kind: quiz
+  title: Форма, размер и тип
+  difficulty: main
+  introduces: []
+  uses: [ndarray, shape-dtype]
+  statement: |
+    Ответьте на вопросы о массивах. Если сомневаетесь — проверьте в примерах теории, их можно изменить и запустить.
+  quiz:
+    - q: "Какая форма у массива `np.array([[2011, 195000], [2014, 135000], [1998, 1]])`?"
+      options:
+        - "`(2, 3)`"
+        - "`(3, 2)`"
+        - "`(6,)`"
+        - "`(3,)`"
+      answer: 1
+      explain: Три вложенных списка — три строки (ось 0), в каждом по два числа (ось 1).
+    - q: "У матрицы форма `(41007, 4)`. Чему равен `size`?"
+      options:
+        - "41 007"
+        - "4"
+        - "164 028"
+        - "41 011"
+      answer: 2
+      explain: size — произведение размеров по осям — 41 007 × 4.
+    - q: "Что напечатает `np.array([5000, 'нет данных']).dtype.kind`? (буква вида типа: `i` — целые, `f` — дробные, `U` — строки)"
+      options:
+        - "`i`"
+        - "`f`"
+        - "`U`"
+      answer: 2
+      explain: Строка в списке превращает весь массив в строковый — считать с ним как с числами нельзя.
+  hints:
+    - Вспомните, что ось 0 соответствует строкам (внешнему списку), а ось 1 — элементам внутри строки.
+    - "size = произведение размеров shape; у массива один общий тип на все элементы."
+    - "(3, 2): три строки по два числа; 41 007 × 4 = 164 028; текст делает массив строковым (U)."
+
+- id: m1-l2-t5
+  kind: bug
+  title: "Найдите ошибку: «tuple object is not callable»"
+  difficulty: main
+  introduces: []
+  uses: [shape-dtype]
+  statement: |
+    Этот код падает с ошибкой `TypeError: 'tuple' object is not callable`. Исправьте его, чтобы в `n_rows` оказалось число записей, а в `n_cells` — число всех элементов матрицы.
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()   # чтение числовых столбцов — урок 1.1
+  starter: |
+    n_rows = X.shape()[0]
+    n_cells = X.size()
+    print(n_rows, n_cells)
+  solution: |
+    n_rows = X.shape[0]
+    n_cells = X.size
+    print(n_rows, n_cells)
+  explanation: |
+    - `shape` и `size` — атрибуты, а не функции: скобки `()` после них означают «вызвать», а вызвать кортеж или число нельзя.
+    - Правильно: `X.shape[0]` — первый элемент кортежа формы, `X.size` — число.
+  hints:
+    - Ошибка говорит, что кортеж пытаются «вызвать». Где в коде стоят круглые скобки вызова?
+    - "`shape` и `size` — атрибуты массива; их пишут без круглых скобок."
+    - "`n_rows = X.shape[0]` и `n_cells = X.size`."
+  tests: |
+    r = var('n_rows', 'int', 'целым числом')
+    c = var('n_cells', 'int', 'целым числом')
+    equal(r, ref('n_rows'), 'n_rows должно быть {expected} (размер оси 0), а у вас {actual}.')
+    equal(c, ref('n_cells'), 'n_cells должно быть {expected} (все элементы), а у вас {actual}.')
+    equal(alt('n_cells'), alt_ref('n_cells'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        n_rows = X.shape[1]
+        n_cells = X.size
+      expect: размер оси 0
+    - code: |
+        n_rows = X.shape[0]
+        n_cells = 164028
+      expect: вписан вручную
+
+- id: m1-l2-t6
+  title: Паспорт массива
+  difficulty: star
+  introduces: []
+  uses: [ndarray, shape-dtype, py-functions]
+  statement: |
+    Напишите функцию `passport(a)`, которая возвращает строку-описание массива в таком формате:
+
+    `осей: 2, форма: (41007, 4), элементов: 164028, тип: float64`
+
+    Функция должна работать для любого массива: например, для `np.array([1, 2, 3])` она вернёт `осей: 1, форма: (3,), элементов: 3, тип: ...` (тип зависит от платформы).
+  prelude: |
+    import numpy as np
+    from course import load_numeric
+    X, numeric_names = load_numeric()   # чтение числовых столбцов — урок 1.1
+  starter: |
+    def passport(a):
+        ...
+
+    print(passport(X))
+    print(passport(np.array([1, 2, 3])))
+  solution: |
+    def passport(a):
+        return f'осей: {a.ndim}, форма: {a.shape}, элементов: {a.size}, тип: {a.dtype}'
+
+    print(passport(X))
+    print(passport(np.array([1, 2, 3])))
+  explanation: |
+    - Все четыре сведения — атрибуты массива: `ndim`, `shape`, `size`, `dtype`.
+    - f-строка подставляет их в текст; кортеж формы печатается как `(41007, 4)`.
+  hints:
+    - Функция собирает строку из четырёх атрибутов переданного массива `a`.
+    - "Атрибуты `a.ndim`, `a.shape`, `a.size`, `a.dtype` и f-строка; не забудьте `return`."
+    - "`return f'осей: {a.ndim}, форма: {a.shape}, элементов: {a.size}, тип: {a.dtype}'`"
+  tests: |
+    import numpy as np
+    f = var('passport')
+    ensure(callable(f), 'passport должна быть функцией: def passport(a): ...')
+    s = f(student['X'])
+    ensure(isinstance(s, str), 'Функция должна вернуть строку, а вернула %s.' % type(s).__name__)
+    exp = ref('passport')(student['X'])
+    ensure(s == exp, 'Для X ожидалось «%s», а получено «%s».' % (exp, s))
+    for test_arr in [np.array([1, 2, 3]), np.zeros((2, 5, 3)), np.array([[1.5]])]:
+        got, want = f(test_arr), ref('passport')(test_arr)
+        ensure(got == want, 'Для массива формы %s ожидалось «%s», а получено «%s». Функция должна работать для любого массива.' % (test_arr.shape, want, got))
+  wrong:
+    - code: |
+        def passport(a):
+            return 'осей: 2, форма: (41007, 4), элементов: 164028, тип: float64'
+      expect: для любого массива
+    - code: |
+        def passport(a):
+            print(f'осей: {a.ndim}, форма: {a.shape}, элементов: {a.size}, тип: {a.dtype}')
+      expect: вернуть строку

@@ -1,0 +1,460 @@
+- id: m11-l2-t1
+  title: recall@k по местам
+  difficulty: warmup
+  introduces: [recall-at-k]
+  uses: []
+  statement: |
+    Для каждого проверочного запроса известно место первого раздела нужного урока в выдаче поиска по словам — список `ranks_words`. Места считаются с 1, `None` — урок не нашёлся среди похожих разделов. Напишите функцию `recall_at(ranks, k)`: доля запросов, у которых место не дальше `k`; `None` — промах. Результат — `float`.
+
+    Получите `recall_words` — словарь `{k: recall@k}` для k = 1, 3, 5, 10.
+  prelude: |
+    import json
+    import numpy as np
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    with open('course_queries.json', encoding='utf-8') as fh:
+        queries = json.load(fh)
+    texts = [d['lesson_title'] + '. ' + d['section'] + '. ' + d['text'] for d in docs]
+    lessons = np.array([d['lesson'] for d in docs])
+
+    def ranks_for(vectorizer, qs):
+        """Место (с 1) первого раздела нужного урока для каждого запроса или None."""
+        X = vectorizer.fit_transform(texts)
+        S = (vectorizer.transform([q['term'] for q in qs]) @ X.T).toarray()
+        order = np.argsort(-S, axis=1, kind='stable')
+        right = np.array([q['lesson'] for q in qs])
+        hit = (lessons[order] == right[:, None]) & (np.take_along_axis(S, order, axis=1) > 0)
+        return [int(h.argmax()) + 1 if h.any() else None for h in hit]
+
+    ranks_words = ranks_for(TfidfVectorizer(), queries)
+  starter: |
+    def recall_at(ranks, k):
+        hits = [... for r in ranks]
+        return float(np.mean(hits))
+
+    recall_words = {k: recall_at(ranks_words, k) for k in [1, 3, 5, 10]}
+    print(recall_words)
+  solution: |
+    def recall_at(ranks, k):
+        hits = [r is not None and r <= k for r in ranks]
+        return float(np.mean(hits))
+
+    recall_words = {k: recall_at(ranks_words, k) for k in [1, 3, 5, 10]}
+    print(recall_words)
+  explanation: |
+    - `r is not None and r <= k` — попадание в первые k. Проверка на `None` стоит первой: `and` не вычисляет вторую часть, если первая ложна, и сравнения `None <= 5` не случится.
+    - Среднее от списка `True`/`False` — доля попаданий: `True` считается как 1.
+    - Поиск по словам: 76,9 % при k = 1, 89,3 % при k = 3, 93,2 % при k = 5 и 95,7 % при k = 10. Ненайденные запросы остаются в знаменателе — иначе recall получился бы выше, чем есть.
+  hints:
+    - "Попадание — `r is not None and r <= k`."
+    - "Доля — `np.mean` от списка логических значений."
+    - "Словарь для нескольких k — `{k: recall_at(ranks_words, k) for k in [1, 3, 5, 10]}`."
+  tests: |
+    f = var('recall_at')
+    ensure(callable(f), '`recall_at` должна быть функцией.')
+    r = [1, 3, None, 6, 2]
+    close(f(r, 3), 0.6, 'Для мест {0} и k = 3 recall — 3 из 5 = {{expected}}, а у вас {{actual}}.'.format(r))
+    close(f(r, 1), 0.2, 'Для мест {0} и k = 1 recall — {{expected}}, а у вас {{actual}}.'.format(r))
+    close(f(r, 10), 0.8, 'Запрос с местом None — промах при любом k: для k = 10 recall {{expected}}, а у вас {{actual}}.'.format(r))
+    close(f([None, None], 5), 0.0, 'Если ничего не нашлось, recall 0.')
+    ensure(isinstance(f(r, 3), float), '`recall_at` должна вернуть float.')
+    rw = var('recall_words', dict, 'словарём')
+    equal(sorted(rw), [1, 3, 5, 10], 'В словаре нужны ключи 1, 3, 5, 10, а у вас {actual}.')
+    for k in [1, 3, 5, 10]:
+        close(rw[k], ref('recall_words')[k], 'recall@{0} поиска по словам — {{expected}}, а у вас {{actual}}.'.format(k))
+  files: [course_docs.json, course_queries.json]
+  wrong:
+    - code: |
+        def recall_at(ranks, k):
+            return float(np.mean([r <= k for r in ranks]))
+        recall_words = {k: recall_at(ranks_words, k) for k in [1, 3, 5, 10]}
+      expect: Неподходящий тип
+    - code: |
+        def recall_at(ranks, k):
+            found = [r for r in ranks if r is not None]
+            return float(np.mean([r <= k for r in found]))
+        recall_words = {k: recall_at(ranks_words, k) for k in [1, 3, 5, 10]}
+      expect: 3 из 5
+
+- id: m11-l2-t2
+  title: Место нужного урока
+  difficulty: main
+  introduces: []
+  uses: [recall-at-k, document-search]
+  statement: |
+    Напишите функцию `first_rank(scores, lessons, right)`: место (с 1) первого раздела урока `right` в выдаче по убыванию сходства `scores`; `lessons` — номера уроков разделов. При равном сходстве раньше идёт раздел с меньшим номером. Функция возвращает `None`, если урока нет среди похожих разделов: раньше него встретился раздел со сходством 0 или меньше (дальше похожих нет) или урока нет вовсе.
+
+    Получите для поиска по словам `ranks` — места для всех запросов (`S[i]` — сходства запроса `i` со всеми разделами) и `n_lost` — сколько запросов не нашли свой урок вовсе.
+  prelude: |
+    import json
+    import numpy as np
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    with open('course_queries.json', encoding='utf-8') as fh:
+        queries = json.load(fh)
+    texts = [d['lesson_title'] + '. ' + d['section'] + '. ' + d['text'] for d in docs]
+    lessons = [d['lesson'] for d in docs]
+    vectorizer = TfidfVectorizer()
+    X = vectorizer.fit_transform(texts)
+    S = (vectorizer.transform([q['term'] for q in queries]) @ X.T).toarray()   # запросы × разделы
+  starter: |
+    def first_rank(scores, lessons, right):
+        for place, j in enumerate(np.argsort(-scores, kind='stable'), start=1):
+            if ...:
+                return None
+            if ...:
+                return place
+        return None
+
+    ranks = [first_rank(S[i], lessons, q['lesson']) for i, q in enumerate(queries)]
+    n_lost = ...
+    print(n_lost, ranks[:10])
+  solution: |
+    def first_rank(scores, lessons, right):
+        for place, j in enumerate(np.argsort(-scores, kind='stable'), start=1):
+            if scores[j] <= 0:
+                return None
+            if lessons[j] == right:
+                return place
+        return None
+
+    ranks = [first_rank(S[i], lessons, q['lesson']) for i, q in enumerate(queries)]
+    n_lost = sum(r is None for r in ranks)
+    print(n_lost, ranks[:10])
+  explanation: |
+    - `enumerate(..., start=1)` нумерует места с 1, как в выдаче поиска.
+    - Проверка сходства идёт раньше проверки урока: раздел со сходством 0 не похож на запрос, даже если он из нужного урока.
+    - Не нашлись вовсе три запроса: «& | ~ (логические операции с масками)», «Разбиение в дереве» и «Кодирование категорий». У всех троих в нужном уроке те же слова в других формах.
+  hints:
+    - "Стоп по сходству — `if scores[j] <= 0: return None`."
+    - "Нужный урок — `if lessons[j] == right: return place`."
+    - "Ненайденные — `sum(r is None for r in ranks)`."
+  tests: |
+    import numpy as np
+    f = var('first_rank')
+    ensure(callable(f), '`first_rank` должна быть функцией.')
+    s = np.array([0.2, 0.9, 0.0, 0.5])
+    ls = ['a', 'b', 'c', 'a']
+    got = f(s, ls, 'a')
+    if got == 1:
+        fail('Места считаются с 1: раздел урока «a» со сходством 0.5 стоит в выдаче вторым.')
+    equal(got, 2, 'Для сходств [0.2, 0.9, 0.0, 0.5] и уроков a, b, c, a урок «a» впервые встречается на месте {expected}, а у вас {actual}.')
+    equal(f(s, ls, 'b'), 1, 'Урок «b» — на первом месте.')
+    equal(f(s, ls, 'c'), None, 'У раздела урока «c» сходство 0 — он не похож на запрос: нужен None.')
+    equal(f(s, ls, 'z'), None, 'Урока «z» нет вовсе — нужен None.')
+    equal(f(np.array([0.5, 0.5]), ['x', 'y'], 'y'), 2, 'При равном сходстве раньше идёт раздел с меньшим номером: «y» — на втором месте.')
+    equal(var('ranks', list, 'списком'), ref('ranks'), 'Места для запросов не совпадают с ожидаемыми.')
+    equal(int(var('n_lost', 'number', 'числом')), int(ref('n_lost')), 'Не нашли свой урок вовсе {expected} запроса, а у вас {actual}.')
+  files: [course_docs.json, course_queries.json]
+  wrong:
+    - code: |
+        def first_rank(scores, lessons, right):
+            for place, j in enumerate(np.argsort(-scores, kind='stable'), start=1):
+                if lessons[j] == right:
+                    return place
+            return None
+        ranks = [first_rank(S[i], lessons, q['lesson']) for i, q in enumerate(queries)]
+        n_lost = sum(r is None for r in ranks)
+      expect: сходство 0
+    - code: |
+        def first_rank(scores, lessons, right):
+            for place, j in enumerate(np.argsort(-scores, kind='stable')):
+                if scores[j] <= 0:
+                    return None
+                if lessons[j] == right:
+                    return place
+            return None
+        ranks = [first_rank(S[i], lessons, q['lesson']) for i, q in enumerate(queries)]
+        n_lost = sum(r is None for r in ranks)
+      expect: с 1
+
+- id: m11-l2-t3
+  title: Средний обратный ранг
+  difficulty: main
+  introduces: []
+  uses: [recall-at-k]
+  statement: |
+    recall@5 не различает первое и пятое место. **MRR** (mean reciprocal rank, средний обратный ранг) учитывает, насколько высоко стоит правильный ответ. Для одного запроса это 1 / место: 1 за первое место, 0,5 за второе, 0,2 за пятое, 0 — если не нашлось. MRR — среднее по всем запросам.
+
+    Напишите функцию `mrr(ranks)` (места с 1, `None` — не нашлось) и получите `mrr_words` и `mrr_char` — MRR поиска по словам (`ranks_words`) и по символьным n-граммам (`ranks_char`).
+  prelude: |
+    import json
+    import numpy as np
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    with open('course_queries.json', encoding='utf-8') as fh:
+        queries = json.load(fh)
+    texts = [d['lesson_title'] + '. ' + d['section'] + '. ' + d['text'] for d in docs]
+    lessons = np.array([d['lesson'] for d in docs])
+
+    def ranks_for(vectorizer, qs):
+        """Место (с 1) первого раздела нужного урока для каждого запроса или None."""
+        X = vectorizer.fit_transform(texts)
+        S = (vectorizer.transform([q['term'] for q in qs]) @ X.T).toarray()
+        order = np.argsort(-S, axis=1, kind='stable')
+        right = np.array([q['lesson'] for q in qs])
+        hit = (lessons[order] == right[:, None]) & (np.take_along_axis(S, order, axis=1) > 0)
+        return [int(h.argmax()) + 1 if h.any() else None for h in hit]
+
+    ranks_words = ranks_for(TfidfVectorizer(), queries)
+    ranks_char = ranks_for(TfidfVectorizer(analyzer='char_wb', ngram_range=(3, 5)), queries)
+  starter: |
+    def mrr(ranks):
+        return float(np.mean([... for r in ranks]))
+
+    mrr_words = mrr(ranks_words)
+    mrr_char = mrr(ranks_char)
+    print(round(mrr_words, 3), round(mrr_char, 3))
+  solution: |
+    def mrr(ranks):
+        return float(np.mean([1 / r if r is not None else 0.0 for r in ranks]))
+
+    mrr_words = mrr(ranks_words)
+    mrr_char = mrr(ranks_char)
+    print(round(mrr_words, 3), round(mrr_char, 3))
+  explanation: |
+    - `1 / r if r is not None else 0.0` — обратное место или 0 для ненайденного. Ненайденные запросы нельзя выбрасывать из среднего: они тоже ответ поиска.
+    - MRR вырос с 0,840 до 0,889. Символьные n-граммы не только чаще находят нужный урок, но и ставят его выше.
+    - MRR = 0,84 грубо значит «правильный урок в среднем на первом-втором месте». Для RAG это важно: при маленьком k в контекст попадут только первые результаты.
+  hints:
+    - "Для одного запроса — `1 / r`, для `None` — 0."
+    - "Тернарный оператор: `1 / r if r is not None else 0.0`."
+    - "Среднее — `np.mean` по всем запросам, включая ненайденные."
+  tests: |
+    f = var('mrr')
+    ensure(callable(f), '`mrr` должна быть функцией.')
+    close(f([1, 2, None, 5]), 0.425, 'Для мест [1, 2, None, 5] MRR = (1 + 0.5 + 0 + 0.2) / 4 = {expected}, а у вас {actual}.')
+    close(f([1, 1]), 1.0, 'Если всё на первом месте, MRR = 1.')
+    close(f([None, 4]), 0.125, 'Для мест [None, 4] MRR = (0 + 0.25) / 2 = {expected}, а у вас {actual}.')
+    close(var('mrr_words', 'number', 'числом'), ref('mrr_words'), 'MRR поиска по словам — {expected}, а у вас {actual}.')
+    close(var('mrr_char', 'number', 'числом'), ref('mrr_char'), 'MRR поиска по n-граммам — {expected}, а у вас {actual}.')
+  files: [course_docs.json, course_queries.json]
+  wrong:
+    - code: |
+        def mrr(ranks):
+            return float(np.mean([1 / r for r in ranks if r is not None]))
+        mrr_words = mrr(ranks_words)
+        mrr_char = mrr(ranks_char)
+      expect: (1 + 0.5 + 0 + 0.2) / 4
+    - code: |
+        def mrr(ranks):
+            found = [r for r in ranks if r is not None]
+            return float(1 / np.mean(found)) * len(found) / len(ranks)
+        mrr_words = mrr(ranks_words)
+        mrr_char = mrr(ranks_char)
+      expect: MRR =
+
+- id: m11-l2-t4
+  title: Кусочки слова
+  difficulty: main
+  introduces: [char-ngrams]
+  uses: [tf-idf]
+  statement: |
+    Повторите, как режет слово `TfidfVectorizer(analyzer='char_wb')`. Напишите функцию `char_ngrams(word, n)`: слово переводится в нижний регистр и дополняется пробелом с каждой стороны, затем берутся все кусочки длины `n` подряд, со сдвигом на 1. Если дополненное слово не длиннее `n`, кусочек один — само дополненное слово.
+
+    Затем напишите функцию `similarity(a, b, n_min, n_max)` — долю общих кусочков двух слов (коэффициент Жаккара): |A ∩ B| / |A ∪ B|, где A и B — множества кусочков всех длин от `n_min` до `n_max`. Получите `sim_forms` — сходство «переобучением» и «переобучение» и `sim_other` — «переобучением» и «перевозкой» (длины 3–5).
+  prelude: |
+    from sklearn.feature_extraction.text import TfidfVectorizer
+  starter: |
+    def char_ngrams(word, n):
+        w = ' ' + word.lower() + ' '
+        return [w[i:i + n] for i in range(...)]
+
+    def similarity(a, b, n_min, n_max):
+        A = set()
+        B = set()
+        for n in range(n_min, n_max + 1):
+            A.update(char_ngrams(a, n))
+            B.update(char_ngrams(b, n))
+        return ...
+
+    sim_forms = similarity('переобучением', 'переобучение', 3, 5)
+    sim_other = similarity('переобучением', 'перевозкой', 3, 5)
+    print(char_ngrams('Кот', 3))
+    print(round(sim_forms, 3), round(sim_other, 3))
+  solution: |
+    def char_ngrams(word, n):
+        w = ' ' + word.lower() + ' '
+        return [w[i:i + n] for i in range(max(1, len(w) - n + 1))]
+
+    def similarity(a, b, n_min, n_max):
+        A = set()
+        B = set()
+        for n in range(n_min, n_max + 1):
+            A.update(char_ngrams(a, n))
+            B.update(char_ngrams(b, n))
+        return len(A & B) / len(A | B)
+
+    sim_forms = similarity('переобучением', 'переобучение', 3, 5)
+    sim_other = similarity('переобучением', 'перевозкой', 3, 5)
+    print(char_ngrams('Кот', 3))
+    print(round(sim_forms, 3), round(sim_other, 3))
+  explanation: |
+    - Окно длины n можно сдвинуть `len(w) - n + 1` раз. `max(1, ...)` оставляет хотя бы одно окно, когда слово короче n: срез `w[0:n]` вернёт всё слово.
+    - Пробелы по краям делают кусочки начала и конца особыми: « ко» бывает только в начале слова, «от » — только в конце.
+    - У двух форм одного слова общих кусочков 77 % (30 из 39 разных), у «переобучением» и «перевозкой» — около 10 % (6 из 57): общее только начало «пере».
+  hints:
+    - "Число окон — `len(w) - n + 1`, но не меньше 1: `max(1, len(w) - n + 1)`."
+    - "Пересечение и объединение множеств — `A & B` и `A | B`."
+    - "Проверьте себя: `TfidfVectorizer(analyzer='char_wb', ngram_range=(3, 3)).build_analyzer()('Кот')` должен совпасть с `char_ngrams('Кот', 3)`."
+  tests: |
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    f = var('char_ngrams')
+    ensure(callable(f), '`char_ngrams` должна быть функцией.')
+    if f('Кот', 3) == ['кот']:
+        fail('Слово дополняется пробелом с каждой стороны: у «Кот» кусочки « ко», «кот», «от ».')
+    for word in ['Кот', 'модель', 'я', 'Переобучение']:
+        for n in [3, 4, 5, 6]:
+            sk = TfidfVectorizer(analyzer='char_wb', ngram_range=(n, n)).build_analyzer()(word)
+            equal(f(word, n), sk, 'Для слова «{0}» и n = {1} кусочки — {{expected}}, а у вас {{actual}}.'.format(word, n))
+    g = var('similarity')
+    ensure(callable(g), '`similarity` должна быть функцией.')
+    close(g('кот', 'кот', 3, 3), 1.0, 'У одинаковых слов сходство 1.')
+    close(g('кот', 'кит', 3, 3), 0.0, 'У «кот» (« ко», «кот», «от ») и «кит» (« ки», «кит», «ит ») нет общих кусочков длины 3 — сходство 0, а у вас {actual}.')
+    close(g('кот', 'кит', 2, 3), 2 / 12, 'У «кот» и «кит» при длинах 2–3 общие только « к» и «т »: 2 из 12 разных кусочков — {expected}, а у вас {actual}.')
+    close(var('sim_forms', 'number', 'числом'), ref('sim_forms'), 'Сходство «переобучением» и «переобучение» — {expected}, а у вас {actual}.')
+    close(var('sim_other', 'number', 'числом'), ref('sim_other'), 'Сходство «переобучением» и «перевозкой» — {expected}, а у вас {actual}.')
+  files: []
+  wrong:
+    - code: |
+        def char_ngrams(word, n):
+            w = word.lower()
+            return [w[i:i + n] for i in range(max(1, len(w) - n + 1))]
+        def similarity(a, b, n_min, n_max):
+            A = set()
+            B = set()
+            for n in range(n_min, n_max + 1):
+                A.update(char_ngrams(a, n))
+                B.update(char_ngrams(b, n))
+            return len(A & B) / len(A | B)
+        sim_forms = similarity('переобучением', 'переобучение', 3, 5)
+        sim_other = similarity('переобучением', 'перевозкой', 3, 5)
+      expect: дополняется пробелом
+    - code: |
+        def char_ngrams(word, n):
+            w = ' ' + word.lower() + ' '
+            return [w[i:i + n] for i in range(max(1, len(w) - n + 1))]
+        def similarity(a, b, n_min, n_max):
+            A = set()
+            B = set()
+            for n in range(n_min, n_max + 1):
+                A.update(char_ngrams(a, n))
+                B.update(char_ngrams(b, n))
+            return len(A & B) / len(A)
+        sim_forms = similarity('переобучением', 'переобучение', 3, 5)
+        sim_other = similarity('переобучением', 'перевозкой', 3, 5)
+      expect: 2 из 12
+
+- id: m11-l2-t5
+  title: Честный выбор настроек
+  difficulty: star
+  introduces: []
+  uses: [recall-at-k, char-ngrams, llm-evaluation]
+  statement: |
+    Выберите длины кусочков для поиска честно. Запросы разделены на две половины: `dev` (чётные номера) — для выбора, `test` (нечётные) — для итоговой оценки. Для каждого варианта `ngram_range` из `candidates` обучите векторизатор на разделах (`X = vec.fit_transform(texts)`) и посчитайте MRR на `dev` и на `test` — функции `ranks_for(vectorizer, X, qs)` и `mrr(ranks)` уже есть.
+
+    Получите:
+
+    - `chosen` — вариант с наибольшим MRR на `dev` (кортеж);
+    - `dev_score` — его MRR на `dev`: столько вы бы сообщили, если бы оценивали там же, где выбирали;
+    - `honest` — его MRR на `test`: честная оценка.
+  prelude: |
+    import json
+    import numpy as np
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    with open('course_queries.json', encoding='utf-8') as fh:
+        queries = json.load(fh)
+    texts = [d['lesson_title'] + '. ' + d['section'] + '. ' + d['text'] for d in docs]
+    lessons = np.array([d['lesson'] for d in docs])
+
+    def ranks_for(vectorizer, X, qs):
+        """Место (с 1) первого раздела нужного урока для каждого запроса или None."""
+        S = (vectorizer.transform([q['term'] for q in qs]) @ X.T).toarray()
+        order = np.argsort(-S, axis=1, kind='stable')
+        right = np.array([q['lesson'] for q in qs])
+        hit = (lessons[order] == right[:, None]) & (np.take_along_axis(S, order, axis=1) > 0)
+        return [int(h.argmax()) + 1 if h.any() else None for h in hit]
+
+    def mrr(ranks):
+        return float(np.mean([1 / r if r is not None else 0.0 for r in ranks]))
+
+    dev, test = queries[0::2], queries[1::2]
+    candidates = [(2, 4), (3, 4), (3, 5), (3, 6)]
+  starter: |
+    dev_mrr, test_mrr = {}, {}
+    for nr in candidates:
+        vec = TfidfVectorizer(analyzer='char_wb', ngram_range=nr)
+        X = vec.fit_transform(texts)
+        dev_mrr[nr] = ...
+        test_mrr[nr] = mrr(ranks_for(vec, X, test))
+
+    chosen = ...
+    dev_score = dev_mrr[chosen]
+    honest = ...
+    for nr in candidates:
+        print(nr, 'dev', round(dev_mrr[nr], 3), 'test', round(test_mrr[nr], 3))
+    print('выбран', chosen, '| на dev', round(dev_score, 3), '| на test', round(honest, 3))
+  solution: |
+    dev_mrr, test_mrr = {}, {}
+    for nr in candidates:
+        vec = TfidfVectorizer(analyzer='char_wb', ngram_range=nr)
+        X = vec.fit_transform(texts)
+        dev_mrr[nr] = mrr(ranks_for(vec, X, dev))
+        test_mrr[nr] = mrr(ranks_for(vec, X, test))
+
+    chosen = max(candidates, key=lambda nr: dev_mrr[nr])
+    dev_score = dev_mrr[chosen]
+    honest = test_mrr[chosen]
+    for nr in candidates:
+        print(nr, 'dev', round(dev_mrr[nr], 3), 'test', round(test_mrr[nr], 3))
+    print('выбран', chosen, '| на dev', round(dev_score, 3), '| на test', round(honest, 3))
+  explanation: |
+    - Векторизатор обучается на разделах один раз для каждого варианта, а запросы `dev` и `test` только переводятся — так быстрее и честнее: запросы не влияют на словарь.
+    - На `dev` лучший вариант — (3, 6) с MRR 0,914. На `test` у него 0,858 — хуже всех четырёх вариантов. Сообщи мы 0,914, оценка была бы завышена почти на 6 пунктов.
+    - Победитель на одной половине — худший на другой. Значит, разница между этими вариантами — шум: на 117 запросах один запрос, поднявшийся с пятого места на первое, меняет MRR на 0,007. Честный вывод скромнее: длины 2–6 работают примерно одинаково, а символьные n-граммы в целом лучше слов.
+  hints:
+    - "MRR на `dev` — `mrr(ranks_for(vec, X, dev))`."
+    - "Выбор — `max(candidates, key=lambda nr: dev_mrr[nr])`."
+    - "Честная оценка — MRR выбранного варианта на `test`: `test_mrr[chosen]`."
+  tests: |
+    dm = var('dev_mrr', dict, 'словарём')
+    equal(sorted(dm), sorted(ref('dev_mrr')), 'В `dev_mrr` нужны все варианты из `candidates`.')
+    for nr in dm:
+        close(dm[nr], ref('dev_mrr')[nr], 'MRR на dev для {0} — {{expected}}, а у вас {{actual}}.'.format(nr))
+    ch = var('chosen', tuple, 'кортежем')
+    tm = ref('test_mrr')
+    if ch != ref('chosen'):
+        if ch == max(tm, key=tm.get):
+            fail('Вы выбрали вариант с лучшим MRR на test. Выбирать нужно по dev, а test — только для итоговой оценки.')
+        fail('Выбирать нужно по MRR на dev: лучший — {0}, а у вас {1}.'.format(ref('chosen'), ch))
+    close(var('dev_score', 'number', 'числом'), ref('dev_score'), 'MRR выбранного варианта на dev — {expected}, а у вас {actual}.')
+    close(var('honest', 'number', 'числом'), ref('honest'), 'Честная оценка — MRR выбранного варианта на test: {expected}, а у вас {actual}.')
+  files: [course_docs.json, course_queries.json]
+  wrong:
+    - code: |
+        dev_mrr, test_mrr = {}, {}
+        for nr in candidates:
+            vec = TfidfVectorizer(analyzer='char_wb', ngram_range=nr)
+            X = vec.fit_transform(texts)
+            dev_mrr[nr] = mrr(ranks_for(vec, X, dev))
+            test_mrr[nr] = mrr(ranks_for(vec, X, test))
+        chosen = max(candidates, key=lambda nr: test_mrr[nr])
+        dev_score = dev_mrr[chosen]
+        honest = test_mrr[chosen]
+      expect: лучшим MRR на test
+    - code: |
+        dev_mrr, test_mrr = {}, {}
+        for nr in candidates:
+            vec = TfidfVectorizer(analyzer='char_wb', ngram_range=nr)
+            X = vec.fit_transform(texts)
+            dev_mrr[nr] = mrr(ranks_for(vec, X, dev))
+            test_mrr[nr] = mrr(ranks_for(vec, X, test))
+        chosen = max(candidates, key=lambda nr: dev_mrr[nr])
+        dev_score = dev_mrr[chosen]
+        honest = dev_mrr[chosen]
+      expect: Честная оценка

@@ -1,0 +1,405 @@
+- id: m7-l1-t1
+  title: Один словарь для всех частей
+  difficulty: warmup
+  introduces: [binary-encoding]
+  uses: []
+  statement: |
+    Закодируйте коробку передач во всех трёх частях одним словарём `auto_map` (автомат — 1, механика — 0): `train_auto`, `valid_auto`, `test_auto` — Series с кодами. Затем `shares` — список долей автоматов в каждой части (train, validation, test).
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    auto_map = ...
+    train_auto = ...
+    valid_auto = ...
+    test_auto = ...
+    shares = [...]
+    print([round(s, 3) for s in shares])
+  solution: |
+    auto_map = {True: 1, False: 0}
+    train_auto = X_train['AutoTransmission'].map(auto_map)
+    valid_auto = X_valid['AutoTransmission'].map(auto_map)
+    test_auto = X_test['AutoTransmission'].map(auto_map)
+    shares = [train_auto.mean(), valid_auto.mean(), test_auto.mean()]
+    print([round(s, 3) for s in shares])
+  explanation: |
+    - Словарь один — значит, «1» во всех частях означает одно и то же.
+    - Доли автоматов во всех частях близки (≈ 46 %): случайное разбиение сохраняет состав данных.
+  hints:
+    - "Словарь — `{True: 1, False: 0}`."
+    - "Каждую часть кодируем тем же словарём: `X_valid['AutoTransmission'].map(auto_map)`."
+    - "Доли — средние трёх Series в списке."
+  tests: |
+    import pandas as pd
+    m = var('auto_map', dict, 'словарём')
+    ensure(m.get(True) == 1 and m.get(False) == 0, 'В словаре автомат (True) — 1, механика (False) — 0.')
+    for name, part in [('train_auto', 'X_train'), ('valid_auto', 'X_valid'), ('test_auto', 'X_test')]:
+        s = var(name, pd.Series, 'Series')
+        same_array(s.to_numpy(dtype=float), ref(part)['AutoTransmission'].map({True: 1, False: 0}).to_numpy(dtype=float), '`{0}` — коды коробки для `{1}` тем же словарём.'.format(name, part))
+    sh = [float(v) for v in var('shares', list, 'списком')]
+    same_array(sh, [float(v) for v in ref('shares')], 'Доли автоматов по частям не совпадают: средние кодов train, validation и test.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        auto_map = {True: 1, False: 0}
+        train_auto = X_train['AutoTransmission'].map(auto_map)
+        valid_auto = X_valid['AutoTransmission'].map({True: 0, False: 1})
+        test_auto = X_test['AutoTransmission'].map(auto_map)
+        shares = [train_auto.mean(), valid_auto.mean(), test_auto.mean()]
+      expect: тем же словарём
+    - code: |
+        auto_map = {True: 1, False: 0}
+        train_auto = X_train['AutoTransmission'].map(auto_map)
+        valid_auto = X_valid['AutoTransmission'].map(auto_map)
+        test_auto = X_test['AutoTransmission'].map(auto_map)
+        shares = [train_auto.sum(), valid_auto.sum(), test_auto.sum()]
+      expect: Доли автоматов
+
+- id: m7-l1-t2
+  title: Линейная модель с коробкой и без
+  difficulty: main
+  introduces: [binary-encoding, categorical-encoding]
+  uses: [linear-regression, regression-metrics]
+  statement: |
+    В таблицах `Xa_train`, `Xa_valid` — четыре числовых признака и `AutoTransmission` в кодах 0/1. Обучите две линейные регрессии: на `num_cols` и на `num_cols + ['AutoTransmission']`. Получите `mae_without`, `mae_with`, `gain` — на сколько евро ошибка уменьшилась, и `coef_auto` — коэффициент при коробке во второй модели.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    num_cols = ['Year', 'Distance', 'Engine', 'km_year']
+    auto_map = {True: 1, False: 0}
+    Xa_train = X_train[num_cols].assign(AutoTransmission=X_train['AutoTransmission'].map(auto_map))
+    Xa_valid = X_valid[num_cols].assign(AutoTransmission=X_valid['AutoTransmission'].map(auto_map))
+  starter: |
+    with_auto = num_cols + ['AutoTransmission']
+    lr_without = ...
+    lr_with = ...
+    mae_without = ...
+    mae_with = ...
+    gain = ...
+    coef_auto = ...
+    print(round(mae_without, 1), round(mae_with, 1), round(gain, 1), round(coef_auto, 1))
+  solution: |
+    with_auto = num_cols + ['AutoTransmission']
+    lr_without = LinearRegression().fit(Xa_train[num_cols], y_train)
+    lr_with = LinearRegression().fit(Xa_train[with_auto], y_train)
+    mae_without = mean_absolute_error(y_valid, lr_without.predict(Xa_valid[num_cols]))
+    mae_with = mean_absolute_error(y_valid, lr_with.predict(Xa_valid[with_auto]))
+    gain = mae_without - mae_with
+    coef_auto = lr_with.coef_[-1]
+    print(round(mae_without, 1), round(mae_with, 1), round(gain, 1), round(coef_auto, 1))
+  explanation: |
+    - С коробкой MAE ≈ 4 144 против ≈ 4 270: выигрыш ≈ 126 евро от одного столбца 0/1.
+    - Коэффициент — последний в `coef_` (столбец добавлен последним): ≈ +2 885 евро при прочих равных.
+  hints:
+    - "Две модели: `LinearRegression().fit(Xa_train[num_cols], y_train)` и то же с `with_auto`."
+    - "Прогнозы — по тем же колонкам validation: `Xa_valid[with_auto]`."
+    - "`gain = mae_without - mae_with`; `coef_auto = lr_with.coef_[-1]`."
+  tests: |
+    close(var('mae_without', 'number', 'числом'), ref('mae_without'), 'MAE без коробки — {expected}, а у вас {actual}.')
+    close(var('mae_with', 'number', 'числом'), ref('mae_with'), 'MAE с коробкой — {expected}, а у вас {actual}.')
+    g = var('gain', 'number', 'числом')
+    if abs(g + ref('gain')) < 1e-6:
+        fail('Знак наоборот: выигрыш — ошибка без коробки минус ошибка с ней.')
+    close(g, ref('gain'), 'Выигрыш — {expected}, а у вас {actual}.')
+    close(var('coef_auto', 'number', 'числом'), ref('coef_auto'), 'Коэффициент при коробке — {expected}, а у вас {actual}. Он последний в `coef_` модели с коробкой.')
+    close(alt('coef_auto'), alt_ref('coef_auto'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        with_auto = num_cols + ['AutoTransmission']
+        lr_without = LinearRegression().fit(Xa_train[num_cols], y_train)
+        lr_with = LinearRegression().fit(Xa_train[with_auto], y_train)
+        mae_without = mean_absolute_error(y_valid, lr_without.predict(Xa_valid[num_cols]))
+        mae_with = mean_absolute_error(y_valid, lr_with.predict(Xa_valid[with_auto]))
+        gain = mae_with - mae_without
+        coef_auto = lr_with.coef_[-1]
+      expect: Знак наоборот
+    - code: |
+        with_auto = num_cols + ['AutoTransmission']
+        lr_without = LinearRegression().fit(Xa_train[num_cols], y_train)
+        lr_with = LinearRegression().fit(Xa_train[with_auto], y_train)
+        mae_without = mean_absolute_error(y_valid, lr_without.predict(Xa_valid[num_cols]))
+        mae_with = mean_absolute_error(y_valid, lr_with.predict(Xa_valid[with_auto]))
+        gain = mae_without - mae_with
+        coef_auto = lr_with.coef_[0]
+      expect: Коэффициент при коробке
+
+- id: m7-l1-t3
+  title: "Разница медиан и разница при прочих равных"
+  difficulty: main
+  introduces: [binary-encoding]
+  uses: [linear-regression, pd-groupby]
+  statement: |
+    Объясните, почему коэффициент при коробке (`coef_auto`, уже посчитан) меньше разницы цен. Получите `median_gap` — разницу медианных цен автоматов и механики в train, `year_gap` — на сколько лет автоматы в среднем новее, `engine_gap` — на сколько см³ больше их средний объём, и `ratio` = `coef_auto / median_gap`.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.linear_model import LinearRegression
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    num_cols = ['Year', 'Distance', 'Engine', 'km_year']
+    auto = X_train['AutoTransmission'].map({True: 1, False: 0})
+    coef_auto = LinearRegression().fit(X_train[num_cols].assign(AutoTransmission=auto), y_train).coef_[-1]
+  starter: |
+    medians = y_train.groupby(auto).median()
+    median_gap = ...
+    year_gap = ...
+    engine_gap = ...
+    ratio = ...
+    print(median_gap, round(year_gap, 2), round(engine_gap), round(coef_auto), round(ratio, 2))
+  solution: |
+    medians = y_train.groupby(auto).median()
+    median_gap = medians[1] - medians[0]
+    year_gap = X_train.groupby(auto)['Year'].mean().diff().iloc[-1]
+    engine_gap = X_train.groupby(auto)['Engine'].mean().diff().iloc[-1]
+    ratio = coef_auto / median_gap
+    print(median_gap, round(year_gap, 2), round(engine_gap), round(coef_auto), round(ratio, 2))
+  explanation: |
+    - Медиана автоматов дороже на 7 400 евро, но автоматы в среднем почти на 6 лет новее и с двигателем на ≈ 490 см³ больше.
+    - Линейная модель учитывает год и объём отдельно, и «чистая» добавка за коробку — ≈ 2 885 евро, около 39 % от разницы медиан.
+    - Простое сравнение групп смешивает влияние многих признаков; коэффициент модели показывает разницу при прочих равных — но всё равно только внутри модели и этих данных.
+  hints:
+    - "Разница медиан — `medians[1] - medians[0]`."
+    - "Средний год по группам — `X_train.groupby(auto)['Year'].mean()`; разность групп — `.diff().iloc[-1]` (или 1 минус 0)."
+    - "`ratio = coef_auto / median_gap`."
+  tests: |
+    close(var('median_gap', 'number', 'числом'), ref('median_gap'), 'Разница медиан — {expected}, а у вас {actual}.')
+    yg = var('year_gap', 'number', 'числом')
+    if abs(yg + ref('year_gap')) < 1e-6:
+        fail('Знак наоборот: из среднего года автоматов (1) вычтите средний год механики (0).')
+    close(yg, ref('year_gap'), 'Разница среднего года — {expected}, а у вас {actual}.')
+    close(var('engine_gap', 'number', 'числом'), ref('engine_gap'), 'Разница среднего объёма — {expected}, а у вас {actual}.')
+    close(var('ratio', 'number', 'числом'), ref('ratio'), 'Отношение — {expected}, а у вас {actual}.')
+    close(alt('ratio'), alt_ref('ratio'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        medians = y_train.groupby(auto).median()
+        median_gap = medians[1] - medians[0]
+        year_gap = X_train.groupby(auto)['Year'].mean().iloc[0] - X_train.groupby(auto)['Year'].mean().iloc[1]
+        engine_gap = X_train.groupby(auto)['Engine'].mean().diff().iloc[-1]
+        ratio = coef_auto / median_gap
+      expect: Знак наоборот
+    - code: |
+        medians = y_train.groupby(auto).mean()
+        median_gap = medians[1] - medians[0]
+        year_gap = X_train.groupby(auto)['Year'].mean().diff().iloc[-1]
+        engine_gap = X_train.groupby(auto)['Engine'].mean().diff().iloc[-1]
+        ratio = coef_auto / median_gap
+      expect: Разница медиан
+
+- id: m7-l1-t4
+  title: Лес с коробкой передач
+  difficulty: main
+  introduces: [binary-encoding]
+  uses: [random-forest, regression-metrics]
+  statement: |
+    Обучите два леса (60 деревьев глубины 10, `random_state=42`, `n_jobs=1`): на числовых признаках и на числовых плюс коробка. Получите `rf_without`, `rf_with` — их MAE на validation и `rf_gain` — выигрыш. Сравните с выигрышем линейной модели `lr_gain` (уже посчитан): `ratio` = `lr_gain / rf_gain`.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    num_cols = ['Year', 'Distance', 'Engine', 'km_year']
+    auto_map = {True: 1, False: 0}
+    Xa_train = X_train[num_cols].assign(AutoTransmission=X_train['AutoTransmission'].map(auto_map))
+    Xa_valid = X_valid[num_cols].assign(AutoTransmission=X_valid['AutoTransmission'].map(auto_map))
+    lr_gain = 125.6
+  starter: |
+    with_auto = num_cols + ['AutoTransmission']
+    def forest():
+        return RandomForestRegressor(n_estimators=60, max_depth=10, random_state=42, n_jobs=1)
+
+    rf_without = ...
+    rf_with = ...
+    rf_gain = ...
+    ratio = ...
+    print(round(rf_without, 1), round(rf_with, 1), round(rf_gain, 1), round(ratio, 2))
+  solution: |
+    with_auto = num_cols + ['AutoTransmission']
+    def forest():
+        return RandomForestRegressor(n_estimators=60, max_depth=10, random_state=42, n_jobs=1)
+
+    rf_without = mean_absolute_error(y_valid, forest().fit(Xa_train[num_cols], y_train).predict(Xa_valid[num_cols]))
+    rf_with = mean_absolute_error(y_valid, forest().fit(Xa_train[with_auto], y_train).predict(Xa_valid[with_auto]))
+    rf_gain = rf_without - rf_with
+    ratio = lr_gain / rf_gain
+    print(round(rf_without, 1), round(rf_with, 1), round(rf_gain, 1), round(ratio, 2))
+  explanation: |
+    - Лес: 2 658 → 2 589, выигрыш ≈ 69 евро — меньше, чем у линейной модели (≈ 126), примерно в 1,8 раза.
+    - Лес и так улавливает многое через комбинации года, пробега и объёма (автоматы новее и мощнее), поэтому новый признак добавляет ему меньше. Но и 69 евро от одного столбца — заметно.
+  hints:
+    - "Новый лес на каждый набор признаков: `forest().fit(Xa_train[cols], y_train)`."
+    - "MAE — по прогнозам для `Xa_valid` с теми же колонками."
+    - "`rf_gain = rf_without - rf_with`; `ratio = lr_gain / rf_gain`."
+  tests: |
+    close(var('rf_without', 'number', 'числом'), ref('rf_without'), 'MAE леса без коробки — {expected}, а у вас {actual}.')
+    close(var('rf_with', 'number', 'числом'), ref('rf_with'), 'MAE леса с коробкой — {expected}, а у вас {actual}.')
+    g = var('rf_gain', 'number', 'числом')
+    if abs(g + ref('rf_gain')) < 1e-6:
+        fail('Знак наоборот: выигрыш — ошибка без коробки минус ошибка с ней.')
+    close(g, ref('rf_gain'), 'Выигрыш леса — {expected}, а у вас {actual}.')
+    close(var('ratio', 'number', 'числом'), ref('ratio'), 'Отношение выигрышей — {expected}, а у вас {actual}.')
+    close(alt('rf_with'), alt_ref('rf_with'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        with_auto = num_cols + ['AutoTransmission']
+        def forest():
+            return RandomForestRegressor(n_estimators=60, max_depth=10, random_state=42, n_jobs=1)
+        rf_without = mean_absolute_error(y_valid, forest().fit(Xa_train[num_cols], y_train).predict(Xa_valid[num_cols]))
+        rf_with = mean_absolute_error(y_valid, forest().fit(Xa_train[with_auto], y_train).predict(Xa_valid[with_auto]))
+        rf_gain = rf_with - rf_without
+        ratio = lr_gain / rf_gain
+      expect: Знак наоборот
+    - code: |
+        with_auto = num_cols + ['AutoTransmission']
+        def forest():
+            return RandomForestRegressor(n_estimators=60, max_depth=10, random_state=42, n_jobs=1)
+        rf_without = mean_absolute_error(y_valid, forest().fit(Xa_train[num_cols], y_train).predict(Xa_valid[num_cols]))
+        rf_with = mean_absolute_error(y_train, forest().fit(Xa_train[with_auto], y_train).predict(Xa_train[with_auto]))
+        rf_gain = rf_without - rf_with
+        ratio = lr_gain / rf_gain
+      expect: MAE леса с коробкой
+
+- id: m7-l1-t5
+  title: Где дерево спрашивает о коробке
+  difficulty: main
+  introduces: [binary-encoding]
+  uses: [decision-tree, tree-depth]
+  statement: |
+    Обучите `tree3` — дерево глубины 3 (`random_state=42`) на пяти признаках `with_auto`. Получите `auto_nodes` — сколько узлов дерева задают вопрос о коробке (номер признака в `tree3.tree_.feature` равен позиции `AutoTransmission` в `with_auto`) и `auto_threshold` — порог такого вопроса. Затем сравните MAE на validation деревьев глубины 3 и 8 — с коробкой и без: `mae` — словарь с ключами `(3, 'with')`, `(3, 'without')`, `(8, 'with')`, `(8, 'without')`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.tree import DecisionTreeRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    num_cols = ['Year', 'Distance', 'Engine', 'km_year']
+    auto_map = {True: 1, False: 0}
+    Xa_train = X_train[num_cols].assign(AutoTransmission=X_train['AutoTransmission'].map(auto_map))
+    Xa_valid = X_valid[num_cols].assign(AutoTransmission=X_valid['AutoTransmission'].map(auto_map))
+    with_auto = num_cols + ['AutoTransmission']
+  starter: |
+    tree3 = ...
+    pos = with_auto.index('AutoTransmission')
+    auto_nodes = ...
+    auto_threshold = ...
+    mae = {}
+    for depth in (3, 8):
+        for label, cols in (('with', with_auto), ('without', num_cols)):
+            mae[(depth, label)] = ...
+    print(auto_nodes, auto_threshold)
+    print({k: round(v) for k, v in mae.items()})
+  solution: |
+    tree3 = DecisionTreeRegressor(max_depth=3, random_state=42).fit(Xa_train[with_auto], y_train)
+    pos = with_auto.index('AutoTransmission')
+    auto_nodes = int((tree3.tree_.feature == pos).sum())
+    auto_threshold = float(tree3.tree_.threshold[tree3.tree_.feature == pos][0])
+    mae = {}
+    for depth in (3, 8):
+        for label, cols in (('with', with_auto), ('without', num_cols)):
+            t = DecisionTreeRegressor(max_depth=depth, random_state=42).fit(Xa_train[cols], y_train)
+            mae[(depth, label)] = mean_absolute_error(y_valid, t.predict(Xa_valid[cols]))
+    print(auto_nodes, auto_threshold)
+    print({k: round(v) for k, v in mae.items()})
+  explanation: |
+    - В дереве глубины 3 коробке посвящён один узел с порогом 0,5: «механика или автомат». Для бинарного признака другой вопрос и не нужен.
+    - На глубине 3 дерево с коробкой на validation чуть хуже (≈ 3 524 против 3 467): вопрос о коробке лучше всего делил train «прямо сейчас», но вытеснил более полезный вопрос о годе. На глубине 8 коробка помогает: ≈ 2 723 против 2 791.
+    - Вывод урока: польза признака зависит от модели и её настроек — проверяйте на validation.
+  hints:
+    - "Номер признака каждого узла — `tree3.tree_.feature`; узлы с коробкой — маска `== pos`, их число — сумма маски."
+    - "Порог — `tree3.tree_.threshold` по той же маске, первый элемент."
+    - "В цикле: дерево `max_depth=depth` на `Xa_train[cols]`, MAE на `Xa_valid[cols]`."
+  tests: |
+    equal(var('auto_nodes', 'number', 'числом'), ref('auto_nodes'), 'Узлов с вопросом о коробке — {expected}, а у вас {actual}.')
+    close(var('auto_threshold', 'number', 'числом'), 0.5, 'Порог вопроса о коробке — {expected}, а у вас {actual}.')
+    m = var('mae', dict, 'словарём')
+    for key in [(3, 'with'), (3, 'without'), (8, 'with'), (8, 'without')]:
+        ensure(key in m, 'В словаре `mae` нет ключа {0}.'.format(key))
+        close(float(m[key]), float(ref('mae')[key]), 'MAE дерева {0} — {{expected}}, а у вас {{actual}}.'.format(key))
+    close(float(alt('mae')[(8, 'with')]), float(alt_ref('mae')[(8, 'with')]), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        tree3 = DecisionTreeRegressor(max_depth=3, random_state=42).fit(Xa_train[with_auto], y_train)
+        pos = with_auto.index('AutoTransmission')
+        auto_nodes = int((tree3.tree_.feature == pos).sum())
+        auto_threshold = float(tree3.tree_.threshold[tree3.tree_.feature == pos][0])
+        mae = {}
+        for depth in (3, 8):
+            for label, cols in (('with', with_auto), ('without', num_cols)):
+                t = DecisionTreeRegressor(max_depth=depth, random_state=42).fit(Xa_train[with_auto], y_train)
+                mae[(depth, label)] = mean_absolute_error(y_valid, t.predict(Xa_valid[with_auto]))
+      expect: "MAE дерева (3, 'without')"
+    - code: |
+        tree3 = DecisionTreeRegressor(max_depth=3, random_state=42).fit(Xa_train[num_cols], y_train)
+        pos = 0
+        auto_nodes = int((tree3.tree_.feature == 4).sum())
+        auto_threshold = 0.5
+        mae = {}
+        for depth in (3, 8):
+            for label, cols in (('with', with_auto), ('without', num_cols)):
+                t = DecisionTreeRegressor(max_depth=depth, random_state=42).fit(Xa_train[cols], y_train)
+                mae[(depth, label)] = mean_absolute_error(y_valid, t.predict(Xa_valid[cols]))
+      expect: Узлов с вопросом о коробке
+
+- id: m7-l1-t6
+  kind: quiz
+  title: Как закодировать признак
+  difficulty: main
+  introduces: [categorical-encoding]
+  uses: []
+  statement: |
+    Подберите способ кодирования для каждой ситуации (подробнее о способах — в следующих уроках).
+  quiz:
+    - q: "Признак «есть ли у машины пробег за границей»: да или нет."
+      options:
+        - Один столбец 0/1
+        - Шесть столбцов One-Hot
+        - Средняя цена группы
+      answer: 0
+      explain: У признака два значения — бинарного кодирования достаточно.
+    - q: Модель — случайный лес, признак — кузов (12 значений).
+      options:
+        - Порядковые коды (номер кузова) — дерево разобьёт номера порогами
+        - Только One-Hot — иначе лес не обучится
+        - Признак нужно удалить
+      answer: 0
+      explain: Деревьям хватает порядковых кодов; One-Hot тоже работает, но даёт много столбцов.
+    - q: Модель — линейная регрессия, признак — топливо (6 значений).
+      options:
+        - One-Hot — у каждого вида топлива свой коэффициент
+        - Порядковые коды — так короче
+        - Ничего — линейная модель сама поймёт текст
+      answer: 0
+      explain: Порядковый код заставил бы модель считать, что «Petrol» на сколько-то единиц больше «Diesel», — бессмыслица для названий.
+  hints:
+    - Посмотрите на число значений признака и на то, как модель использует числа.
+    - "Два значения — 0/1; деревьям — коды; линейной модели — индикаторы."
+    - "Ответы: 0/1; порядковые коды; One-Hot."

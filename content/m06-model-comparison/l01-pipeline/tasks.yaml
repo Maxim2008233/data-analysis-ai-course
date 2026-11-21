@@ -1,0 +1,378 @@
+- id: m6-l1-t1
+  title: Собрать Pipeline и проверить его
+  difficulty: warmup
+  introduces: [sk-pipeline]
+  uses: [standard-scaler, linear-regression]
+  statement: |
+    Соберите `pipe` — Pipeline из двух шагов: `'scale'` — `StandardScaler`, `'model'` — `LinearRegression`. Обучите его на обучающей части и посчитайте `pipe_mae` — MAE на validation.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    from sklearn.pipeline import Pipeline
+
+    pipe = Pipeline([
+        ('scale', ...),
+        ('model', ...),
+    ])
+    pipe.fit(..., ...)
+    pipe_mae = ...
+    print(round(pipe_mae, 1))
+  solution: |
+    from sklearn.pipeline import Pipeline
+
+    pipe = Pipeline([
+        ('scale', StandardScaler()),
+        ('model', LinearRegression()),
+    ])
+    pipe.fit(X_train, y_train)
+    pipe_mae = mean_absolute_error(y_valid, pipe.predict(X_valid))
+    print(round(pipe_mae, 1))
+  explanation: |
+    - Pipeline получает список пар «имя, объект»; модель — последней.
+    - `fit` и `predict` получают исходные таблицы: scaler учится внутри `fit` на `X_train`, при `predict` только применяется.
+    - MAE ≈ 4 269,9 — как у ручной последовательности в уроке 5.7: модель та же, ручных шагов нет.
+  hints:
+    - "Шаги — объекты `StandardScaler()` и `LinearRegression()`."
+    - "Обучение — `pipe.fit(X_train, y_train)`; прогноз — `pipe.predict(X_valid)`."
+    - "`pipe_mae = mean_absolute_error(y_valid, pipe.predict(X_valid))`."
+  tests: |
+    import numpy as np
+    from sklearn.pipeline import Pipeline
+    p = var('pipe', Pipeline, 'объектом Pipeline')
+    ensure(list(p.named_steps) == ['scale', 'model'], 'Шаги должны называться `scale` и `model` — в этом порядке, а у вас {0}.'.format(list(p.named_steps)))
+    ensure(type(p.named_steps['scale']).__name__ == 'StandardScaler' and type(p.named_steps['model']).__name__ == 'LinearRegression', 'Шаг `scale` — `StandardScaler()`, шаг `model` — `LinearRegression()`.')
+    ensure(hasattr(p.named_steps['model'], 'coef_'), 'Pipeline не обучен: `pipe.fit(X_train, y_train)`.')
+    if np.allclose(p.named_steps['scale'].mean_, ref('X').mean().to_numpy()):
+        fail('Pipeline обучен на всех данных. `fit` — только на обучающей части `X_train`, `y_train`.')
+    same_array(p.named_steps['scale'].mean_, ref('X_train').mean().to_numpy(), 'Scaler внутри Pipeline должен учиться на `X_train`.')
+    close(var('pipe_mae', 'number', 'числом'), ref('pipe_mae'), 'MAE на validation — {expected}, а у вас {actual}.')
+    close(alt('pipe_mae'), alt_ref('pipe_mae'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        from sklearn.pipeline import Pipeline
+        pipe = Pipeline([('scale', StandardScaler()), ('model', LinearRegression())])
+        pipe.fit(X, y)
+        pipe_mae = mean_absolute_error(y_valid, pipe.predict(X_valid))
+      expect: на всех данных
+    - code: |
+        from sklearn.pipeline import Pipeline
+        pipe = Pipeline([('scaler', StandardScaler()), ('regression', LinearRegression())])
+        pipe.fit(X_train, y_train)
+        pipe_mae = mean_absolute_error(y_valid, pipe.predict(X_valid))
+      expect: "`scale` и `model`"
+    - code: |
+        from sklearn.pipeline import Pipeline
+        pipe = Pipeline([('scale', StandardScaler()), ('model', LinearRegression())])
+        pipe.fit(X_train, y_train)
+        pipe_mae = mean_absolute_error(y_train, pipe.predict(X_train))
+      expect: MAE на validation
+
+- id: m6-l1-t2
+  kind: bug
+  title: "Найдите ошибку: модель видит разные единицы"
+  difficulty: main
+  introduces: [sk-pipeline]
+  uses: [standard-scaler, data-leakage]
+  statement: |
+    Код ниже выполняется без исключения, но MAE получается в сотни миллионов евро. Найдите и исправьте ошибку так, чтобы `pred` — прогнозы для validation — были верными, а `mae` — около 4 270 евро.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    from sklearn.pipeline import Pipeline
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    scaler = StandardScaler().fit(X_train)
+    X_train_s = scaler.transform(X_train)
+
+    pipe = Pipeline([('scale', StandardScaler()), ('model', LinearRegression())])
+    pipe.fit(X_train_s, y_train)
+    pred = pipe.predict(X_valid)
+    mae = mean_absolute_error(y_valid, pred)
+    print(round(mae))
+  solution: |
+    pipe = Pipeline([('scale', StandardScaler()), ('model', LinearRegression())])
+    pipe.fit(X_train, y_train)
+    pred = pipe.predict(X_valid)
+    mae = mean_absolute_error(y_valid, pred)
+    print(round(mae))
+  explanation: |
+    - Pipeline учился на `X_train_s` — признаках, уже переведённых в стандартные отклонения (числа около 0), а прогноз получил `X_valid` в исходных единицах (годы около 2 000, пробег — сотни тысяч). Внутренний scaler почти ничего не меняет, и модель подставляет в формулу огромные числа.
+    - Подсказкой было предупреждение `X has feature names, but StandardScaler was fitted without feature names`: при обучении у данных не было имён колонок, при прогнозе — были.
+    - Исправление — убрать ручное масштабирование: Pipeline получает исходные таблицы и для `fit`, и для `predict`.
+  hints:
+    - "Сравните, что получает `pipe.fit` и что получает `pipe.predict`: в одних ли единицах эти данные?"
+    - "Внутри Pipeline уже есть scaler — масштабировать вручную не нужно."
+    - "`pipe.fit(X_train, y_train)` — исходная таблица, как и в `predict`."
+  tests: |
+    import numpy as np
+    p = np.asarray(var('pred'), dtype=float)
+    ensure(p.shape == ref('pred').shape, 'В `pred` должно быть по прогнозу на каждую машину validation.')
+    if np.abs(p).max() > 1e6:
+        fail('Прогнозы огромные: Pipeline обучен на масштабированных признаках, а прогноз делается для исходных. Передайте в `fit` исходную `X_train`.')
+    same_array(p, ref('pred'), 'Прогнозы не совпадают с верными: Pipeline должен учиться на `X_train` и предсказывать для `X_valid`.', rtol=1e-6)
+    close(var('mae', 'number', 'числом'), ref('mae'), 'MAE — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        scaler = StandardScaler().fit(X_train)
+        X_train_s = scaler.transform(X_train)
+        pipe = Pipeline([('scale', StandardScaler()), ('model', LinearRegression())])
+        pipe.fit(X_train_s, y_train)
+        pred = pipe.predict(X_valid)
+        mae = mean_absolute_error(y_valid, pred)
+      expect: Прогнозы огромные
+    - code: |
+        pipe = Pipeline([('scale', StandardScaler()), ('model', LinearRegression())])
+        pipe.fit(X_valid, y_valid)
+        pred = pipe.predict(X_valid)
+        mae = mean_absolute_error(y_valid, pred)
+      expect: не совпадают
+
+- id: m6-l1-t3
+  title: Заглянуть внутрь Pipeline
+  difficulty: main
+  introduces: [sk-pipeline]
+  uses: [linear-regression, standard-scaler]
+  statement: |
+    Pipeline `pipe` уже обучен. Достаньте из него: `scale_mean` — средние признаков, запомненные scaler; `coefs` — Series коэффициентов модели с именами признаков в индексе; `top_feature` — признак с наибольшим **по модулю** коэффициентом; `intercept` — свободный член модели.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    from sklearn.pipeline import Pipeline
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    pipe = Pipeline([('scale', StandardScaler()), ('model', LinearRegression())]).fit(X_train, y_train)
+  starter: |
+    scale_mean = ...
+    coefs = ...
+    top_feature = ...
+    intercept = ...
+    print(scale_mean.round(1))
+    print(coefs.round(0))
+    print(top_feature, round(intercept, 1), round(y_train.mean(), 1))
+  solution: |
+    scale_mean = pipe.named_steps['scale'].mean_
+    coefs = pd.Series(pipe.named_steps['model'].coef_, index=features)
+    top_feature = coefs.abs().idxmax()
+    intercept = pipe.named_steps['model'].intercept_
+    print(scale_mean.round(1))
+    print(coefs.round(0))
+    print(top_feature, round(intercept, 1), round(y_train.mean(), 1))
+  explanation: |
+    - `named_steps['scale']` и `named_steps['model']` — те самые обученные объекты внутри Pipeline со всеми атрибутами (`mean_`, `coef_`, `intercept_`).
+    - Наибольший по модулю коэффициент — у года (≈ 4 285 евро на одно стандартное отклонение), объём двигателя почти рядом (≈ 4 053). Модуль нужен, потому что пробег влияет со знаком минус.
+    - Свободный член совпал со средней ценой train (≈ 9 574): у стандартизированных признаков среднее 0, и машина «со средними признаками» получает среднюю цену.
+  hints:
+    - "Шаг по имени — `pipe.named_steps['scale']`; у scaler средние в `mean_`, у модели — `coef_` и `intercept_`."
+    - "`coefs = pd.Series(pipe.named_steps['model'].coef_, index=features)`."
+    - "Наибольший по модулю — `coefs.abs().idxmax()`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    same_array(np.asarray(var('scale_mean'), dtype=float), ref('scale_mean'), '`scale_mean` — средние, запомненные scaler: `pipe.named_steps[\'scale\'].mean_`.')
+    c = var('coefs', pd.Series, 'Series')
+    ensure(list(c.index) == ref('features'), 'Индекс `coefs` — имена признаков: `index=features`.')
+    same_array(c.to_numpy(dtype=float), ref('coefs').to_numpy(dtype=float), 'Коэффициенты не совпадают: `pipe.named_steps[\'model\'].coef_`.')
+    t = var('top_feature', str, 'строкой — именем признака')
+    if t == ref('coefs').idxmax() and t != ref('top_feature'):
+        fail('Нужен наибольший коэффициент **по модулю**: `coefs.abs().idxmax()`.')
+    equal(t, ref('top_feature'), 'Наибольший по модулю коэффициент — у «{expected}», а у вас «{actual}».')
+    close(var('intercept', 'number', 'числом'), ref('intercept'), 'Свободный член — {expected}, а у вас {actual}.')
+    close(float(alt('coefs').iloc[0]), float(alt_ref('coefs').iloc[0]), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        scale_mean = pipe.named_steps['scale'].mean_
+        coefs = pd.Series(pipe.named_steps['model'].coef_, index=features)
+        top_feature = coefs.idxmin()
+        intercept = pipe.named_steps['model'].intercept_
+      expect: Наибольший по модулю
+    - code: |
+        scale_mean = X_valid.mean().to_numpy()
+        coefs = pd.Series(pipe.named_steps['model'].coef_, index=features)
+        top_feature = coefs.abs().idxmax()
+        intercept = pipe.named_steps['model'].intercept_
+      expect: "mean_"
+
+- id: m6-l1-t4
+  title: Прогноз для новых машин
+  difficulty: main
+  introduces: [sk-pipeline]
+  uses: [sk-fit-predict, linear-regression]
+  statement: |
+    В таблице `new_cars` — две машины, которые отличаются только годом выпуска: 2010 и 2015. Получите `new_pred` — прогнозы Pipeline для них, `diff` — на сколько евро вторая дороже первой, и `per_year` — сколько евро модель добавляет за каждый год выпуска.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    from sklearn.pipeline import Pipeline
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    pipe = Pipeline([('scale', StandardScaler()), ('model', LinearRegression())]).fit(X_train, y_train)
+    new_cars = pd.DataFrame({'Year': [2010, 2015], 'Distance': [150000.0, 150000.0],
+                             'Engine': [1600.0, 1600.0], 'km_year': [15000.0, 15000.0]})
+  starter: |
+    new_pred = ...
+    diff = ...
+    per_year = ...
+    print(new_pred.round(0), round(diff), round(per_year))
+  solution: |
+    new_pred = pipe.predict(new_cars)
+    diff = new_pred[1] - new_pred[0]
+    per_year = diff / 5
+    print(new_pred.round(0), round(diff), round(per_year))
+  explanation: |
+    - Новые строки передаём в исходных единицах — scaler внутри Pipeline преобразует их сам.
+    - Разница ≈ 2 895 евро за 5 лет, то есть ≈ 579 евро за год. Это коэффициент при годе (≈ 4 285 евро на одно стандартное отклонение), пересчитанный на один год: σ года на train ≈ 7,4 года, и 4 285 / 7,4 ≈ 579.
+    - У линейной модели «цена года» одинакова для любой машины и любого года. В следующих уроках появятся модели, у которых это не так.
+  hints:
+    - "Прогноз для таблицы — `pipe.predict(new_cars)`; это массив из двух чисел."
+    - "Разница — второй прогноз минус первый; между 2010 и 2015 — 5 лет."
+    - "`diff = new_pred[1] - new_pred[0]`; `per_year = diff / 5`."
+  tests: |
+    import numpy as np
+    p = np.asarray(var('new_pred'), dtype=float)
+    ensure(p.shape == (2,), '`new_pred` — два прогноза: `pipe.predict(new_cars)`.')
+    same_array(p, ref('new_pred'), 'Прогнозы для новых машин не совпадают: `pipe.predict(new_cars)` — без ручного масштабирования.', rtol=1e-6)
+    d = var('diff', 'number', 'числом')
+    if abs(d + ref('diff')) < 1e-6:
+        fail('Знак наоборот: машина 2015 года (вторая) дороже — `new_pred[1] - new_pred[0]`.')
+    close(d, ref('diff'), 'Разница — {expected} евро, а у вас {actual}.')
+    pyr = var('per_year', 'number', 'числом')
+    if abs(pyr - ref('diff')) < 1e-6:
+        fail('Это разница за 5 лет. На один год — разделите на 5.')
+    close(pyr, ref('per_year'), 'За год модель добавляет {expected} евро, а у вас {actual}.')
+    close(alt('per_year'), alt_ref('per_year'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        new_pred = pipe.predict(new_cars)
+        diff = new_pred[1] - new_pred[0]
+        per_year = diff
+      expect: за 5 лет
+    - code: |
+        new_pred = pipe.predict(new_cars)
+        diff = new_pred[0] - new_pred[1]
+        per_year = diff / 5
+      expect: Знак наоборот
+
+- id: m6-l1-t5
+  kind: quiz
+  title: Как устроен Pipeline
+  difficulty: main
+  introduces: [sk-pipeline]
+  uses: []
+  statement: |
+    Ответьте на вопросы о Pipeline.
+  quiz:
+    - q: "Что случится при `Pipeline([('model', LinearRegression()), ('scale', StandardScaler())]).fit(X_train, y_train)`?"
+      options:
+        - Ошибка — все шаги, кроме последнего, должны быть преобразованиями (с transform)
+        - Модель обучится на исходных признаках, а потом признаки масштабируются
+        - Всё сработает так же, как при обычном порядке
+      answer: 0
+      explain: Шаги выполняются сверху вниз, и промежуточные должны уметь transform. Модель — последней.
+    - q: "Pipeline создан `make_pipeline(StandardScaler(), LinearRegression())`. Как обратиться к модели?"
+      options:
+        - "`pipe.named_steps['linearregression']`"
+        - "`pipe.named_steps['model']`"
+        - "`pipe.named_steps['LinearRegression']`"
+      answer: 0
+      explain: make_pipeline называет шаги именами классов строчными буквами.
+    - q: Почему Pipeline особенно важен для кросс-валидации?
+      options:
+        - Подготовка заново учится на каждой обучающей части — проверочные строки в неё не попадают
+        - Кросс-валидация без Pipeline невозможна технически
+        - Pipeline ускоряет обучение модели
+      answer: 0
+      explain: Масштабирование, сделанное заранее на всех строках, «видело» бы проверочные блоки — это утечка (урок 6.8).
+  hints:
+    - Вспомните порядок шагов, имена в make_pipeline и что Pipeline делает при каждом fit.
+    - "Промежуточные шаги — преобразования; имена — классы строчными буквами; подготовка учится внутри каждого fit."
+    - "Ответы: ошибка; `named_steps['linearregression']`; подготовка учится на каждой обучающей части."
+
+- id: m6-l1-t6
+  title: Pipeline для логарифма цены
+  difficulty: star
+  introduces: [sk-pipeline]
+  uses: [log-target, regression-metrics]
+  statement: |
+    Модель на логарифме цены из урока 5.9 тоже можно собрать в Pipeline. Обучите `log_pipe` (те же шаги `'scale'` и `'model'`) на логарифме цены, получите `pred_log` — прогнозы для validation **в евро** и `log_mae` — их MAE.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    from sklearn.pipeline import Pipeline
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    log_pipe = Pipeline([('scale', StandardScaler()), ('model', LinearRegression())])
+    log_pipe.fit(..., ...)
+    pred_log = ...
+    log_mae = ...
+    print(round(log_mae, 1))
+  solution: |
+    log_pipe = Pipeline([('scale', StandardScaler()), ('model', LinearRegression())])
+    log_pipe.fit(X_train, np.log(y_train))
+    pred_log = np.exp(log_pipe.predict(X_valid))
+    log_mae = mean_absolute_error(y_valid, pred_log)
+    print(round(log_mae, 1))
+  explanation: |
+    - Pipeline преобразует только признаки X; ответ y он не трогает. Поэтому логарифм цены передаём в `fit` сами, а прогноз возвращаем в евро через `np.exp`.
+    - MAE ≈ 3 188,7 — как в уроке 5.9: та же модель, но без ручного scaler.
+    - В scikit-learn есть и обёртка, которая делает логарифм ответа сама (`TransformedTargetRegressor`), но разобраться в двух строках вручную полезнее.
+  hints:
+    - "Pipeline меняет только признаки — ответ для `fit` логарифмируйте сами: `np.log(y_train)`."
+    - "Прогноз Pipeline — логарифм цены; в евро — `np.exp(...)`."
+    - "`log_pipe.fit(X_train, np.log(y_train))`; `pred_log = np.exp(log_pipe.predict(X_valid))`."
+  tests: |
+    import numpy as np
+    p = np.asarray(var('pred_log'), dtype=float)
+    ensure(p.shape == ref('pred_log').shape, 'В `pred_log` должно быть по прогнозу на каждую машину validation.')
+    if np.nanmax(p) < 50:
+        fail('Прогнозы около 8–10 — это логарифмы. Верните их в евро: `np.exp(log_pipe.predict(X_valid))`.')
+    same_array(p, ref('pred_log'), 'Прогнозы не совпадают: Pipeline учится на `np.log(y_train)`, прогноз — `np.exp(...)`.', rtol=1e-6)
+    close(var('log_mae', 'number', 'числом'), ref('log_mae'), 'MAE — {expected}, а у вас {actual}.')
+    close(alt('log_mae'), alt_ref('log_mae'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        log_pipe = Pipeline([('scale', StandardScaler()), ('model', LinearRegression())])
+        log_pipe.fit(X_train, np.log(y_train))
+        pred_log = log_pipe.predict(X_valid)
+        log_mae = mean_absolute_error(y_valid, pred_log)
+      expect: это логарифмы
+    - code: |
+        log_pipe = Pipeline([('scale', StandardScaler()), ('model', LinearRegression())])
+        log_pipe.fit(X_train, y_train)
+        pred_log = log_pipe.predict(X_valid)
+        log_mae = mean_absolute_error(y_valid, pred_log)
+      expect: не совпадают

@@ -1,0 +1,506 @@
+- id: m2-l12-t1
+  title: "Шаг 1. Функция очистки строк"
+  difficulty: main
+  introduces: []
+  uses: [pd-drop-duplicates, pd-dropna, analysis-scope]
+  statement: |
+    Напишите функцию `clean_rows(table)`, которая возвращает **новую** таблицу:
+
+    1. без точных повторов;
+    2. без неполных записей;
+    3. только с записями внутри учебной области анализа (пять правил урока 2.7; константы границ уже заданы).
+
+    Исходную таблицу функция менять не должна. Затем `cleaned = clean_rows(raw)`. Проверка запустит функцию и на другой части данных.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    MIN_YEAR, MAX_YEAR = 1951, 2021          # границы учебной области — урок 2.7
+    MIN_ENGINE, MAX_ENGINE = 200, 5000
+    MIN_PRICE, MAX_PRICE = 101, 500_000
+    MAX_DISTANCE = 1_000_000
+    MIN_DISTANCE_OLDER = 1100
+  starter: |
+    def clean_rows(table):
+        table = table.copy()
+        ...
+        return table
+
+    cleaned = clean_rows(raw)
+    print(len(raw), len(cleaned))
+  solution: |
+    def clean_rows(table):
+        table = table.copy()
+        table = table.drop_duplicates()
+        table = table.dropna()
+        in_scope = (
+            table['Year'].between(MIN_YEAR, MAX_YEAR) &
+            table['Distance'].between(0, MAX_DISTANCE) &
+            table['Engine_capacity(cm3)'].between(MIN_ENGINE, MAX_ENGINE) &
+            table['Price(euro)'].between(MIN_PRICE, MAX_PRICE) &
+            ~((table['Year'] < MAX_YEAR) & (table['Distance'] < MIN_DISTANCE_OLDER))
+        )
+        return table.loc[in_scope].copy()
+
+    cleaned = clean_rows(raw)
+    print(len(raw), len(cleaned))
+  explanation: |
+    - `table.copy()` в начале — функция не трогает таблицу, которую ей передали.
+    - Каждый шаг — присваивание: `table = table.drop_duplicates()`, `table = table.dropna()`.
+    - Маска области анализа строится по **той же** таблице `table`, которую фильтруем, и по константам — без вписанных чисел.
+  hints:
+    - "Три шага в порядке уроков 2.6–2.7: повторы, неполные записи, маска из пяти правил."
+    - "`table = table.drop_duplicates()`, `table = table.dropna()`; маска — как `in_scope` в уроке 2.7, но по `table` и с константами."
+    - "`return table.loc[in_scope].copy()`, где `in_scope = table['Year'].between(MIN_YEAR, MAX_YEAR) & ... & ~((table['Year'] < MAX_YEAR) & (table['Distance'] < MIN_DISTANCE_OLDER))`."
+  tests: |
+    import pandas as pd
+    f = var('clean_rows')
+    ensure(callable(f), '`clean_rows` должна быть функцией.')
+    r = ref('raw')
+    ref_f = ref('clean_rows')
+    before = r.copy()
+    got = f(r)
+    ensure(got is not None, 'Функция ничего не вернула — добавьте `return`.')
+    ensure(r.equals(before), 'Функция изменила переданную таблицу. Работайте с копией: `table = table.copy()` и присваивания вместо `inplace=True`.')
+    exp = ref_f(r)
+    if len(got) > len(exp):
+        extra = got.loc[~got.index.isin(exp.index)]
+        if extra.isna().any(axis=1).any():
+            fail('В результате остались неполные записи — добавьте `dropna()`.')
+        if extra.duplicated(keep=False).any() or got.duplicated().any():
+            fail('В результате остались точные повторы — добавьте `drop_duplicates()`.')
+        fail('В результате {0} лишних строк вне учебной области анализа. Проверьте все пять правил.'.format(len(got) - len(exp)))
+    same_frame(got, exp, 'Результат `clean_rows(raw)` не совпадает с нужным.')
+    part = r.sample(5000, random_state=1)
+    same_frame(f(part), ref_f(part), 'На случайной части таблицы функция дала другой результат — не вписывайте числа строк или меток.')
+    equal(len(alt('cleaned')), len(alt_ref('cleaned')), HARDCODE_MSG)
+  wrong:
+    - code: |
+        def clean_rows(table):
+            table.drop_duplicates(inplace=True)
+            table.dropna(inplace=True)
+            in_scope = (table['Year'].between(MIN_YEAR, MAX_YEAR) & table['Distance'].between(0, MAX_DISTANCE) &
+                        table['Engine_capacity(cm3)'].between(MIN_ENGINE, MAX_ENGINE) & table['Price(euro)'].between(MIN_PRICE, MAX_PRICE) &
+                        ~((table['Year'] < MAX_YEAR) & (table['Distance'] < MIN_DISTANCE_OLDER)))
+            return table.loc[in_scope].copy()
+        cleaned = clean_rows(raw)
+      expect: изменила переданную таблицу
+    - code: |
+        def clean_rows(table):
+            table = table.copy().drop_duplicates()
+            in_scope = (table['Year'].between(MIN_YEAR, MAX_YEAR) & table['Distance'].between(0, MAX_DISTANCE) &
+                        table['Engine_capacity(cm3)'].between(MIN_ENGINE, MAX_ENGINE) & table['Price(euro)'].between(MIN_PRICE, MAX_PRICE) &
+                        ~((table['Year'] < MAX_YEAR) & (table['Distance'] < MIN_DISTANCE_OLDER)))
+            return table.loc[in_scope].copy()
+        cleaned = clean_rows(raw)
+      expect: dropna
+    - code: |
+        def clean_rows(table):
+            table = table.copy().drop_duplicates().dropna()
+            in_scope = (table['Year'].between(MIN_YEAR, MAX_YEAR) & table['Price(euro)'].between(MIN_PRICE, MAX_PRICE))
+            return table.loc[in_scope].copy()
+        cleaned = clean_rows(raw)
+      expect: пять правил
+
+- id: m2-l12-t2
+  title: "Шаг 2. Функция новых признаков"
+  difficulty: main
+  introduces: []
+  uses: [pd-reset-index, pd-rename-drop, pd-new-column]
+  statement: |
+    Напишите функцию `add_features(table)`, которая получает очищенную таблицу и возвращает новую таблицу, где:
+
+    1. исходные метки строк сохранены в колонку `source_row_id`, а строки перенумерованы с нуля;
+    2. `Engine_capacity(cm3)` переименована в `Engine`, `Price(euro)` — в `Price`;
+    3. добавлены `Age = REFERENCE_YEAR − Year` и `km_year = Distance / Age`.
+
+    Затем `featured = add_features(clean_rows(raw))`. Функция `clean_rows` из шага 1 уже готова.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    REFERENCE_YEAR = 2022
+    def clean_rows(table):                     # шаг 1
+        table = table.copy().drop_duplicates().dropna()
+        in_scope = (table['Year'].between(1951, 2021) & table['Distance'].between(0, 1_000_000) &
+                    table['Engine_capacity(cm3)'].between(200, 5000) & table['Price(euro)'].between(101, 500_000) &
+                    ~((table['Year'] < 2021) & (table['Distance'] < 1100)))
+        return table.loc[in_scope].copy()
+  starter: |
+    def add_features(table):
+        table = table.copy()
+        ...
+        return table
+
+    featured = add_features(clean_rows(raw))
+    featured.head(3)
+  solution: |
+    def add_features(table):
+        table = table.copy()
+        table['source_row_id'] = table.index
+        table = table.reset_index(drop=True)
+        table = table.rename(columns={'Engine_capacity(cm3)': 'Engine', 'Price(euro)': 'Price'})
+        table['Age'] = REFERENCE_YEAR - table['Year']
+        table['km_year'] = table['Distance'] / table['Age']
+        return table
+
+    featured = add_features(clean_rows(raw))
+    featured.head(3)
+  explanation: |
+    - Метки сохраняются **до** `reset_index(drop=True)` — иначе в `source_row_id` попадут новые номера.
+    - `rename(columns=...)` и `reset_index` возвращают новые таблицы, поэтому результат присваивается обратно в `table`.
+    - `Age` и `km_year` — формулы над колонками с константой опорного года.
+  hints:
+    - "Порядок как в уроках 2.7–2.8: метки → перенумерация → переименование → новые колонки."
+    - "`table['source_row_id'] = table.index`, `table = table.reset_index(drop=True)`, `table = table.rename(columns={...})`."
+    - "`table['Age'] = REFERENCE_YEAR - table['Year']`, `table['km_year'] = table['Distance'] / table['Age']`."
+  tests: |
+    import pandas as pd
+    f = var('add_features')
+    ensure(callable(f), '`add_features` должна быть функцией.')
+    base = ref('clean_rows')(ref('raw'))
+    before = base.copy()
+    got = f(base)
+    ensure(got is not None, 'Функция ничего не вернула — добавьте `return`.')
+    ensure(base.equals(before), 'Функция изменила переданную таблицу. Начните с `table = table.copy()`.')
+    for col in ['source_row_id', 'Engine', 'Price', 'Age', 'km_year']:
+        ensure(col in got.columns, 'В результате нет колонки `{0}`.'.format(col))
+    if (got['source_row_id'].to_numpy() == range(len(got))).all():
+        fail('В `source_row_id` записаны новые номера 0, 1, 2, … Сохраните метки до `reset_index`.')
+    ensure(got.index.equals(pd.RangeIndex(len(got))), 'Строки результата должны быть перенумерованы с нуля: `reset_index(drop=True)`.')
+    same_frame(got, ref('add_features')(base), 'Результат `add_features` не совпадает с нужным.')
+    part = base.sample(3000, random_state=2)
+    same_frame(f(part), ref('add_features')(part), 'На другой части таблицы функция дала другой результат.')
+  wrong:
+    - code: |
+        def add_features(table):
+            table = table.copy().reset_index(drop=True)
+            table['source_row_id'] = table.index
+            table = table.rename(columns={'Engine_capacity(cm3)': 'Engine', 'Price(euro)': 'Price'})
+            table['Age'] = REFERENCE_YEAR - table['Year']
+            table['km_year'] = table['Distance'] / table['Age']
+            return table
+        featured = add_features(clean_rows(raw))
+      expect: до `reset_index`
+    - code: |
+        def add_features(table):
+            table['source_row_id'] = table.index
+            table.reset_index(drop=True, inplace=True)
+            table.rename(columns={'Engine_capacity(cm3)': 'Engine', 'Price(euro)': 'Price'}, inplace=True)
+            table['Age'] = REFERENCE_YEAR - table['Year']
+            table['km_year'] = table['Distance'] / table['Age']
+            return table
+        featured = add_features(clean_rows(raw))
+      expect: изменила переданную таблицу
+
+- id: m2-l12-t3
+  title: "Шаг 3. Функция категорий"
+  difficulty: main
+  introduces: []
+  uses: [pd-map, pd-apply, rare-categories]
+  statement: |
+    Напишите функцию `add_categories(table)`, которая возвращает новую таблицу с тремя дополнениями:
+
+    1. `Transmission` — `'Automatic'`/`'Manual'` по колонке `AutoTransmission`;
+    2. `km_year_cat` — категория годового пробега (функция `km_year_category` из урока 2.9 уже готова);
+    3. марки с долей **не больше** `RARE_SHARE` заменены на `'Rare'`, а исходная марка сохранена в `Make_original`.
+
+    Доли марок считайте по той таблице, которую получила функция. Затем `categorized = add_categories(featured)`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    RARE_SHARE = 0.01
+    def km_year_category(value):               # урок 2.9
+        if pd.isna(value):
+            return np.nan
+        if value <= 10_000:
+            return 'Small'
+        if value <= 30_000:
+            return 'Medium'
+        return 'Large'
+    # шаги 1–2: clean_rows и add_features
+    featured = raw.drop_duplicates().dropna()
+    featured = featured[featured['Year'].between(1951, 2021) & featured['Distance'].between(0, 1_000_000) &
+                        featured['Engine_capacity(cm3)'].between(200, 5000) & featured['Price(euro)'].between(101, 500_000) &
+                        ~((featured['Year'] < 2021) & (featured['Distance'] < 1100))].copy()
+    featured['source_row_id'] = featured.index
+    featured = featured.reset_index(drop=True).rename(columns={'Engine_capacity(cm3)': 'Engine', 'Price(euro)': 'Price'})
+    featured['Age'] = 2022 - featured['Year']
+    featured['km_year'] = featured['Distance'] / featured['Age']
+  starter: |
+    def add_categories(table):
+        table = table.copy()
+        ...
+        return table
+
+    categorized = add_categories(featured)
+    print(categorized['Make'].nunique(), (categorized['Make'] == 'Rare').sum())
+  solution: |
+    def add_categories(table):
+        table = table.copy()
+        table['Transmission'] = table['AutoTransmission'].map({True: 'Automatic', False: 'Manual'})
+        table['km_year_cat'] = table['km_year'].apply(km_year_category)
+        share = table['Make'].value_counts(normalize=True)
+        rare = share[share <= RARE_SHARE].index
+        table['Make_original'] = table['Make']
+        table.loc[table['Make'].isin(rare), 'Make'] = 'Rare'
+        return table
+
+    categorized = add_categories(featured)
+    print(categorized['Make'].nunique(), (categorized['Make'] == 'Rare').sum())
+  explanation: |
+    - `map` со словарём — для перекодировки, `apply` с готовой функцией — для категорий пробега.
+    - Доли считаются по переданной таблице `table`: на другой части данных список редких марок будет своим.
+    - `Make_original` копируется **до** замены, а замена делается одной операцией через `loc`.
+  hints:
+    - "Три дополнения из уроков 2.9–2.10. Доли марок — по `table`, а не по внешней таблице."
+    - "`table['AutoTransmission'].map({...})`; `table['km_year'].apply(km_year_category)`; доли — `table['Make'].value_counts(normalize=True)`."
+    - "`table['Make_original'] = table['Make']`, затем `table.loc[table['Make'].isin(rare), 'Make'] = 'Rare'`."
+  tests: |
+    import pandas as pd
+    f = var('add_categories')
+    ensure(callable(f), '`add_categories` должна быть функцией.')
+    base = ref('featured')
+    before = base.copy()
+    got = f(base)
+    ensure(got is not None, 'Функция ничего не вернула — добавьте `return`.')
+    ensure(base.equals(before), 'Функция изменила переданную таблицу. Начните с `table = table.copy()`.')
+    for col in ['Transmission', 'km_year_cat', 'Make_original']:
+        ensure(col in got.columns, 'В результате нет колонки `{0}`.'.format(col))
+    if (got['Make_original'] == 'Rare').any():
+        fail('В `Make_original` есть \'Rare\' — копируйте марку до замены.')
+    same_frame(got, ref('add_categories')(base), 'Результат `add_categories` не совпадает с нужным.')
+    part = base[base['Year'] >= 2010]
+    same_frame(f(part), ref('add_categories')(part), 'Для таблицы машин с 2010 года результат другой. Доли марок нужно считать по переданной таблице `table`.')
+  wrong:
+    - code: |
+        def add_categories(table):
+            table = table.copy()
+            table['Transmission'] = table['AutoTransmission'].map({True: 'Automatic', False: 'Manual'})
+            table['km_year_cat'] = table['km_year'].apply(km_year_category)
+            share = featured['Make'].value_counts(normalize=True)
+            rare = share[share <= RARE_SHARE].index
+            table['Make_original'] = table['Make']
+            table.loc[table['Make'].isin(rare), 'Make'] = 'Rare'
+            return table
+        categorized = add_categories(featured)
+      expect: по переданной таблице
+    - code: |
+        def add_categories(table):
+            table = table.copy()
+            table['Transmission'] = table['AutoTransmission'].map({True: 'Automatic', False: 'Manual'})
+            table['km_year_cat'] = table['km_year'].apply(km_year_category)
+            share = table['Make'].value_counts(normalize=True)
+            table.loc[table['Make'].isin(share[share <= RARE_SHARE].index), 'Make'] = 'Rare'
+            table['Make_original'] = table['Make']
+            return table
+        categorized = add_categories(featured)
+      expect: до замены
+
+- id: m2-l12-t4
+  title: "Шаг 4. Сборка, журнал и сохранение"
+  difficulty: main
+  introduces: []
+  uses: [processing-log, pd-to-csv, pd-select-columns]
+  statement: |
+    Соберите всё вместе в функцию `prepare_cars(raw)`. Она должна:
+
+    1. пройти три этапа с журналом: `'Удаление точных повторов'`, `'Отбор полных записей'`, `'Учебная область анализа'` (для последнего есть готовая функция `select_scope`); в журнал — словари с ключами `'Этап'`, `'До'`, `'После'`, `'Убрано'`;
+    2. применить готовые `add_features` и `add_categories`;
+    3. оставить колонки `OUTPUT_COLUMNS` в этом порядке и сохранить результат в `cars_processed.csv` без индекса;
+    4. вернуть пару: подготовленную таблицу и журнал в виде DataFrame.
+
+    Затем `processed, log_table = prepare_cars(raw)`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    OUTPUT_COLUMNS = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type',
+                      'AutoTransmission', 'Price', 'Age', 'km_year', 'Transmission',
+                      'km_year_cat', 'Make_original', 'source_row_id']
+    def select_scope(table):                   # учебная область анализа — урок 2.7
+        in_scope = (table['Year'].between(1951, 2021) & table['Distance'].between(0, 1_000_000) &
+                    table['Engine_capacity(cm3)'].between(200, 5000) & table['Price(euro)'].between(101, 500_000) &
+                    ~((table['Year'] < 2021) & (table['Distance'] < 1100)))
+        return table.loc[in_scope].copy()
+    def add_features(table):                   # шаг 2
+        table = table.copy()
+        table['source_row_id'] = table.index
+        table = table.reset_index(drop=True).rename(columns={'Engine_capacity(cm3)': 'Engine', 'Price(euro)': 'Price'})
+        table['Age'] = 2022 - table['Year']
+        table['km_year'] = table['Distance'] / table['Age']
+        return table
+    def add_categories(table):                 # шаг 3
+        table = table.copy()
+        table['Transmission'] = table['AutoTransmission'].map({True: 'Automatic', False: 'Manual'})
+        table['km_year_cat'] = pd.cut(table['km_year'], bins=[-np.inf, 10_000, 30_000, np.inf], labels=['Small', 'Medium', 'Large']).astype(str)
+        share = table['Make'].value_counts(normalize=True)
+        table['Make_original'] = table['Make']
+        table.loc[table['Make'].isin(share[share <= 0.01].index), 'Make'] = 'Rare'
+        return table
+  starter: |
+    def prepare_cars(raw):
+        table = raw.copy()
+        log = []
+        ...
+        return processed, pd.DataFrame(log)
+
+    processed, log_table = prepare_cars(raw)
+    print(processed.shape)
+    log_table
+  solution: |
+    def prepare_cars(raw):
+        table = raw.copy()
+        log = []
+        steps = [('Удаление точных повторов', lambda t: t.drop_duplicates()),
+                 ('Отбор полных записей', lambda t: t.dropna()),
+                 ('Учебная область анализа', select_scope)]
+        for name, step in steps:
+            n_before = len(table)
+            table = step(table)
+            log.append({'Этап': name, 'До': n_before, 'После': len(table), 'Убрано': n_before - len(table)})
+        table = add_categories(add_features(table))
+        processed = table[OUTPUT_COLUMNS].copy()
+        processed.to_csv('cars_processed.csv', index=False)
+        return processed, pd.DataFrame(log)
+
+    processed, log_table = prepare_cars(raw)
+    print(processed.shape)
+    log_table
+  explanation: |
+    - Этапы удобно описать списком пар «название — функция» и пройти циклом: запись в журнал одинакова для всех этапов.
+    - `lambda t: t.drop_duplicates()` — короткая функция «прямо на месте»; можно написать и три отдельных блока, как в уроке 2.6.
+    - Колонки выбираются явным списком `OUTPUT_COLUMNS` — порядок в файле всегда одинаковый; сохранение — с `index=False`.
+  alternatives:
+    - |
+      def prepare_cars(raw):
+          table = raw.copy()
+          log = []
+          n_before = len(table)
+          table = table.drop_duplicates()
+          log.append({'Этап': 'Удаление точных повторов', 'До': n_before, 'После': len(table), 'Убрано': n_before - len(table)})
+          n_before = len(table)
+          table = table.dropna()
+          log.append({'Этап': 'Отбор полных записей', 'До': n_before, 'После': len(table), 'Убрано': n_before - len(table)})
+          n_before = len(table)
+          table = select_scope(table)
+          log.append({'Этап': 'Учебная область анализа', 'До': n_before, 'После': len(table), 'Убрано': n_before - len(table)})
+          processed = add_categories(add_features(table))[OUTPUT_COLUMNS].copy()
+          processed.to_csv('cars_processed.csv', index=False)
+          return processed, pd.DataFrame(log)
+
+      processed, log_table = prepare_cars(raw)
+  hints:
+    - "Перед каждым этапом запомните `n_before`, после — добавьте словарь в `log` (урок 2.6). Потом признаки, категории, выбор колонок и сохранение."
+    - "Этапы: `table.drop_duplicates()`, `table.dropna()`, `select_scope(table)`; затем `add_categories(add_features(table))`, `[OUTPUT_COLUMNS]`, `to_csv(..., index=False)`."
+    - "`processed = add_categories(add_features(table))[OUTPUT_COLUMNS].copy()`, `processed.to_csv('cars_processed.csv', index=False)`."
+  tests: |
+    import os
+    import pandas as pd
+    f = var('prepare_cars')
+    ensure(callable(f), '`prepare_cars` должна быть функцией.')
+    r = ref('raw')
+    res = f(r)
+    # файл ученика читаем сразу: эталонная функция ниже сохранит файл с тем же именем
+    ensure(os.path.exists('cars_processed.csv'), 'Файл `cars_processed.csv` не найден — сохраните таблицу внутри функции.')
+    loaded = pd.read_csv('cars_processed.csv')
+    ensure(isinstance(res, tuple) and len(res) == 2, 'Функция должна вернуть пару: `return processed, pd.DataFrame(log)`.')
+    p, lg = res
+    ensure(isinstance(lg, pd.DataFrame), 'Журнал должен быть таблицей: `pd.DataFrame(log)`.')
+    exp_p, exp_lg = ref('prepare_cars')(r)
+    ensure(list(lg.columns) == list(exp_lg.columns), 'В журнале должны быть колонки {0}, а у вас {1}.'.format(list(exp_lg.columns), list(lg.columns)))
+    equal(lg['Этап'].tolist(), exp_lg['Этап'].tolist(), 'Этапы журнала — {expected}, а у вас {actual}.')
+    for col in ['До', 'После', 'Убрано']:
+        equal([int(x) for x in lg[col]], [int(x) for x in exp_lg[col]], 'Колонка журнала «' + col + '»: должно быть {expected}, а у вас {actual}.')
+    same_frame(p, exp_p, 'Подготовленная таблица не совпадает с нужной.')
+    ensure(not any(str(c).startswith('Unnamed:') for c in loaded.columns), 'В сохранённом файле есть колонка индекса — сохраняйте с `index=False`.')
+    equal(loaded.shape, exp_p.shape, 'Размер сохранённого файла — {actual}, а должен быть {expected}.')
+    a_p, a_lg = alt('processed'), alt('log_table')
+    equal([int(x) for x in a_lg['После']], [int(x) for x in alt_ref('log_table')['После']], HARDCODE_MSG)
+  wrong:
+    - code: |
+        def prepare_cars(raw):
+            table = raw.copy()
+            log = []
+            for name, step in [('Удаление точных повторов', lambda t: t.drop_duplicates()), ('Отбор полных записей', lambda t: t.dropna()), ('Учебная область анализа', select_scope)]:
+                table = step(table)
+                log.append({'Этап': name, 'До': len(table), 'После': len(table), 'Убрано': 0})
+            processed = add_categories(add_features(table))[OUTPUT_COLUMNS].copy()
+            processed.to_csv('cars_processed.csv', index=False)
+            return processed, pd.DataFrame(log)
+        processed, log_table = prepare_cars(raw)
+      expect: Колонка журнала «До»
+    - code: |
+        def prepare_cars(raw):
+            table = raw.copy()
+            log = []
+            for name, step in [('Удаление точных повторов', lambda t: t.drop_duplicates()), ('Отбор полных записей', lambda t: t.dropna()), ('Учебная область анализа', select_scope)]:
+                n_before = len(table)
+                table = step(table)
+                log.append({'Этап': name, 'До': n_before, 'После': len(table), 'Убрано': n_before - len(table)})
+            processed = add_categories(add_features(table))
+            processed.to_csv('cars_processed.csv')
+            return processed, pd.DataFrame(log)
+        processed, log_table = prepare_cars(raw)
+      expect: Подготовленная таблица не совпадает
+    - code: |
+        def prepare_cars(raw):
+            table = raw.copy()
+            log = []
+            steps = [('Удаление точных повторов', lambda t: t.drop_duplicates()),
+                     ('Отбор полных записей', lambda t: t.dropna()),
+                     ('Учебная область анализа', select_scope)]
+            for name, step in steps:
+                n_before = len(table)
+                table = step(table)
+                log.append({'Этап': name, 'До': n_before, 'После': len(table), 'Убрано': n_before - len(table)})
+            table = add_categories(add_features(table))
+            processed = table[OUTPUT_COLUMNS].copy()
+            processed.to_csv('cars_processed.csv')
+            return processed, pd.DataFrame(log)
+
+        processed, log_table = prepare_cars(raw)
+        print(processed.shape)
+        log_table
+      expect: index=False
+
+- id: m2-l12-t5
+  kind: quiz
+  title: "Шаг 5. Отчёт аналитика"
+  difficulty: main
+  introduces: []
+  uses: [analysis-scope, target-features]
+  statement: |
+    В конце лабораторной работы нужно написать 5–7 предложений: что представляет строка, что является целью, какие проблемы найдены, сколько строк осталось и какие ограничения появились. Выберите корректные формулировки для такого отчёта.
+  quiz:
+    - q: Какая формулировка о результате обработки корректна?
+      options:
+        - После обработки осталось 32 067 из 41 007 строк (78 %); больше всего строк убрали правило малого пробега и удаление повторов
+        - Из данных удалены все ошибки, остались только верные объявления
+        - Обработка не изменила состав выборки
+      answer: 0
+      explain: Обработка — набор допущений и границ. Она не «удаляет все ошибки» и меняет состав выборки — это нужно назвать.
+    - q: Что корректно сказать об удалённых повторах?
+      options:
+        - Повторы — это доказанные ошибки выгрузки
+        - Полностью совпадающие строки считались повторами одного объявления; без номера объявления это допущение
+        - Повторы не влияют на анализ
+      answer: 1
+      explain: Без ID нельзя отличить повторную выгрузку от двух одинаковых машин — это ограничение.
+    - q: Какое ограничение учебной области анализа важно указать?
+      options:
+        - Почти все электромобили исключены правилом объёма двигателя — выводы к ним не относятся
+        - Ограничений нет
+        - Исключены все машины дороже 10 000 евро
+      answer: 0
+      explain: Правило «200–5000 см³» убрало электромобили с нулевым объёмом. Граница цены — 500 000 евро, а не 10 000.
+    - q: Как корректно описать цену в подготовленных данных?
+      options:
+        - Цена сделки, по которой машина продана
+        - Цена предложения (сколько просит продавец), целевая переменная для будущей модели
+        - Средняя цена модели
+      answer: 1
+      explain: В файле объявления, а не сделки; цена — то, что модель будет оценивать по признакам.
+  hints:
+    - Вспомните журнал обработки, допущение о повторах, правила области анализа и смысл колонки цены.
+    - "Обработка меняет выборку; повторы без ID — допущение; объём 200–5000 исключил электромобили; цена — цена предложения."
+    - "Ответы: 32 067 строк (78 %); повторы — допущение; электромобили; цена предложения — цель."

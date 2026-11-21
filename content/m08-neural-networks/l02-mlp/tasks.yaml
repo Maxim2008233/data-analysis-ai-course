@@ -1,0 +1,534 @@
+- id: m8-l2-t1
+  title: Прямой проход вручную
+  difficulty: warmup
+  introduces: [mlp]
+  uses: [artificial-neuron, activation-function]
+  statement: |
+    Сеть `net` (4 → 16 → 8 → 1, ReLU) уже обучена на цене в десятках тысяч евро. Посчитайте её прогнозы для validation вручную по весам `net.coefs_` и смещениям `net.intercepts_`: скрытые слои — с ReLU, выходной — без активации. Получите:
+
+    - `manual` — прогнозы **в евро**, одномерный массив;
+    - `max_diff` — наибольшее по модулю расхождение с `net.predict(X_valid_s) * unit`.
+  prelude: |
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.neural_network import MLPRegressor
+    from sklearn.exceptions import ConvergenceWarning
+    warnings.filterwarnings('ignore', category=ConvergenceWarning)   # 30 эпох — ожидаемо, урок 8.3
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s, X_valid_s = scaler.transform(X_train), scaler.transform(X_valid)
+    unit = 10000
+    net = MLPRegressor(hidden_layer_sizes=(16, 8), activation='relu', batch_size=256,
+                       max_iter=30, random_state=42).fit(X_train_s, y_train / unit)
+  starter: |
+    H = X_valid_s
+    for W, bias in zip(net.coefs_[:-1], net.intercepts_[:-1]):
+        H = ...
+    manual = ...
+    max_diff = ...
+    print(manual[:3].round(0), max_diff)
+  solution: |
+    H = X_valid_s
+    for W, bias in zip(net.coefs_[:-1], net.intercepts_[:-1]):
+        H = np.maximum(H @ W + bias, 0)
+    manual = (H @ net.coefs_[-1] + net.intercepts_[-1]).ravel() * unit
+    max_diff = np.abs(manual - net.predict(X_valid_s) * unit).max()
+    print(manual[:3].round(0), max_diff)
+  explanation: |
+    - `net.coefs_[:-1]` и `net.intercepts_[:-1]` — два скрытых слоя: (4 × 16, 16) и (16 × 8, 8). Каждый — матричное умножение, смещение и ReLU.
+    - Выходной слой — `H @ net.coefs_[-1] + net.intercepts_[-1]`, без активации. Результат — столбец формы (6414, 1): `.ravel()` делает из него одномерный массив, `* unit` возвращает евро.
+    - Расхождение с `predict` — порядка 1e-11 евро: scikit-learn считает ровно так же.
+  hints:
+    - "Скрытый слой: `H = np.maximum(H @ W + bias, 0)`."
+    - "Выход: `H @ net.coefs_[-1] + net.intercepts_[-1]`, затем `.ravel() * unit`."
+    - "`max_diff = np.abs(manual - net.predict(X_valid_s) * unit).max()`."
+  tests: |
+    import numpy as np
+    n = len(ref('y_valid'))
+    m = np.asarray(var('manual'), dtype=float)
+    if m.shape == (n, 1):
+        fail('`manual` — одномерный массив: добавьте `.ravel()`.')
+    ensure(m.shape == (n,), '`manual` — по прогнозу на каждую машину validation ({0} значений), а у вас форма {1}.'.format(n, m.shape))
+    if np.allclose(m, ref('manual') / ref('unit')):
+        fail('Прогноз нужен в евро: умножьте выход сети на `unit`.')
+    nt = ref('net')
+    H = ref('X_valid_s')
+    for W, bias in zip(nt.coefs_[:-1], nt.intercepts_[:-1]):
+        H = H @ W + bias
+    if np.allclose(m, (H @ nt.coefs_[-1] + nt.intercepts_[-1]).ravel() * ref('unit')):
+        fail('В скрытых слоях нужна активация ReLU: `np.maximum(H @ W + bias, 0)`.')
+    same_array(m, ref('manual'), '`manual` не совпадает с прогнозом сети: скрытые слои с ReLU, выходной — без активации.')
+    ensure(var('max_diff', 'number', 'числом') < 1e-6, '`max_diff` — расхождение с `net.predict(X_valid_s) * unit`, оно должно быть почти нулевым.')
+    same_array(np.asarray(alt('manual'), dtype=float)[:100], np.asarray(alt_ref('manual'), dtype=float)[:100], HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        H = X_valid_s
+        for W, bias in zip(net.coefs_[:-1], net.intercepts_[:-1]):
+            H = np.maximum(H @ W + bias, 0)
+        manual = (H @ net.coefs_[-1] + net.intercepts_[-1]).ravel()
+        max_diff = np.abs(manual - net.predict(X_valid_s)).max()
+      expect: "`unit`"
+    - code: |
+        H = X_valid_s
+        for W, bias in zip(net.coefs_[:-1], net.intercepts_[:-1]):
+            H = H @ W + bias
+        manual = (H @ net.coefs_[-1] + net.intercepts_[-1]).ravel() * unit
+        max_diff = np.abs(manual - net.predict(X_valid_s) * unit).max()
+      expect: ReLU
+
+- id: m8-l2-t2
+  title: Сколько параметров у сети
+  difficulty: warmup
+  introduces: [hidden-layer]
+  uses: [mlp]
+  statement: |
+    Напишите функцию `count_params(n_inputs, hidden, n_outputs=1)` — число весов и смещений полносвязной сети: `n_inputs` входов, скрытые слои с размерами из кортежа `hidden` (он может быть и пустым), `n_outputs` выходов. Например, `count_params(4, (16, 8))` равно 225.
+
+    Посчитайте `params` — словарь: ключи — кортежи `(4,)`, `(64,)`, `(16, 8)` и `(64, 64)`, значения — число параметров таких сетей на четырёх признаках машины.
+  prelude: |
+    import numpy as np
+  starter: |
+    def count_params(n_inputs, hidden, n_outputs=1):
+        sizes = [n_inputs, *hidden, n_outputs]       # размеры всех слоёв подряд
+        total = 0
+        for n_in, n_out in zip(sizes[:-1], sizes[1:]):
+            total += ...
+        return total
+
+    params = {h: count_params(4, h) for h in [(4,), (64,), (16, 8), (64, 64)]}
+    print(params)
+  solution: |
+    def count_params(n_inputs, hidden, n_outputs=1):
+        sizes = [n_inputs, *hidden, n_outputs]
+        total = 0
+        for n_in, n_out in zip(sizes[:-1], sizes[1:]):
+            total += n_in * n_out + n_out
+        return total
+
+    params = {h: count_params(4, h) for h in [(4,), (64,), (16, 8), (64, 64)]}
+    print(params)
+  explanation: |
+    - Между соседними слоями — матрица весов `n_in × n_out` и `n_out` смещений, по одному на нейрон следующего слоя.
+    - Один слой из 64 нейронов — 385 параметров, а два слоя по 64 — уже 4 545: матрица 64 × 64 между скрытыми слоями даёт 4 096 весов. Число параметров растёт как произведение ширин соседних слоёв.
+    - С пустым `hidden` сеть — это один нейрон на каждый выход: `count_params(4, ())` = 5, ровно как у линейной регрессии на 4 признаках.
+  hints:
+    - "Пара соседних слоёв размеров `n_in` и `n_out` даёт матрицу весов `n_in × n_out`."
+    - "Не забудьте смещения: по одному на каждый нейрон слоя `n_out`."
+    - "`total += n_in * n_out + n_out`."
+  tests: |
+    f = var('count_params')
+    ensure(callable(f), '`count_params` должна быть функцией.')
+
+    def formula(ni, h, no):
+        sizes = [ni, *h, no]
+        return sum(a * b + b for a, b in zip(sizes[:-1], sizes[1:]))
+
+    for ni, h, no in [(4, (16, 8), 1), (10, (5,), 3), (3, (), 2), (7, (9, 4, 6), 1)]:
+        got = f(ni, h, no)
+        exp = formula(ni, h, no)
+        sizes = [ni, *h, no]
+        if got == sum(a * b for a, b in zip(sizes[:-1], sizes[1:])) and got != exp:
+            fail('Не хватает смещений: у каждого нейрона слоя есть своё смещение — `+ n_out`.')
+        if len(h) > 0 and got == formula(ni, h[:-1], h[-1]):
+            fail('Учтите выходной слой: последний скрытый слой связан с выходами.')
+        ensure(got == exp, '`count_params({0}, {1}, {2})` = {3}, а должно быть {4}.'.format(ni, h, no, got, exp))
+    p = var('params', dict, 'словарём')
+    ensure(set(p) == {(4,), (64,), (16, 8), (64, 64)}, 'Ключи `params` — кортежи (4,), (64,), (16, 8) и (64, 64).')
+    for k in [(4,), (64,), (16, 8), (64, 64)]:
+        ensure(p[k] == formula(4, k, 1), 'Для сети {0} на 4 признаках параметров {1}, а у вас {2}.'.format(k, formula(4, k, 1), p[k]))
+  wrong:
+    - code: |
+        def count_params(n_inputs, hidden, n_outputs=1):
+            sizes = [n_inputs, *hidden, n_outputs]
+            total = 0
+            for n_in, n_out in zip(sizes[:-1], sizes[1:]):
+                total += n_in * n_out
+            return total
+        params = {h: count_params(4, h) for h in [(4,), (64,), (16, 8), (64, 64)]}
+      expect: смещений
+    - code: |
+        def count_params(n_inputs, hidden, n_outputs=1):
+            sizes = [n_inputs, *hidden]
+            total = 0
+            for n_in, n_out in zip(sizes[:-1], sizes[1:]):
+                total += n_in * n_out + n_out
+            return total
+        params = {h: count_params(4, h) for h in [(4,), (64,), (16, 8), (64, 64)]}
+      expect: выходной слой
+
+- id: m8-l2-t3
+  title: Активация решает
+  difficulty: main
+  introduces: []
+  uses: [mlp, activation-function]
+  statement: |
+    Обучите три сети `MLPRegressor(hidden_layer_sizes=(16, 8), activation=..., batch_size=256, max_iter=30, random_state=42)` с активациями из списка `activations` на `X_train_s` и `y_train / unit`. Получите:
+
+    - `scores` — Series: индекс — название активации, значение — MAE на validation в евро;
+    - `best` — активацию с наименьшей MAE.
+  prelude: |
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.neural_network import MLPRegressor
+    from sklearn.metrics import mean_absolute_error
+    from sklearn.exceptions import ConvergenceWarning
+    warnings.filterwarnings('ignore', category=ConvergenceWarning)   # 30 эпох — ожидаемо, урок 8.3
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s, X_valid_s = scaler.transform(X_train), scaler.transform(X_valid)
+    unit = 10000
+    activations = ['identity', 'logistic', 'relu']
+  starter: |
+    results = {}
+    for act in activations:
+        net = MLPRegressor(hidden_layer_sizes=(16, 8), activation=act, batch_size=256,
+                           max_iter=30, random_state=42).fit(...)
+        results[act] = ...
+    scores = pd.Series(results)
+    best = ...
+    print(scores.round(0))
+    print(best)
+  solution: |
+    results = {}
+    for act in activations:
+        net = MLPRegressor(hidden_layer_sizes=(16, 8), activation=act, batch_size=256,
+                           max_iter=30, random_state=42).fit(X_train_s, y_train / unit)
+        results[act] = mean_absolute_error(y_valid, net.predict(X_valid_s) * unit)
+    scores = pd.Series(results)
+    best = scores.idxmin()
+    print(scores.round(0))
+    print(best)
+  explanation: |
+    - Без нелинейности (`identity`) — 4 320 евро, как у линейной регрессии: сеть схлопывается в одну взвешенную сумму.
+    - Сигмоида (`logistic`) — 3 095: нелинейность есть, но сигмоида учится медленнее. Её наклон не больше 0,25 и быстро падает при насыщении (урок 8.1).
+    - ReLU — 2 826 евро, лучший результат. Поэтому в скрытых слоях её ставят по умолчанию: `MLPRegressor` и без параметра `activation` использует ReLU.
+  hints:
+    - "Обучайте на масштабированных признаках и цене / 10 000: `.fit(X_train_s, y_train / unit)`."
+    - "MAE в евро: `mean_absolute_error(y_valid, net.predict(X_valid_s) * unit)`."
+    - "`best = scores.idxmin()`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    s = var('scores', pd.Series, 'Series')
+    ensure(list(s.index) == list(ref('activations')), 'Индекс `scores` — названия активаций в порядке списка `activations`.')
+    r = ref('scores')
+    if np.allclose(s.to_numpy(dtype=float), r.to_numpy(dtype=float) / ref('unit'), rtol=1e-4):
+        fail('MAE нужна в евро: прогноз сети умножьте на `unit`.')
+    if (s.to_numpy(dtype=float) > 9000).all():
+        fail('MAE получилась огромной: сеть выдаёт цену в десятках тысяч евро — умножьте прогноз на `unit`.')
+    same_array(s.to_numpy(dtype=float), r.to_numpy(dtype=float), 'MAE не совпадают с ожидаемыми {0}: считайте на validation в евро.'.format(r.round(0).to_dict()), rtol=1e-4)
+    equal(var('best', str, 'строкой'), ref('best'), 'Лучшая активация — {expected}, а у вас {actual}.')
+    close(alt('scores')['relu'], alt_ref('scores')['relu'], HARDCODE_MSG, rtol=1e-4)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        results = {}
+        for act in activations:
+            net = MLPRegressor(hidden_layer_sizes=(16, 8), activation=act, batch_size=256,
+                               max_iter=30, random_state=42).fit(X_train_s, y_train / unit)
+            results[act] = mean_absolute_error(y_valid, net.predict(X_valid_s))
+        scores = pd.Series(results)
+        best = scores.idxmin()
+      expect: "`unit`"
+    - code: |
+        results = {}
+        for act in activations:
+            net = MLPRegressor(hidden_layer_sizes=(16, 8), activation=act, batch_size=256,
+                               max_iter=30, random_state=42).fit(X_train_s, y_train / unit)
+            results[act] = mean_absolute_error(y_train, net.predict(X_train_s) * unit)
+        scores = pd.Series(results)
+        best = scores.idxmin()
+      expect: validation
+
+- id: m8-l2-t4
+  title: Ширина скрытого слоя
+  difficulty: main
+  introduces: []
+  uses: [mlp, hidden-layer]
+  statement: |
+    Сравните сети с **одним** скрытым слоем разной ширины из списка `widths` (ReLU, `batch_size=256`, `max_iter=30`, `random_state=42`, обучение на `X_train_s` и `y_train / unit`). Получите `results` — DataFrame с индексом-шириной и колонками:
+
+    - `'params'` — число параметров сети, по её `coefs_` и `intercepts_`;
+    - `'mae'` — MAE на validation в евро.
+  prelude: |
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.neural_network import MLPRegressor
+    from sklearn.metrics import mean_absolute_error
+    from sklearn.exceptions import ConvergenceWarning
+    warnings.filterwarnings('ignore', category=ConvergenceWarning)   # 30 эпох — ожидаемо, урок 8.3
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s, X_valid_s = scaler.transform(X_train), scaler.transform(X_valid)
+    unit = 10000
+    widths = [4, 16, 64]
+  starter: |
+    rows = {}
+    for width in widths:
+        net = MLPRegressor(hidden_layer_sizes=..., batch_size=256, max_iter=30,
+                           random_state=42).fit(X_train_s, y_train / unit)
+        rows[width] = {'params': ..., 'mae': ...}
+    results = pd.DataFrame(rows).T
+    print(results.round(0))
+  solution: |
+    rows = {}
+    for width in widths:
+        net = MLPRegressor(hidden_layer_sizes=(width,), batch_size=256, max_iter=30,
+                           random_state=42).fit(X_train_s, y_train / unit)
+        n_params = sum(W.size for W in net.coefs_) + sum(bias.size for bias in net.intercepts_)
+        rows[width] = {'params': n_params,
+                       'mae': mean_absolute_error(y_valid, net.predict(X_valid_s) * unit)}
+    results = pd.DataFrame(rows).T
+    print(results.round(0))
+  explanation: |
+    - 4 нейрона — 25 параметров и MAE 3 534 евро: уже заметно лучше линейной регрессии (4 270), но слой узкий, изломов мало.
+    - 16 нейронов — 97 параметров, 2 921 евро; 64 нейрона — 385 параметров, 2 821 евро. Каждое увеличение ширины в 4 раза даёт всё меньший выигрыш.
+    - Двухслойная сеть (16, 8) из урока — 225 параметров и 2 826 евро. На четырёх признаках сеть быстро упирается в предел того, что можно из них извлечь.
+  hints:
+    - "Один слой ширины `width` — кортеж `(width,)` с запятой."
+    - "Параметры: `sum(W.size for W in net.coefs_) + sum(bias.size for bias in net.intercepts_)`."
+    - "MAE в евро — `mean_absolute_error(y_valid, net.predict(X_valid_s) * unit)`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    r = var('results', pd.DataFrame, 'таблицей DataFrame')
+    ensure([int(v) for v in r.index] == list(ref('widths')), 'Индекс `results` — ширины слоя из `widths`.')
+    ensure({'params', 'mae'} <= set(r.columns), 'Колонки `results` — `params` и `mae`.')
+    pr = r['params'].to_numpy(dtype=float)
+    two_layers = np.array([4 * w + w + w * w + w + w + 1 for w in ref('widths')], dtype=float)
+    if np.allclose(pr, two_layers):
+        fail('Нужен один скрытый слой: `hidden_layer_sizes=(width,)`, а не `(width, width)`.')
+    if np.allclose(pr, np.array([4 * w + w for w in ref('widths')], dtype=float)):
+        fail('Число параметров считайте по всей сети: веса и смещения обоих слоёв, `coefs_` и `intercepts_`.')
+    if np.allclose(pr, np.array([4 * w + w * 1 for w in ref('widths')], dtype=float)):
+        fail('Добавьте смещения: `sum(bias.size for bias in net.intercepts_)`.')
+    same_array(pr, ref('results')['params'].to_numpy(dtype=float), 'Число параметров не совпадает: сумма размеров всех `coefs_` и `intercepts_`.')
+    same_array(r['mae'].to_numpy(dtype=float), ref('results')['mae'].to_numpy(dtype=float), 'MAE не совпадает: считайте на validation в евро.', rtol=1e-4)
+    same_array(alt('results')['mae'].to_numpy(dtype=float), alt_ref('results')['mae'].to_numpy(dtype=float), HARDCODE_MSG, rtol=1e-4)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        rows = {}
+        for width in widths:
+            net = MLPRegressor(hidden_layer_sizes=(width, width), batch_size=256, max_iter=30,
+                               random_state=42).fit(X_train_s, y_train / unit)
+            n_params = sum(W.size for W in net.coefs_) + sum(bias.size for bias in net.intercepts_)
+            rows[width] = {'params': n_params,
+                           'mae': mean_absolute_error(y_valid, net.predict(X_valid_s) * unit)}
+        results = pd.DataFrame(rows).T
+      expect: один скрытый слой
+    - code: |
+        rows = {}
+        for width in widths:
+            net = MLPRegressor(hidden_layer_sizes=(width,), batch_size=256, max_iter=30,
+                               random_state=42).fit(X_train_s, y_train / unit)
+            n_params = sum(W.size for W in net.coefs_)
+            rows[width] = {'params': n_params,
+                           'mae': mean_absolute_error(y_valid, net.predict(X_valid_s) * unit)}
+        results = pd.DataFrame(rows).T
+      expect: смещения
+
+- id: m8-l2-t5
+  title: Цена в десятках тысяч евро
+  difficulty: main
+  introduces: []
+  uses: [mlp, regression-metrics]
+  statement: |
+    Обучите одну и ту же сеть (16, 8) дважды — на цене в евро (`y_train`) и на цене в десятках тысяч евро (`y_train / unit`): `MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=30, random_state=42)`. Получите:
+
+    - `mae_euro` и `mae_scaled` — MAE на validation в евро для обеих сетей (прогноз второй верните в евро);
+    - `mean_pred_euro` — средний прогноз первой сети на validation.
+  prelude: |
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.neural_network import MLPRegressor
+    from sklearn.metrics import mean_absolute_error
+    from sklearn.exceptions import ConvergenceWarning
+    warnings.filterwarnings('ignore', category=ConvergenceWarning)   # 30 эпох — ожидаемо, урок 8.3
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s, X_valid_s = scaler.transform(X_train), scaler.transform(X_valid)
+    unit = 10000
+  starter: |
+    net_euro = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=30, random_state=42).fit(...)
+    net_scaled = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=30, random_state=42).fit(...)
+    pred_euro = ...
+    pred_scaled = ...
+    mae_euro = ...
+    mae_scaled = ...
+    mean_pred_euro = ...
+    print(round(mae_euro), round(mae_scaled), round(mean_pred_euro), '| средняя цена:', round(y_valid.mean()))
+  solution: |
+    net_euro = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=30, random_state=42).fit(X_train_s, y_train)
+    net_scaled = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=30, random_state=42).fit(X_train_s, y_train / unit)
+    pred_euro = net_euro.predict(X_valid_s)
+    pred_scaled = net_scaled.predict(X_valid_s) * unit
+    mae_euro = mean_absolute_error(y_valid, pred_euro)
+    mae_scaled = mean_absolute_error(y_valid, pred_scaled)
+    mean_pred_euro = pred_euro.mean()
+    print(round(mae_euro), round(mae_scaled), round(mean_pred_euro), '| средняя цена:', round(y_valid.mean()))
+  explanation: |
+    - Сеть, обученная на ценах в евро, ошибается на 4 528 евро, а та же сеть на цене / 10 000 — на 2 826.
+    - Средний прогноз первой сети — 5 806 евро при средней цене 9 616: она систематически занижает. Сеть стартует с прогнозов около нуля, а шаги обучения маленькие (урок 8.3). Чтобы выдавать тысячи евро, весам нужно вырасти очень сильно, и за 30 эпох они не успевают. Даже за 300 эпох MAE такой сети — 3 062 евро.
+    - На цене / 10 000 ответы порядка единицы — того же порядка, что и выходы сети в начале обучения. Поэтому ответ, как и признаки, приводят к удобному масштабу, а прогноз переводят обратно.
+  hints:
+    - "Первая сеть: `.fit(X_train_s, y_train)`, вторая: `.fit(X_train_s, y_train / unit)`."
+    - "Прогноз второй сети в евро — `net_scaled.predict(X_valid_s) * unit`."
+    - "`mean_pred_euro = pred_euro.mean()`."
+  tests: |
+    me = var('mae_euro', 'number', 'числом')
+    ms = var('mae_scaled', 'number', 'числом')
+    if abs(ms - ref('mae_euro')) < 1 and abs(me - ref('mae_scaled')) < 1:
+        fail('Похоже, сети перепутаны: `mae_euro` — у сети, обученной на `y_train`, `mae_scaled` — на `y_train / unit`.')
+    if ms > 9000:
+        fail('`mae_scaled` огромная: прогноз второй сети верните в евро — `* unit`.')
+    close(me, ref('mae_euro'), 'MAE сети, обученной на цене в евро, — {expected}, а у вас {actual}.', rtol=1e-4)
+    close(ms, ref('mae_scaled'), 'MAE сети, обученной на цене / 10 000, — {expected}, а у вас {actual}.', rtol=1e-4)
+    close(var('mean_pred_euro', 'number', 'числом'), ref('mean_pred_euro'), 'Средний прогноз первой сети — {expected}, а у вас {actual}.', rtol=1e-4)
+    close(alt('mae_scaled'), alt_ref('mae_scaled'), HARDCODE_MSG, rtol=1e-4)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        net_euro = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=30, random_state=42).fit(X_train_s, y_train)
+        net_scaled = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=30, random_state=42).fit(X_train_s, y_train / unit)
+        pred_euro = net_euro.predict(X_valid_s)
+        pred_scaled = net_scaled.predict(X_valid_s)
+        mae_euro = mean_absolute_error(y_valid, pred_euro)
+        mae_scaled = mean_absolute_error(y_valid, pred_scaled)
+        mean_pred_euro = pred_euro.mean()
+      expect: "`* unit`"
+    - code: |
+        net_euro = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=30, random_state=42).fit(X_train_s, y_train)
+        net_scaled = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=30, random_state=42).fit(X_train_s, y_train / unit)
+        pred_euro = net_euro.predict(X_valid_s)
+        pred_scaled = net_scaled.predict(X_valid_s) * unit
+        mae_euro = mean_absolute_error(y_valid, pred_euro)
+        mae_scaled = mean_absolute_error(y_valid, pred_scaled)
+        mean_pred_euro = y_valid.mean()
+      expect: Средний прогноз
+
+- id: m8-l2-t6
+  title: Сеть без активации — линейная модель
+  difficulty: star
+  introduces: []
+  uses: [mlp, hidden-layer, linear-regression]
+  statement: |
+    Сеть `flat` (4 → 16 → 8 → 1) обучена с `activation='identity'`. Сверните её в одну взвешенную сумму:
+
+    - `W_total` — произведение всех матриц весов `flat.coefs_` по порядку (форма 4 × 1);
+    - `b_total` — смещение свёрнутой модели. Подсказка: это прогноз сети для нулевого входа — `flat.predict(np.zeros((1, 4)))`;
+    - `max_diff` — наибольшее расхождение между `X_valid_s @ W_total + b_total` и `flat.predict(X_valid_s)` (не забудьте про формы);
+    - `coef_euro` — веса свёрнутой модели в евро, одномерный массив из 4 чисел;
+    - `gap` — наибольшее по модулю отличие `coef_euro` от весов линейной регрессии `linear.coef_`.
+  prelude: |
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    from sklearn.neural_network import MLPRegressor
+    from sklearn.exceptions import ConvergenceWarning
+    warnings.filterwarnings('ignore', category=ConvergenceWarning)   # 30 эпох — ожидаемо, урок 8.3
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s, X_valid_s = scaler.transform(X_train), scaler.transform(X_valid)
+    unit = 10000
+    linear = LinearRegression().fit(X_train_s, y_train)
+    flat = MLPRegressor(hidden_layer_sizes=(16, 8), activation='identity', batch_size=256,
+                        max_iter=30, random_state=42).fit(X_train_s, y_train / unit)
+  starter: |
+    W_total = np.eye(4)
+    for W in flat.coefs_:
+        W_total = ...
+    b_total = ...
+    max_diff = ...
+    coef_euro = ...
+    gap = ...
+    print(W_total.shape, b_total, max_diff)
+    print(coef_euro.round(0), linear.coef_.round(0), round(gap))
+  solution: |
+    W_total = np.eye(4)
+    for W in flat.coefs_:
+        W_total = W_total @ W
+    b_total = flat.predict(np.zeros((1, 4)))
+    max_diff = np.abs((X_valid_s @ W_total + b_total).ravel() - flat.predict(X_valid_s)).max()
+    coef_euro = W_total.ravel() * unit
+    gap = np.abs(coef_euro - linear.coef_).max()
+    print(W_total.shape, b_total, max_diff)
+    print(coef_euro.round(0), linear.coef_.round(0), round(gap))
+  explanation: |
+    - Без активации каждый слой — умножение на матрицу плюс сдвиг, и три таких шага складываются в один: X·W₁·W₂·W₃ + (сдвиг) = X·W + b. Матрицы 4 × 16, 16 × 8 и 8 × 1 перемножаются в 4 × 1 — четыре веса, как у линейной регрессии.
+    - Свободный член — то, что сеть выдаёт при нулевом входе: все слагаемые с X исчезают. Расхождение с `predict` — порядка 1e-15.
+    - Веса свёрнутой сети в евро — 4 392, −2 162, 4 082 и 884, у линейной регрессии — 4 285, −2 241, 4 053 и 612. Это та же модель, только сеть подобрала прямую градиентным спуском за 15 эпох, а не точной формулой, поэтому сильнее всего (на 272 евро) отличается вес пробега в год.
+  hints:
+    - "Перемножайте матрицы по порядку: `W_total = W_total @ W`."
+    - "`b_total = flat.predict(np.zeros((1, 4)))`. В `max_diff` приведите столбец к одномерному массиву: `(X_valid_s @ W_total + b_total).ravel()`."
+    - "`coef_euro = W_total.ravel() * unit`, `gap = np.abs(coef_euro - linear.coef_).max()`."
+  tests: |
+    import numpy as np
+    Wt = np.asarray(var('W_total'), dtype=float)
+    ensure(Wt.size == 4, '`W_total` — четыре веса (форма 4 × 1): произведение матриц 4 × 16, 16 × 8 и 8 × 1.')
+    same_array(Wt.ravel(), np.asarray(ref('W_total')).ravel(), '`W_total` — произведение `flat.coefs_[0] @ flat.coefs_[1] @ flat.coefs_[2]`.')
+    bt = np.asarray(var('b_total'), dtype=float).ravel()
+    ensure(bt.size == 1, '`b_total` — одно число (или массив из одного числа): прогноз сети для нулевого входа.')
+    close(float(bt[0]), float(np.ravel(ref('b_total'))[0]), '`b_total` — {expected}, а у вас {actual}.')
+    ensure(var('max_diff', 'number', 'числом') < 1e-8, '`max_diff` должно быть почти нулевым: сравните `(X_valid_s @ W_total + b_total).ravel()` с `flat.predict(X_valid_s)`.')
+    ce = np.asarray(var('coef_euro'), dtype=float)
+    ensure(ce.shape == (4,), '`coef_euro` — одномерный массив из 4 весов: `W_total.ravel() * unit`.')
+    if np.allclose(ce, np.asarray(ref('coef_euro')) / ref('unit')):
+        fail('Веса переведите в евро: `* unit`.')
+    same_array(ce, ref('coef_euro'), '`coef_euro` — `W_total.ravel() * unit`.')
+    close(var('gap', 'number', 'числом'), ref('gap'), '`gap` — {expected}, а у вас {actual}.')
+    close(alt('gap'), alt_ref('gap'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        W_total = np.eye(4)
+        for W in flat.coefs_:
+            W_total = W_total @ W
+        b_total = flat.predict(np.zeros((1, 4)))
+        max_diff = np.abs((X_valid_s @ W_total + b_total).ravel() - flat.predict(X_valid_s)).max()
+        coef_euro = W_total.ravel()
+        gap = np.abs(coef_euro - linear.coef_).max()
+      expect: в евро
+    - code: |
+        W_total = flat.coefs_[0]
+        b_total = flat.predict(np.zeros((1, 4)))
+        max_diff = 0.0
+        coef_euro = W_total.ravel() * unit
+        gap = 0.0
+      expect: четыре веса

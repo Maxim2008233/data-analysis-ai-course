@@ -1,0 +1,573 @@
+- id: b1-l2-t1
+  title: Матрица ошибок своими руками
+  difficulty: warmup
+  introduces: [confusion-matrix]
+  uses: [binary-classification]
+  statement: |
+    Напишите функцию `confusion(y_true, y_pred)` без циклов и без sklearn. Она возвращает массив NumPy 2 × 2 из целых чисел в порядке scikit-learn: `[[TN, FP], [FN, TP]]`. Строки — настоящий класс, столбцы — предсказанный.
+
+    Получите `cm_test` — матрицу для проверочной части при пороге 0,5 (`pred_test` уже посчитан) — и `missed` — сколько автоматов модель пропустила.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import make_pipeline
+    from sklearn.linear_model import LogisticRegression
+    cars = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'Price']
+    X, y = cars[features], cars['AutoTransmission'].astype(int)
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42, stratify=y_temp)
+    model = make_pipeline(StandardScaler(), LogisticRegression()).fit(X_train, y_train)
+    pred_test = model.predict(X_test)
+  starter: |
+    def confusion(y_true, y_pred):
+        t, p = np.asarray(y_true), np.asarray(y_pred)
+        tn = int(((t == 0) & (p == 0)).sum())
+        fp = ...
+        fn = ...
+        tp = ...
+        return np.array([[tn, fp], [fn, tp]])
+
+    cm_test = confusion(y_test, pred_test)
+    missed = ...
+    print(cm_test, missed)
+  solution: |
+    def confusion(y_true, y_pred):
+        t, p = np.asarray(y_true), np.asarray(y_pred)
+        tn = int(((t == 0) & (p == 0)).sum())
+        fp = int(((t == 0) & (p == 1)).sum())
+        fn = int(((t == 1) & (p == 0)).sum())
+        tp = int(((t == 1) & (p == 1)).sum())
+        return np.array([[tn, fp], [fn, tp]])
+
+    cm_test = confusion(y_test, pred_test)
+    missed = int(cm_test[1, 0])
+    print(cm_test, missed)
+  explanation: |
+    - Каждая клетка — сумма логической маски «настоящий класс такой-то и предсказанный такой-то».
+    - Ложное срабатывание (FP) — настоящий 0, предсказан 1; пропуск (FN) — настоящий 1, предсказан 0. Пропуск стоит во второй строке (настоящий автомат) и первом столбце (предсказана механика).
+    - Пропущено 774 автомата — почти вдвое больше, чем 430 ложных срабатываний. Доля верных 0,812 этого не показывала.
+  hints:
+    - "Ложное срабатывание — `((t == 0) & (p == 1)).sum()`, пропуск — `((t == 1) & (p == 0)).sum()`."
+    - "Верная находка — `((t == 1) & (p == 1)).sum()`."
+    - "Пропуски — во второй строке и первом столбце: `cm_test[1, 0]`."
+  tests: |
+    import numpy as np
+    f = var('confusion')
+    ensure(callable(f), '`confusion` должна быть функцией.')
+    no_loops('Соберите матрицу без цикла: каждая клетка — сумма логической маски.')
+    got = np.asarray(f(np.array([1, 0, 1, 1, 0, 0]), np.array([1, 1, 0, 1, 0, 0])))
+    if got.tolist() == [[2, 1], [1, 2]][::-1]:
+        fail('Строки перепутаны: первая строка — настоящий класс 0, вторая — класс 1.')
+    same_array(got, [[2, 1], [1, 2]], 'Для y = [1, 0, 1, 1, 0, 0] и pred = [1, 1, 0, 1, 0, 0] матрица — [[2, 1], [1, 2]].')
+    got2 = np.asarray(f(np.array([0, 0, 1]), np.array([1, 0, 1])))
+    if got2.tolist() == [[1, 0], [1, 1]]:
+        fail('FP и FN перепутаны местами: ложное срабатывание (настоящий 0, предсказан 1) стоит в первой строке, втором столбце.')
+    same_array(got2, [[1, 1], [0, 1]], 'Для y = [0, 0, 1] и pred = [1, 0, 1] матрица — [[1, 1], [0, 1]].')
+    same_array(np.asarray(var('cm_test')), ref('cm_test'), 'Матрица ошибок на проверочной части не совпадает с ожидаемой.')
+    equal(int(var('missed', 'int', 'целым числом')), int(ref('missed')), 'Пропущено автоматов — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def confusion(y_true, y_pred):
+            t, p = np.asarray(y_true), np.asarray(y_pred)
+            tn = int(((t == 0) & (p == 0)).sum())
+            fp = int(((t == 1) & (p == 0)).sum())
+            fn = int(((t == 0) & (p == 1)).sum())
+            tp = int(((t == 1) & (p == 1)).sum())
+            return np.array([[tn, fp], [fn, tp]])
+        cm_test = confusion(y_test, pred_test)
+        missed = int(cm_test[1, 0])
+      expect: FP и FN перепутаны
+    - code: |
+        def confusion(y_true, y_pred):
+            out = np.zeros((2, 2), dtype=int)
+            for t, p in zip(np.asarray(y_true), np.asarray(y_pred)):
+                out[t, p] += 1
+            return out
+        cm_test = confusion(y_test, pred_test)
+        missed = int(cm_test[1, 0])
+      expect: без цикла
+
+- id: b1-l2-t2
+  title: Точность, полнота, F1
+  difficulty: main
+  introduces: [precision-recall]
+  uses: [confusion-matrix]
+  statement: |
+    Напишите функцию `prf(y_true, y_pred)` — кортеж `(точность, полнота, F1)` без sklearn:
+
+    - точность = TP / (TP + FP); если модель никого не назвала классом 1, точность считайте 0;
+    - полнота = TP / (TP + FN);
+    - F1 = 2·P·R / (P + R); если P + R = 0, F1 = 0.
+
+    Получите `metrics_05` — метрики модели на проверочной части при пороге 0,5 — и `metrics_all` — метрики правила «назвать автоматом всё».
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import make_pipeline
+    from sklearn.linear_model import LogisticRegression
+    cars = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'Price']
+    X, y = cars[features], cars['AutoTransmission'].astype(int)
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42, stratify=y_temp)
+    model = make_pipeline(StandardScaler(), LogisticRegression()).fit(X_train, y_train)
+    p_test = model.predict_proba(X_test)[:, 1]
+  starter: |
+    def prf(y_true, y_pred):
+        t, p = np.asarray(y_true), np.asarray(y_pred)
+        tp = ((t == 1) & (p == 1)).sum()
+        fp = ((t == 0) & (p == 1)).sum()
+        fn = ((t == 1) & (p == 0)).sum()
+        precision = ...
+        recall = ...
+        f1 = ...
+        return float(precision), float(recall), float(f1)
+
+    metrics_05 = prf(y_test, (p_test >= 0.5).astype(int))
+    metrics_all = prf(y_test, np.ones(len(y_test), dtype=int))
+    print(np.round(metrics_05, 3), np.round(metrics_all, 3))
+  solution: |
+    def prf(y_true, y_pred):
+        t, p = np.asarray(y_true), np.asarray(y_pred)
+        tp = ((t == 1) & (p == 1)).sum()
+        fp = ((t == 0) & (p == 1)).sum()
+        fn = ((t == 1) & (p == 0)).sum()
+        precision = tp / (tp + fp) if tp + fp > 0 else 0.0
+        recall = tp / (tp + fn) if tp + fn > 0 else 0.0
+        f1 = 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0.0
+        return float(precision), float(recall), float(f1)
+
+    metrics_05 = prf(y_test, (p_test >= 0.5).astype(int))
+    metrics_all = prf(y_test, np.ones(len(y_test), dtype=int))
+    print(np.round(metrics_05, 3), np.round(metrics_all, 3))
+  explanation: |
+    - Точность смотрит на названных автоматом: сколько из них правда автоматы. Полнота смотрит на настоящие автоматы: скольких назвали.
+    - Проверки на ноль нужны: модель, которая никого не назвала классом 1, иначе получила бы деление 0 / 0.
+    - При пороге 0,5 точность 0,833, полнота 0,735, F1 0,781. Правило «всё — автоматы» даёт полноту 1, но точность 0,455 — это просто доля автоматов — и F1 0,626. По полноте оно идеально, по смыслу бесполезно. F1 это видит, а одна полнота — нет.
+  hints:
+    - "Точность — `tp / (tp + fp)`, полнота — `tp / (tp + fn)`; при нулевом знаменателе — 0."
+    - "F1 — `2 * precision * recall / (precision + recall)`, при нулевой сумме — 0."
+    - "Условие в одну строку: `tp / (tp + fp) if tp + fp > 0 else 0.0`."
+  tests: |
+    import numpy as np
+    f = var('prf')
+    ensure(callable(f), '`prf` должна быть функцией.')
+    got = f(np.array([1, 0, 1, 1, 0]), np.array([1, 1, 0, 1, 0]))
+    ensure(isinstance(got, tuple) and len(got) == 3, '`prf` должна вернуть кортеж из трёх чисел.')
+    p_, r_, f_ = got
+    close(p_, 2 / 3, 'Точность: из трёх названных автоматом верны два — 2/3, а у вас {actual}.')
+    close(r_, 2 / 3, 'Полнота: из трёх настоящих автоматов найдены два — 2/3, а у вас {actual}.')
+    got = f(np.array([1, 1, 1, 0]), np.array([1, 0, 0, 0]))
+    if abs(got[0] - 1 / 3) < 1e-9:
+        fail('Точность и полнота перепутаны: точность — доля верных среди названных (1 из 1), полнота — среди настоящих (1 из 3).')
+    close(got[0], 1.0, 'Точность для y = [1, 1, 1, 0], pred = [1, 0, 0, 0] — 1, а у вас {actual}.')
+    close(got[1], 1 / 3, 'Полнота — 1/3, а у вас {actual}.')
+    close(got[2], 0.5, 'F1 = 2·1·(1/3) / (1 + 1/3) = 0.5, а у вас {actual}.')
+    z = f(np.array([1, 0]), np.array([0, 0]))
+    ensure(all(np.isfinite(v) for v in z), 'Модель никого не назвала классом 1 — точность и F1 должны быть 0, а не nan.')
+    same_array(np.asarray(z, dtype=float), [0.0, 0.0, 0.0], 'Если модель никого не назвала классом 1, все три метрики — 0.')
+    same_array(np.asarray(var('metrics_05'), dtype=float), np.asarray(ref('metrics_05'), dtype=float), 'Метрики при пороге 0.5 не совпадают с ожидаемыми.')
+    same_array(np.asarray(var('metrics_all'), dtype=float), np.asarray(ref('metrics_all'), dtype=float), 'Метрики правила «всё — автоматы» не совпадают с ожидаемыми.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def prf(y_true, y_pred):
+            t, p = np.asarray(y_true), np.asarray(y_pred)
+            tp = ((t == 1) & (p == 1)).sum()
+            fp = ((t == 0) & (p == 1)).sum()
+            fn = ((t == 1) & (p == 0)).sum()
+            precision = tp / (tp + fn) if tp + fn > 0 else 0.0
+            recall = tp / (tp + fp) if tp + fp > 0 else 0.0
+            f1 = 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0.0
+            return float(precision), float(recall), float(f1)
+        metrics_05 = prf(y_test, (p_test >= 0.5).astype(int))
+        metrics_all = prf(y_test, np.ones(len(y_test), dtype=int))
+      expect: перепутаны
+    - code: |
+        def prf(y_true, y_pred):
+            t, p = np.asarray(y_true), np.asarray(y_pred)
+            tp = ((t == 1) & (p == 1)).sum()
+            fp = ((t == 0) & (p == 1)).sum()
+            fn = ((t == 1) & (p == 0)).sum()
+            with np.errstate(divide='ignore', invalid='ignore'):
+                precision = np.float64(tp) / (tp + fp)
+                recall = np.float64(tp) / (tp + fn)
+                f1 = 2 * precision * recall / (precision + recall)
+            return float(precision), float(recall), float(f1)
+        metrics_05 = prf(y_test, (p_test >= 0.5).astype(int))
+        metrics_all = prf(y_test, np.ones(len(y_test), dtype=int))
+      expect: а не nan
+
+- id: b1-l2-t3
+  title: Порог по F1
+  difficulty: main
+  introduces: []
+  uses: [precision-recall, train-valid-test]
+  statement: |
+    Выберите порог, при котором F1 наибольший, — на валидационной части, а проверьте на тестовой.
+
+    - `f1_valid` — список F1 на валидации (`p_valid`, `y_valid`) для порогов `ths` = 0,05, 0,10, …, 0,95;
+    - `best_th` — порог с наибольшим F1 на валидации (при равенстве — меньший);
+    - `f1_test_best` и `f1_test_05` — F1 на тесте при `best_th` и при пороге 0,5.
+
+    Функция `f1_score` из sklearn уже импортирована.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import make_pipeline
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import f1_score
+    cars = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'Price']
+    X, y = cars[features], cars['AutoTransmission'].astype(int)
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42, stratify=y_temp)
+    model = make_pipeline(StandardScaler(), LogisticRegression()).fit(X_train, y_train)
+    p_valid = model.predict_proba(X_valid)[:, 1]
+    p_test = model.predict_proba(X_test)[:, 1]
+    ths = np.round(np.arange(0.05, 0.96, 0.05), 2)
+  starter: |
+    f1_valid = [f1_score(y_valid, (p_valid >= t).astype(int)) for t in ths]
+    best_th = ...
+    f1_test_best = ...
+    f1_test_05 = f1_score(y_test, (p_test >= 0.5).astype(int))
+    print(best_th, round(max(f1_valid), 4), round(f1_test_best, 4), round(f1_test_05, 4))
+  solution: |
+    f1_valid = [f1_score(y_valid, (p_valid >= t).astype(int)) for t in ths]
+    best_th = float(ths[int(np.argmax(f1_valid))])
+    f1_test_best = f1_score(y_test, (p_test >= best_th).astype(int))
+    f1_test_05 = f1_score(y_test, (p_test >= 0.5).astype(int))
+    print(best_th, round(max(f1_valid), 4), round(f1_test_best, 4), round(f1_test_05, 4))
+  explanation: |
+    - `np.argmax` возвращает первый максимум, а пороги идут по возрастанию — при равенстве берётся меньший порог.
+    - Лучший по F1 порог на валидации — 0,4, ниже привычного 0,5. Пропусков у модели больше, чем ложных срабатываний, и F1 выгодно назвать автоматом чуть больше машин.
+    - На тесте F1 вырос с 0,781 до 0,789. Прибавка небольшая, но честная: порог выбран без теста. Подбери мы его по тесту, выигрыш выглядел бы больше, чем есть на новых данных.
+  hints:
+    - "Номер наибольшего F1 — `np.argmax(f1_valid)`, порог — `ths[...]`."
+    - "F1 на тесте при найденном пороге — `f1_score(y_test, (p_test >= best_th).astype(int))`."
+    - "`best_th = float(ths[int(np.argmax(f1_valid))])`."
+  tests: |
+    import numpy as np
+    from sklearn.metrics import f1_score
+    fv = var('f1_valid', list, 'списком')
+    same_array(np.asarray(fv, dtype=float), np.asarray(ref('f1_valid'), dtype=float), 'F1 на валидации не совпадают: считайте их по p_valid и y_valid.')
+    bt = var('best_th', 'number', 'числом')
+    pt, yt = ref('p_test'), ref('y_test')
+    test_f1 = [f1_score(yt, (pt >= t).astype(int)) for t in ref('ths')]
+    if abs(bt - float(ref('ths')[int(np.argmax(test_f1))])) < 1e-9 and abs(bt - ref('best_th')) > 1e-9:
+        fail('Порог подобран по тестовой части. Выбирайте его по F1 на валидации, а тест — только для проверки.')
+    close(bt, ref('best_th'), 'Лучший порог на валидации — {expected}, а у вас {actual}.')
+    close(var('f1_test_best', 'number', 'числом'), ref('f1_test_best'), 'F1 на тесте при лучшем пороге — {expected}, а у вас {actual}.')
+    close(var('f1_test_05', 'number', 'числом'), ref('f1_test_05'), 'F1 на тесте при пороге 0.5 — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        f1_valid = [f1_score(y_valid, (p_valid >= t).astype(int)) for t in ths]
+        best_th = float(ths[int(np.argmin(f1_valid))])
+        f1_test_best = f1_score(y_test, (p_test >= best_th).astype(int))
+        f1_test_05 = f1_score(y_test, (p_test >= 0.5).astype(int))
+      expect: Лучший порог на валидации
+    - code: |
+        f1_valid = [f1_score(y_valid, (p_valid >= t).astype(int)) for t in ths]
+        best_th = 0.5
+        f1_test_best = f1_score(y_test, (p_test >= best_th).astype(int))
+        f1_test_05 = f1_score(y_test, (p_test >= 0.5).astype(int))
+      expect: Лучший порог на валидации
+
+- id: b1-l2-t4
+  title: ROC и AUC своими руками
+  difficulty: main
+  introduces: [roc-auc]
+  uses: [precision-recall]
+  statement: |
+    Напишите функцию `roc_points(y_true, p, thresholds)`: для каждого порога `t` из списка — доля ложных срабатываний FPR = FP / (FP + TN) и доля найденных TPR = TP / (TP + FN) при правиле «класс 1, если `p >= t`». Функция возвращает два массива NumPy: `fpr`, `tpr`.
+
+    Для проверочной части возьмите 101 порог `grid` от 1 до 0 и получите:
+
+    - `auc_grid` — площадь под ломаной (`np.trapezoid(tpr, fpr)`; пороги идут по убыванию, поэтому FPR растёт);
+    - `auc_exact` — точную AUC из `roc_auc_score`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import make_pipeline
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import roc_auc_score
+    cars = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'Price']
+    X, y = cars[features], cars['AutoTransmission'].astype(int)
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42, stratify=y_temp)
+    model = make_pipeline(StandardScaler(), LogisticRegression()).fit(X_train, y_train)
+    p_test = model.predict_proba(X_test)[:, 1]
+    grid = np.linspace(1, 0, 101)
+  starter: |
+    def roc_points(y_true, p, thresholds):
+        t = np.asarray(y_true)
+        p = np.asarray(p)
+        fpr, tpr = [], []
+        for th in thresholds:
+            pred = p >= th
+            tp = (pred & (t == 1)).sum()
+            fp = (pred & (t == 0)).sum()
+            fpr.append(...)
+            tpr.append(...)
+        return np.array(fpr), np.array(tpr)
+
+    fpr, tpr = roc_points(y_test, p_test, grid)
+    auc_grid = float(np.trapezoid(tpr, fpr))
+    auc_exact = float(roc_auc_score(y_test, p_test))
+    print(round(auc_grid, 4), round(auc_exact, 4))
+  solution: |
+    def roc_points(y_true, p, thresholds):
+        t = np.asarray(y_true)
+        p = np.asarray(p)
+        fpr, tpr = [], []
+        for th in thresholds:
+            pred = p >= th
+            tp = (pred & (t == 1)).sum()
+            fp = (pred & (t == 0)).sum()
+            fpr.append(fp / (t == 0).sum())
+            tpr.append(tp / (t == 1).sum())
+        return np.array(fpr), np.array(tpr)
+
+    fpr, tpr = roc_points(y_test, p_test, grid)
+    auc_grid = float(np.trapezoid(tpr, fpr))
+    auc_exact = float(roc_auc_score(y_test, p_test))
+    print(round(auc_grid, 4), round(auc_exact, 4))
+  explanation: |
+    - FPR делится на число настоящих нулей (FP + TN = все механики), TPR — на число настоящих единиц (TP + FN = все автоматы).
+    - Порог 1 почти никого не называет автоматом — точка у (0, 0), порог 0 называет всех — точка (1, 1). Между ними ломаная поднимается вверх и вправо.
+    - `np.trapezoid` складывает площади трапеций между соседними точками. По 101 порогу площадь — 0,8794, точная AUC по всем различным оценкам — 0,8795. Сетка в сотые почти не теряет точности, а `roc_curve` берёт все пороги сразу.
+  hints:
+    - "FPR — `fp / (t == 0).sum()`: доля механик, названных автоматом."
+    - "TPR — `tp / (t == 1).sum()`: доля найденных автоматов."
+    - "Площадь — `np.trapezoid(tpr, fpr)`: сначала значения по вертикали, потом по горизонтали."
+  tests: |
+    import numpy as np
+    f = var('roc_points')
+    ensure(callable(f), '`roc_points` должна быть функцией.')
+    y = np.array([0, 0, 1, 1])
+    p = np.array([0.1, 0.4, 0.35, 0.8])
+    fpr, tpr = f(y, p, [1.0, 0.5, 0.38, 0.0])
+    fpr, tpr = np.asarray(fpr, dtype=float), np.asarray(tpr, dtype=float)
+    if np.allclose(fpr, [0, 0.5, 0.5, 1]) and np.allclose(tpr, [0, 0, 0.5, 1]):
+        fail('FPR и TPR перепутаны: TPR — доля найденных среди класса 1, FPR — доля ложных среди класса 0.')
+    same_array(fpr, [0, 0, 0.5, 1], 'FPR для порогов 1, 0.5, 0.38, 0 — [0, 0, 0.5, 1].')
+    same_array(tpr, [0, 0.5, 0.5, 1], 'TPR для тех же порогов — [0, 0.5, 0.5, 1].')
+    close(var('auc_grid', 'number', 'числом'), ref('auc_grid'), 'Площадь по 101 порогу — {expected}, а у вас {actual}.')
+    close(var('auc_exact', 'number', 'числом'), ref('auc_exact'), 'Точная AUC — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def roc_points(y_true, p, thresholds):
+            t = np.asarray(y_true)
+            p = np.asarray(p)
+            fpr, tpr = [], []
+            for th in thresholds:
+                pred = p >= th
+                tp = (pred & (t == 1)).sum()
+                fp = (pred & (t == 0)).sum()
+                fpr.append(tp / (t == 1).sum())
+                tpr.append(fp / (t == 0).sum())
+            return np.array(fpr), np.array(tpr)
+        fpr, tpr = roc_points(y_test, p_test, grid)
+        auc_grid = float(np.trapezoid(tpr, fpr))
+        auc_exact = float(roc_auc_score(y_test, p_test))
+      expect: перепутаны
+    - code: |
+        def roc_points(y_true, p, thresholds):
+            t = np.asarray(y_true)
+            p = np.asarray(p)
+            fpr, tpr = [], []
+            for th in thresholds:
+                pred = p >= th
+                tp = (pred & (t == 1)).sum()
+                fp = (pred & (t == 0)).sum()
+                fpr.append(fp / len(t))
+                tpr.append(tp / len(t))
+            return np.array(fpr), np.array(tpr)
+        fpr, tpr = roc_points(y_test, p_test, grid)
+        auc_grid = float(np.trapezoid(tpr, fpr))
+        auc_exact = float(roc_auc_score(y_test, p_test))
+      expect: FPR для порогов
+
+- id: b1-l2-t5
+  title: Какая модель лучше упорядочивает
+  difficulty: main
+  introduces: []
+  uses: [roc-auc, one-hot-encoding]
+  statement: |
+    Сравните две модели по AUC на валидационной части:
+
+    - `base` — логистическая регрессия на четырёх числовых признаках (уже обучена);
+    - `rich` — конвейер: `make_column_transformer` со `StandardScaler` для `features` и `OneHotEncoder(handle_unknown='ignore')` для `['Fuel_type', 'Style', 'Make']`, затем `LogisticRegression(max_iter=2000)`. Обучите его на `Xa_train`.
+
+    Получите `auc_base`, `auc_rich` (`roc_auc_score` по вероятностям на `Xa_valid`) и `better` — строку `'base'` или `'rich'`: у какой модели AUC больше.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler, OneHotEncoder
+    from sklearn.compose import make_column_transformer
+    from sklearn.pipeline import make_pipeline
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import roc_auc_score
+    cars = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'Price']
+    Xa = cars[features + ['Fuel_type', 'Style', 'Make']]
+    y = cars['AutoTransmission'].astype(int)
+    Xa_temp, Xa_test, y_temp, y_test = train_test_split(Xa, y, test_size=0.2, random_state=42, stratify=y)
+    Xa_train, Xa_valid, y_train, y_valid = train_test_split(Xa_temp, y_temp, test_size=0.25, random_state=42, stratify=y_temp)
+    base = make_pipeline(StandardScaler(), LogisticRegression()).fit(Xa_train[features], y_train)
+  starter: |
+    rich = make_pipeline(
+        make_column_transformer((StandardScaler(), features), (OneHotEncoder(handle_unknown='ignore'), ['Fuel_type', 'Style', 'Make'])),
+        LogisticRegression(max_iter=2000))
+    rich.fit(Xa_train, y_train)
+    auc_base = roc_auc_score(y_valid, base.predict_proba(Xa_valid[features])[:, 1])
+    auc_rich = ...
+    better = ...
+    print(round(auc_base, 4), round(auc_rich, 4), better)
+  solution: |
+    rich = make_pipeline(
+        make_column_transformer((StandardScaler(), features), (OneHotEncoder(handle_unknown='ignore'), ['Fuel_type', 'Style', 'Make'])),
+        LogisticRegression(max_iter=2000))
+    rich.fit(Xa_train, y_train)
+    auc_base = roc_auc_score(y_valid, base.predict_proba(Xa_valid[features])[:, 1])
+    auc_rich = roc_auc_score(y_valid, rich.predict_proba(Xa_valid)[:, 1])
+    better = 'rich' if auc_rich > auc_base else 'base'
+    print(round(auc_base, 4), round(auc_rich, 4), better)
+  explanation: |
+    - AUC считают по вероятностям, а не по классам: она оценивает порядок, в котором модель расставляет машины. По готовым классам 0/1 получилась бы оценка только одного порога.
+    - Модель с топливом, кузовом и маркой упорядочивает машины лучше: AUC на валидации 0,907 против 0,871 у модели на четырёх числах. Порог для неё выбирают отдельно — сравнение по AUC от порога не зависит.
+    - Обе модели сравнивались на валидации; тест остаётся для одной итоговой проверки выбранной модели.
+  hints:
+    - "Вероятности богатой модели — `rich.predict_proba(Xa_valid)[:, 1]`: ей нужны все колонки, а не только числовые."
+    - "`auc_rich = roc_auc_score(y_valid, rich.predict_proba(Xa_valid)[:, 1])`."
+    - "`better = 'rich' if auc_rich > auc_base else 'base'`."
+  tests: |
+    from sklearn.metrics import roc_auc_score
+    ar = var('auc_rich', 'number', 'числом')
+    hard = roc_auc_score(ref('y_valid'), ref('rich').predict(ref('Xa_valid')))
+    if abs(ar - hard) < 1e-9:
+        fail('AUC посчитана по готовым классам 0/1 — это оценка одного порога. Передайте в roc_auc_score вероятности predict_proba(...)[:, 1].')
+    close(var('auc_base', 'number', 'числом'), ref('auc_base'), 'AUC базовой модели на валидации — {expected}, а у вас {actual}.')
+    close(ar, ref('auc_rich'), 'AUC модели с категориями на валидации — {expected}, а у вас {actual}.')
+    equal(var('better', str, 'строкой'), ref('better'), 'Лучше упорядочивает модель {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        rich = make_pipeline(
+            make_column_transformer((StandardScaler(), features), (OneHotEncoder(handle_unknown='ignore'), ['Fuel_type', 'Style', 'Make'])),
+            LogisticRegression(max_iter=2000))
+        rich.fit(Xa_train, y_train)
+        auc_base = roc_auc_score(y_valid, base.predict(Xa_valid[features]))
+        auc_rich = roc_auc_score(y_valid, rich.predict(Xa_valid))
+        better = 'rich' if auc_rich > auc_base else 'base'
+      expect: по готовым классам
+    - code: |
+        rich = make_pipeline(
+            make_column_transformer((StandardScaler(), features), (OneHotEncoder(handle_unknown='ignore'), ['Fuel_type', 'Style', 'Make'])),
+            LogisticRegression(max_iter=2000))
+        rich.fit(Xa_train, y_train)
+        auc_base = roc_auc_score(y_valid, base.predict_proba(Xa_valid[features])[:, 1])
+        auc_rich = roc_auc_score(y_train, rich.predict_proba(Xa_train)[:, 1])
+        better = 'rich' if auc_rich > auc_base else 'base'
+      expect: AUC модели с категориями на валидации
+
+- id: b1-l2-t6
+  title: AUC через ранги
+  difficulty: star
+  introduces: []
+  uses: [roc-auc]
+  statement: |
+    AUC — вероятность того, что случайный объект класса 1 получит оценку выше случайного объекта класса 0, причём равные оценки считаются за половину. Её можно посчитать без порогов, через ранги — это статистика Манна — Уитни:
+
+    AUC = (сумма рангов объектов класса 1 − n₁·(n₁ + 1) / 2) / (n₁·n₀),
+
+    где ранг — номер оценки в общем упорядочении по возрастанию, начиная с 1, а равным оценкам дают средний ранг (`scipy.stats.rankdata`).
+
+    Напишите функцию `auc_rank(y_true, p)` без циклов и получите `auc_mine` для проверочной части. Сравните с `roc_auc_score`: `diff` — модуль разницы.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from scipy.stats import rankdata
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import make_pipeline
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import roc_auc_score
+    cars = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'Price']
+    X, y = cars[features], cars['AutoTransmission'].astype(int)
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42, stratify=y_temp)
+    model = make_pipeline(StandardScaler(), LogisticRegression()).fit(X_train, y_train)
+    p_test = model.predict_proba(X_test)[:, 1]
+  starter: |
+    def auc_rank(y_true, p):
+        t = np.asarray(y_true)
+        r = rankdata(p)
+        n1, n0 = (t == 1).sum(), (t == 0).sum()
+        return ...
+
+    auc_mine = auc_rank(y_test, p_test)
+    diff = abs(auc_mine - roc_auc_score(y_test, p_test))
+    print(round(auc_mine, 6), diff)
+  solution: |
+    def auc_rank(y_true, p):
+        t = np.asarray(y_true)
+        r = rankdata(p)
+        n1, n0 = (t == 1).sum(), (t == 0).sum()
+        return float((r[t == 1].sum() - n1 * (n1 + 1) / 2) / (n1 * n0))
+
+    auc_mine = auc_rank(y_test, p_test)
+    diff = abs(auc_mine - roc_auc_score(y_test, p_test))
+    print(round(auc_mine, 6), diff)
+  explanation: |
+    - Сумма рангов класса 1 минус n₁(n₁ + 1)/2 — число пар «объект класса 1 выше объекта класса 0»: для каждого объекта класса 1 ранг минус его место среди своих равен числу объектов класса 0 ниже него.
+    - Деление на n₁·n₀ — на число всех пар, поэтому получается доля пар, где модель упорядочила верно. Средний ранг для равных оценок засчитывает такую пару за половину.
+    - Результат совпадает с `roc_auc_score` до ошибок округления: AUC — не площадь «как-нибудь», а вероятность правильного упорядочения пары. Так её считают и для очень больших данных — сортировка вместо перебора порогов.
+  hints:
+    - "Ранги объектов класса 1 — `r[t == 1]`, их сумма — `.sum()`."
+    - "Формула — `(r[t == 1].sum() - n1 * (n1 + 1) / 2) / (n1 * n0)`."
+    - "Без циклов: всё делают маска `t == 1` и `rankdata`."
+  tests: |
+    import numpy as np
+    f = var('auc_rank')
+    ensure(callable(f), '`auc_rank` должна быть функцией.')
+    no_loops('Посчитайте AUC без цикла: ранги и маска класса 1.')
+    close(f(np.array([0, 0, 1, 1]), np.array([0.1, 0.4, 0.35, 0.8])), 0.75, 'Для y = [0, 0, 1, 1] и p = [0.1, 0.4, 0.35, 0.8] AUC — 0.75: верно упорядочены 3 пары из 4. А у вас {actual}.')
+    close(f(np.array([0, 1]), np.array([0.5, 0.5])), 0.5, 'Равные оценки — половина пары: AUC 0.5, а у вас {actual}.')
+    close(var('auc_mine', 'number', 'числом'), ref('auc_mine'), 'AUC через ранги — {expected}, а у вас {actual}.')
+    close(var('diff', 'number', 'числом'), 0.0, 'Разница с roc_auc_score должна быть почти 0, а у вас {actual}.', atol=1e-9)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def auc_rank(y_true, p):
+            t = np.asarray(y_true)
+            r = rankdata(p)
+            n1, n0 = (t == 1).sum(), (t == 0).sum()
+            return float(r[t == 1].sum() / (n1 * n0))
+        auc_mine = auc_rank(y_test, p_test)
+        diff = abs(auc_mine - roc_auc_score(y_test, p_test))
+      expect: верно упорядочены 3 пары из 4
+    - code: |
+        def auc_rank(y_true, p):
+            t = np.asarray(y_true)
+            r = np.argsort(np.argsort(p)) + 1
+            n1, n0 = (t == 1).sum(), (t == 0).sum()
+            return float((r[t == 1].sum() - n1 * (n1 + 1) / 2) / (n1 * n0))
+        auc_mine = auc_rank(y_test, p_test)
+        diff = abs(auc_mine - roc_auc_score(y_test, p_test))
+      expect: Равные оценки

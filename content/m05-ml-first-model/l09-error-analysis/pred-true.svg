@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="Как читать график «известное значение — прогноз». Слева: по горизонтали настоящая цена, по вертикали прогноз; на диагонали прогноз точен, выше диагонали модель завышает, ниже — занижает, ошибка — расстояние по вертикали до диагонали. Справа три типичные картины: облако положе диагонали — модель тянет прогнозы к середине; точки ниже нуля — отрицательные прогнозы; одинокая точка далеко от диагонали — проверить строку данных">
+  <defs>
+    <marker id="pt-a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor" fill-opacity="0.7"/></marker>
+  </defs>
+  <!-- Левая панель: как читать -->
+  <polygon points="70,250 70,30 290,30" fill="#c2410c" fill-opacity="0.10"/>
+  <polygon points="70,250 290,250 290,30" fill="#3d5bd9" fill-opacity="0.10"/>
+  <line x1="70" y1="250" x2="296" y2="250" stroke="currentColor" stroke-opacity="0.7" marker-end="url(#pt-a)"/>
+  <line x1="70" y1="250" x2="70" y2="24" stroke="currentColor" stroke-opacity="0.7" marker-end="url(#pt-a)"/>
+  <line x1="70" y1="250" x2="290" y2="30" stroke="#dc2626" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="262" y="80" fill="#dc2626" font-weight="700" transform="rotate(-45 262 80)" text-anchor="middle">ŷ = y</text>
+  <text x="80" y="48" fill="#c2410c" font-weight="700">выше диагонали —</text>
+  <text x="80" y="64" fill="#c2410c" font-weight="700">завышение (ŷ &gt; y)</text>
+  <text x="282" y="222" fill="#3d5bd9" font-weight="700" text-anchor="end">ниже диагонали —</text>
+  <text x="282" y="238" fill="#3d5bd9" font-weight="700" text-anchor="end">занижение (ŷ &lt; y)</text>
+  <!-- точка выше диагонали -->
+  <line x1="120" y1="200" x2="120" y2="146" stroke="#c2410c" stroke-width="1.5" stroke-dasharray="3 3"/>
+  <circle cx="120" cy="200" r="3" fill="#dc2626"/>
+  <circle cx="120" cy="146" r="5.5" fill="#c2410c"/>
+  <text x="78" y="132" fill="currentColor" font-size="11">ошибка ŷ − y &gt; 0</text>
+  <!-- точка ниже диагонали -->
+  <line x1="226" y1="94" x2="226" y2="164" stroke="#3d5bd9" stroke-width="1.5" stroke-dasharray="3 3"/>
+  <circle cx="226" cy="94" r="3" fill="#dc2626"/>
+  <circle cx="226" cy="164" r="5.5" fill="#3d5bd9"/>
+  <text x="234" y="132" fill="currentColor" font-size="11">ошибка</text>
+  <text x="234" y="146" fill="currentColor" font-size="11">ŷ − y &lt; 0</text>
+  <text x="180" y="272" fill="currentColor" text-anchor="middle">известная цена y</text>
+  <text x="40" y="140" fill="currentColor" text-anchor="middle" transform="rotate(-90 40 140)">прогноз ŷ</text>
+  <text x="12" y="294" fill="currentColor" fill-opacity="0.75">Одна точка — одна машина. Красная диагональ ŷ = y — точный прогноз; ошибка — расстояние до неё по вертикали.</text>
+
+  <line x1="340" y1="18" x2="340" y2="278" stroke="currentColor" stroke-opacity="0.2"/>
+  <text x="362" y="24" fill="currentColor" font-weight="700">Типичные картины</text>
+
+  <!-- Картина 1: облако положе диагонали -->
+  <line x1="364" y1="110" x2="434" y2="110" stroke="currentColor" stroke-opacity="0.6"/>
+  <line x1="364" y1="110" x2="364" y2="40" stroke="currentColor" stroke-opacity="0.6"/>
+  <line x1="364" y1="110" x2="434" y2="40" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <g fill="#3d5bd9" fill-opacity="0.75">
+    <circle cx="370" cy="93" r="2.6"/><circle cx="377" cy="88" r="2.6"/><circle cx="384" cy="90" r="2.6"/>
+    <circle cx="391" cy="84" r="2.6"/><circle cx="398" cy="82" r="2.6"/><circle cx="405" cy="78" r="2.6"/>
+    <circle cx="412" cy="76" r="2.6"/><circle cx="419" cy="72" r="2.6"/><circle cx="426" cy="70" r="2.6"/><circle cx="431" cy="66" r="2.6"/>
+  </g>
+  <text x="450" y="60" fill="currentColor" font-weight="700">Облако положе диагонали</text>
+  <text x="450" y="78" fill="currentColor">Модель тянет прогнозы к середине:</text>
+  <text x="450" y="94" fill="currentColor">дешёвые машины завышает, дорогие — занижает.</text>
+
+  <!-- Картина 2: точки ниже нуля -->
+  <line x1="364" y1="196" x2="434" y2="196" stroke="currentColor" stroke-opacity="0.6"/>
+  <line x1="364" y1="196" x2="364" y2="126" stroke="currentColor" stroke-opacity="0.6"/>
+  <line x1="364" y1="178" x2="434" y2="178" stroke="currentColor" stroke-opacity="0.55" stroke-dasharray="2 3"/>
+  <text x="358" y="182" fill="currentColor" fill-opacity="0.8" font-size="11" text-anchor="end">0</text>
+  <g fill="#3d5bd9" fill-opacity="0.75">
+    <circle cx="370" cy="190" r="2.6"/><circle cx="375" cy="186" r="2.6"/><circle cx="381" cy="182" r="2.6"/>
+    <circle cx="388" cy="172" r="2.6"/><circle cx="396" cy="164" r="2.6"/><circle cx="404" cy="158" r="2.6"/>
+    <circle cx="412" cy="150" r="2.6"/><circle cx="420" cy="143" r="2.6"/><circle cx="428" cy="136" r="2.6"/>
+  </g>
+  <text x="450" y="146" fill="currentColor" font-weight="700">Точки ниже нуля</text>
+  <text x="450" y="164" fill="currentColor">Отрицательные цены — форма модели</text>
+  <text x="450" y="180" fill="currentColor">не подходит данным (выход — логарифм цены).</text>
+
+  <!-- Картина 3: одинокая точка -->
+  <line x1="364" y1="276" x2="434" y2="276" stroke="currentColor" stroke-opacity="0.6"/>
+  <line x1="364" y1="276" x2="364" y2="212" stroke="currentColor" stroke-opacity="0.6"/>
+  <line x1="364" y1="276" x2="428" y2="212" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <g fill="#3d5bd9" fill-opacity="0.75">
+    <circle cx="371" cy="266" r="2.6"/><circle cx="377" cy="263" r="2.6"/><circle cx="383" cy="254" r="2.6"/>
+    <circle cx="389" cy="251" r="2.6"/><circle cx="395" cy="243" r="2.6"/><circle cx="401" cy="240" r="2.6"/>
+  </g>
+  <circle cx="426" cy="266" r="4" fill="#c2410c"/>
+  <circle cx="426" cy="266" r="8" fill="none" stroke="#c2410c" stroke-width="1.5"/>
+  <text x="450" y="232" fill="currentColor" font-weight="700">Одинокая точка далеко от диагонали</text>
+  <text x="450" y="250" fill="currentColor">Посмотрите строку: ошибка в данных</text>
+  <text x="450" y="266" fill="currentColor">или модели не хватает признака (марки).</text>
+</svg>

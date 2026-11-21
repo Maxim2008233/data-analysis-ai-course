@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 200" font-family="Inter, Arial, sans-serif" font-size="12.5" role="img" aria-label="Медианы 20 случайных выборок цен Lexus: при 10 объявлениях в выборке они разбросаны от 10 650 до 24 200 евро, при 200 объявлениях — от 13 950 до 17 999 евро; медиана всех 585 объявлений — 15 900 евро">
+  <!-- шкала 8000..26000 -> x 150..710 -->
+  <line x1="150" y1="150" x2="710" y2="150" stroke="currentColor" stroke-opacity="0.45"/>
+  <g font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" fill-opacity="0.7">
+    <text x="150" y="168" text-anchor="middle">8 000</text><text x="306" y="168" text-anchor="middle">13 000</text>
+    <text x="461" y="168" text-anchor="middle">18 000</text><text x="617" y="168" text-anchor="middle">23 000</text>
+  </g>
+  <!-- медиана всех: 15900 -> x = 150 + (15900-8000)/18000*560 = 395.8 -->
+  <line x1="396" y1="22" x2="396" y2="150" stroke="#c2410c" stroke-dasharray="5 4" stroke-width="1.5"/>
+  <text x="402" y="24" fill="#c2410c">медиана всех 585 объявлений — 15 900 €</text>
+  <!-- n=10: 10650..24200 -> x 232.4 .. 654 -->
+  <text x="20" y="64" fill="currentColor" font-weight="700">выборки по 10</text>
+  <rect x="232" y="52" width="422" height="18" rx="9" fill="#3d5bd9" fill-opacity="0.18" stroke="#3d5bd9"/>
+  <text x="232" y="88" fill="currentColor" font-size="11.5">10 650 €</text><text x="654" y="88" fill="currentColor" font-size="11.5" text-anchor="end">24 200 €</text>
+  <!-- n=200: 13950..17999 -> x 335.1 .. 461 -->
+  <text x="20" y="122" fill="currentColor" font-weight="700">выборки по 200</text>
+  <rect x="335" y="110" width="126" height="18" rx="9" fill="#3d5bd9" fill-opacity="0.35" stroke="#3d5bd9"/>
+  <text x="470" y="124" fill="currentColor" font-size="11.5">13 950 – 17 999 €</text>
+  <text x="20" y="194" fill="currentColor" fill-opacity="0.75" font-size="12">Разброс медиан 20 случайных выборок: чем меньше группа, тем сильнее «гуляет» её статистика.</text>
+</svg>

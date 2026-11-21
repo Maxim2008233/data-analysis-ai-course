@@ -1,0 +1,437 @@
+- id: m6-l7-t1
+  title: Общая функция оценки
+  difficulty: warmup
+  introduces: [model-comparison]
+  uses: [sk-fit-predict, regression-metrics]
+  statement: |
+    Напишите функцию `evaluate(model, name, X_fit, y_fit, X_check, y_check)`: она обучает модель на `X_fit`, `y_fit` и возвращает словарь с ключами `'model'` (имя), `'train_mae'` (MAE на данных обучения) и `'valid_mae'` (MAE на данных проверки). Затем `row` — результат функции для линейной регрессии на train и validation.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    def evaluate(model, name, X_fit, y_fit, X_check, y_check):
+        ...
+        return {'model': name, 'train_mae': ..., 'valid_mae': ...}
+
+    row = evaluate(LinearRegression(), 'Линейная', X_train, y_train, X_valid, y_valid)
+    print(row)
+  solution: |
+    def evaluate(model, name, X_fit, y_fit, X_check, y_check):
+        model.fit(X_fit, y_fit)
+        return {'model': name,
+                'train_mae': mean_absolute_error(y_fit, model.predict(X_fit)),
+                'valid_mae': mean_absolute_error(y_check, model.predict(X_check))}
+
+    row = evaluate(LinearRegression(), 'Линейная', X_train, y_train, X_valid, y_valid)
+    print(row)
+  explanation: |
+    - Функция делает только знакомые шаги: обучение, два прогноза, две ошибки. Она не выбирает модель и не трогает test.
+    - Внутри используются аргументы `X_fit`, `y_fit`, `X_check`, `y_check`, а не глобальные `X_train`, `X_valid`: так функцию можно вызвать с любыми частями — например, с другим разбиением (задание со звёздочкой).
+    - Для линейной регрессии: MAE ≈ 4 259 на train и ≈ 4 270 на validation.
+  hints:
+    - "Сначала `model.fit(X_fit, y_fit)`, затем прогнозы для `X_fit` и `X_check`."
+    - "Ошибки — `mean_absolute_error(y_fit, model.predict(X_fit))` и то же для проверочных данных."
+    - "Используйте аргументы функции, а не глобальные `X_train` и `X_valid`."
+  tests: |
+    from sklearn.dummy import DummyRegressor
+    from sklearn.linear_model import LinearRegression
+    f = var('evaluate')
+    ensure(callable(f), '`evaluate` должна быть функцией.')
+    Xa, ya = ref('X_valid'), ref('y_valid')
+    Xb, yb = ref('X_train'), ref('y_train')
+    r = f(DummyRegressor(strategy='mean'), 'тест', Xa, ya, Xb, yb)
+    ensure(isinstance(r, dict) and {'model', 'train_mae', 'valid_mae'} <= set(r), 'Функция должна вернуть словарь с ключами model, train_mae, valid_mae.')
+    ensure(all(v is not Ellipsis for v in r.values()), 'В словаре, который возвращает функция, осталось многоточие `...` — замените его на вычисление ошибки.')
+    equal(r['model'], 'тест', 'Ключ `model` — имя, переданное в функцию.')
+    exp_train = float(abs(ya - ya.mean()).mean())
+    exp_valid = float(abs(yb - ya.mean()).mean())
+    close(float(r['train_mae']), exp_train, 'При вызове с другими частями `train_mae` должна считаться по `X_fit`, `y_fit` — {expected}, а у вас {actual}. Используйте аргументы функции, а не глобальные переменные.')
+    close(float(r['valid_mae']), exp_valid, 'При вызове с другими частями `valid_mae` должна считаться по `X_check`, `y_check` — {expected}, а у вас {actual}.')
+    row = var('row', dict, 'словарём')
+    close(float(row['train_mae']), ref('row')['train_mae'], 'MAE линейной модели на train — {expected}, а у вас {actual}.')
+    close(float(row['valid_mae']), ref('row')['valid_mae'], 'MAE линейной модели на validation — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def evaluate(model, name, X_fit, y_fit, X_check, y_check):
+            model.fit(X_train, y_train)
+            return {'model': name, 'train_mae': mean_absolute_error(y_train, model.predict(X_train)), 'valid_mae': mean_absolute_error(y_valid, model.predict(X_valid))}
+
+        row = evaluate(LinearRegression(), 'Линейная', X_train, y_train, X_valid, y_valid)
+      expect: аргументы функции
+    - code: |
+        def evaluate(model, name, X_fit, y_fit, X_check, y_check):
+            model.fit(X_fit, y_fit)
+            return {'model': name, 'train_mae': mean_absolute_error(y_check, model.predict(X_check)), 'valid_mae': mean_absolute_error(y_fit, model.predict(X_fit))}
+
+        row = evaluate(LinearRegression(), 'Линейная', X_train, y_train, X_valid, y_valid)
+      expect: "`train_mae` должна считаться"
+
+- id: m6-l7-t2
+  title: Таблица кандидатов
+  difficulty: main
+  introduces: [model-comparison]
+  uses: [sk-pipeline, overfitting]
+  statement: |
+    Прогоните всех кандидатов из словаря `candidates` через функцию `evaluate` (уже определена) на train и validation. Соберите `results` — DataFrame с индексом-именем модели (колонки `train_mae`, `valid_mae`), отсортированный по `valid_mae`, и добавьте колонку `gap` = `valid_mae − train_mae`. Затем `best` — имя лучшей модели и `overfit` — список моделей с разрывом больше 1 000 евро (в порядке таблицы).
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import Pipeline
+    from sklearn.dummy import DummyRegressor
+    from sklearn.linear_model import LinearRegression
+    from sklearn.neighbors import KNeighborsRegressor
+    from sklearn.tree import DecisionTreeRegressor
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    def evaluate(model, name, X_fit, y_fit, X_check, y_check):
+        model.fit(X_fit, y_fit)
+        return {'model': name,
+                'train_mae': mean_absolute_error(y_fit, model.predict(X_fit)),
+                'valid_mae': mean_absolute_error(y_check, model.predict(X_check))}
+    candidates = {
+        'Медиана': DummyRegressor(strategy='median'),
+        'Линейная': Pipeline([('scale', StandardScaler()), ('model', LinearRegression())]),
+        'kNN, k=1': Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=1))]),
+        'kNN, k=20': Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=20))]),
+        'Дерево, глубина 7': DecisionTreeRegressor(max_depth=7, random_state=42),
+        'Дерево без ограничений': DecisionTreeRegressor(random_state=42),
+        'Лес, 60 деревьев': RandomForestRegressor(n_estimators=60, max_depth=10, random_state=42, n_jobs=1),
+    }
+  starter: |
+    rows = [... for name, model in candidates.items()]
+    results = pd.DataFrame(rows).set_index('model')
+    results = ...
+    results['gap'] = ...
+    best = ...
+    overfit = ...
+    print(results.round(0))
+    print(best, overfit)
+  solution: |
+    rows = [evaluate(model, name, X_train, y_train, X_valid, y_valid) for name, model in candidates.items()]
+    results = pd.DataFrame(rows).set_index('model')
+    results = results.sort_values('valid_mae')
+    results['gap'] = results['valid_mae'] - results['train_mae']
+    best = results.index[0]
+    overfit = list(results.index[results['gap'] > 1000])
+    print(results.round(0))
+    print(best, overfit)
+  explanation: |
+    - Список словарей из `evaluate` → таблица; `set_index('model')` делает имена моделей индексом, `sort_values` ставит лучшую первой.
+    - Лучший — лес (≈ 2 658). Переобучены kNN с k = 1 и неограниченное дерево: разрыв train/validation около 2 900 и 3 000 евро.
+    - У медианы и линейной модели разрыв почти нулевой — они слишком просты, чтобы запомнить данные, но и ошибаются сильнее всех.
+  hints:
+    - "Строка таблицы — `evaluate(model, name, X_train, y_train, X_valid, y_valid)`."
+    - "Сортировка — `results.sort_values('valid_mae')`; разрыв — разность двух колонок."
+    - "`overfit = list(results.index[results['gap'] > 1000])`."
+  tests: |
+    import pandas as pd
+    r = var('results', pd.DataFrame, 'таблицей DataFrame')
+    ensure({'train_mae', 'valid_mae', 'gap'} <= set(r.columns), 'В `results` нужны колонки train_mae, valid_mae и gap.')
+    ensure(set(r.index) == set(ref('results').index), 'Индекс `results` — имена моделей: `set_index(\'model\')`.')
+    ensure(list(r.index) == list(ref('results').index), 'Отсортируйте таблицу по `valid_mae` — лучшая модель первой.')
+    same_array(r['valid_mae'].to_numpy(dtype=float), ref('results')['valid_mae'].to_numpy(dtype=float), 'Ошибки на validation не совпадают: каждого кандидата — через `evaluate` на train и validation.')
+    g = r['gap'].to_numpy(dtype=float)
+    if (g < 0).all():
+        fail('Разрыв получился отрицательным: `gap` — ошибка validation минус ошибка train.')
+    same_array(g, ref('results')['gap'].to_numpy(dtype=float), 'Колонка `gap` не совпадает: `valid_mae - train_mae`.')
+    equal(var('best', str, 'строкой'), ref('best'), 'Лучшая модель — «{expected}», а у вас «{actual}».')
+    equal([str(v) for v in var('overfit', list, 'списком')], [str(v) for v in ref('overfit')], 'Переобученные модели (разрыв больше 1 000) — {expected}, а у вас {actual}.')
+    close(float(alt('results')['valid_mae'].iloc[0]), float(alt_ref('results')['valid_mae'].iloc[0]), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        rows = [evaluate(model, name, X_train, y_train, X_valid, y_valid) for name, model in candidates.items()]
+        results = pd.DataFrame(rows).set_index('model')
+        results = results.sort_values('train_mae')
+        results['gap'] = results['valid_mae'] - results['train_mae']
+        best = results.index[0]
+        overfit = list(results.index[results['gap'] > 1000])
+      expect: Отсортируйте
+    - code: |
+        rows = [evaluate(model, name, X_train, y_train, X_valid, y_valid) for name, model in candidates.items()]
+        results = pd.DataFrame(rows).set_index('model')
+        results = results.sort_values('valid_mae')
+        results['gap'] = results['train_mae'] - results['valid_mae']
+        best = results.index[0]
+        overfit = list(results.index[results['gap'] > 1000])
+      expect: отрицательным
+
+- id: m6-l7-t3
+  title: Победитель зависит от метрики
+  difficulty: main
+  introduces: [model-comparison]
+  uses: [regression-metrics]
+  statement: |
+    В словаре `preds` — прогнозы трёх лучших моделей на validation. Постройте `metrics` — DataFrame: строки — модели (в порядке словаря), колонки `MAE` и `RMSE`. Затем `best_by_mae` и `best_by_rmse` — лучшая модель по каждой метрике.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import Pipeline
+    from sklearn.neighbors import KNeighborsRegressor
+    from sklearn.tree import DecisionTreeRegressor
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.metrics import mean_absolute_error, root_mean_squared_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    preds = {
+        'Лес, 60 деревьев': RandomForestRegressor(n_estimators=60, max_depth=10, random_state=42, n_jobs=1).fit(X_train, y_train).predict(X_valid),
+        'kNN, k=20': Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=20))]).fit(X_train, y_train).predict(X_valid),
+        'Дерево, глубина 7': DecisionTreeRegressor(max_depth=7, random_state=42).fit(X_train, y_train).predict(X_valid),
+    }
+  starter: |
+    metrics = pd.DataFrame({name: {'MAE': ..., 'RMSE': ...} for name, p in preds.items()}).T
+    best_by_mae = ...
+    best_by_rmse = ...
+    print(metrics.round(0))
+    print(best_by_mae, '|', best_by_rmse)
+  solution: |
+    metrics = pd.DataFrame({name: {'MAE': mean_absolute_error(y_valid, p),
+                                   'RMSE': root_mean_squared_error(y_valid, p)}
+                            for name, p in preds.items()}).T
+    best_by_mae = metrics['MAE'].idxmin()
+    best_by_rmse = metrics['RMSE'].idxmin()
+    print(metrics.round(0))
+    print(best_by_mae, '|', best_by_rmse)
+  explanation: |
+    - По MAE лучше лес (≈ 2 658 против ≈ 2 692 у kNN), по RMSE — kNN (≈ 5 226 против ≈ 5 463). RMSE сильнее штрафует большие промахи (урок 5.8): у kNN реже бывают огромные ошибки на дорогих машинах.
+    - Какая модель «лучше», зависит от того, какие ошибки важнее. Поэтому метрику выбирают заранее, по задаче — и не меняют, когда увидели результаты.
+  hints:
+    - "Словарь словарей → `pd.DataFrame(...).T`: модели в строках."
+    - "`'RMSE': root_mean_squared_error(y_valid, p)`."
+    - "Лучшая — наименьшая ошибка: `metrics['MAE'].idxmin()`."
+  tests: |
+    import pandas as pd
+    m = var('metrics', pd.DataFrame, 'таблицей DataFrame')
+    ensure(list(m.columns) == ['MAE', 'RMSE'], 'Колонки `metrics` — MAE и RMSE; модели — строки (не забудьте `.T`).')
+    same_frame(m.astype(float), ref('metrics').astype(float), 'Значения метрик не совпадают: сначала `y_valid`, потом прогнозы.')
+    equal(var('best_by_mae', str, 'строкой'), ref('best_by_mae'), 'Лучшая по MAE — «{expected}», а у вас «{actual}».')
+    b = var('best_by_rmse', str, 'строкой')
+    if b == ref('metrics')['RMSE'].astype(float).idxmax():
+        fail('Лучшая — с **наименьшей** RMSE: `idxmin`.')
+    equal(b, ref('best_by_rmse'), 'Лучшая по RMSE — «{expected}», а у вас «{actual}».')
+    close(float(alt('metrics').iloc[0, 1]), float(alt_ref('metrics').iloc[0, 1]), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        metrics = pd.DataFrame({name: {'MAE': mean_absolute_error(y_valid, p), 'RMSE': root_mean_squared_error(y_valid, p)} for name, p in preds.items()}).T
+        best_by_mae = metrics['MAE'].idxmin()
+        best_by_rmse = metrics['RMSE'].idxmax()
+      expect: наименьшей
+    - code: |
+        metrics = pd.DataFrame({name: {'MAE': mean_absolute_error(y_valid, p), 'RMSE': mean_absolute_error(y_valid, p) ** 0.5} for name, p in preds.items()}).T
+        best_by_mae = metrics['MAE'].idxmin()
+        best_by_rmse = metrics['RMSE'].idxmin()
+      expect: Значения метрик
+
+- id: m6-l7-t4
+  title: Итоговая проверка на test
+  difficulty: main
+  introduces: [model-comparison]
+  uses: [train-valid-test, random-forest]
+  statement: |
+    По validation выбран лес (`chosen`, ещё не обучен; его MAE на validation — `valid_mae`). Проведите итоговую проверку: обучите его на train, получите `test_mae` и `drift` — на сколько ошибка на test больше, чем на validation. Затем обучите **новый** такой же лес `refit` на train и validation вместе (`X_temp`, `y_temp`) и получите `refit_test_mae`.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.base import clone
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    chosen = RandomForestRegressor(n_estimators=60, max_depth=10, random_state=42, n_jobs=1)
+    valid_mae = 2658.1
+  starter: |
+    chosen.fit(..., ...)
+    test_mae = ...
+    drift = ...
+    refit = clone(chosen)              # та же модель с теми же гиперпараметрами, но не обученная
+    refit.fit(..., ...)
+    refit_test_mae = ...
+    print(round(test_mae, 1), round(drift, 1), round(refit_test_mae, 1))
+  solution: |
+    chosen.fit(X_train, y_train)
+    test_mae = mean_absolute_error(y_test, chosen.predict(X_test))
+    drift = test_mae - valid_mae
+    refit = clone(chosen)              # та же модель с теми же гиперпараметрами, но не обученная
+    refit.fit(X_temp, y_temp)
+    refit_test_mae = mean_absolute_error(y_test, refit.predict(X_test))
+    print(round(test_mae, 1), round(drift, 1), round(refit_test_mae, 1))
+  explanation: |
+    - На test MAE ≈ 2 710 — на ≈ 51 евро хуже, чем на validation: часть «преимущества» лучшей на validation модели — удача на этих машинах. Честная итоговая оценка — 2 710.
+    - `clone` создаёт необученную копию с теми же гиперпараметрами. Обучив её на train + validation (на 6 тысяч машин больше), получаем ≈ 2 703 — чуть лучше: модели помогли дополнительные данные.
+    - Оба числа честные: в выборе модели test не участвовал. После них модель уже не меняют.
+  hints:
+    - "Обучение на train — `chosen.fit(X_train, y_train)`; ошибка на test — по `X_test`, `y_test`."
+    - "`drift = test_mae - valid_mae`."
+    - "Новая модель учится на `X_temp`, `y_temp` — это train и validation вместе."
+  tests: |
+    t = var('test_mae', 'number', 'числом')
+    close(t, ref('test_mae'), 'MAE выбранного леса на test — {expected}, а у вас {actual}.')
+    d = var('drift', 'number', 'числом')
+    if abs(d + ref('drift')) < 1e-6:
+        fail('Знак наоборот: drift — ошибка на test минус ошибка на validation.')
+    close(d, ref('drift'), 'Сдвиг ошибки — {expected}, а у вас {actual}.')
+    r = var('refit_test_mae', 'number', 'числом')
+    if abs(r - ref('test_mae')) < 1e-6:
+        fail('Новый лес должен учиться на train и validation вместе: `refit.fit(X_temp, y_temp)`.')
+    close(r, ref('refit_test_mae'), 'MAE леса, обученного на train + validation, — {expected}, а у вас {actual}.')
+    close(alt('test_mae'), alt_ref('test_mae'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        chosen.fit(X_train, y_train)
+        test_mae = mean_absolute_error(y_test, chosen.predict(X_test))
+        drift = test_mae - valid_mae
+        refit = clone(chosen)
+        refit.fit(X_train, y_train)
+        refit_test_mae = mean_absolute_error(y_test, refit.predict(X_test))
+      expect: train и validation вместе
+    - code: |
+        chosen.fit(X_train, y_train)
+        test_mae = mean_absolute_error(y_test, chosen.predict(X_test))
+        drift = valid_mae - test_mae
+        refit = clone(chosen)
+        refit.fit(X_temp, y_temp)
+        refit_test_mae = mean_absolute_error(y_test, refit.predict(X_test))
+      expect: Знак наоборот
+
+- id: m6-l7-t5
+  kind: quiz
+  title: Честно или нет
+  difficulty: main
+  introduces: [model-comparison]
+  uses: []
+  statement: |
+    Оцените, честно ли поступили в каждой ситуации.
+  quiz:
+    - q: Аналитик посчитал MAE на test для всех восьми кандидатов и отчитался лучшим числом — 2 700. Честно?
+      options:
+        - Нет — выбор по test делает это число оптимистичным
+        - Да — test же не участвовал в обучении
+        - Да, если моделей меньше десяти
+      answer: 0
+      explain: Test участвовал в выборе. Честно — выбрать по validation и посчитать test только для выбранной.
+    - q: Лес выиграл у kNN 34 евро на validation. Перед выбором проверили ещё пять разбиений — лес выиграл на всех. Это
+      options:
+        - Хорошая практика — выбор устойчив, а не случаен
+        - Лишняя работа — одного разбиения достаточно
+        - Нарушение — разбиения нельзя менять
+      answer: 0
+      explain: Проверка на других разбиениях (или кросс-валидация) отличает устойчивое преимущество от шума.
+    - q: После итоговой проверки на test модель доработали (добавили признак) и снова проверили на том же test. Новое число —
+      options:
+        - Уже не честная оценка — test участвовал в выборе
+        - Честная оценка — признак полезный
+        - Честная, если признак добавлен один раз
+      answer: 0
+      explain: Каждое решение, принятое после взгляда на test, уменьшает его честность.
+  hints:
+    - Для каждой ситуации спросите себя, участвовал ли test в выборе.
+    - "Выбор по test — нечестно; проверка устойчивости на validation — хорошо; доработка после test — нечестно."
+    - "Ответы: нет; хорошая практика; уже не честная оценка."
+
+- id: m6-l7-t6
+  title: Устойчивость выбора на других разбиениях
+  difficulty: star
+  introduces: [model-comparison]
+  uses: [random-forest, knn]
+  statement: |
+    Проверьте, устойчив ли выбор между тремя лучшими моделями. Для каждого `seed` из `seeds` разбейте `X_temp`, `y_temp` на train и validation (`test_size=0.25, random_state=seed`; test не трогаем), обучите каждую модель из `top` и посчитайте MAE на этой validation. Соберите `stability` — DataFrame: строки — seeds, колонки — имена моделей. Затем `winners` — список лучших моделей для каждого seed, `forest_wins` — сколько раз выиграл лес и `forest_spread` — размах (максимум минус минимум) MAE леса по разбиениям.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import Pipeline
+    from sklearn.neighbors import KNeighborsRegressor
+    from sklearn.tree import DecisionTreeRegressor
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    top = {
+        'kNN, k=20': Pipeline([('scale', StandardScaler()), ('model', KNeighborsRegressor(n_neighbors=20))]),
+        'Дерево, глубина 7': DecisionTreeRegressor(max_depth=7, random_state=42),
+        'Лес, 60 деревьев': RandomForestRegressor(n_estimators=60, max_depth=10, random_state=42, n_jobs=1),
+    }
+    seeds = [0, 1, 2]
+  starter: |
+    rows = []
+    for seed in seeds:
+        Xtr, Xva, ytr, yva = ...
+        rows.append({name: ... for name, model in top.items()})
+    stability = pd.DataFrame(rows, index=seeds)
+    winners = ...
+    forest_wins = ...
+    forest_spread = ...
+    print(stability.round(0))
+    print(winners, forest_wins, round(forest_spread))
+  solution: |
+    rows = []
+    for seed in seeds:
+        Xtr, Xva, ytr, yva = train_test_split(X_temp, y_temp, test_size=0.25, random_state=seed)
+        rows.append({name: mean_absolute_error(yva, model.fit(Xtr, ytr).predict(Xva)) for name, model in top.items()})
+    stability = pd.DataFrame(rows, index=seeds)
+    winners = list(stability.idxmin(axis=1))
+    forest_wins = winners.count('Лес, 60 деревьев')
+    forest_spread = stability['Лес, 60 деревьев'].max() - stability['Лес, 60 деревьев'].min()
+    print(stability.round(0))
+    print(winners, forest_wins, round(forest_spread))
+  explanation: |
+    - `idxmin(axis=1)` ищет минимум в каждой **строке** — лучшую модель для каждого разбиения.
+    - Лес выигрывает на всех трёх разбиениях, хотя его собственная MAE гуляет на ≈ 73 евро (от ≈ 2 600 до ≈ 2 673). Разница между лесом и kNN (≈ 40–110 евро) меняется, но знак у неё один и тот же — это и есть устойчивый выбор.
+    - Если бы победители менялись от разбиения к разбиению, различие было бы на уровне шума. Кросс-валидация (урок 6.8) делает такую проверку систематически.
+  hints:
+    - "Разбиение остатка — `train_test_split(X_temp, y_temp, test_size=0.25, random_state=seed)`."
+    - "Ошибка модели — `mean_absolute_error(yva, model.fit(Xtr, ytr).predict(Xva))`."
+    - "Лучшая в каждой строке — `stability.idxmin(axis=1)`; число побед — `winners.count('Лес, 60 деревьев')`."
+  tests: |
+    import pandas as pd
+    s = var('stability', pd.DataFrame, 'таблицей DataFrame')
+    ensure(list(s.index) == ref('seeds') and list(s.columns) == list(ref('top')), 'Строки `stability` — seeds, колонки — имена моделей из `top`.')
+    same_frame(s.astype(float), ref('stability').astype(float), 'Ошибки не совпадают: для каждого seed — `train_test_split(X_temp, y_temp, test_size=0.25, random_state=seed)`, ошибка на этой validation.')
+    w = [str(v) for v in var('winners', list, 'списком')]
+    if w == [str(v) for v in ref('stability').idxmax(axis=1)]:
+        fail('Это худшие модели. Лучшая — с наименьшей ошибкой: `idxmin(axis=1)`.')
+    equal(w, [str(v) for v in ref('winners')], 'Победители по разбиениям — {expected}, а у вас {actual}.')
+    equal(var('forest_wins', 'number', 'числом'), ref('forest_wins'), 'Лес выиграл {expected} раз, а у вас {actual}.')
+    close(var('forest_spread', 'number', 'числом'), ref('forest_spread'), 'Размах MAE леса — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        rows = []
+        for seed in seeds:
+            Xtr, Xva, ytr, yva = train_test_split(X_temp, y_temp, test_size=0.25, random_state=seed)
+            rows.append({name: mean_absolute_error(yva, model.fit(Xtr, ytr).predict(Xva)) for name, model in top.items()})
+        stability = pd.DataFrame(rows, index=seeds)
+        winners = list(stability.idxmax(axis=1))
+        forest_wins = winners.count('Лес, 60 деревьев')
+        forest_spread = stability['Лес, 60 деревьев'].max() - stability['Лес, 60 деревьев'].min()
+      expect: худшие модели
+    - code: |
+        rows = []
+        for seed in seeds:
+            Xtr, Xva, ytr, yva = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+            rows.append({name: mean_absolute_error(yva, model.fit(Xtr, ytr).predict(Xva)) for name, model in top.items()})
+        stability = pd.DataFrame(rows, index=seeds)
+        winners = list(stability.idxmin(axis=1))
+        forest_wins = winners.count('Лес, 60 деревьев')
+        forest_spread = stability['Лес, 60 деревьев'].max() - stability['Лес, 60 деревьев'].min()
+      expect: "random_state=seed"

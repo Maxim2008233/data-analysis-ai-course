@@ -1,0 +1,518 @@
+- id: b1-l5-t1
+  title: Ближайший центр
+  difficulty: warmup
+  introduces: [k-means]
+  uses: [standard-scaler]
+  statement: |
+    Напишите функцию `assign(X, centers)` без циклов: для каждой строки `X` — номер ближайшего центра по обычному (евклидову) расстоянию. Расстояния до всех центров сразу дают разности `X[:, None, :] - centers[None, :, :]`.
+
+    Для 300 машин `P` (стандартизованные год и логарифм цены) и начальных центров `centers0` получите `labels0` — номера ближайших центров и `sizes0` — список размеров трёх групп.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.preprocessing import StandardScaler
+    cars = pd.read_csv('cars_processed.csv')
+    cars['logPrice'] = np.log(cars['Price'])
+    Xs = StandardScaler().fit_transform(cars[['Year', 'Distance', 'Engine', 'logPrice', 'km_year']].to_numpy(dtype=float))
+    rng = np.random.default_rng(1)
+    P = Xs[rng.choice(len(Xs), 300, replace=False)][:, [0, 3]]
+    centers0 = P[rng.choice(len(P), 3, replace=False)]
+  starter: |
+    def assign(X, centers):
+        d = ((X[:, None, :] - centers[None, :, :]) ** 2).sum(axis=...)
+        return d.argmin(axis=...)
+
+    labels0 = assign(P, centers0)
+    sizes0 = [int((labels0 == k).sum()) for k in range(3)]
+    print(sizes0)
+  solution: |
+    def assign(X, centers):
+        d = ((X[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2)
+        return d.argmin(axis=1)
+
+    labels0 = assign(P, centers0)
+    sizes0 = [int((labels0 == k).sum()) for k in range(3)]
+    print(sizes0)
+  explanation: |
+    - `X[:, None, :] - centers[None, :, :]` — массив 300 × 3 × 2: разность каждой машины с каждым центром по каждому признаку (broadcasting, урок 1.10).
+    - Сумма квадратов по последней оси (`axis=2`) — квадрат расстояния до каждого центра; `argmin(axis=1)` — номер ближайшего. Корень не нужен: он не меняет порядка расстояний.
+    - Это первый шаг k-means. Размеры групп после него неравные — центры выбраны случайно. Следующие шаги их поправят.
+  hints:
+    - "Сумма квадратов — по оси признаков, последней: `axis=2`."
+    - "Ближайший центр — минимум по оси центров: `d.argmin(axis=1)`."
+    - "Квадратный корень не нужен — он не меняет, какой центр ближе."
+  tests: |
+    import numpy as np
+    f = var('assign')
+    ensure(callable(f), '`assign` должна быть функцией.')
+    X = np.array([[0.0, 0.0], [1.0, 0.0], [9.0, 9.0], [10.0, 9.5]])
+    C = np.array([[10.0, 10.0], [0.0, 0.0]])
+    got = np.asarray(f(X, C))
+    ensure(got.shape == (4,), 'Нужен один номер центра на каждую строку X — массив длины 4, а у вас форма {0}.'.format(got.shape))
+    equal([int(v) for v in got], [1, 1, 0, 0], 'Для точек (0,0), (1,0), (9,9), (10,9.5) и центров (10,10), (0,0) номера — [1, 1, 0, 0], а у вас {actual}.')
+    equal(var('sizes0', list, 'списком'), ref('sizes0'), 'Размеры групп после первого назначения — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def assign(X, centers):
+            d = ((X[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2)
+            return d.argmin(axis=0)
+        labels0 = assign(P, centers0)
+        sizes0 = [int((labels0 == k).sum()) for k in range(3)]
+      expect: один номер центра на каждую строку
+    - code: |
+        def assign(X, centers):
+            d = ((X[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2)
+            return d.argmax(axis=1)
+        labels0 = assign(P, centers0)
+        sizes0 = [int((labels0 == k).sum()) for k in range(3)]
+      expect: "[1, 1, 0, 0]"
+
+- id: b1-l5-t2
+  title: Пересчёт центров и сходимость
+  difficulty: main
+  introduces: []
+  uses: [k-means]
+  statement: |
+    1. Напишите функцию `update(X, labels, k)` — массив k центров: центр j — среднее строк `X` с меткой j.
+    2. Напишите функцию `run_kmeans(X, centers, max_iter=100)`: повторять «назначить ближайшим (`assign` уже есть) → пересчитать центры», пока центры меняются (`np.allclose`), но не больше `max_iter` раз. Функция возвращает `(centers, labels, steps)`, где `steps` — сколько раз выполнялось назначение.
+
+    Запустите её на `P` от `centers0` и сравните с scikit-learn: `KMeans(n_clusters=3, init=centers0, n_init=1, tol=0)` проходит тот же путь. `tol=0` — останавливаться только тогда, когда назначения перестали меняться, как в вашем цикле. Получите `steps`, `my_inertia` — инерцию своего решения и `sk_inertia` — инерцию решения sklearn.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.cluster import KMeans
+    cars = pd.read_csv('cars_processed.csv')
+    cars['logPrice'] = np.log(cars['Price'])
+    Xs = StandardScaler().fit_transform(cars[['Year', 'Distance', 'Engine', 'logPrice', 'km_year']].to_numpy(dtype=float))
+    rng = np.random.default_rng(1)
+    P = Xs[rng.choice(len(Xs), 300, replace=False)][:, [0, 3]]
+    centers0 = P[rng.choice(len(P), 3, replace=False)]
+
+    def assign(X, centers):
+        return ((X[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2).argmin(axis=1)
+  starter: |
+    def update(X, labels, k):
+        return np.array([... for j in range(k)])
+
+    def run_kmeans(X, centers, max_iter=100):
+        for steps in range(1, max_iter + 1):
+            labels = assign(X, centers)
+            new = update(X, labels, len(centers))
+            if np.allclose(new, centers):
+                break
+            centers = new
+        return centers, labels, steps
+
+    centers, labels, steps = run_kmeans(P, centers0)
+    my_inertia = float(((P - centers[labels]) ** 2).sum())
+    sk = KMeans(n_clusters=3, init=centers0, n_init=1, tol=0).fit(P)
+    sk_inertia = float(sk.inertia_)
+    print(steps, round(my_inertia, 2), round(sk_inertia, 2))
+  solution: |
+    def update(X, labels, k):
+        return np.array([X[labels == j].mean(axis=0) for j in range(k)])
+
+    def run_kmeans(X, centers, max_iter=100):
+        for steps in range(1, max_iter + 1):
+            labels = assign(X, centers)
+            new = update(X, labels, len(centers))
+            if np.allclose(new, centers):
+                break
+            centers = new
+        return centers, labels, steps
+
+    centers, labels, steps = run_kmeans(P, centers0)
+    my_inertia = float(((P - centers[labels]) ** 2).sum())
+    sk = KMeans(n_clusters=3, init=centers0, n_init=1, tol=0).fit(P)
+    sk_inertia = float(sk.inertia_)
+    print(steps, round(my_inertia, 2), round(sk_inertia, 2))
+  explanation: |
+    - `X[labels == j].mean(axis=0)` — среднее по строкам кластера j для каждого признака. Среднее — точка, для которой сумма квадратов расстояний до своих объектов наименьшая. Поэтому пересчёт центров не увеличивает инерцию.
+    - Цикл останавливается, когда центры перестают двигаться. Здесь это 14 назначений, а последние шаги почти ничего не меняют.
+    - `centers[labels]` — центр каждой машины, а инерция — сумма квадратов расстояний до них. Своё решение совпало с решением sklearn: от тех же начальных центров алгоритм Ллойда проходит тот же путь.
+  hints:
+    - "Центр кластера j — `X[labels == j].mean(axis=0)`."
+    - "Остальное в заготовке: цикл повторяет назначение и пересчёт, пока центры меняются."
+    - "Инерция уже считается в заготовке по `centers[labels]`."
+  tests: |
+    import numpy as np
+    f = var('update')
+    ensure(callable(f), '`update` должна быть функцией.')
+    X = np.array([[0.0, 0.0], [2.0, 0.0], [10.0, 10.0], [12.0, 14.0]])
+    got = np.asarray(f(X, np.array([0, 0, 1, 1]), 2))
+    same_array(got, [[1.0, 0.0], [11.0, 12.0]], 'Центры групп {(0,0), (2,0)} и {(10,10), (12,14)} — (1, 0) и (11, 12): среднее по строкам, axis=0.')
+    st = var('steps', 'int', 'целым числом')
+    equal(int(st), int(ref('steps')), 'Назначений до остановки — {expected}, а у вас {actual}.')
+    mi = var('my_inertia', 'number', 'числом')
+    close(mi, ref('my_inertia'), 'Инерция своего решения — {expected}, а у вас {actual}.')
+    close(mi, var('sk_inertia', 'number', 'числом'), 'Своё решение должно совпасть с KMeans от тех же центров: у sklearn {expected}, у вас {actual}.', rtol=1e-6)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def update(X, labels, k):
+            return np.array([X.mean(axis=0) for j in range(k)])
+        def run_kmeans(X, centers, max_iter=100):
+            for steps in range(1, max_iter + 1):
+                labels = assign(X, centers)
+                new = update(X, labels, len(centers))
+                if np.allclose(new, centers):
+                    break
+                centers = new
+            return centers, labels, steps
+        centers, labels, steps = run_kmeans(P, centers0)
+        my_inertia = float(((P - centers[labels]) ** 2).sum())
+        sk = KMeans(n_clusters=3, init=centers0, n_init=1, tol=0).fit(P)
+        sk_inertia = float(sk.inertia_)
+      expect: среднее по строкам
+    - code: |
+        def update(X, labels, k):
+            return np.array([X[labels == j].mean(axis=0) for j in range(k)])
+        def run_kmeans(X, centers, max_iter=100):
+            for steps in range(1, max_iter + 1):
+                labels = assign(X, centers)
+                new = update(X, labels, len(centers))
+                if np.allclose(new, centers):
+                    break
+                centers = new
+            return centers, labels, steps
+        centers, labels, steps = run_kmeans(P, centers0, max_iter=3)
+        my_inertia = float(((P - centers[labels]) ** 2).sum())
+        sk = KMeans(n_clusters=3, init=centers0, n_init=1, tol=0).fit(P)
+        sk_inertia = float(sk.inertia_)
+      expect: Назначений до остановки
+
+- id: b1-l5-t3
+  title: Сегменты рынка
+  difficulty: main
+  introduces: []
+  uses: [k-means, standard-scaler]
+  statement: |
+    Разбейте все машины на четыре кластера: `KMeans(n_clusters=4, n_init=10, random_state=0)` на стандартизованных признаках `Xs`. Получите:
+
+    - `sizes` — размеры кластеров по убыванию;
+    - `profile` — таблицу медиан `Year`, `Price`, `Distance` и доли автоматов `AutoTransmission` по кластерам (`groupby` по меткам);
+    - `premium` — номер кластера с наибольшей медианной ценой, `premium_auto` — доля автоматов в нём;
+    - `cheap_auto` — доля автоматов в кластере с наименьшей медианной ценой.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.cluster import KMeans
+    cars = pd.read_csv('cars_processed.csv')
+    cars['logPrice'] = np.log(cars['Price'])
+    cols = ['Year', 'Distance', 'Engine', 'logPrice', 'km_year']
+    Xs = StandardScaler().fit_transform(cars[cols].to_numpy(dtype=float))
+  starter: |
+    km = KMeans(n_clusters=4, n_init=10, random_state=0).fit(Xs)
+    sizes = sorted(np.bincount(km.labels_).tolist(), reverse=True)
+    profile = cars.assign(cluster=km.labels_).groupby('cluster').agg(
+        year=('Year', 'median'), price=('Price', 'median'), distance=('Distance', 'median'), auto=('AutoTransmission', 'mean'))
+    premium = int(profile['price'].idxmax())
+    premium_auto = ...
+    cheap_auto = ...
+    print(sizes)
+    print(profile.round(2))
+    print(premium, round(premium_auto, 3), round(cheap_auto, 3))
+  solution: |
+    km = KMeans(n_clusters=4, n_init=10, random_state=0).fit(Xs)
+    sizes = sorted(np.bincount(km.labels_).tolist(), reverse=True)
+    profile = cars.assign(cluster=km.labels_).groupby('cluster').agg(
+        year=('Year', 'median'), price=('Price', 'median'), distance=('Distance', 'median'), auto=('AutoTransmission', 'mean'))
+    premium = int(profile['price'].idxmax())
+    premium_auto = float(profile.loc[premium, 'auto'])
+    cheap_auto = float(profile.loc[profile['price'].idxmin(), 'auto'])
+    print(sizes)
+    print(profile.round(2))
+    print(premium, round(premium_auto, 3), round(cheap_auto, 3))
+  explanation: |
+    - `np.bincount(km.labels_)` считает машины в каждом кластере, `sorted(..., reverse=True)` — по убыванию. Номера кластеров произвольны, поэтому сравнивать надо размеры и профили, а не номера.
+    - Профиль — медианы признаков по кластерам. Медиана, а не среднее: у цены и пробега длинные хвосты.
+    - В сегменте «новые дорогие» 88 % автоматов, в самом дешёвом — 14 %. Коробку передач кластеризация не видела, но сегменты с ней связаны — как первая главная компонента в уроке Б.4.
+  hints:
+    - "Строка таблицы по номеру кластера — `profile.loc[premium, 'auto']`."
+    - "Самый дешёвый кластер — `profile['price'].idxmin()`."
+    - "`cheap_auto = float(profile.loc[profile['price'].idxmin(), 'auto'])`."
+  tests: |
+    equal([int(v) for v in var('sizes', list, 'списком')], [int(v) for v in ref('sizes')], 'Размеры кластеров по убыванию — {expected}, а у вас {actual}.')
+    pr = var('profile')
+    same_frame(pr, ref('profile'), 'Профиль кластеров не совпадает с ожидаемым.')
+    pa = var('premium_auto', 'number', 'числом')
+    close(pa, ref('premium_auto'), 'Доля автоматов в самом дорогом сегменте — {expected}, а у вас {actual}.')
+    close(var('cheap_auto', 'number', 'числом'), ref('cheap_auto'), 'Доля автоматов в самом дешёвом сегменте — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        km = KMeans(n_clusters=4, n_init=10, random_state=0).fit(Xs)
+        sizes = sorted(np.bincount(km.labels_).tolist(), reverse=True)
+        profile = cars.assign(cluster=km.labels_).groupby('cluster').agg(
+            year=('Year', 'median'), price=('Price', 'median'), distance=('Distance', 'median'), auto=('AutoTransmission', 'mean'))
+        premium = int(profile['price'].idxmax())
+        premium_auto = float(profile.loc[premium, 'auto'])
+        cheap_auto = float(profile.loc[profile['price'].idxmin(), 'price'])
+      expect: в самом дешёвом сегменте
+    - code: |
+        km = KMeans(n_clusters=4, n_init=10, random_state=0).fit(cars[cols].to_numpy(dtype=float))
+        sizes = sorted(np.bincount(km.labels_).tolist(), reverse=True)
+        profile = cars.assign(cluster=km.labels_).groupby('cluster').agg(
+            year=('Year', 'median'), price=('Price', 'median'), distance=('Distance', 'median'), auto=('AutoTransmission', 'mean'))
+        premium = int(profile['price'].idxmax())
+        premium_auto = float(profile.loc[premium, 'auto'])
+        cheap_auto = float(profile.loc[profile['price'].idxmin(), 'auto'])
+      expect: Размеры кластеров
+
+- id: b1-l5-t4
+  title: Инерция и локоть
+  difficulty: main
+  introduces: [cluster-count]
+  uses: [k-means]
+  statement: |
+    1. Напишите функцию `inertia(X, labels, centers)` — сумму квадратов расстояний объектов до центров их кластеров.
+    2. Для k от 1 до 8 обучите `KMeans(n_clusters=k, n_init=10, random_state=0)` на `Xs` и соберите `inertias` своей функцией (по `labels_` и `cluster_centers_`).
+    3. `drops` — относительное падение инерции при переходе k → k + 1: (I_k − I_{k+1}) / I_k.
+    4. `k_elbow` — первое k, после которого падение меньше 15 %.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.cluster import KMeans
+    cars = pd.read_csv('cars_processed.csv')
+    cars['logPrice'] = np.log(cars['Price'])
+    Xs = StandardScaler().fit_transform(cars[['Year', 'Distance', 'Engine', 'logPrice', 'km_year']].to_numpy(dtype=float))
+  starter: |
+    def inertia(X, labels, centers):
+        return float(...)
+
+    inertias = []
+    for k in range(1, 9):
+        km = KMeans(n_clusters=k, n_init=10, random_state=0).fit(Xs)
+        inertias.append(inertia(Xs, km.labels_, km.cluster_centers_))
+    drops = -np.diff(inertias) / np.array(inertias[:-1])
+    k_elbow = ...
+    print(np.round(inertias), np.round(drops, 3), k_elbow)
+  solution: |
+    def inertia(X, labels, centers):
+        return float(((X - centers[labels]) ** 2).sum())
+
+    inertias = []
+    for k in range(1, 9):
+        km = KMeans(n_clusters=k, n_init=10, random_state=0).fit(Xs)
+        inertias.append(inertia(Xs, km.labels_, km.cluster_centers_))
+    drops = -np.diff(inertias) / np.array(inertias[:-1])
+    k_elbow = int(np.argmax(drops < 0.15)) + 1
+    print(np.round(inertias), np.round(drops, 3), k_elbow)
+  explanation: |
+    - `centers[labels]` ставит каждому объекту центр его кластера; сумма квадратов разностей — инерция. Она совпадает с `inertia_` из sklearn.
+    - `drops[i]` — падение при переходе от k = i + 1 к k = i + 2. `np.argmax(drops < 0.15)` — первая позиция, где условие выполнено, а `+ 1` переводит её в k.
+    - Падения: 27,5 %, 15,3 %, 14,97 %, 12,6 %, 12,2 %, 7,0 %, 6,8 %. Правило «меньше 15 %» даёт k = 3: падение от 3 к 4 кластерам на волосок ниже порога. Правило «меньше 10 %» дало бы 6. Порог — договорённость. На размытом локте k выбирают по смыслу сегментов, а инерцию используют как подсказку.
+  hints:
+    - "Центр каждого объекта — `centers[labels]`; инерция — `((X - centers[labels]) ** 2).sum()`."
+    - "Первое падение меньше 15 % — `np.argmax(drops < 0.15)`; это номер позиции, k на единицу больше."
+    - "`k_elbow = int(np.argmax(drops < 0.15)) + 1`."
+  tests: |
+    import numpy as np
+    f = var('inertia')
+    ensure(callable(f), '`inertia` должна быть функцией.')
+    X = np.array([[0.0, 0.0], [4.0, 0.0], [10.0, 10.0]])
+    got = f(X, np.array([0, 0, 1]), np.array([[2.0, 0.0], [10.0, 10.0]]))
+    if abs(got - 4.0) < 1e-9 or abs(got - 8.0 / 3) < 1e-9:
+        fail('Инерция — сумма квадратов расстояний, без корня и без деления на число объектов. Для точек (0,0), (4,0) с центром (2,0) и точки (10,10) в своём центре — 4 + 4 + 0 = 8.')
+    close(got, 8.0, 'Для точек (0,0), (4,0) с центром (2,0) и точки (10,10) с центром в ней инерция — 4 + 4 + 0 = 8, а у вас {actual}.')
+    same_array(np.asarray(var('inertias'), dtype=float), np.asarray(ref('inertias'), dtype=float), 'Инерции для k = 1…8 не совпадают с ожидаемыми.')
+    same_array(np.asarray(var('drops'), dtype=float), np.asarray(ref('drops'), dtype=float), 'Относительные падения не совпадают с ожидаемыми.')
+    ke = var('k_elbow', 'int', 'целым числом')
+    if int(ke) == int(ref('k_elbow')) - 1:
+        fail('Это номер позиции в drops. k на единицу больше: drops[0] — переход от k = 1 к k = 2.')
+    equal(int(ke), int(ref('k_elbow')), 'Первое k, после которого падение меньше 15 %, — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def inertia(X, labels, centers):
+            return float(np.sqrt(((X - centers[labels]) ** 2).sum(axis=1)).sum())
+        inertias = []
+        for k in range(1, 9):
+            km = KMeans(n_clusters=k, n_init=10, random_state=0).fit(Xs)
+            inertias.append(inertia(Xs, km.labels_, km.cluster_centers_))
+        drops = -np.diff(inertias) / np.array(inertias[:-1])
+        k_elbow = int(np.argmax(drops < 0.15)) + 1
+      expect: без корня
+    - code: |
+        def inertia(X, labels, centers):
+            return float(((X - centers[labels]) ** 2).sum())
+        inertias = []
+        for k in range(1, 9):
+            km = KMeans(n_clusters=k, n_init=10, random_state=0).fit(Xs)
+            inertias.append(inertia(Xs, km.labels_, km.cluster_centers_))
+        drops = -np.diff(inertias) / np.array(inertias[:-1])
+        k_elbow = int(np.argmax(drops < 0.15))
+      expect: номер позиции
+
+- id: b1-l5-t5
+  title: Масштаб решает
+  difficulty: main
+  introduces: []
+  uses: [k-means, standard-scaler]
+  statement: |
+    Насколько кластеры различаются по каждому признаку, показывает доля разброса признака, объяснённая кластерами: R² = 1 − (сумма квадратов отклонений от средних своих кластеров) / (сумма квадратов отклонений от общего среднего).
+
+    1. Напишите функцию `explained_by_clusters(values, labels)` — R² одного признака для разбиения `labels`.
+    2. Обучите `KMeans(n_clusters=4, n_init=10, random_state=0)` дважды: на сырых признаках `raw` и на стандартизованных `Xs`. Получите `r2_raw` и `r2_std` — словари «признак → R²» для каждого разбиения (признаки в исходных единицах, `cars[cols]`).
+    3. `raw_main` — признак с наибольшим R² у разбиения по сырым признакам.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.cluster import KMeans
+    cars = pd.read_csv('cars_processed.csv')
+    cars['logPrice'] = np.log(cars['Price'])
+    cols = ['Year', 'Distance', 'Engine', 'logPrice', 'km_year']
+    raw = cars[cols].to_numpy(dtype=float)
+    Xs = StandardScaler().fit_transform(raw)
+  starter: |
+    def explained_by_clusters(values, labels):
+        values = np.asarray(values, dtype=float)
+        means = pd.Series(values).groupby(labels).transform('mean').to_numpy()
+        within = ((values - means) ** 2).sum()
+        total = ...
+        return float(1 - within / total)
+
+    lab_raw = KMeans(n_clusters=4, n_init=10, random_state=0).fit(raw).labels_
+    lab_std = KMeans(n_clusters=4, n_init=10, random_state=0).fit(Xs).labels_
+    r2_raw = {c: explained_by_clusters(cars[c], lab_raw) for c in cols}
+    r2_std = ...
+    raw_main = max(r2_raw, key=r2_raw.get)
+    print({c: round(v, 2) for c, v in r2_raw.items()})
+    print({c: round(v, 2) for c, v in r2_std.items()}, raw_main)
+  solution: |
+    def explained_by_clusters(values, labels):
+        values = np.asarray(values, dtype=float)
+        means = pd.Series(values).groupby(labels).transform('mean').to_numpy()
+        within = ((values - means) ** 2).sum()
+        total = ((values - values.mean()) ** 2).sum()
+        return float(1 - within / total)
+
+    lab_raw = KMeans(n_clusters=4, n_init=10, random_state=0).fit(raw).labels_
+    lab_std = KMeans(n_clusters=4, n_init=10, random_state=0).fit(Xs).labels_
+    r2_raw = {c: explained_by_clusters(cars[c], lab_raw) for c in cols}
+    r2_std = {c: explained_by_clusters(cars[c], lab_std) for c in cols}
+    raw_main = max(r2_raw, key=r2_raw.get)
+    print({c: round(v, 2) for c, v in r2_raw.items()})
+    print({c: round(v, 2) for c, v in r2_std.items()}, raw_main)
+  explanation: |
+    - `groupby(labels).transform('mean')` ставит каждой машине среднее её кластера (урок 3.6). Отклонения от него — разброс внутри кластеров, отклонения от общего среднего — весь разброс.
+    - Без стандартизации кластеры объясняют 84 % разброса пробега и от 2 до 24 % у остальных признаков: алгоритм нарезал машины по километрам. Со стандартизацией объяснено от 27 до 60 % у каждого признака — кластеры описывают машину целиком.
+    - R² по признакам — простой способ понять, чем различаются кластеры. Это тот же коэффициент детерминации из урока 5.8, где «прогноз» — среднее своего кластера.
+  hints:
+    - "Весь разброс — отклонения от общего среднего: `((values - values.mean()) ** 2).sum()`."
+    - "Для стандартизованного разбиения — те же признаки, но метки `lab_std`."
+    - "`r2_std = {c: explained_by_clusters(cars[c], lab_std) for c in cols}`."
+  tests: |
+    import numpy as np
+    f = var('explained_by_clusters')
+    ensure(callable(f), '`explained_by_clusters` должна быть функцией.')
+    close(f(np.array([1.0, 3.0, 10.0, 12.0]), np.array([0, 0, 1, 1])), 1 - 4 / 85, 'Для [1, 3, 10, 12] и меток [0, 0, 1, 1]: внутри 1+1+1+1 = 4, всего 85 — R² = {expected}, а у вас {actual}.')
+    close(f(np.array([1.0, 3.0, 10.0, 12.0]), np.array([0, 1, 0, 1])), 1 - 81 / 85, 'Для меток [0, 1, 0, 1] кластеры почти ничего не объясняют: R² = {expected}, а у вас {actual}.')
+    rr = var('r2_raw', dict, 'словарём')
+    rs = var('r2_std', dict, 'словарём')
+    for c in ref('cols'):
+        close(rr[c], ref('r2_raw')[c], 'R² признака ' + c + ' для разбиения по сырым признакам — {expected}, а у вас {actual}.')
+        close(rs[c], ref('r2_std')[c], 'R² признака ' + c + ' для разбиения по стандартизованным — {expected}, а у вас {actual}.')
+    equal(var('raw_main', str, 'строкой'), ref('raw_main'), 'Без стандартизации кластеры различаются прежде всего по {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def explained_by_clusters(values, labels):
+            values = np.asarray(values, dtype=float)
+            means = pd.Series(values).groupby(labels).transform('mean').to_numpy()
+            within = ((values - means) ** 2).sum()
+            total = (values ** 2).sum()
+            return float(1 - within / total)
+        lab_raw = KMeans(n_clusters=4, n_init=10, random_state=0).fit(raw).labels_
+        lab_std = KMeans(n_clusters=4, n_init=10, random_state=0).fit(Xs).labels_
+        r2_raw = {c: explained_by_clusters(cars[c], lab_raw) for c in cols}
+        r2_std = {c: explained_by_clusters(cars[c], lab_std) for c in cols}
+        raw_main = max(r2_raw, key=r2_raw.get)
+      expect: внутри 1+1+1+1
+    - code: |
+        def explained_by_clusters(values, labels):
+            values = np.asarray(values, dtype=float)
+            means = pd.Series(values).groupby(labels).transform('mean').to_numpy()
+            within = ((values - means) ** 2).sum()
+            total = ((values - values.mean()) ** 2).sum()
+            return float(1 - within / total)
+        lab_raw = KMeans(n_clusters=4, n_init=10, random_state=0).fit(raw).labels_
+        lab_std = KMeans(n_clusters=4, n_init=10, random_state=0).fit(Xs).labels_
+        r2_raw = {c: explained_by_clusters(cars[c], lab_raw) for c in cols}
+        r2_std = {c: explained_by_clusters(cars[c], lab_raw) for c in cols}
+        raw_main = max(r2_raw, key=r2_raw.get)
+      expect: по стандартизованным
+
+- id: b1-l5-t6
+  title: Начальные центры
+  difficulty: star
+  introduces: []
+  uses: [k-means]
+  statement: |
+    Проверьте, насколько результат k-means зависит от старта. Для `seed` от 0 до 5 обучите `KMeans(n_clusters=4, n_init=1, init='random', random_state=seed)` на `Xs` и соберите инерции в `random_inertias`. Получите:
+
+    - `best`, `worst` — наименьшую и наибольшую из них;
+    - `n_stuck` — сколько запусков дали инерцию больше `best` более чем на 1 %;
+    - `pp_inertia` — инерцию `KMeans(n_clusters=4, n_init=10, random_state=0)` с инициализацией по умолчанию (k-means++);
+    - `pp_gap` — на сколько процентов `pp_inertia` больше `best` (может быть и 0).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.cluster import KMeans
+    cars = pd.read_csv('cars_processed.csv')
+    cars['logPrice'] = np.log(cars['Price'])
+    Xs = StandardScaler().fit_transform(cars[['Year', 'Distance', 'Engine', 'logPrice', 'km_year']].to_numpy(dtype=float))
+  starter: |
+    random_inertias = [float(KMeans(n_clusters=4, n_init=1, init='random', random_state=s).fit(Xs).inertia_) for s in range(6)]
+    best, worst = min(random_inertias), max(random_inertias)
+    n_stuck = ...
+    pp_inertia = float(KMeans(n_clusters=4, n_init=10, random_state=0).fit(Xs).inertia_)
+    pp_gap = ...
+    print(round(best), round(worst), n_stuck, round(pp_inertia), round(pp_gap, 3))
+  solution: |
+    random_inertias = [float(KMeans(n_clusters=4, n_init=1, init='random', random_state=s).fit(Xs).inertia_) for s in range(6)]
+    best, worst = min(random_inertias), max(random_inertias)
+    n_stuck = sum(v > best * 1.01 for v in random_inertias)
+    pp_inertia = float(KMeans(n_clusters=4, n_init=10, random_state=0).fit(Xs).inertia_)
+    pp_gap = (pp_inertia - best) / best * 100
+    print(round(best), round(worst), n_stuck, round(pp_inertia), round(pp_gap, 3))
+  explanation: |
+    - Каждый запуск с одного случайного старта доходит до ближайшего локального минимума инерции. Большинство запусков приходят почти в одну точку, но часть застревает — с инерцией на пару процентов хуже. Это другое, худшее разбиение машин.
+    - k-means++ выбирает начальные центры подальше друг от друга, а 10 запусков с выбором лучшего почти всегда находят лучшее решение. Здесь его инерция практически совпадает с лучшей из случайных.
+    - Поэтому `n_init=1` с `init='random'` годится только для учебных примеров. В работе оставляют значения по умолчанию или увеличивают `n_init`.
+  hints:
+    - "Застрявшие запуски — `sum(v > best * 1.01 for v in random_inertias)`."
+    - "Разница в процентах — `(pp_inertia - best) / best * 100`."
+    - "Список инерций и `best`, `worst` уже собраны в заготовке."
+  tests: |
+    close(var('best', 'number', 'числом'), ref('best'), 'Лучшая инерция — {expected}, а у вас {actual}.')
+    close(var('worst', 'number', 'числом'), ref('worst'), 'Худшая инерция — {expected}, а у вас {actual}.')
+    ns = var('n_stuck', 'int', 'целым числом')
+    equal(int(ns), int(ref('n_stuck')), 'Застрявших запусков — {expected}, а у вас {actual}. Застрявший — инерция больше best · 1.01.')
+    close(var('pp_inertia', 'number', 'числом'), ref('pp_inertia'), 'Инерция k-means++ с 10 запусками — {expected}, а у вас {actual}.')
+    pg = var('pp_gap', 'number', 'числом')
+    if abs(pg - ref('pp_gap') / 100) < 1e-12 and abs(ref('pp_gap')) > 1e-9:
+        fail('Разница нужна в процентах: умножьте на 100.')
+    close(pg, ref('pp_gap'), 'Разница с лучшим случайным запуском — {expected} %, а у вас {actual}.', atol=1e-6)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        random_inertias = [float(KMeans(n_clusters=4, n_init=1, init='random', random_state=s).fit(Xs).inertia_) for s in range(6)]
+        best, worst = min(random_inertias), max(random_inertias)
+        n_stuck = sum(v > best for v in random_inertias)
+        pp_inertia = float(KMeans(n_clusters=4, n_init=10, random_state=0).fit(Xs).inertia_)
+        pp_gap = (pp_inertia - best) / best * 100
+      expect: Застрявших запусков
+    - code: |
+        random_inertias = [float(KMeans(n_clusters=4, n_init=1, init='random', random_state=s).fit(Xs).inertia_) for s in range(6)]
+        best, worst = min(random_inertias), max(random_inertias)
+        n_stuck = sum(v > best * 1.01 for v in random_inertias)
+        pp_inertia = float(KMeans(n_clusters=4, n_init=1, init='random', random_state=0).fit(Xs).inertia_)
+        pp_gap = (pp_inertia - best) / best * 100
+      expect: Инерция k-means++

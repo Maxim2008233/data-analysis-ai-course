@@ -1,0 +1,414 @@
+- id: m9-l7-t1
+  title: Zero-shot одной строкой
+  difficulty: warmup
+  introduces: [zero-shot]
+  uses: [hf-pipeline]
+  statement: |
+    Создайте `clip` — pipeline `'zero-shot-image-classification'` с моделью `'openai/clip-vit-base-patch32'`. Напишите функцию `best_class(image_id, labels)` — подпись-кандидат с наибольшей вероятностью для картинки. Для картинки `'245.jpg'` и кандидатов `cands` получите:
+
+    - `ranking` — список кандидатов в порядке ответа pipeline (по убыванию вероятности);
+    - `best_label` и `best_score` — лучший кандидат и его вероятность.
+  prelude: |
+    from transformers import pipeline
+    cands = ['tiramisu', 'pizza', 'sushi', 'ramen', 'poutine']
+  starter: |
+    clip = pipeline(...)
+
+    def best_class(image_id, labels):
+        return ...
+
+    result = clip('245.jpg', candidate_labels=cands)
+    ranking = ...
+    best_label = ...
+    best_score = ...
+    print(ranking, best_label, round(best_score, 4))
+  solution: |
+    clip = pipeline('zero-shot-image-classification', model='openai/clip-vit-base-patch32')
+
+    def best_class(image_id, labels):
+        return clip(image_id, candidate_labels=labels)[0]['label']
+
+    result = clip('245.jpg', candidate_labels=cands)
+    ranking = [r['label'] for r in result]
+    best_label = result[0]['label']
+    best_score = result[0]['score']
+    print(ranking, best_label, round(best_score, 4))
+  explanation: |
+    - Pipeline возвращает список словарей `{'score': ..., 'label': ...}`, уже отсортированный по убыванию вероятности. Лучший кандидат — первый.
+    - Картинка 245.jpg — тирамису, и модель уверена в этом на 99,996 %. Тирамису ей никто не показывал: хватило названия.
+    - Вероятности делятся только между переданными кандидатами. Добавьте «chocolate cake» — и у тирамису вероятность упадёт.
+  hints:
+    - "`pipeline('zero-shot-image-classification', model='openai/clip-vit-base-patch32')`."
+    - "Лучший кандидат — первый словарь ответа: `clip(image_id, candidate_labels=labels)[0]['label']`."
+    - "Порядок кандидатов — `[r['label'] for r in result]`."
+  tests: |
+    f = var('best_class')
+    ensure(callable(f), '`best_class` должна быть функцией.')
+    g = ref('best_class')
+    for img, labels in [('121.jpg', ['pizza', 'sushi', 'ramen']), ('334.jpg', ['umbrella', 'airplanes', 'grand_piano']), ('541.jpg', ['panthera-leo', 'ursus-maritimus', 'bos-gaurus'])]:
+        equal(f(img, labels), g(img, labels), 'Для картинки ' + img + ' с кандидатами ' + str(labels) + ' лучший — {expected}, а `best_class` вернула {actual}.')
+    equal(list(var('ranking', list, 'списком')), list(ref('ranking')), 'Порядок кандидатов — {expected}, а у вас {actual}.')
+    equal(var('best_label', str, 'строкой'), ref('best_label'), 'Лучший кандидат — {expected}, а у вас {actual}.')
+    close(var('best_score', 'number', 'числом'), ref('best_score'), 'Вероятность лучшего — {expected}, а у вас {actual}.')
+  files: [zs_public.csv, zs_public.npy, zs_prompts.npz]
+  wrong:
+    - code: |
+        clip = pipeline('zero-shot-image-classification', model='openai/clip-vit-base-patch32')
+        def best_class(image_id, labels):
+            return clip(image_id, candidate_labels=labels)[-1]['label']
+        result = clip('245.jpg', candidate_labels=cands)
+        ranking = [r['label'] for r in result]
+        best_label = result[0]['label']
+        best_score = result[0]['score']
+      expect: "`best_class` вернула"
+    - code: |
+        clip = pipeline('zero-shot-image-classification', model='openai/clip-vit-base-patch32')
+        def best_class(image_id, labels):
+            return clip(image_id, candidate_labels=labels)[0]['label']
+        result = clip('245.jpg', candidate_labels=cands)
+        ranking = cands
+        best_label = result[0]['label']
+        best_score = result[0]['score']
+      expect: Порядок кандидатов
+
+- id: m9-l7-t2
+  title: CLIP своими руками
+  difficulty: main
+  introduces: []
+  uses: [zero-shot, cosine-similarity]
+  statement: |
+    Повторите расчёт pipeline векторами. Напишите функцию `my_clip(image_id, labels)`: она находит вектор картинки в `image_emb` (номер строки — как в таблице `images`) и векторы подписей кандидатов в `text_emb` (номер — как в списке `classes`), считает косинусы, умножает на 100 и возвращает softmax — массив вероятностей в порядке `labels`. Получите:
+
+    - `probs = my_clip('191.jpg', cands)`;
+    - `max_diff` — наибольшее расхождение с вероятностями pipeline для тех же кандидатов (`pipe_result`: сопоставьте по меткам).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from transformers import pipeline
+    images = pd.read_csv('zs_public.csv')
+    image_emb = np.load('zs_public.npy').astype(np.float32)
+    with np.load('zs_prompts.npz') as data:
+        is_pipe = data['variant'] == 'pipeline'
+        classes = [str(c) for c in data['class'][is_pipe]]
+        text_emb = data['emb'][is_pipe].astype(np.float32)
+    def softmax(z):
+        e = np.exp(z - z.max(axis=-1, keepdims=True))
+        return e / e.sum(axis=-1, keepdims=True)
+    cands = ['panthera-leo', 'ursus-maritimus', 'pizza', 'airplanes', 'grand_piano']
+    pipe_result = pipeline('zero-shot-image-classification', model='openai/clip-vit-base-patch32')('191.jpg', candidate_labels=cands)
+  starter: |
+    def my_clip(image_id, labels):
+        img = image_emb[images.index[images['ID'] == image_id][0]]
+        T = ...
+        cos = ...
+        return softmax(...)
+
+    probs = my_clip('191.jpg', cands)
+    pipe_probs = {r['label']: r['score'] for r in pipe_result}
+    max_diff = ...
+    print(probs.round(6), max_diff)
+  solution: |
+    def my_clip(image_id, labels):
+        img = image_emb[images.index[images['ID'] == image_id][0]]
+        T = text_emb[[classes.index(c) for c in labels]]
+        cos = T @ img
+        return softmax(100 * cos)
+
+    probs = my_clip('191.jpg', cands)
+    pipe_probs = {r['label']: r['score'] for r in pipe_result}
+    max_diff = max(abs(p - pipe_probs[c]) for c, p in zip(cands, probs))
+    print(probs.round(6), max_diff)
+  explanation: |
+    - `text_emb[[classes.index(c) for c in labels]]` — векторы подписей кандидатов в нужном порядке, `T @ img` — косинусы со всеми кандидатами сразу.
+    - Расчёт совпадает с pipeline: внутри него те же три шага — косинусы, умножение на 100, softmax.
+    - Pipeline сортирует ответ по убыванию вероятности, а ваша функция сохраняет порядок кандидатов. Поэтому сравнивать нужно по меткам, а не по позициям.
+  hints:
+    - "Векторы кандидатов — `text_emb[[classes.index(c) for c in labels]]`."
+    - "Косинусы — `T @ img` (векторы нормированы), вероятности — `softmax(100 * cos)`."
+    - "Расхождение — `max(abs(p - pipe_probs[c]) for c, p in zip(cands, probs))`."
+  tests: |
+    import numpy as np
+    f = var('my_clip')
+    ensure(callable(f), '`my_clip` должна быть функцией.')
+    g = ref('my_clip')
+    for img, labels in [('245.jpg', ['tiramisu', 'pizza', 'sushi']), ('1.jpg', ['Elefante', 'loxodonta-africana', 'panthera-leo', 'pizza'])]:
+        got = np.asarray(f(img, labels), dtype=float)
+        exp = np.asarray(g(img, labels), dtype=float)
+        ensure(got.shape == exp.shape, '`my_clip` должна вернуть по вероятности на каждого кандидата, а вернула форму {0}.'.format(got.shape))
+        if not np.isclose(got.sum(), 1):
+            fail('Вероятности кандидатов должны давать в сумме 1: примените softmax.')
+        same_array(got, exp, 'Для картинки ' + img + ' вероятности неверны. Проверьте, что косинусы умножены на 100 перед softmax.', atol=1e-5)
+    same_array(np.asarray(var('probs'), dtype=float), np.asarray(ref('probs'), dtype=float), '`probs` — `my_clip(\'191.jpg\', cands)`.', atol=1e-5)
+    ensure(var('max_diff', 'number', 'числом') < 1e-5, 'Расхождение с pipeline должно быть почти нулевым. Сравнивайте вероятности по меткам: pipeline сортирует ответ.')
+  files: [zs_public.csv, zs_public.npy, zs_prompts.npz]
+  wrong:
+    - code: |
+        def my_clip(image_id, labels):
+            img = image_emb[images.index[images['ID'] == image_id][0]]
+            T = text_emb[[classes.index(c) for c in labels]]
+            cos = T @ img
+            return softmax(cos)
+        probs = my_clip('191.jpg', cands)
+        pipe_probs = {r['label']: r['score'] for r in pipe_result}
+        max_diff = max(abs(p - pipe_probs[c]) for c, p in zip(cands, probs))
+      expect: умножены на 100
+    - code: |
+        def my_clip(image_id, labels):
+            img = image_emb[images.index[images['ID'] == image_id][0]]
+            T = text_emb[[classes.index(c) for c in labels]]
+            cos = T @ img
+            return softmax(100 * cos)
+        probs = my_clip('191.jpg', cands)
+        max_diff = max(abs(p - r['score']) for p, r in zip(probs, pipe_result[::-1]))
+      expect: почти нулевым
+
+- id: m9-l7-t3
+  title: Базовая точность
+  difficulty: main
+  introduces: []
+  uses: [zero-shot, pd-groupby]
+  statement: |
+    Повторите базовое решение соревнования: кандидаты — все классы, подписи — «This is a photo of {класс}.». Получите:
+
+    - `S` — матрицу косинусов: строки — картинки `images`, столбцы — классы `classes`;
+    - столбцы `images['pred']` (класс с наибольшим косинусом) и `images['correct']`;
+    - `acc` — долю верных ответов;
+    - `acc_big` — Series: долю верных в трёх самых больших группах `group` (Animalia, Dishes, Other).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    images = pd.read_csv('zs_public.csv')
+    image_emb = np.load('zs_public.npy').astype(np.float32)
+    with np.load('zs_prompts.npz') as data:
+        is_pipe = data['variant'] == 'pipeline'
+        classes = [str(c) for c in data['class'][is_pipe]]
+        text_emb = data['emb'][is_pipe].astype(np.float32)
+  starter: |
+    S = ...
+    images['pred'] = ...
+    images['correct'] = ...
+    acc = ...
+    big = ['Animalia', 'Dishes', 'Other']
+    acc_big = ...
+    print(round(acc, 3))
+    print(acc_big.round(3))
+  solution: |
+    S = image_emb @ text_emb.T
+    images['pred'] = np.array(classes)[S.argmax(axis=1)]
+    images['correct'] = images['pred'] == images['class']
+    acc = images['correct'].mean()
+    big = ['Animalia', 'Dishes', 'Other']
+    acc_big = images[images['group'].isin(big)].groupby('group')['correct'].mean()
+    print(round(acc, 3))
+    print(acc_big.round(3))
+  explanation: |
+    - `image_emb @ text_emb.T` — все косинусы сразу: 706 × 349. Номер столбца с наибольшим косинусом в строке — номер класса-ответа.
+    - Доля верных 0,595. Блюда (0,75) и предметы (0,80) с английскими названиями модель узнаёт неплохо, а животных с латинскими названиями — лишь в 40 % случаев.
+    - Для argmax умножать на 100 и применять softmax не нужно: обе операции не меняют, какой косинус больше.
+  hints:
+    - "Все косинусы — `image_emb @ text_emb.T`."
+    - "Ответ — `np.array(classes)[S.argmax(axis=1)]`, верность — сравнение с `images['class']`."
+    - "Три группы — `images[images['group'].isin(big)]`, затем `groupby('group')['correct'].mean()`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    Sm = np.asarray(var('S'), dtype=float)
+    ensure(Sm.shape == ref('S').shape, '`S` — матрица «картинки × классы» формы {0}, а у вас {1}.'.format(ref('S').shape, Sm.shape))
+    same_array(Sm, np.asarray(ref('S'), dtype=float), '`S` — косинусы векторов картинок с векторами подписей.', atol=1e-5)
+    rv = var('images', pd.DataFrame, 'таблицей')
+    ensure('pred' in rv.columns and 'correct' in rv.columns, 'Добавьте в `images` столбцы `pred` и `correct`.')
+    equal(list(rv['pred']), list(ref('images')['pred']), 'Ответы `pred` не совпадают: класс с наибольшим косинусом в строке, `S.argmax(axis=1)`.')
+    close(var('acc', 'number', 'числом'), ref('acc'), 'Доля верных — {expected}, а у вас {actual}.')
+    ab = var('acc_big', pd.Series, 'Series')
+    same_array(ab.reindex(ref('acc_big').index).to_numpy(dtype=float), ref('acc_big').to_numpy(dtype=float), '`acc_big` — доля верных в группах Animalia, Dishes и Other.')
+    close(alt('acc'), alt_ref('acc'), HARDCODE_MSG)
+  files: [zs_public.csv, zs_public.npy, zs_prompts.npz]
+  wrong:
+    - code: |
+        S = image_emb @ text_emb.T
+        images['pred'] = np.array(classes)[S.argmin(axis=1)]
+        images['correct'] = images['pred'] == images['class']
+        acc = images['correct'].mean()
+        big = ['Animalia', 'Dishes', 'Other']
+        acc_big = images[images['group'].isin(big)].groupby('group')['correct'].mean()
+      expect: S.argmax(axis=1)
+    - code: |
+        S = image_emb @ text_emb.T
+        images['pred'] = np.array(classes)[S.argmax(axis=1)]
+        images['correct'] = images['pred'] == images['class']
+        acc = images['correct'].mean()
+        big = ['Animalia', 'Dishes', 'Other']
+        acc_big = images.groupby('group')['correct'].mean().head(3)
+      expect: Animalia, Dishes и Other
+
+- id: m9-l7-t4
+  title: Правильный ответ рядом
+  difficulty: main
+  introduces: []
+  uses: [zero-shot, pd-groupby]
+  statement: |
+    Даже когда модель ошибается, правильный класс часто стоит среди лучших. Для каждой картинки возьмите пять классов с наибольшими косинусами. Получите:
+
+    - столбец `images['in_top5']` — есть ли правильный класс среди этих пяти;
+    - `top5_acc` — долю картинок, у которых он есть;
+    - `top5_by_lang` — Series: эту долю для каждого языка `language`;
+    - `gain` — Series: насколько доля «в пятёрке» больше доли верных ответов (`correct`) для каждого языка.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    images = pd.read_csv('zs_public.csv')
+    image_emb = np.load('zs_public.npy').astype(np.float32)
+    with np.load('zs_prompts.npz') as data:
+        is_pipe = data['variant'] == 'pipeline'
+        classes = np.array([str(c) for c in data['class'][is_pipe]])
+        text_emb = data['emb'][is_pipe].astype(np.float32)
+    S = image_emb @ text_emb.T
+    images['correct'] = classes[S.argmax(axis=1)] == images['class']
+  starter: |
+    top5 = np.argsort(-S, axis=1)[:, :5]
+    images['in_top5'] = ...
+    top5_acc = ...
+    top5_by_lang = ...
+    gain = ...
+    print(round(top5_acc, 3))
+    print(top5_by_lang.round(3), gain.round(3))
+  solution: |
+    top5 = np.argsort(-S, axis=1)[:, :5]
+    images['in_top5'] = [c in set(classes[t]) for c, t in zip(images['class'], top5)]
+    top5_acc = images['in_top5'].mean()
+    top5_by_lang = images.groupby('language')['in_top5'].mean()
+    gain = top5_by_lang - images.groupby('language')['correct'].mean()
+    print(round(top5_acc, 3))
+    print(top5_by_lang.round(3), gain.round(3))
+  explanation: |
+    - `np.argsort(-S, axis=1)[:, :5]` — номера пяти классов с наибольшими косинусами в каждой строке. `classes[t]` превращает их в названия.
+    - В пятёрке правильный класс у 79 % картинок, а у английских названий — у 95 %. Модель почти всегда «рядом» — подсказкой могут стать язык и группа класса (урок 9.8).
+    - Испанским классам не помогает и пятёрка: у них 14 % — модель находит животное под латинским или английским именем.
+  hints:
+    - "Названия пяти лучших классов строки — `classes[t]`, где `t` — строка `top5`."
+    - "`[c in set(classes[t]) for c, t in zip(images['class'], top5)]`."
+    - "Прирост — разность двух Series по языкам: `top5_by_lang - images.groupby('language')['correct'].mean()`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    rv = var('images', pd.DataFrame, 'таблицей')
+    ensure('in_top5' in rv.columns, 'Добавьте в `images` столбец `in_top5`.')
+    same_array(rv['in_top5'].to_numpy(dtype=float), ref('images')['in_top5'].to_numpy(dtype=float), '`in_top5` — есть ли правильный класс среди пяти лучших.')
+    t5 = var('top5_acc', 'number', 'числом')
+    if abs(t5 - float(ref('images')['correct'].mean())) < 1e-9:
+        fail('Это доля верных ответов (первое место). Нужна доля картинок, где правильный класс — среди пяти лучших.')
+    close(t5, ref('top5_acc'), 'Доля «в пятёрке» — {expected}, а у вас {actual}.')
+    tl = var('top5_by_lang', pd.Series, 'Series')
+    same_array(tl.reindex(ref('top5_by_lang').index).to_numpy(dtype=float), ref('top5_by_lang').to_numpy(dtype=float), '`top5_by_lang` — доля «в пятёрке» по языкам.')
+    gn = var('gain', pd.Series, 'Series')
+    same_array(gn.reindex(ref('gain').index).to_numpy(dtype=float), ref('gain').to_numpy(dtype=float), '`gain` — доля «в пятёрке» минус доля верных, по языкам.')
+    close(alt('top5_acc'), alt_ref('top5_acc'), HARDCODE_MSG)
+  files: [zs_public.csv, zs_public.npy, zs_prompts.npz]
+  wrong:
+    - code: |
+        top5 = np.argsort(S, axis=1)[:, :5]
+        images['in_top5'] = [c in set(classes[t]) for c, t in zip(images['class'], top5)]
+        top5_acc = images['in_top5'].mean()
+        top5_by_lang = images.groupby('language')['in_top5'].mean()
+        gain = top5_by_lang - images.groupby('language')['correct'].mean()
+      expect: среди пяти лучших
+    - code: |
+        top5 = np.argsort(-S, axis=1)[:, :5]
+        images['in_top5'] = [c in set(classes[t]) for c, t in zip(images['class'], top5)]
+        top5_acc = images['correct'].mean()
+        top5_by_lang = images.groupby('language')['in_top5'].mean()
+        gain = top5_by_lang - images.groupby('language')['correct'].mean()
+      expect: первое место
+
+- id: m9-l7-t5
+  title: Одно и то же под разными именами
+  difficulty: star
+  introduces: []
+  uses: [zero-shot, pd-groupby]
+  statement: |
+    Часть ошибок — не совсем ошибки: в разметке одно и то же животное встречается под разными названиями, а классы бывают вложенными («octopus» и «giant pacific octopus»). Сравним английские переводы названий (`eng` — словарь «класс → перевод»). Напишите функцию `same_thing(a, b)`: она возвращает `True`, если множество слов перевода одного класса содержится в множестве слов перевода другого («flamingo» и «american flamingo»). Получите:
+
+    - `n_same` — сколько ошибок модели (строк с `correct == False`) приходится на такие пары «класс — ответ»;
+    - `lenient_acc` — долю верных, если такие ответы засчитать;
+    - `same_pairs` — Series: число таких ошибок для каждой пары в виде строки `'класс → ответ'`, по убыванию.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    images = pd.read_csv('zs_public.csv')
+    image_emb = np.load('zs_public.npy').astype(np.float32)
+    with np.load('zs_prompts.npz') as data:
+        is_pipe = data['variant'] == 'pipeline'
+        classes = np.array([str(c) for c in data['class'][is_pipe]])
+        text_emb = data['emb'][is_pipe].astype(np.float32)
+        en = data['variant'] == 'en'
+        eng = dict(zip([str(c) for c in data['class'][en]], [str(p) for p in data['prompt'][en]]))
+    images['pred'] = classes[(image_emb @ text_emb.T).argmax(axis=1)]
+    images['correct'] = images['pred'] == images['class']
+  starter: |
+    def same_thing(a, b):
+        wa, wb = set(eng[a].split()), set(eng[b].split())
+        return ...
+
+    errors = images[~images['correct']]
+    mask = [same_thing(c, p) for c, p in zip(errors['class'], errors['pred'])]
+    n_same = ...
+    lenient_acc = ...
+    same_pairs = ...
+    print(n_same, round(lenient_acc, 3))
+    print(same_pairs.head(8))
+  solution: |
+    def same_thing(a, b):
+        wa, wb = set(eng[a].split()), set(eng[b].split())
+        return wa <= wb or wb <= wa
+
+    errors = images[~images['correct']]
+    mask = [same_thing(c, p) for c, p in zip(errors['class'], errors['pred'])]
+    n_same = int(sum(mask))
+    lenient_acc = (images['correct'].sum() + n_same) / len(images)
+    same_pairs = (errors.loc[mask, 'class'] + ' → ' + errors.loc[mask, 'pred']).value_counts()
+    print(n_same, round(lenient_acc, 3))
+    print(same_pairs.head(8))
+  explanation: |
+    - `wa <= wb` для множеств — «каждое слово `wa` есть в `wb`». Проверяем в обе стороны: вложенным может оказаться любое название.
+    - Таких ошибок 24 из 286, и с ними доля верных выросла бы с 0,595 до 0,629. Среди пар — синонимы на разных языках («flamenco → phoenicopterus-ruber», «cocodrilo → crocodylus-niloticus») и вложенные классы («octopus → enteroctopus-dofleini», то есть giant pacific octopus).
+    - Правило грубое: «lobster → lobster_bisque» оно тоже засчитало, хотя омар и суп из омара — разные вещи. Прежде чем засчитывать ответы, правило проверяют глазами на найденных парах.
+  hints:
+    - "Множество слов — `set(eng[a].split())`; «содержится» — оператор `<=`."
+    - "`return wa <= wb or wb <= wa`."
+    - "Пары — строки `errors.loc[mask, 'class'] + ' → ' + errors.loc[mask, 'pred']`, их счёт — `.value_counts()`."
+  tests: |
+    import pandas as pd
+    f = var('same_thing')
+    ensure(callable(f), '`same_thing` должна быть функцией.')
+    for a, b, exp in [('flamenco', 'phoenicopterus-ruber', True), ('phoenicopterus-ruber', 'flamenco', True), ('pizza', 'sushi', False), ('octopus', 'enteroctopus-dofleini', True), ('Hormiga', 'Elefante', False)]:
+        got = f(a, b)
+        if a == 'phoenicopterus-ruber' and not got:
+            fail('Проверяйте вложенность в обе стороны: «american flamingo» содержит «flamingo», а не наоборот.')
+        equal(bool(got), exp, 'same_thing(' + repr(a) + ', ' + repr(b) + ') должна вернуть {expected}, а вернула {actual}.')
+    equal(int(var('n_same', 'number', 'числом')), int(ref('n_same')), 'Ошибок с одинаковыми названиями — {expected}, а у вас {actual}.')
+    close(var('lenient_acc', 'number', 'числом'), ref('lenient_acc'), 'Доля верных с такими ответами — {expected}, а у вас {actual}.')
+    sp = var('same_pairs', pd.Series, 'Series')
+    equal(sp.sort_index().astype(int).to_dict(), ref('same_pairs').sort_index().astype(int).to_dict(), '`same_pairs` — число таких ошибок для каждой пары «класс → ответ».')
+    equal(int(alt('n_same')), int(alt_ref('n_same')), HARDCODE_MSG)
+  files: [zs_public.csv, zs_public.npy, zs_prompts.npz]
+  wrong:
+    - code: |
+        def same_thing(a, b):
+            wa, wb = set(eng[a].split()), set(eng[b].split())
+            return wa <= wb
+        errors = images[~images['correct']]
+        mask = [same_thing(c, p) for c, p in zip(errors['class'], errors['pred'])]
+        n_same = int(sum(mask))
+        lenient_acc = (images['correct'].sum() + n_same) / len(images)
+        same_pairs = (errors.loc[mask, 'class'] + ' → ' + errors.loc[mask, 'pred']).value_counts()
+      expect: в обе стороны
+    - code: |
+        def same_thing(a, b):
+            wa, wb = set(eng[a].split()), set(eng[b].split())
+            return wa <= wb or wb <= wa
+        errors = images[~images['correct']]
+        mask = [same_thing(c, p) for c, p in zip(errors['class'], errors['pred'])]
+        n_same = int(sum(mask))
+        lenient_acc = n_same / len(images)
+        same_pairs = (errors.loc[mask, 'class'] + ' → ' + errors.loc[mask, 'pred']).value_counts()
+      expect: Доля верных с такими

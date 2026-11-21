@@ -1,0 +1,453 @@
+- id: m7-l2-t1
+  title: Коды топлива и неизвестное значение
+  difficulty: warmup
+  introduces: [ordinal-encoding]
+  uses: []
+  statement: |
+    Обучите `fuel_enc` — `OrdinalEncoder` с кодом −1 для неизвестных значений — на колонке `Fuel_type` обучающей части. Получите `categories` — список категорий по порядку кодов, `petrol_code` — код `'Petrol'` и `codes` — коды для таблицы `new_fuels` (в ней есть незнакомое `'Hydrogen'`) в виде одномерного массива.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OrdinalEncoder
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    new_fuels = pd.DataFrame({'Fuel_type': ['Diesel', 'Hydrogen', 'Petrol', 'Hybrid']})
+  starter: |
+    fuel_enc = OrdinalEncoder(...)
+    fuel_enc.fit(...)
+    categories = ...
+    petrol_code = ...
+    codes = ...
+    print(categories)
+    print(petrol_code, codes)
+  solution: |
+    fuel_enc = OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)
+    fuel_enc.fit(X_train[['Fuel_type']])
+    categories = list(fuel_enc.categories_[0])
+    petrol_code = categories.index('Petrol')
+    codes = fuel_enc.transform(new_fuels).ravel()
+    print(categories)
+    print(petrol_code, codes)
+  explanation: |
+    - Категории отсортированы по алфавиту и пронумерованы с нуля: Diesel — 0, …, Petrol — 4.
+    - Hydrogen в train не встречался и получил −1; без `handle_unknown` `transform` упал бы с ошибкой.
+    - Кодировщик получает таблицу (`X_train[['Fuel_type']]`), а `transform` возвращает двумерный массив — `.ravel()` вытягивает его в одномерный.
+  hints:
+    - "`OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)`; обучение — на `X_train[['Fuel_type']]` (двойные скобки)."
+    - "Категории — `fuel_enc.categories_[0]`; код — позиция в этом списке."
+    - "`codes = fuel_enc.transform(new_fuels).ravel()`."
+  tests: |
+    import numpy as np
+    from sklearn.preprocessing import OrdinalEncoder
+    e = var('fuel_enc', OrdinalEncoder, 'объектом OrdinalEncoder')
+    ensure(e.handle_unknown == 'use_encoded_value' and e.unknown_value == -1, 'Для незнакомых значений нужен код −1: `handle_unknown=\'use_encoded_value\', unknown_value=-1`.')
+    equal([str(v) for v in var('categories', list, 'списком')], [str(v) for v in ref('categories')], 'Категории по порядку кодов — {expected}, а у вас {actual}.')
+    equal(int(var('petrol_code', 'number', 'числом')), int(ref('petrol_code')), 'Код Petrol — {expected}, а у вас {actual}.')
+    same_array(np.asarray(var('codes'), dtype=float).ravel(), np.asarray(ref('codes'), dtype=float), 'Коды для `new_fuels` не совпадают: Hydrogen должен получить −1.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        fuel_enc = OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=99)
+        fuel_enc.fit(X_train[['Fuel_type']])
+        categories = list(fuel_enc.categories_[0])
+        petrol_code = categories.index('Petrol')
+        codes = fuel_enc.transform(new_fuels).ravel()
+      expect: "код −1"
+    - code: |
+        fuel_enc = OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)
+        fuel_enc.fit(X_train[['Fuel_type']])
+        categories = list(fuel_enc.categories_[0])
+        petrol_code = 4
+        codes = fuel_enc.transform(X_train[['Fuel_type']].head(4)).ravel()
+      expect: Коды для `new_fuels`
+
+- id: m7-l2-t2
+  title: ColumnTransformer и порядок колонок
+  difficulty: main
+  introduces: [column-transformer, ordinal-encoding]
+  uses: []
+  statement: |
+    Соберите `enc` — `ColumnTransformer` с одним шагом `'cat'`: `OrdinalEncoder` (код −1 для незнакомых) для колонок `cat_cols`, остальные колонки — без изменений, имена без префиксов (`verbose_feature_names_out=False`). Обучите его на `X_train` и получите `Z` — результат, `names` — список имён колонок результата и `first_codes` — коды четырёх категорий первой машины train (первые 4 числа первой строки `Z`).
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OrdinalEncoder
+    from sklearn.compose import ColumnTransformer
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    enc = ColumnTransformer(
+        [('cat', ..., cat_cols)],
+        remainder=...,
+        verbose_feature_names_out=False,
+    )
+    Z = ...
+    names = ...
+    first_codes = ...
+    print(names)
+    print(X_train.iloc[0].to_dict())
+    print(first_codes)
+  solution: |
+    enc = ColumnTransformer(
+        [('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), cat_cols)],
+        remainder='passthrough',
+        verbose_feature_names_out=False,
+    )
+    Z = enc.fit_transform(X_train)
+    names = list(enc.get_feature_names_out())
+    first_codes = Z[0, :4]
+    print(names)
+    print(X_train.iloc[0].to_dict())
+    print(first_codes)
+  explanation: |
+    - В результате сначала идут колонки шагов (4 закодированные категории), затем пропущенные без изменений — в их исходном порядке.
+    - Первая машина train — Mitsubishi Lancer, седан, бензин: коды 11, 395, 10, 4.
+    - `fit_transform` = `fit` + `transform` на одних данных; для validation — только `transform`.
+  hints:
+    - "Шаг `'cat'` — `OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)`; остальное — `remainder='passthrough'`."
+    - "`Z = enc.fit_transform(X_train)`; имена — `list(enc.get_feature_names_out())`."
+    - "Первая строка, первые 4 числа — `Z[0, :4]`."
+  tests: |
+    import numpy as np
+    from sklearn.compose import ColumnTransformer
+    e = var('enc', ColumnTransformer, 'объектом ColumnTransformer')
+    ensure(e.remainder == 'passthrough', 'Остальные колонки должны пройти без изменений: `remainder=\'passthrough\'` — иначе они будут отброшены.')
+    z = np.asarray(var('Z'), dtype=float)
+    ensure(z.shape == ref('Z').shape, 'Форма `Z` — {0}: 4 закодированные колонки и 5 остальных.'.format(ref('Z').shape))
+    equal([str(v) for v in var('names', list, 'списком')], [str(v) for v in ref('names')], 'Имена колонок результата — {expected}, а у вас {actual}.')
+    same_array(np.asarray(var('first_codes'), dtype=float), np.asarray(ref('first_codes'), dtype=float), 'Коды категорий первой машины не совпадают: `Z[0, :4]`.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        enc = ColumnTransformer([('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), cat_cols)], verbose_feature_names_out=False)
+        Z = enc.fit_transform(X_train)
+        names = list(enc.get_feature_names_out())
+        first_codes = Z[0, :4]
+      expect: "remainder='passthrough'"
+    - code: |
+        enc = ColumnTransformer([('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), cat_cols)], remainder='passthrough', verbose_feature_names_out=False)
+        Z = enc.fit_transform(X_train)
+        names = list(X_train.columns)
+        first_codes = Z[0, :4]
+      expect: Имена колонок результата
+
+- id: m7-l2-t3
+  title: Лес на всех девяти признаках
+  difficulty: main
+  introduces: [column-transformer, ordinal-encoding]
+  uses: [sk-pipeline, random-forest]
+  statement: |
+    Соберите `forest` — Pipeline: шаг `'enc'` — `enc` (уже создан), шаг `'model'` — лес из 60 деревьев глубины 16 (`random_state=42`, `n_jobs=1`). Обучите на `X_train` и получите `forest_mae` на validation и `gain` — выигрыш по сравнению с тем же лесом на числах и коробке (`base_mae` уже посчитана).
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OrdinalEncoder
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    enc = ColumnTransformer([('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), cat_cols)], remainder='passthrough')
+    base_mae = 2637.7
+  starter: |
+    forest = Pipeline([
+        ('enc', ...),
+        ('model', ...),
+    ])
+    forest.fit(X_train, y_train)
+    forest_mae = ...
+    gain = ...
+    print(round(forest_mae, 1), round(gain, 1))
+  solution: |
+    forest = Pipeline([
+        ('enc', enc),
+        ('model', RandomForestRegressor(n_estimators=60, max_depth=16, random_state=42, n_jobs=1)),
+    ])
+    forest.fit(X_train, y_train)
+    forest_mae = mean_absolute_error(y_valid, forest.predict(X_valid))
+    gain = base_mae - forest_mae
+    print(round(forest_mae, 1), round(gain, 1))
+  explanation: |
+    - MAE ≈ 2 055 — на ≈ 583 евро лучше леса без категорий. Марка и модель несут много информации о цене.
+    - Pipeline передаёт в `fit` и `predict` исходные таблицы: кодирование происходит внутри, словари строятся только по train.
+  hints:
+    - "Шаги — `('enc', enc)` и `('model', RandomForestRegressor(n_estimators=60, max_depth=16, random_state=42, n_jobs=1))`."
+    - "`forest_mae = mean_absolute_error(y_valid, forest.predict(X_valid))`."
+    - "`gain = base_mae - forest_mae`."
+  tests: |
+    from sklearn.pipeline import Pipeline
+    p = var('forest', Pipeline, 'объектом Pipeline')
+    m = p.named_steps.get('model')
+    ensure(type(m).__name__ == 'RandomForestRegressor' and m.n_estimators == 60 and m.max_depth == 16, 'Шаг `model` — лес из 60 деревьев глубины 16.')
+    close(var('forest_mae', 'number', 'числом'), ref('forest_mae'), 'MAE леса на всех признаках — {expected}, а у вас {actual}.')
+    g = var('gain', 'number', 'числом')
+    if abs(g + ref('gain')) < 1e-6:
+        fail('Знак наоборот: выигрыш — прежняя ошибка минус новая.')
+    close(g, ref('gain'), 'Выигрыш — {expected}, а у вас {actual}.')
+    close(alt('forest_mae'), alt_ref('forest_mae'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        forest = Pipeline([('enc', enc), ('model', RandomForestRegressor(n_estimators=60, max_depth=10, random_state=42, n_jobs=1))])
+        forest.fit(X_train, y_train)
+        forest_mae = mean_absolute_error(y_valid, forest.predict(X_valid))
+        gain = base_mae - forest_mae
+      expect: глубины 16
+    - code: |
+        forest = Pipeline([('enc', enc), ('model', RandomForestRegressor(n_estimators=60, max_depth=16, random_state=42, n_jobs=1))])
+        forest.fit(X_train, y_train)
+        forest_mae = mean_absolute_error(y_valid, forest.predict(X_valid))
+        gain = forest_mae - base_mae
+      expect: Знак наоборот
+
+- id: m7-l2-t4
+  title: Какая категория полезнее всего
+  difficulty: main
+  introduces: [ordinal-encoding]
+  uses: [random-forest, sk-pipeline]
+  statement: |
+    Добавляйте к базовым признакам `base` по одной категории из `cat_cols` и обучайте лес из 20 деревьев глубины 16 (`random_state=42`, `n_jobs=1`; категория кодируется `OrdinalEncoder` внутри Pipeline). Соберите `added` — Series «добавленная категория → MAE на validation», отсортированную по возрастанию, и `best_cat` — самую полезную категорию.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OrdinalEncoder
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    base = ['Year', 'Distance', 'Engine', 'km_year', 'AutoTransmission']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    result = {}
+    for c in cat_cols:
+        cols = base + [c]
+        enc = ColumnTransformer([('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), [c])],
+                                remainder='passthrough')
+        pipe = ...
+        result[c] = ...
+    added = ...
+    best_cat = ...
+    print(added.round(0))
+    print(best_cat)
+  solution: |
+    result = {}
+    for c in cat_cols:
+        cols = base + [c]
+        enc = ColumnTransformer([('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), [c])],
+                                remainder='passthrough')
+        pipe = Pipeline([('enc', enc), ('model', RandomForestRegressor(n_estimators=20, max_depth=16, random_state=42, n_jobs=1))])
+        pipe.fit(X_train[cols], y_train)
+        result[c] = mean_absolute_error(y_valid, pipe.predict(X_valid[cols]))
+    added = pd.Series(result).sort_values()
+    best_cat = added.index[0]
+    print(added.round(0))
+    print(best_cat)
+  explanation: |
+    - Модель машины (≈ 2 192) полезнее марки (≈ 2 346): марка знает «BMW», модель — «BMW 5 Series или X5». Кузов и топливо добавляют гораздо меньше (≈ 2 578 и 2 563).
+    - Лес без категорий (20 деревьев) — ≈ 2 678. Каждая категория что-то добавляет, но вместе они работают лучше, чем любая одна (урок 7.2: ≈ 2 055 на 60 деревьях).
+  hints:
+    - "Pipeline — `[('enc', enc), ('model', RandomForestRegressor(n_estimators=20, max_depth=16, random_state=42, n_jobs=1))]`; обучение — на `X_train[cols]`."
+    - "MAE — по прогнозам для `X_valid[cols]`."
+    - "`added = pd.Series(result).sort_values()`; лучшая — `added.index[0]`."
+  tests: |
+    import pandas as pd
+    s = var('added', pd.Series, 'Series')
+    ensure(set(s.index) == set(ref('cat_cols')), 'В `added` должно быть по значению для каждой категории из `cat_cols`.')
+    same_array(s.reindex(ref('added').index).to_numpy(dtype=float), ref('added').to_numpy(dtype=float), 'MAE не совпадают: лес из 20 деревьев глубины 16 на `base + [c]`, ошибка на validation.')
+    ensure(list(s.index) == list(ref('added').index), 'Отсортируйте `added` по возрастанию MAE.')
+    equal(var('best_cat', str, 'строкой'), ref('best_cat'), 'Самая полезная категория — «{expected}», а у вас «{actual}».')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        result = {}
+        for c in cat_cols:
+            cols = base + [c]
+            enc = ColumnTransformer([('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), [c])], remainder='passthrough')
+            pipe = Pipeline([('enc', enc), ('model', RandomForestRegressor(n_estimators=20, max_depth=16, random_state=42, n_jobs=1))])
+            pipe.fit(X_train[cols], y_train)
+            result[c] = mean_absolute_error(y_valid, pipe.predict(X_valid[cols]))
+        added = pd.Series(result).sort_values(ascending=False)
+        best_cat = added.index[0]
+      expect: по возрастанию
+    - code: |
+        result = {}
+        for c in cat_cols:
+            cols = base + [c]
+            enc = ColumnTransformer([('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), [c])], remainder='passthrough')
+            pipe = Pipeline([('enc', enc), ('model', RandomForestRegressor(n_estimators=20, max_depth=16, random_state=42, n_jobs=1))])
+            pipe.fit(X_train[cols], y_train)
+            result[c] = mean_absolute_error(y_train, pipe.predict(X_train[cols]))
+        added = pd.Series(result).sort_values()
+        best_cat = added.index[0]
+      expect: MAE не совпадают
+
+- id: m7-l2-t5
+  title: Почему номера не годятся линейной модели
+  difficulty: main
+  introduces: [ordinal-encoding]
+  uses: [linear-regression, sk-pipeline]
+  statement: |
+    Обучите `linear` — Pipeline с кодировщиком `enc` (порядковые коды) и линейной регрессией. Получите `linear_mae` на validation, `gain` — выигрыш по сравнению с линейной моделью без категорий (`base_mae` дана) и `make_coef` — коэффициент при закодированной колонке `Make`.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OrdinalEncoder
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    enc = ColumnTransformer([('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), cat_cols)],
+                            remainder='passthrough', verbose_feature_names_out=False)
+    base_mae = 4144.3
+  starter: |
+    linear = ...
+    linear.fit(X_train, y_train)
+    linear_mae = ...
+    gain = ...
+    coefs = pd.Series(linear.named_steps['model'].coef_, index=linear.named_steps['enc'].get_feature_names_out())
+    make_coef = ...
+    print(round(linear_mae, 1), round(gain, 1), round(make_coef, 1))
+  solution: |
+    linear = Pipeline([('enc', enc), ('model', LinearRegression())])
+    linear.fit(X_train, y_train)
+    linear_mae = mean_absolute_error(y_valid, linear.predict(X_valid))
+    gain = base_mae - linear_mae
+    coefs = pd.Series(linear.named_steps['model'].coef_, index=linear.named_steps['enc'].get_feature_names_out())
+    make_coef = coefs['Make']
+    print(round(linear_mae, 1), round(gain, 1), round(make_coef, 1))
+  explanation: |
+    - MAE ≈ 4 135 — выигрыш всего ≈ 9 евро. Лес от тех же кодов выиграл ≈ 580 евро.
+    - Коэффициент при `Make` ≈ −50: «каждая следующая марка по алфавиту дешевле на 50 евро». У марок нет порядка, и такая формула ничего не описывает.
+    - Линейной модели нужно, чтобы у каждой марки была своя поправка — это даёт One-Hot (урок 7.4).
+  hints:
+    - "Pipeline — `[('enc', enc), ('model', LinearRegression())]`."
+    - "`gain = base_mae - linear_mae`."
+    - "Коэффициенты уже подписаны в `coefs`: `make_coef = coefs['Make']`."
+  tests: |
+    from sklearn.pipeline import Pipeline
+    p = var('linear', Pipeline, 'объектом Pipeline')
+    ensure(type(p.named_steps.get('model')).__name__ == 'LinearRegression', 'Шаг `model` — `LinearRegression()`.')
+    close(var('linear_mae', 'number', 'числом'), ref('linear_mae'), 'MAE линейной модели с номерами категорий — {expected}, а у вас {actual}.')
+    close(var('gain', 'number', 'числом'), ref('gain'), 'Выигрыш — {expected}, а у вас {actual}.', atol=0.05)
+    close(var('make_coef', 'number', 'числом'), ref('make_coef'), 'Коэффициент при Make — {expected}, а у вас {actual}.')
+    close(alt('linear_mae'), alt_ref('linear_mae'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        linear = Pipeline([('enc', enc), ('model', LinearRegression())])
+        linear.fit(X_train, y_train)
+        linear_mae = mean_absolute_error(y_valid, linear.predict(X_valid))
+        gain = base_mae - linear_mae
+        coefs = pd.Series(linear.named_steps['model'].coef_, index=linear.named_steps['enc'].get_feature_names_out())
+        make_coef = coefs['Model']
+      expect: Коэффициент при Make
+    - code: |
+        linear = Pipeline([('enc', enc), ('model', LinearRegression())])
+        linear.fit(X_train, y_train)
+        linear_mae = mean_absolute_error(y_train, linear.predict(X_train))
+        gain = base_mae - linear_mae
+        coefs = pd.Series(linear.named_steps['model'].coef_, index=linear.named_steps['enc'].get_feature_names_out())
+        make_coef = coefs['Make']
+      expect: MAE линейной модели
+
+- id: m7-l2-t6
+  title: Ошибки на незнакомых моделях
+  difficulty: star
+  introduces: [ordinal-encoding]
+  uses: [error-analysis, random-forest]
+  statement: |
+    Лес `forest` (порядковые коды, обучен) уже дал прогнозы `pred` для validation. Найдите `unknown` — логическую маску машин validation, чья модель не встречается в train, `n_unknown` — их число, `mae_unknown` и `mae_known` — MAE на этих машинах и на остальных, и `rare_make_share` — долю машин марки `Rare` среди незнакомых.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OrdinalEncoder
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    enc = ColumnTransformer([('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), cat_cols)], remainder='passthrough')
+    forest = Pipeline([('enc', enc), ('model', RandomForestRegressor(n_estimators=60, max_depth=16, random_state=42, n_jobs=1))]).fit(X_train, y_train)
+    pred = forest.predict(X_valid)
+  starter: |
+    unknown = ...
+    n_unknown = ...
+    mae_unknown = ...
+    mae_known = ...
+    rare_make_share = ...
+    print(n_unknown, round(mae_unknown), round(mae_known), round(rare_make_share, 3))
+  solution: |
+    unknown = (~X_valid['Model'].isin(X_train['Model'].unique())).to_numpy()
+    n_unknown = int(unknown.sum())
+    mae_unknown = mean_absolute_error(y_valid[unknown], pred[unknown])
+    mae_known = mean_absolute_error(y_valid[~unknown], pred[~unknown])
+    rare_make_share = (X_valid.loc[unknown, 'Make'] == 'Rare').mean()
+    print(n_unknown, round(mae_unknown), round(mae_known), round(rare_make_share, 3))
+  explanation: |
+    - 46 машин validation — модели, которых лес не видел (код −1). На них MAE ≈ 5 800 евро, почти втрое больше, чем на остальных (≈ 2 030).
+    - 59 % незнакомых — редких марок (`Rare`): у этих машин нет надёжной информации ни о модели, ни о марке.
+    - Такие машины будут и в реальной работе. Честный отчёт об ошибке модели полезно дополнять ошибкой на «новых» категориях.
+  hints:
+    - "Модели train — `X_train['Model'].unique()`; незнакомые — отрицание `isin`: `~X_valid['Model'].isin(...)`."
+    - "Маску удобно сделать массивом (`.to_numpy()`), чтобы фильтровать и `y_valid`, и `pred`."
+    - "Доля `Rare` — среднее маски `X_valid.loc[unknown, 'Make'] == 'Rare'`."
+  tests: |
+    import numpy as np
+    u = np.asarray(var('unknown'), dtype=bool)
+    ensure(u.shape == (len(ref('X_valid')),), '`unknown` — маска длины validation: по значению на каждую машину.')
+    if u.sum() == len(u) - ref('n_unknown'):
+        fail('Маска перевёрнута: нужны машины, модели которых **нет** в train — `~X_valid[\'Model\'].isin(...)`.')
+    equal(var('n_unknown', 'number', 'числом'), ref('n_unknown'), 'Незнакомых моделей — {expected}, а у вас {actual}.')
+    close(var('mae_unknown', 'number', 'числом'), ref('mae_unknown'), 'MAE на незнакомых моделях — {expected}, а у вас {actual}.')
+    close(var('mae_known', 'number', 'числом'), ref('mae_known'), 'MAE на остальных — {expected}, а у вас {actual}.')
+    close(var('rare_make_share', 'number', 'числом'), ref('rare_make_share'), 'Доля марки Rare среди незнакомых — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        unknown = X_valid['Model'].isin(X_train['Model'].unique()).to_numpy()
+        n_unknown = int(unknown.sum())
+        mae_unknown = mean_absolute_error(y_valid[unknown], pred[unknown])
+        mae_known = mean_absolute_error(y_valid[~unknown], pred[~unknown])
+        rare_make_share = (X_valid.loc[unknown, 'Make'] == 'Rare').mean()
+      expect: перевёрнута
+    - code: |
+        unknown = (~X_valid['Model'].isin(X_train['Model'].unique())).to_numpy()
+        n_unknown = int(unknown.sum())
+        mae_unknown = mean_absolute_error(y_valid[unknown], pred[unknown])
+        mae_known = mean_absolute_error(y_valid, pred)
+        rare_make_share = (X_valid.loc[unknown, 'Make'] == 'Rare').mean()
+      expect: MAE на остальных

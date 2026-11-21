@@ -1,0 +1,466 @@
+- id: m7-l8-t1
+  title: Квантили ошибок
+  difficulty: warmup
+  introduces: [error-distribution]
+  uses: [boxplot-rule, regression-metrics]
+  statement: |
+    Прогнозы Ridge на логарифме цены для validation уже посчитаны и возвращены в евро — `pred`. Получите `abs_err` — Series модулей ошибок, `q` — квантили `abs_err` уровней 0.5 и 0.9 (Series), `share_below_1000` — долю машин с ошибкой меньше 1 000 евро и `worst_share` — долю всей суммы ошибок, которую дают 1 % машин с самыми большими ошибками (`len(abs_err) // 100` машин).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.linear_model import Ridge
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    num_cols = ['Year', 'Distance', 'Engine', 'km_year', 'AutoTransmission']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    ridge = Pipeline([('enc', ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols),
+                                                 ('num', StandardScaler(), num_cols)])),
+                      ('model', Ridge(alpha=0.3))]).fit(X_train, np.log(y_train))
+    pred = np.exp(ridge.predict(X_valid))
+  starter: |
+    abs_err = ...
+    q = ...
+    share_below_1000 = ...
+    worst_share = ...
+    print(q.round(0))
+    print(round(share_below_1000, 3), round(worst_share, 3))
+  solution: |
+    abs_err = (y_valid - pred).abs()
+    q = abs_err.quantile([0.5, 0.9])
+    share_below_1000 = (abs_err < 1000).mean()
+    worst_share = abs_err.nlargest(len(abs_err) // 100).sum() / abs_err.sum()
+    print(q.round(0))
+    print(round(share_below_1000, 3), round(worst_share, 3))
+  explanation: |
+    - Медиана модуля ошибки — 985 евро, 90-й процентиль — 4 415, а MAE — 2 157. Среднее больше медианы вдвое: его тянут вверх редкие огромные промахи.
+    - Ошибку меньше 1 000 евро получила ровно половина машин (50,6 %).
+    - 64 худшие машины (1 %) дают 17 % всей суммы ошибок. Одно число MAE этого не показывает.
+  hints:
+    - "Модули ошибок — `(y_valid - pred).abs()`."
+    - "Квантили — `abs_err.quantile([0.5, 0.9])`; доля — среднее булевой маски `(abs_err < 1000).mean()`."
+    - "Самые большие ошибки — `abs_err.nlargest(len(abs_err) // 100)`; их сумма делится на `abs_err.sum()`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    e = var('abs_err', pd.Series, 'Series')
+    ensure((e.to_numpy(dtype=float) >= 0).all(), '`abs_err` — модули ошибок: не забудьте `.abs()`.')
+    same_array(e.to_numpy(dtype=float), ref('abs_err').to_numpy(dtype=float), '`abs_err` не совпадает: `(y_valid - pred).abs()`.')
+    qq = var('q', pd.Series, 'Series')
+    same_array(qq.to_numpy(dtype=float), ref('q').to_numpy(dtype=float), 'Квантили не совпадают: `abs_err.quantile([0.5, 0.9])`.')
+    close(var('share_below_1000', 'number', 'числом'), ref('share_below_1000'), 'Доля машин с ошибкой меньше 1 000 — {expected}, а у вас {actual}.')
+    ws = var('worst_share', 'number', 'числом')
+    if abs(ws - ref('worst_share')) > 1e-6 and ws < 0.05:
+        fail('Доля худших — {0:.3f}: похоже, взяты самые маленькие ошибки. Нужны самые большие: `abs_err.nlargest(...)`.'.format(ws))
+    close(ws, ref('worst_share'), 'Доля суммы ошибок у 1 % худших машин — {expected}, а у вас {actual}.')
+    close(alt('worst_share'), alt_ref('worst_share'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        abs_err = y_valid - pred
+        q = abs_err.quantile([0.5, 0.9])
+        share_below_1000 = (abs_err < 1000).mean()
+        worst_share = abs_err.nlargest(len(abs_err) // 100).sum() / abs_err.sum()
+      expect: "`.abs()`"
+    - code: |
+        abs_err = (y_valid - pred).abs()
+        q = abs_err.quantile([0.5, 0.9])
+        share_below_1000 = (abs_err < 1000).mean()
+        worst_share = abs_err.nsmallest(len(abs_err) // 100).sum() / abs_err.sum()
+      expect: самые большие
+
+- id: m7-l8-t2
+  title: Устойчива ли разница Ridge и LinearRegression
+  difficulty: main
+  introduces: [metric-variability]
+  uses: [model-comparison, log-target]
+  statement: |
+    На нашем разбиении Ridge на логарифме цены точнее LinearRegression на 17 евро (урок 7.6). Проверьте, устойчиво ли это. Для каждого `seed` из `seeds` разбейте `X_temp`, `y_temp` на части 75 / 25 (`random_state=seed`). Обучите на первой части `linear_pipe(Ridge(alpha=0.3))` и `linear_pipe(LinearRegression())` на логарифме цены и посчитайте MAE на второй части в евро.
+
+    `runs` — DataFrame с колонками `'ridge'` и `'linear'` (строка на разбиение), `diff` — разность `linear − ridge` по разбиениям, `ridge_wins` — в скольких разбиениях Ridge точнее, `diff_range` — кортеж `(минимум, максимум)` разности.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.linear_model import Ridge, LinearRegression
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    num_cols = ['Year', 'Distance', 'Engine', 'km_year', 'AutoTransmission']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    def linear_pipe(model):
+        enc = ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols),
+                                 ('num', StandardScaler(), num_cols)])
+        return Pipeline([('enc', enc), ('model', model)])
+    seeds = [0, 1, 2, 3, 4, 5]
+  starter: |
+    rows = []
+    for seed in seeds:
+        Xa, Xb, ya, yb = train_test_split(X_temp, y_temp, test_size=0.25, random_state=seed)
+        row = {}
+        for name, model in [('ridge', Ridge(alpha=0.3)), ('linear', LinearRegression())]:
+            pipe = ...
+            row[name] = ...
+        rows.append(row)
+    runs = pd.DataFrame(rows)
+    diff = ...
+    ridge_wins = ...
+    diff_range = ...
+    print(runs.round(1))
+    print(ridge_wins, diff_range)
+  solution: |
+    rows = []
+    for seed in seeds:
+        Xa, Xb, ya, yb = train_test_split(X_temp, y_temp, test_size=0.25, random_state=seed)
+        row = {}
+        for name, model in [('ridge', Ridge(alpha=0.3)), ('linear', LinearRegression())]:
+            pipe = linear_pipe(model).fit(Xa, np.log(ya))
+            row[name] = mean_absolute_error(yb, np.exp(pipe.predict(Xb)))
+        rows.append(row)
+    runs = pd.DataFrame(rows)
+    diff = runs['linear'] - runs['ridge']
+    ridge_wins = int((diff > 0).sum())
+    diff_range = (diff.min(), diff.max())
+    print(runs.round(1))
+    print(ridge_wins, diff_range)
+  explanation: |
+    - Ridge точнее лишь в 4 разбиениях из 6. Разность колеблется от −2 до +12 евро, а MAE каждой модели от разбиения к разбиению меняется примерно на 140 евро.
+    - Вывод: преимущество Ridge над LinearRegression на логарифме цены — на уровне шума. Выбирать между ними стоит по другим соображениям: Ridge устойчивее на редких моделях (урок 7.6) и не хуже в среднем.
+    - Сравните с LightGBM на логарифме против LightGBM на ценах: там разность во всех разбиениях одного знака и в десятки раз больше разброса — устойчивое преимущество.
+  hints:
+    - "Модель — `linear_pipe(model).fit(Xa, np.log(ya))`; MAE — `mean_absolute_error(yb, np.exp(pipe.predict(Xb)))`."
+    - "`diff = runs['linear'] - runs['ridge']`; Ridge точнее там, где `diff > 0`."
+    - "`ridge_wins = int((diff > 0).sum())`; `diff_range = (diff.min(), diff.max())`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    r = var('runs', pd.DataFrame, 'таблицей DataFrame')
+    rr = ref('runs')
+    ensure(list(r.columns) == ['ridge', 'linear'] and len(r) == len(rr), '`runs` — {0} строк (по разбиению) и колонки `[\'ridge\', \'linear\']`.'.format(len(rr)))
+    if (r.to_numpy(dtype=float) < 10).all():
+        fail('MAE получились меньше 10 — это ошибка в логарифмах. Верните прогноз в евро: `np.exp(pipe.predict(Xb))`.')
+    same_array(r.to_numpy(dtype=float), rr.to_numpy(dtype=float), 'MAE в `runs` не совпадают: модели учатся на `np.log(ya)` первой части, ошибка — на второй части в евро.', rtol=1e-5)
+    d = var('diff', pd.Series, 'Series')
+    if np.allclose(d.to_numpy(dtype=float), -ref('diff').to_numpy(dtype=float)):
+        fail('`diff` — разность `linear − ridge`: положительная, когда Ridge точнее.')
+    same_array(d.to_numpy(dtype=float), ref('diff').to_numpy(dtype=float), '`diff` не совпадает: `runs[\'linear\'] - runs[\'ridge\']`.', rtol=1e-5)
+    equal(int(var('ridge_wins', 'number', 'числом')), int(ref('ridge_wins')), 'Ridge точнее в {expected} разбиениях, а у вас {actual}.')
+    dr = var('diff_range', tuple, 'кортежем')
+    ensure(len(dr) == 2, '`diff_range` — кортеж из двух чисел: `(diff.min(), diff.max())`.')
+    same_array(np.asarray(dr, dtype=float), np.asarray(ref('diff_range'), dtype=float), '`diff_range` — `(diff.min(), diff.max())`.', rtol=1e-5)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        rows = []
+        for seed in seeds:
+            Xa, Xb, ya, yb = train_test_split(X_temp, y_temp, test_size=0.25, random_state=seed)
+            row = {}
+            for name, model in [('ridge', Ridge(alpha=0.3)), ('linear', LinearRegression())]:
+                pipe = linear_pipe(model).fit(Xa, np.log(ya))
+                row[name] = mean_absolute_error(np.log(yb), pipe.predict(Xb))
+            rows.append(row)
+        runs = pd.DataFrame(rows)
+        diff = runs['linear'] - runs['ridge']
+        ridge_wins = int((diff > 0).sum())
+        diff_range = (diff.min(), diff.max())
+      expect: в логарифмах
+    - code: |
+        rows = []
+        for seed in seeds:
+            Xa, Xb, ya, yb = train_test_split(X_temp, y_temp, test_size=0.25, random_state=seed)
+            row = {}
+            for name, model in [('ridge', Ridge(alpha=0.3)), ('linear', LinearRegression())]:
+                pipe = linear_pipe(model).fit(Xa, np.log(ya))
+                row[name] = mean_absolute_error(yb, np.exp(pipe.predict(Xb)))
+            rows.append(row)
+        runs = pd.DataFrame(rows)
+        diff = runs['ridge'] - runs['linear']
+        ridge_wins = int((diff > 0).sum())
+        diff_range = (diff.min(), diff.max())
+      expect: "`linear − ridge`"
+
+- id: m7-l8-t3
+  title: RMSE и десять машин
+  difficulty: main
+  introduces: [metric-variability]
+  uses: [regression-metrics]
+  statement: |
+    Проверьте, насколько MAE и RMSE зависят от нескольких самых больших ошибок. Прогнозы Ridge на логарифме цены в евро — `pred`. Посчитайте `mae_all` и `rmse_all` на всей validation. Затем уберите 10 машин с самыми большими модулями ошибок и посчитайте `mae_rest` и `rmse_rest` на остальных. `drops` — словарь `{'MAE': ..., 'RMSE': ...}`: на какую долю уменьшилась каждая метрика (например, 0.2 — на 20 %).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.linear_model import Ridge
+    from sklearn.metrics import mean_absolute_error, root_mean_squared_error
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    num_cols = ['Year', 'Distance', 'Engine', 'km_year', 'AutoTransmission']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    ridge = Pipeline([('enc', ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols),
+                                                 ('num', StandardScaler(), num_cols)])),
+                      ('model', Ridge(alpha=0.3))]).fit(X_train, np.log(y_train))
+    pred = pd.Series(np.exp(ridge.predict(X_valid)), index=y_valid.index)
+  starter: |
+    mae_all = ...
+    rmse_all = ...
+    abs_err = (y_valid - pred).abs()
+    worst = abs_err.nlargest(10).index
+    keep = ~y_valid.index.isin(worst)
+    mae_rest = ...
+    rmse_rest = ...
+    drops = {'MAE': ..., 'RMSE': ...}
+    print(round(mae_all), round(mae_rest), round(rmse_all), round(rmse_rest))
+    print({k: round(v, 3) for k, v in drops.items()})
+  solution: |
+    mae_all = mean_absolute_error(y_valid, pred)
+    rmse_all = root_mean_squared_error(y_valid, pred)
+    abs_err = (y_valid - pred).abs()
+    worst = abs_err.nlargest(10).index
+    keep = ~y_valid.index.isin(worst)
+    mae_rest = mean_absolute_error(y_valid[keep], pred[keep])
+    rmse_rest = root_mean_squared_error(y_valid[keep], pred[keep])
+    drops = {'MAE': 1 - mae_rest / mae_all, 'RMSE': 1 - rmse_rest / rmse_all}
+    print(round(mae_all), round(mae_rest), round(rmse_all), round(rmse_rest))
+    print({k: round(v, 3) for k, v in drops.items()})
+  explanation: |
+    - Без 10 машин из 6 414 (0,16 %) MAE уменьшается на 5 %: с 2 157 до 2 040. RMSE — на 20 %: с 5 216 до 4 180.
+    - RMSE возводит ошибки в квадрат, поэтому несколько промахов на 100 000 евро весят в ней как тысячи обычных. Отсюда и её скачки на разных разбиениях.
+    - Удалять такие машины из проверки нельзя: это подгонка оценки. Правильный путь — разобрать их в данных (часто это ошибки ввода цены) и выбирать метрику, которая отвечает задаче.
+  hints:
+    - "`mae_all = mean_absolute_error(y_valid, pred)`, `rmse_all = root_mean_squared_error(y_valid, pred)`."
+    - "Остальные машины — `y_valid[keep]` и `pred[keep]`."
+    - "Доля уменьшения — `1 - mae_rest / mae_all` (и так же для RMSE)."
+  tests: |
+    close(var('mae_all', 'number', 'числом'), ref('mae_all'), 'MAE на всей validation — {expected}, а у вас {actual}.')
+    close(var('rmse_all', 'number', 'числом'), ref('rmse_all'), 'RMSE на всей validation — {expected}, а у вас {actual}.')
+    close(var('mae_rest', 'number', 'числом'), ref('mae_rest'), 'MAE без 10 худших машин — {expected}, а у вас {actual}: `mean_absolute_error(y_valid[keep], pred[keep])`.')
+    close(var('rmse_rest', 'number', 'числом'), ref('rmse_rest'), 'RMSE без 10 худших машин — {expected}, а у вас {actual}.')
+    d = var('drops', dict, 'словарём')
+    ensure(set(d) == {'MAE', 'RMSE'}, 'Ключи `drops` — `\'MAE\'` и `\'RMSE\'`.')
+    if d['MAE'] < 0 and abs(d['MAE'] + ref('drops')['MAE']) < 0.05:
+        fail('Доля уменьшения должна быть положительной: `1 - mae_rest / mae_all`.')
+    close(d['MAE'], ref('drops')['MAE'], 'Доля уменьшения MAE — {expected}, а у вас {actual}: `1 - mae_rest / mae_all`.')
+    close(d['RMSE'], ref('drops')['RMSE'], 'Доля уменьшения RMSE — {expected}, а у вас {actual}.')
+    close(alt('drops')['RMSE'], alt_ref('drops')['RMSE'], HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        mae_all = mean_absolute_error(y_valid, pred)
+        rmse_all = root_mean_squared_error(y_valid, pred)
+        abs_err = (y_valid - pred).abs()
+        worst = abs_err.nlargest(10).index
+        keep = ~y_valid.index.isin(worst)
+        mae_rest = mean_absolute_error(y_valid[keep], pred[keep])
+        rmse_rest = root_mean_squared_error(y_valid[keep], pred[keep])
+        drops = {'MAE': mae_rest / mae_all - 1, 'RMSE': rmse_rest / rmse_all - 1}
+      expect: должна быть положительной
+    - code: |
+        mae_all = mean_absolute_error(y_valid, pred)
+        rmse_all = root_mean_squared_error(y_valid, pred)
+        abs_err = (y_valid - pred).abs()
+        worst = abs_err.nlargest(10).index
+        keep = ~y_valid.index.isin(worst)
+        mae_rest = mean_absolute_error(y_valid, pred)
+        rmse_rest = root_mean_squared_error(y_valid[keep], pred[keep])
+        drops = {'MAE': 1 - mae_rest / mae_all, 'RMSE': 1 - rmse_rest / rmse_all}
+      expect: без 10 худших
+
+- id: m7-l8-t4
+  kind: plot
+  title: "Q–Q-график остатков"
+  difficulty: main
+  introduces: [error-distribution]
+  uses: [log-target]
+  statement: |
+    Модель Ridge училась на логарифме цены, её прогноз в логарифмах — `pred_log`. Посчитайте `res` — остатки в шкале обучения: логарифм цены минус прогноз. Постройте Q–Q-график: `stats.probplot(res, dist='norm', plot=ax)`, задайте заголовок «Q–Q: остатки Ridge (log цены)».
+
+    Получите `share_3sigma` — долю остатков, которые отстоят от среднего остатков больше чем на 3 стандартных отклонения, и `skewness` — асимметрию остатков: `stats.skew(res)`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    from scipy import stats
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.linear_model import Ridge
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    num_cols = ['Year', 'Distance', 'Engine', 'km_year', 'AutoTransmission']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    ridge = Pipeline([('enc', ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols),
+                                                 ('num', StandardScaler(), num_cols)])),
+                      ('model', Ridge(alpha=0.3))]).fit(X_train, np.log(y_train))
+    pred_log = ridge.predict(X_valid)
+  starter: |
+    res = ...
+    fig, ax = plt.subplots(figsize=(5, 4))
+    stats.probplot(..., dist='norm', plot=ax)
+    ax.set_title(...)
+    plt.show()
+    z = (res - res.mean()) / res.std()
+    share_3sigma = ...
+    skewness = ...
+    print(round(share_3sigma, 4), round(skewness, 2))
+  solution: |
+    res = np.log(y_valid) - pred_log
+    fig, ax = plt.subplots(figsize=(5, 4))
+    stats.probplot(res, dist='norm', plot=ax)
+    ax.set_title('Q–Q: остатки Ridge (log цены)')
+    plt.show()
+    z = (res - res.mean()) / res.std()
+    share_3sigma = (np.abs(z) > 3).mean()
+    skewness = stats.skew(res)
+    print(round(share_3sigma, 4), round(skewness, 2))
+  explanation: |
+    - Середина точек лежит на прямой, а края отходят: слева точки ниже прямой, справа выше. Это тяжёлые хвосты, крупных промахов больше, чем у нормального распределения.
+    - Дальше 3σ лежат 1,8 % остатков, у нормального распределения — 0,27 %, в шесть-семь раз меньше.
+    - Асимметрия +0,49: правый хвост длиннее. Чаще встречаются машины, которые стоят намного **дороже** прогноза, в том числе ошибочные цены вроде «100 000 евро».
+  hints:
+    - "Остатки — `np.log(y_valid) - pred_log`."
+    - "График — `stats.probplot(res, dist='norm', plot=ax)`; заголовок — `ax.set_title('Q–Q: остатки Ridge (log цены)')`."
+    - "`share_3sigma = (np.abs(z) > 3).mean()`; `skewness = stats.skew(res)`."
+  tests: |
+    import numpy as np
+    ax = axes()
+    lines = [l for l in ax.get_lines() if len(l.get_ydata()) == len(ref('res'))]
+    ensure(len(lines) >= 1, 'Постройте Q–Q-график остатков: `stats.probplot(res, dist=\'norm\', plot=ax)`.')
+    yd = np.sort(np.asarray(lines[0].get_ydata(), dtype=float))
+    rres = np.sort(np.asarray(ref('res'), dtype=float))
+    if np.abs(yd).max() > 100:
+        fail('Остатки нужны в шкале обучения — в логарифмах: `np.log(y_valid) - pred_log`, а не в евро.')
+    if np.allclose(yd, np.sort(-rres)) and not np.allclose(yd, rres):
+        fail('Остаток — ответ минус прогноз: `np.log(y_valid) - pred_log`, а у вас наоборот.')
+    ensure(np.allclose(yd, rres), 'На графике не те остатки: `res = np.log(y_valid) - pred_log`.')
+    ensure('q' in ax.get_title().lower() and 'остат' in ax.get_title().lower(), 'Задайте заголовок: «Q–Q: остатки Ridge (log цены)».')
+    close(var('share_3sigma', 'number', 'числом'), ref('share_3sigma'), 'Доля остатков дальше 3σ — {expected}, а у вас {actual}.')
+    close(var('skewness', 'number', 'числом'), ref('skewness'), 'Асимметрия — {expected}, а у вас {actual}: `stats.skew(res)`.', rtol=1e-4)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        res = pred_log - np.log(y_valid)
+        fig, ax = plt.subplots(figsize=(5, 4))
+        stats.probplot(res, dist='norm', plot=ax)
+        ax.set_title('Q–Q: остатки Ridge (log цены)')
+        plt.show()
+        z = (res - res.mean()) / res.std()
+        share_3sigma = (np.abs(z) > 3).mean()
+        skewness = stats.skew(res)
+      expect: ответ минус прогноз
+    - code: |
+        res = y_valid - np.exp(pred_log)
+        fig, ax = plt.subplots(figsize=(5, 4))
+        stats.probplot(res, dist='norm', plot=ax)
+        ax.set_title('Q–Q: остатки Ridge (log цены)')
+        plt.show()
+        z = (res - res.mean()) / res.std()
+        share_3sigma = (np.abs(z) > 3).mean()
+        skewness = stats.skew(res)
+      expect: в шкале обучения
+
+- id: m7-l8-t5
+  title: Финальная проверка на test
+  difficulty: star
+  introduces: [error-distribution]
+  uses: [gradient-boosting, model-comparison]
+  statement: |
+    Выбранная модель — LightGBM на логарифме цены, 300 деревьев (функции `as_category` и `lgbm` уже есть). Как в уроке, обучите её на train и validation вместе (`X_temp`, `y_temp`; словарь категорий — тоже по `X_temp`) и **один раз** получите прогноз для test в евро — `test_pred`.
+
+    Соберите `report` — словарь для отчёта: `'MAE'` — средняя ошибка на test, `'медиана'` — медиана модуля ошибки, `'90%'` — 90-й процентиль модуля ошибки.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import mean_absolute_error
+    from lightgbm import LGBMRegressor
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    def as_category(table, train_table):
+        out = table.copy()
+        for c in cat_cols:
+            cats = sorted(train_table[c].unique())
+            out[c] = pd.Categorical(out[c].where(out[c].isin(cats)), categories=cats)
+        return out
+    def lgbm(n_estimators=300):
+        return LGBMRegressor(n_estimators=n_estimators, learning_rate=0.1, random_state=42, verbosity=-1, n_jobs=1)
+  starter: |
+    C_temp, C_test = ..., ...
+    final = lgbm().fit(..., ...)
+    test_pred = ...
+    test_err = np.abs(y_test - test_pred)
+    report = {'MAE': ..., 'медиана': ..., '90%': ...}
+    print({k: round(v) for k, v in report.items()})
+  solution: |
+    C_temp, C_test = as_category(X_temp, X_temp), as_category(X_test, X_temp)
+    final = lgbm().fit(C_temp, np.log(y_temp))
+    test_pred = np.exp(final.predict(C_test))
+    test_err = np.abs(y_test - test_pred)
+    report = {'MAE': mean_absolute_error(y_test, test_pred), 'медиана': test_err.median(), '90%': test_err.quantile(0.9)}
+    print({k: round(v) for k, v in report.items()})
+  explanation: |
+    - MAE на test — 1 840 евро, медиана — 890, 90-й процентиль — 3 772. Это и есть итог модуля: «в среднем ошибаемся на 1 840 евро, у половины машин — меньше чем на 890, у 90 % — меньше чем на 3 800».
+    - Модель обучена на train и validation вместе: данных больше, а гиперпараметры (300 деревьев, шаг 0,1, логарифм цены) выбраны раньше по validation и не меняются.
+    - Test открыт один раз и только для выбранной модели. Если после этого что-то менять, test станет ещё одной validation, и честной оценки не останется.
+  hints:
+    - "Словарь категорий — по `X_temp`: `as_category(X_temp, X_temp)` и `as_category(X_test, X_temp)`."
+    - "Модель учится на логарифме: `lgbm().fit(C_temp, np.log(y_temp))`; прогноз в евро — `np.exp(final.predict(C_test))`."
+    - "`report = {'MAE': mean_absolute_error(y_test, test_pred), 'медиана': test_err.median(), '90%': test_err.quantile(0.9)}`."
+  tests: |
+    import numpy as np
+    tp = np.asarray(var('test_pred'), dtype=float)
+    ensure(tp.shape == (len(ref('y_test')),), '`test_pred` — по прогнозу на каждую машину test.')
+    ensure(tp.min() > 10, 'Прогнозы похожи на логарифмы. Верните их в евро: `np.exp(final.predict(C_test))`.')
+    mae = float(np.mean(np.abs(ref('y_test').to_numpy() - tp)))
+    if not np.allclose(tp, ref('test_pred'), rtol=1e-6) and abs(mae - ref('report')['MAE']) > 20:
+        fail('MAE на test — {0:.0f}, а должна быть {1:.0f}. Финальную модель обучают на train и validation вместе: `X_temp`, `y_temp`, словарь категорий — тоже по `X_temp`.'.format(mae, ref('report')['MAE']))
+    same_array(tp, ref('test_pred'), '`test_pred` не совпадает с эталоном: LightGBM на `np.log(y_temp)`, категории по `X_temp`.', rtol=1e-6)
+    rep = var('report', dict, 'словарём')
+    ensure(set(rep) == {'MAE', 'медиана', '90%'}, 'Ключи `report` — `\'MAE\'`, `\'медиана\'`, `\'90%\'`.')
+    for k in ['MAE', 'медиана', '90%']:
+        close(rep[k], ref('report')[k], '`report[\'{0}\']` — {{expected}}, а у вас {{actual}}.'.format(k))
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        C_train, C_test = as_category(X_train, X_train), as_category(X_test, X_train)
+        final = lgbm().fit(C_train, np.log(y_train))
+        test_pred = np.exp(final.predict(C_test))
+        test_err = np.abs(y_test - test_pred)
+        report = {'MAE': mean_absolute_error(y_test, test_pred), 'медиана': test_err.median(), '90%': test_err.quantile(0.9)}
+      expect: train и validation вместе
+    - code: |
+        C_temp, C_test = as_category(X_temp, X_temp), as_category(X_test, X_temp)
+        final = lgbm().fit(C_temp, np.log(y_temp))
+        test_pred = final.predict(C_test)
+        test_err = np.abs(y_test - test_pred)
+        report = {'MAE': mean_absolute_error(y_test, test_pred), 'медиана': test_err.median(), '90%': test_err.quantile(0.9)}
+      expect: в евро

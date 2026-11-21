@@ -1,0 +1,15 @@
+id: m1
+number: 1
+label: Модуль 1
+title: "NumPy: первичный анализ данных"
+short: NumPy
+firstLessonIndex: 0
+description: >-
+  Загружаем числовые столбцы таблицы автомобилей, осваиваем массивы NumPy, проверяем пригодность значений,
+  описываем цены и пробеги статистиками, сравниваем группы и видим, как статистика меняется от выборки к выборке.
+sources:
+  - Workshops/01_NumPy_первичный_анализ.ipynb
+  - Workshops/2025/01_lab_NumPy.ipynb
+  - Workshops/2025/01_lab_NumPy_solution.ipynb
+  - from ODS Course/lesson1_part0_numpy.ipynb
+warmupReviews: []

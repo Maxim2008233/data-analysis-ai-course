@@ -1,0 +1,21 @@
+id: k2
+number: 12
+label: КТ 2
+kind: checkpoint
+lessonPrefix: КТ2
+title: "Контрольная точка 2: модели, нейросети, языковые модели и агенты"
+short: Контрольная 2
+description: >-
+  Два блока задач средней сложности по модулям 5–11 без новых понятий. Первый блок — машинное обучение и нейросети:
+  разбиение и ориентир, метрики регрессии, масштаб признаков, подбор гиперпараметра по валидации, переобучение
+  дерева, кросс-валидация, кодирование категорий без утечки, нейросеть-классификатор и логиты языковой модели.
+  Второй блок — языковые модели и агенты: сообщения и окно контекста, формат ответа, few-shot, температура, поиск по
+  курсу, RAG с честным «не знаю», шаг агента, инструменты LangChain и ограничители. Результаты сохраняются в
+  прогрессе, как у обычных заданий.
+sources:
+  - "Workshops/примерная программа 2026.xlsx — контрольная после модулей машинного обучения и языковых моделей"
+  - "Уроки модулей 5–11 этого курса"
+warmupReviews: [sk-split, baseline-model, linear-regression, regression-metrics, standard-scaler, sk-pipeline, knn,
+  hyperparameter, validation-curve, train-valid-test, decision-tree, tree-depth, overfitting, k-fold-cv, random-forest,
+  model-comparison, target-encoding, data-leakage, mlp, binary-classification, logits, llm-chat-api, system-prompt,
+  context-window, structured-output, few-shot, sampling-temperature]

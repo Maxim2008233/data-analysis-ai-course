@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 250" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="Pipeline из двух шагов. При fit обучающие признаки проходят через шаг scale — он запоминает средние и стандартные отклонения обучающей части и преобразует признаки, затем шаг model обучается на преобразованных признаках. При predict новые строки проходят через тот же scale только с transform, с теми же средними и отклонениями, и шаг model выдаёт прогноз">
+  <defs>
+    <marker id="pl-a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor" fill-opacity="0.65"/></marker>
+  </defs>
+  <rect x="166" y="10" width="454" height="200" rx="12" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-dasharray="6 4"/>
+  <text x="180" y="30" fill="currentColor" font-weight="700">pipe = Pipeline([('scale', StandardScaler()), ('model', LinearRegression())])</text>
+
+  <!-- fit -->
+  <text x="12" y="62" fill="#3d5bd9" font-weight="700">pipe.fit(X_train, y_train)</text>
+  <rect x="12" y="72" width="118" height="46" rx="6" fill="#3d5bd9" fill-opacity="0.14" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="71" y="92" fill="currentColor" text-anchor="middle" font-weight="700">X_train, y_train</text>
+  <text x="71" y="108" fill="currentColor" fill-opacity="0.75" text-anchor="middle">исходные единицы</text>
+  <path d="M130 95 L172 95" stroke="currentColor" stroke-opacity="0.65" marker-end="url(#pl-a)"/>
+  <rect x="174" y="66" width="190" height="58" rx="6" fill="currentColor" fill-opacity="0.07" stroke="currentColor" stroke-opacity="0.45"/>
+  <text x="269" y="86" fill="currentColor" text-anchor="middle" font-weight="700">scale: fit + transform</text>
+  <text x="269" y="103" fill="currentColor" fill-opacity="0.8" text-anchor="middle">запоминает μ и σ train</text>
+  <text x="269" y="118" fill="currentColor" fill-opacity="0.8" text-anchor="middle">(mean_, scale_)</text>
+  <path d="M364 95 L410 95" stroke="currentColor" stroke-opacity="0.65" marker-end="url(#pl-a)"/>
+  <text x="387" y="88" fill="currentColor" fill-opacity="0.7" font-size="11" text-anchor="middle">z</text>
+  <rect x="412" y="66" width="190" height="58" rx="6" fill="currentColor" fill-opacity="0.07" stroke="currentColor" stroke-opacity="0.45"/>
+  <text x="507" y="86" fill="currentColor" text-anchor="middle" font-weight="700">model: fit</text>
+  <text x="507" y="103" fill="currentColor" fill-opacity="0.8" text-anchor="middle">находит коэффициенты</text>
+  <text x="507" y="118" fill="currentColor" fill-opacity="0.8" text-anchor="middle">(coef_, intercept_)</text>
+
+  <!-- predict -->
+  <text x="12" y="148" fill="#c2410c" font-weight="700">pipe.predict(X_valid)</text>
+  <rect x="12" y="158" width="118" height="46" rx="6" fill="#c2410c" fill-opacity="0.12" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="71" y="178" fill="currentColor" text-anchor="middle" font-weight="700">X_valid</text>
+  <text x="71" y="194" fill="currentColor" fill-opacity="0.75" text-anchor="middle">исходные единицы</text>
+  <path d="M130 181 L172 181" stroke="currentColor" stroke-opacity="0.65" marker-end="url(#pl-a)"/>
+  <rect x="174" y="152" width="190" height="58" rx="6" fill="currentColor" fill-opacity="0.07" stroke="currentColor" stroke-opacity="0.45"/>
+  <text x="269" y="172" fill="currentColor" text-anchor="middle" font-weight="700">scale: только transform</text>
+  <text x="269" y="189" fill="currentColor" fill-opacity="0.8" text-anchor="middle">те же μ и σ из train —</text>
+  <text x="269" y="204" fill="currentColor" fill-opacity="0.8" text-anchor="middle">нового fit нет</text>
+  <path d="M364 181 L410 181" stroke="currentColor" stroke-opacity="0.65" marker-end="url(#pl-a)"/>
+  <text x="387" y="174" fill="currentColor" fill-opacity="0.7" font-size="11" text-anchor="middle">z</text>
+  <rect x="412" y="152" width="190" height="58" rx="6" fill="currentColor" fill-opacity="0.07" stroke="currentColor" stroke-opacity="0.45"/>
+  <text x="507" y="172" fill="currentColor" text-anchor="middle" font-weight="700">model: predict</text>
+  <text x="507" y="189" fill="currentColor" fill-opacity="0.8" text-anchor="middle">прогноз по найденным</text>
+  <text x="507" y="204" fill="currentColor" fill-opacity="0.8" text-anchor="middle">коэффициентам</text>
+  <path d="M602 181 L650 181" stroke="currentColor" stroke-opacity="0.65" marker-end="url(#pl-a)"/>
+  <rect x="652" y="158" width="96" height="46" rx="6" fill="#c2410c" fill-opacity="0.12" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="700" y="178" fill="currentColor" text-anchor="middle" font-weight="700">ŷ, евро</text>
+  <text x="700" y="194" fill="currentColor" fill-opacity="0.75" text-anchor="middle">прогноз цены</text>
+
+  <text x="12" y="238" fill="currentColor" fill-opacity="0.8">Пользователь Pipeline передаёт только исходные таблицы: что и на какой части обучать, Pipeline делает сам.</text>
+</svg>

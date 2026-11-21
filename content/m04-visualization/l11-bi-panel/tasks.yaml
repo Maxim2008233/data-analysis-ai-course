@@ -1,0 +1,481 @@
+- id: m4-l11-t1
+  title: Ключевые числа сегмента
+  difficulty: warmup
+  introduces: [bi-panel]
+  uses: [pd-bool-filter, mean-median, py-dicts]
+  statement: |
+    Для сегмента **гибридов** (`Fuel_type` равно `'Hybrid'`) получите `segment` и словарь `kpi` с тремя ключевыми числами панели — именно с такими ключами:
+
+    - `'Записей'` — число объявлений;
+    - `'Медиана цены, евро'`;
+    - `'Медиана пробега, км'`.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    segment = ...
+    kpi = {
+        'Записей': ...,
+        'Медиана цены, евро': ...,
+        'Медиана пробега, км': ...,
+    }
+    print(kpi)
+  solution: |
+    segment = df[df['Fuel_type'] == 'Hybrid']
+    kpi = {
+        'Записей': len(segment),
+        'Медиана цены, евро': segment['Price'].median(),
+        'Медиана пробега, км': segment['Distance'].median(),
+    }
+    print(kpi)
+  explanation: |
+    - Сегмент — фильтр строк (урок 2.5); все три числа считаются по нему, а не по всей таблице.
+    - Для цены и пробега — медианы: у обоих признаков длинный хвост (уроки 1.6 и 4.5).
+    - Словарь «подпись → значение» удобно передать потом в индикаторы панели циклом.
+  hints:
+    - Сначала отберите строки сегмента, затем посчитайте три числа по `segment`.
+    - "`segment = df[df['Fuel_type'] == 'Hybrid']`; число объявлений — `len(segment)`."
+    - "`'Медиана цены, евро': segment['Price'].median()`, `'Медиана пробега, км': segment['Distance'].median()`."
+  tests: |
+    k = var('kpi', dict, 'словарём')
+    keys = ['Записей', 'Медиана цены, евро', 'Медиана пробега, км']
+    ensure(list(k.keys()) == keys, 'Ключи словаря должны быть {0}, а у вас {1}.'.format(keys, list(k.keys())))
+    exp = ref('kpi')
+    if abs(k['Записей'] - len(ref('df'))) < 0.5:
+        fail('Число записей посчитано по всей таблице. Считайте по сегменту гибридов: `len(segment)`.')
+    close(k['Записей'], exp['Записей'], 'Гибридов {expected}, а у вас {actual}.')
+    if abs(k['Медиана цены, евро'] - ref('segment')['Price'].mean()) < 1e-6:
+        fail('Это средняя цена. Для панели нужна медиана: `median()`.')
+    close(k['Медиана цены, евро'], exp['Медиана цены, евро'], 'Медиана цены гибридов — {expected}, а у вас {actual}.')
+    close(k['Медиана пробега, км'], exp['Медиана пробега, км'], 'Медиана пробега гибридов — {expected}, а у вас {actual}.')
+    close(alt('kpi')['Медиана цены, евро'], alt_ref('kpi')['Медиана цены, евро'], HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        segment = df[df['Fuel_type'] == 'Hybrid']
+        kpi = {'Записей': len(segment), 'Медиана цены, евро': segment['Price'].mean(), 'Медиана пробега, км': segment['Distance'].median()}
+      expect: средняя цена
+    - code: |
+        segment = df[df['Fuel_type'] == 'Hybrid']
+        kpi = {'Записей': len(df), 'Медиана цены, евро': segment['Price'].median(), 'Медиана пробега, км': segment['Distance'].median()}
+      expect: по всей таблице
+
+- id: m4-l11-t2
+  kind: plot
+  title: Три индикатора в ряд
+  difficulty: main
+  introduces: [plotly-subplots]
+  uses: [plotly-express, py-dicts]
+  statement: |
+    Нарисуйте три ключевых числа сегмента гибридов индикаторами: `fig = make_subplots(rows=1, cols=3, specs=[[{'type': 'indicator'}] * 3])`, в каждую колонку — `go.Indicator(mode='number', value=..., title={'text': подпись})` в порядке словаря `kpi`. Добавьте заголовок рисунка со словом «гибрид» и покажите.
+  prelude: |
+    import pandas as pd
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    df = pd.read_csv('cars_processed.csv')
+    segment = df[df['Fuel_type'] == 'Hybrid']
+    kpi = {'Записей': len(segment), 'Медиана цены, евро': segment['Price'].median(),
+           'Медиана пробега, км': segment['Distance'].median()}   # задание 4.11.1
+  starter: |
+    fig = make_subplots(rows=1, cols=3, specs=[[{'type': 'indicator'}] * 3])
+    for column, (label, value) in enumerate(kpi.items(), start=1):
+        fig.add_trace(...)
+    fig.update_layout(height=250, title=...)
+    fig.show()
+  solution: |
+    fig = make_subplots(rows=1, cols=3, specs=[[{'type': 'indicator'}] * 3])
+    for column, (label, value) in enumerate(kpi.items(), start=1):
+        fig.add_trace(go.Indicator(mode='number', value=float(value), title={'text': label},
+                                   number={'valueformat': ',.0f'}), row=1, col=column)
+    fig.update_layout(height=250, title='Гибриды: ключевые числа')
+    fig.show()
+  explanation: |
+    - `specs` — по описанию на каждую ячейку: все три — индикаторы.
+    - `enumerate(kpi.items(), start=1)` выдаёт номер колонки и пару «подпись, значение».
+    - `number={'valueformat': ',.0f'}` показывает число целым, с разделителем тысяч.
+  hints:
+    - "В цикле добавляйте `go.Indicator` в ячейку `row=1, col=column`."
+    - "`go.Indicator(mode='number', value=float(value), title={'text': label})`."
+    - "`fig.add_trace(go.Indicator(mode='number', value=float(value), title={'text': label}), row=1, col=column)`."
+  tests: |
+    fig = pfig()
+    ind = [t for t in fig.data if t.type == 'indicator']
+    ensure(len(ind) == 3, 'Нужны три индикатора `go.Indicator`, а у вас {0}.'.format(len(ind)))
+    exp = list(ref('kpi').items())
+    for t, (label, value) in zip(ind, exp):
+        ensure(abs(float(t.value) - float(value)) < 1e-6, 'Индикатор «{0}» должен показывать {1:.0f}, а показывает {2}.'.format(label, value, t.value))
+        ensure((t.title.text or '') == label, 'Подпишите индикатор: `title={{\'text\': label}}` — ожидалась подпись «{0}».'.format(label))
+    ensure('гибрид' in (fig.layout.title.text or '').lower(), 'Добавьте заголовок со словом «гибрид»: `fig.update_layout(title=...)`.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        fig = make_subplots(rows=1, cols=3, specs=[[{'type': 'indicator'}] * 3])
+        for column, (label, value) in enumerate(kpi.items(), start=1):
+            fig.add_trace(go.Indicator(mode='number', value=float(value)), row=1, col=column)
+        fig.update_layout(title='Гибриды')
+        fig.show()
+      expect: Подпишите индикатор
+    - code: |
+        fig = make_subplots(rows=1, cols=3, specs=[[{'type': 'indicator'}] * 3])
+        for column, (label, value) in enumerate(kpi.items(), start=1):
+            fig.add_trace(go.Indicator(mode='number', value=float(value), title={'text': label}), row=1, col=column)
+        fig.show()
+      expect: заголовок
+
+- id: m4-l11-t3
+  kind: plot
+  title: Панель 2 × 2 для дизелей
+  difficulty: main
+  introduces: [bi-panel, plotly-subplots]
+  uses: [pd-value-counts, pd-bool-filter]
+  statement: |
+    Для сегмента **дизелей** (`diesel`) соберите панель `make_subplots(rows=2, cols=2, specs=[[{'type': 'indicator'}, {'type': 'indicator'}], [{'type': 'xy'}, {'type': 'xy'}]])`:
+
+    - сверху — индикаторы «число записей» и «медиана цены»;
+    - внизу слева — горизонтальные столбцы восьми самых частых марок (`go.Bar(..., orientation='h')`, по возрастанию — лидер сверху);
+    - внизу справа — гистограмма цен (`go.Histogram`, `nbinsx=50`).
+
+    В заголовке укажите сегмент (слово «дизель»), скройте легенду и покажите панель.
+  prelude: |
+    import pandas as pd
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    diesel = ...
+    top8 = ...
+    fig = make_subplots(rows=2, cols=2, specs=[[{'type': 'indicator'}, {'type': 'indicator'}],
+                                               [{'type': 'xy'}, {'type': 'xy'}]])
+    fig.add_trace(go.Indicator(...), row=1, col=1)
+    fig.add_trace(go.Indicator(...), row=1, col=2)
+    fig.add_trace(go.Bar(...), row=2, col=1)
+    fig.add_trace(go.Histogram(...), row=2, col=2)
+    fig.update_layout(height=550, showlegend=False, title=...)
+    fig.show()
+  solution: |
+    diesel = df[df['Fuel_type'] == 'Diesel']
+    top8 = diesel['Make'].value_counts().head(8).sort_values()
+    fig = make_subplots(rows=2, cols=2, specs=[[{'type': 'indicator'}, {'type': 'indicator'}],
+                                               [{'type': 'xy'}, {'type': 'xy'}]])
+    fig.add_trace(go.Indicator(mode='number', value=len(diesel), title={'text': 'Записей'}), row=1, col=1)
+    fig.add_trace(go.Indicator(mode='number', value=float(diesel['Price'].median()), title={'text': 'Медиана цены, евро'},
+                               number={'valueformat': ',.0f'}), row=1, col=2)
+    fig.add_trace(go.Bar(x=top8.values, y=top8.index, orientation='h'), row=2, col=1)
+    fig.add_trace(go.Histogram(x=diesel['Price'], nbinsx=50), row=2, col=2)
+    fig.update_layout(height=550, showlegend=False, title='Панель сегмента: дизель')
+    fig.show()
+  explanation: |
+    - Все четыре элемента считаются по одной таблице `diesel` — панель не смешивает сегменты.
+    - Для горизонтальных столбцов `x` — значения, `y` — названия, `orientation='h'`; сортировка по возрастанию ставит лидера сверху (урок 4.3).
+    - `nbinsx=50` — число интервалов гистограммы в Plotly (как `bins` в Matplotlib).
+  hints:
+    - Отберите сегмент и посчитайте восемь самых частых марок **в нём**; в каждую ячейку — свой элемент `go`.
+    - "`go.Bar(x=top8.values, y=top8.index, orientation='h')`; `go.Histogram(x=diesel['Price'], nbinsx=50)`."
+    - "`diesel = df[df['Fuel_type'] == 'Diesel']`; `top8 = diesel['Make'].value_counts().head(8).sort_values()`."
+  tests: |
+    import numpy as np
+    fig = pfig()
+    types = [t.type for t in fig.data]
+    ensure(types.count('indicator') == 2 and 'bar' in types and 'histogram' in types, 'На панели должны быть два индикатора, столбцы и гистограмма, а у вас {0}.'.format(types))
+    d = ref('diesel')
+    ind = [t for t in fig.data if t.type == 'indicator']
+    vals = sorted(float(t.value) for t in ind)
+    ensure(np.allclose(vals, sorted([float(len(d)), float(d['Price'].median())])), 'Индикаторы должны показывать число записей и медиану цены **дизелей**.')
+    bar = [t for t in fig.data if t.type == 'bar'][0]
+    ensure(bar.orientation == 'h', 'Столбцы сделайте горизонтальными: `orientation=\'h\'`.')
+    exp = ref('top8')
+    if list(bar.y) == list(ref('df')['Make'].value_counts().head(8).sort_values().index) and list(bar.y) != list(exp.index):
+        fail('Восемь марок посчитаны по всей таблице, а нужны по сегменту `diesel`.')
+    ensure(list(bar.y) == list(exp.index) and np.allclose(list(bar.x), exp.values), 'Столбцы должны показывать восемь самых частых марок среди дизелей по возрастанию.')
+    hist = [t for t in fig.data if t.type == 'histogram'][0]
+    ensure(len(hist.x) == len(d), 'Гистограмма должна строиться по ценам дизелей.')
+    ensure(hist.nbinsx == 50, 'Задайте 50 интервалов: `nbinsx=50`.')
+    ensure('дизел' in (fig.layout.title.text or '').lower(), 'Укажите сегмент в заголовке: слово «дизель».')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        diesel = df[df['Fuel_type'] == 'Diesel']
+        top8 = df['Make'].value_counts().head(8).sort_values()
+        fig = make_subplots(rows=2, cols=2, specs=[[{'type': 'indicator'}, {'type': 'indicator'}], [{'type': 'xy'}, {'type': 'xy'}]])
+        fig.add_trace(go.Indicator(mode='number', value=len(diesel), title={'text': 'Записей'}), row=1, col=1)
+        fig.add_trace(go.Indicator(mode='number', value=float(diesel['Price'].median()), title={'text': 'Медиана'}), row=1, col=2)
+        fig.add_trace(go.Bar(x=top8.values, y=top8.index, orientation='h'), row=2, col=1)
+        fig.add_trace(go.Histogram(x=diesel['Price'], nbinsx=50), row=2, col=2)
+        fig.update_layout(title='Дизель')
+        fig.show()
+      expect: по сегменту
+    - code: |
+        diesel = df[df['Fuel_type'] == 'Diesel']
+        top8 = diesel['Make'].value_counts().head(8).sort_values()
+        fig = make_subplots(rows=2, cols=2, specs=[[{'type': 'indicator'}, {'type': 'indicator'}], [{'type': 'xy'}, {'type': 'xy'}]])
+        fig.add_trace(go.Indicator(mode='number', value=len(df), title={'text': 'Записей'}), row=1, col=1)
+        fig.add_trace(go.Indicator(mode='number', value=float(df['Price'].median()), title={'text': 'Медиана'}), row=1, col=2)
+        fig.add_trace(go.Bar(x=top8.values, y=top8.index, orientation='h'), row=2, col=1)
+        fig.add_trace(go.Histogram(x=diesel['Price'], nbinsx=50), row=2, col=2)
+        fig.update_layout(title='Дизель')
+        fig.show()
+      expect: "**дизелей**"
+
+- id: m4-l11-t4
+  kind: plot
+  title: Панель-функция с защитой от пустого сегмента
+  difficulty: main
+  introduces: [bi-panel]
+  uses: [segment-filter, plotly-subplots, py-functions]
+  statement: |
+    Напишите функцию `build_panel(data, label)`, которая:
+
+    - если `data` пустая, вызывает `raise ValueError(...)` с понятным сообщением;
+    - иначе возвращает рисунок `make_subplots(rows=1, cols=3, ...)`: два индикатора (число записей и медиана цены) и гистограмма цен; заголовок рисунка содержит `label`.
+
+    Постройте и покажите панель для BMW с автоматом.
+  prelude: |
+    import pandas as pd
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    def build_panel(data, label):
+        if ...:
+            raise ValueError(...)
+        fig = make_subplots(rows=1, cols=3, specs=[[{'type': 'indicator'}, {'type': 'indicator'}, {'type': 'xy'}]])
+        ...
+        return fig
+
+    bmw_auto = df[(df['Make'] == 'BMW') & (df['Transmission'] == 'Automatic')]
+    build_panel(bmw_auto, 'BMW, автомат').show()
+  solution: |
+    def build_panel(data, label):
+        if data.empty:
+            raise ValueError(f'Сегмент «{label}» не содержит записей')
+        fig = make_subplots(rows=1, cols=3, specs=[[{'type': 'indicator'}, {'type': 'indicator'}, {'type': 'xy'}]])
+        fig.add_trace(go.Indicator(mode='number', value=len(data), title={'text': 'Записей'}), row=1, col=1)
+        fig.add_trace(go.Indicator(mode='number', value=float(data['Price'].median()), title={'text': 'Медиана цены, евро'},
+                                   number={'valueformat': ',.0f'}), row=1, col=2)
+        fig.add_trace(go.Histogram(x=data['Price'], nbinsx=40), row=1, col=3)
+        fig.update_layout(height=300, showlegend=False, title=f'Сегмент: {label}')
+        return fig
+
+    bmw_auto = df[(df['Make'] == 'BMW') & (df['Transmission'] == 'Automatic')]
+    build_panel(bmw_auto, 'BMW, автомат').show()
+  explanation: |
+    - `data.empty` — `True`, если в таблице нет строк; `raise ValueError(...)` останавливает построение с понятным сообщением вместо пустой панели или непонятной ошибки.
+    - Все элементы считаются по `data`, заголовок — f-строкой с `label`: функция подходит для любого сегмента.
+    - `return fig` возвращает рисунок — показать его можно снаружи: `build_panel(...).show()`.
+  hints:
+    - "Проверка пустоты — `data.empty`; остальное — два `go.Indicator` и `go.Histogram`, затем `return fig`."
+    - "`if data.empty: raise ValueError(f'Сегмент «{label}» не содержит записей')`."
+    - "`fig.add_trace(go.Indicator(mode='number', value=len(data), title={'text': 'Записей'}), row=1, col=1)`; заголовок — `fig.update_layout(title=f'Сегмент: {label}')`."
+  tests: |
+    import pandas as pd
+    f = var('build_panel')
+    ensure(callable(f), '`build_panel` должна быть функцией.')
+    d = ref('df')
+    for label, seg in [('Toyota', d[d['Make'] == 'Toyota']), ('SUV, дизель', d[(d['Style'] == 'SUV') & (d['Fuel_type'] == 'Diesel')])]:
+        fig = f(seg, label)
+        ensure(fig is not None and hasattr(fig, 'data'), 'Функция должна возвращать рисунок: `return fig`.')
+        ind = [t for t in fig.data if t.type == 'indicator']
+        ensure(len(ind) == 2, 'В панели должны быть два индикатора.')
+        vals = sorted(float(t.value) for t in ind)
+        ensure(abs(vals[0] - min(len(seg), seg['Price'].median())) < 1e-6 and abs(vals[1] - max(len(seg), seg['Price'].median())) < 1e-6,
+               'Для сегмента «{0}» индикаторы должны показывать {1} записей и медиану цены {2:.0f} — считайте по `data`.'.format(label, len(seg), seg['Price'].median()))
+        hist = [t for t in fig.data if t.type == 'histogram']
+        ensure(len(hist) == 1 and len(hist[0].x) == len(seg), 'Гистограмма должна строиться по ценам сегмента `data`.')
+        ensure(label in (fig.layout.title.text or ''), 'Заголовок панели должен содержать `label` («{0}»).'.format(label))
+    try:
+        f(d[d['Make'] == 'Нет такой марки'], 'пустой')
+    except ValueError:
+        pass
+    except Exception as e:
+        fail('Для пустого сегмента функция должна вызывать `ValueError`, а вызвала {0}.'.format(type(e).__name__))
+    else:
+        fail('Для пустого сегмента функция должна остановиться: `if data.empty: raise ValueError(...)`.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def build_panel(data, label):
+            fig = make_subplots(rows=1, cols=3, specs=[[{'type': 'indicator'}, {'type': 'indicator'}, {'type': 'xy'}]])
+            fig.add_trace(go.Indicator(mode='number', value=len(data), title={'text': 'Записей'}), row=1, col=1)
+            fig.add_trace(go.Indicator(mode='number', value=float(data['Price'].median()), title={'text': 'Медиана'}), row=1, col=2)
+            fig.add_trace(go.Histogram(x=data['Price'], nbinsx=40), row=1, col=3)
+            fig.update_layout(title=f'Сегмент: {label}')
+            return fig
+
+        build_panel(df, 'все').show()
+      expect: пустого сегмента
+    - code: |
+        def build_panel(data, label):
+            if data.empty:
+                raise ValueError('пусто')
+            fig = make_subplots(rows=1, cols=3, specs=[[{'type': 'indicator'}, {'type': 'indicator'}, {'type': 'xy'}]])
+            fig.add_trace(go.Indicator(mode='number', value=len(df), title={'text': 'Записей'}), row=1, col=1)
+            fig.add_trace(go.Indicator(mode='number', value=float(df['Price'].median()), title={'text': 'Медиана'}), row=1, col=2)
+            fig.add_trace(go.Histogram(x=data['Price'], nbinsx=40), row=1, col=3)
+            fig.update_layout(title=f'Сегмент: {label}')
+            return fig
+
+        build_panel(df, 'все').show()
+      expect: считайте по `data`
+
+- id: m4-l11-t5
+  kind: quiz
+  title: Хорошая панель
+  difficulty: main
+  introduces: [bi-panel]
+  uses: []
+  statement: |
+    Оцените решения для BI-панели сервиса.
+  quiz:
+    - q: "На панели «Сегмент: Toyota» индикатор «Записей» показывает 32 067. Что не так?"
+      options:
+        - Ничего, это нормально
+        - Число посчитано по всей таблице, а не по сегменту — панель смешивает сегменты
+        - Нужно показать среднюю цену вместо числа записей
+      answer: 1
+      explain: Все элементы панели должны считаться по одной таблице сегмента.
+    - q: Какой набор элементов лучше для панели «предложения автомобилей»?
+      options:
+        - Три ключевых числа и три графика, каждый отвечает на свой вопрос
+        - Все графики модуля на одном экране
+        - Одна таблица на 32 тысячи строк
+      answer: 0
+      explain: Панель — ответы на заранее заданные вопросы, а не склад графиков.
+    - q: Выбрали редкий сегмент, в нём 0 записей. Как должна вести себя функция панели?
+      options:
+        - Нарисовать пустые графики без подписей
+        - Остановиться с понятным сообщением, что сегмент пуст
+        - Показать данные всей таблицы
+      answer: 1
+      explain: Понятная ошибка лучше пустой или чужой панели.
+  hints:
+    - Вспомните правило «всё по одному сегменту» и зачем панели вопросы.
+    - "Один сегмент для всех элементов; 3–6 элементов по вопросам; пустой сегмент — понятная ошибка."
+    - "Ответы: посчитано по всей таблице; три числа и три графика; понятное сообщение."
+
+- id: m4-l11-t6
+  kind: plot
+  title: Панель марки
+  difficulty: star
+  introduces: [bi-panel, plotly-subplots]
+  uses: [segment-filter, pd-value-counts, pd-groupby]
+  statement: |
+    Напишите `build_make_dashboard(data, make)` — панель одной марки по образцу лабораторной: `make_subplots(rows=2, cols=3, ...)`.
+
+    - Строка 1 — три индикатора в таком порядке: число записей марки, медиана цены, медиана пробега.
+    - Строка 2 — восемь самых частых **моделей** марки (горизонтальные столбцы `go.Bar`, по возрастанию), гистограмма цен (`go.Histogram`) и боксплоты цены по коробке передач: по `go.Box` на каждый тип коробки, `name` — тип коробки.
+    - Заголовок содержит название марки, легенда скрыта.
+    - Для марки, которой нет в данных, функция вызывает `ValueError`.
+
+    Покажите панели для Mercedes и Renault.
+  prelude: |
+    import pandas as pd
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    df = pd.read_csv('cars_processed.csv')
+  starter: |
+    def build_make_dashboard(data, make):
+        cars = ...
+        if cars.empty:
+            raise ValueError(f'Марки «{make}» нет в данных')
+        fig = make_subplots(rows=2, cols=3, specs=[[{'type': 'indicator'}] * 3, [{'type': 'xy'}] * 3],
+                            subplot_titles=['', '', '', 'Топ-8 моделей', 'Распределение цены', 'Цена по коробке'])
+        ...
+        return fig
+
+    build_make_dashboard(df, 'Mercedes').show()
+    build_make_dashboard(df, 'Renault').show()
+  solution: |
+    def build_make_dashboard(data, make):
+        cars = data[data['Make'] == make]
+        if cars.empty:
+            raise ValueError(f'Марки «{make}» нет в данных')
+        fig = make_subplots(rows=2, cols=3, specs=[[{'type': 'indicator'}] * 3, [{'type': 'xy'}] * 3],
+                            subplot_titles=['', '', '', 'Топ-8 моделей', 'Распределение цены', 'Цена по коробке'])
+        metrics = [('Записей', len(cars)), ('Медиана цены, евро', cars['Price'].median()),
+                   ('Медиана пробега, км', cars['Distance'].median())]
+        for column, (label, value) in enumerate(metrics, start=1):
+            fig.add_trace(go.Indicator(mode='number', value=float(value), title={'text': label},
+                                       number={'valueformat': ',.0f'}), row=1, col=column)
+        models = cars['Model'].value_counts().head(8).sort_values()
+        fig.add_trace(go.Bar(x=models.values, y=models.index, orientation='h'), row=2, col=1)
+        fig.add_trace(go.Histogram(x=cars['Price'], nbinsx=40), row=2, col=2)
+        for transmission, group in cars.groupby('Transmission'):
+            fig.add_trace(go.Box(y=group['Price'], name=transmission, boxpoints=False), row=2, col=3)
+        fig.update_layout(height=620, showlegend=False, title=f'Панель марки: {make}')
+        return fig
+
+    build_make_dashboard(df, 'Mercedes').show()
+    build_make_dashboard(df, 'Renault').show()
+  explanation: |
+    - Сегмент — объявления одной марки; все элементы считаются по `cars`.
+    - Показатели собраны в список пар и добавляются циклом с `enumerate(..., start=1)` — номер колонки.
+    - Вместо марок (в сегменте она одна) — восемь самых частых моделей: так панель отвечает на вопрос «из чего состоит предложение марки».
+    - Цикл по группам `groupby('Transmission')` добавляет по боксплоту на тип коробки (урок 4.9).
+  hints:
+    - "Сегмент — `data[data['Make'] == make]`; три индикатора — циклом по списку пар «подпись, значение»."
+    - "Модели — `cars['Model'].value_counts().head(8).sort_values()`; боксплоты — `for transmission, group in cars.groupby('Transmission'): fig.add_trace(go.Box(y=group['Price'], name=transmission), row=2, col=3)`."
+    - "Индикатор: `go.Indicator(mode='number', value=float(value), title={'text': label})`, ячейка `row=1, col=column`; заголовок — `fig.update_layout(title=f'Панель марки: {make}', showlegend=False)`."
+  tests: |
+    import numpy as np
+    f = var('build_make_dashboard')
+    ensure(callable(f), '`build_make_dashboard` должна быть функцией.')
+    d = ref('df')
+    for make in ['Toyota', 'Skoda']:
+        cars = d[d['Make'] == make]
+        fig = f(d, make)
+        ensure(fig is not None and hasattr(fig, 'data'), 'Функция должна возвращать рисунок: `return fig`.')
+        ind = [t for t in fig.data if t.type == 'indicator']
+        ensure(len(ind) == 3, 'Нужны три индикатора, а у вас {0}.'.format(len(ind)))
+        exp = [len(cars), cars['Price'].median(), cars['Distance'].median()]
+        ensure(np.allclose([float(t.value) for t in ind], exp), 'Для {0} индикаторы должны показывать {1} записей, медиану цены {2:.0f} и медиану пробега {3:.0f} — в этом порядке.'.format(make, *exp))
+        bars = [t for t in fig.data if t.type == 'bar']
+        models = cars['Model'].value_counts().head(8).sort_values()
+        ensure(len(bars) == 1 and bars[0].orientation == 'h' and list(bars[0].y) == list(models.index), 'Столбцы должны показывать восемь самых частых моделей {0} по возрастанию (горизонтально).'.format(make))
+        hist = [t for t in fig.data if t.type == 'histogram']
+        ensure(len(hist) == 1 and len(hist[0].x) == len(cars), 'Гистограмма должна строиться по ценам марки.')
+        boxes = [t for t in fig.data if t.type == 'box']
+        ensure(sorted(t.name for t in boxes) == sorted(cars['Transmission'].unique()), 'Нужно по боксплоту на каждый тип коробки (`name` — тип коробки).')
+        ensure(make in (fig.layout.title.text or ''), 'Заголовок должен содержать название марки.')
+        ensure(fig.layout.showlegend is False, 'Скройте легенду: `showlegend=False`.')
+    try:
+        f(d, 'Нет такой марки')
+    except ValueError:
+        pass
+    except Exception as e:
+        fail('Для марки, которой нет в данных, нужна `ValueError`, а возникла {0}.'.format(type(e).__name__))
+    else:
+        fail('Для марки, которой нет в данных, функция должна остановиться с `ValueError`.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def build_make_dashboard(data, make):
+            cars = data[data['Make'] == make]
+            if cars.empty:
+                raise ValueError('нет марки')
+            fig = make_subplots(rows=2, cols=3, specs=[[{'type': 'indicator'}] * 3, [{'type': 'xy'}] * 3])
+            metrics = [('Записей', len(cars)), ('Медиана цены', cars['Price'].median()), ('Медиана пробега', cars['Distance'].median())]
+            for column, (label, value) in enumerate(metrics, start=1):
+                fig.add_trace(go.Indicator(mode='number', value=float(value), title={'text': label}), row=1, col=column)
+            models = data['Model'].value_counts().head(8).sort_values()
+            fig.add_trace(go.Bar(x=models.values, y=models.index, orientation='h'), row=2, col=1)
+            fig.add_trace(go.Histogram(x=cars['Price'], nbinsx=40), row=2, col=2)
+            for transmission, group in cars.groupby('Transmission'):
+                fig.add_trace(go.Box(y=group['Price'], name=transmission), row=2, col=3)
+            fig.update_layout(showlegend=False, title=f'Панель: {make}')
+            return fig
+      expect: моделей
+    - code: |
+        def build_make_dashboard(data, make):
+            cars = data[data['Make'] == make]
+            fig = make_subplots(rows=2, cols=3, specs=[[{'type': 'indicator'}] * 3, [{'type': 'xy'}] * 3])
+            metrics = [('Записей', len(cars)), ('Медиана цены', cars['Price'].median()), ('Медиана пробега', cars['Distance'].median())]
+            for column, (label, value) in enumerate(metrics, start=1):
+                fig.add_trace(go.Indicator(mode='number', value=float(value), title={'text': label}), row=1, col=column)
+            models = cars['Model'].value_counts().head(8).sort_values()
+            fig.add_trace(go.Bar(x=models.values, y=models.index, orientation='h'), row=2, col=1)
+            fig.add_trace(go.Histogram(x=cars['Price'], nbinsx=40), row=2, col=2)
+            for transmission, group in cars.groupby('Transmission'):
+                fig.add_trace(go.Box(y=group['Price'], name=transmission), row=2, col=3)
+            fig.update_layout(showlegend=False, title=f'Панель: {make}')
+            return fig
+      expect: ValueError

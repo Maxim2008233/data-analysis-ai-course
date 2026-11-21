@@ -1,0 +1,200 @@
+- id: m0-l4-t1
+  title: "Первое задание: создайте переменную"
+  difficulty: warmup
+  introduces: []
+  uses: [py-variables]
+  statement: |
+    Создайте переменную `greeting` со строкой `Привет, данные!` и выведите её через `print`. Нажмите «Проверить».
+  starter: |
+    greeting = ...
+    print(greeting)
+  solution: |
+    greeting = 'Привет, данные!'
+    print(greeting)
+  explanation: |
+    - Строка в Python пишется в кавычках: одинарных или двойных.
+    - `print` выводит значение под кодом.
+  hints:
+    - Строку в Python заключают в кавычки.
+    - "Присвойте переменной текст в кавычках: `greeting = '...'`."
+    - "`greeting = 'Привет, данные!'`"
+  tests: |
+    g = var('greeting', 'str', 'строкой')
+    if g.strip() != g:
+        fail('В строке лишние пробелы в начале или в конце.')
+    equal(g, 'Привет, данные!', 'Нужна строка «{expected}», а у вас {actual}. Проверьте запятую и восклицательный знак.')
+    ensure('Привет, данные!' in out_text(), 'Строка не выведена — добавьте print(greeting).')
+  wrong:
+    - code: |
+        greeting = 'Привет данные!'
+        print(greeting)
+      expect: Проверьте запятую
+    - code: |
+        greeting = 'Привет, данные!'
+      expect: print
+
+- id: m0-l4-t2
+  kind: quiz
+  title: Правила тренажёра
+  difficulty: warmup
+  introduces: []
+  uses: []
+  statement: |
+    Проверьте, как вы поняли устройство сайта.
+  quiz:
+    - q: Когда появляется кнопка «Показать решение»?
+      options:
+        - Сразу
+        - После всех трёх подсказок или после трёх неудачных проверок
+        - Только после решения задачи
+      answer: 1
+      explain: Сначала попробуйте сами и с подсказками — решение откроется потом.
+    - q: Чем «Выполнить» отличается от «Проверить»?
+      options:
+        - Ничем
+        - «Выполнить» только запускает код, «Проверить» — запускает и проверяет тестами
+        - «Проверить» показывает решение
+      answer: 1
+      explain: Засчитывается задание только после прохождения всех тестов кнопкой «Проверить».
+    - q: Где хранится прогресс, если вы не вошли в аккаунт?
+      options:
+        - На сервере
+        - В этом браузере
+        - Нигде
+      answer: 1
+      explain: Без входа — в браузере; после входа — в облаке, и гостевой прогресс переносится в аккаунт.
+  hints:
+    - Перечитайте раздел «Задания и проверка».
+    - "Решение — после подсказок или 3 неудачных проверок; засчитывает только «Проверить»."
+    - "Ответы: после подсказок/3 проверок; «Проверить» запускает тесты; в браузере."
+
+- id: m0-l4-t3
+  kind: bug
+  title: "Найдите ошибку: опечатка в имени"
+  difficulty: main
+  introduces: []
+  uses: [py-variables]
+  statement: |
+    Код падает с ошибкой. Прочитайте объяснение под кодом (кнопка «Выполнить»), исправьте ошибку и получите переменную `price_thousands` — цену в тысячах евро.
+  starter: |
+    price = 7750
+    price_thousands = pirce / 1000
+    print(price_thousands)
+  solution: |
+    price = 7750
+    price_thousands = price / 1000
+    print(price_thousands)
+  explanation: |
+    - `NameError: name 'pirce' is not defined` — переменная с таким именем не создана. Это опечатка: нужно `price`.
+  hints:
+    - Нажмите «Выполнить» и прочитайте, какое имя Python не знает.
+    - "Сравните имя в ошибке с именем переменной в первой строке."
+    - "`price_thousands = price / 1000`"
+  tests: |
+    close(var('price_thousands', 'number', 'числом'), 7.75, 'price_thousands должно быть {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        price = 7750
+        price_thousands = pirce / 1000
+      expect: Имя `pirce` не определено
+    - code: |
+        price = 7750
+        price_thousands = price * 1000
+      expect: должно быть 7.75
+
+- id: m0-l4-t4
+  kind: predict
+  title: Что выведет ячейка
+  difficulty: main
+  introduces: []
+  uses: [py-variables]
+  statement: |
+    Помните: значение последней строки-выражения ячейки выводится автоматически.
+  quiz:
+    - q: Что появится в Out после запуска?
+      code: |
+        a = 10
+        b = 3
+        a // b
+      options:
+        - "3.3333333333333335"
+        - "3"
+        - Ничего — нет print
+      answer: 1
+      explain: "`//` — целочисленное деление; последняя строка-выражение выводится автоматически."
+    - q: А здесь?
+      code: |
+        total = 41007
+        part = 12716
+        round(part / total * 100, 1)
+      options:
+        - "31.0"
+        - "0.31"
+        - "31"
+      answer: 0
+      explain: 12716 / 41007 ≈ 0.31009; × 100 = 31.009; round(…, 1) = 31.0.
+  hints:
+    - Последняя строка ячейки — выражение; его значение будет показано.
+    - "`//` отбрасывает дробную часть; `round(x, 1)` — один знак после запятой."
+    - "3; 31.0."
+
+- id: m0-l4-t5
+  kind: plot
+  title: "Задание с графиком: объявления по типу топлива"
+  difficulty: main
+  introduces: []
+  uses: [py-lists]
+  statement: |
+    Постройте **столбчатую** диаграмму по данным `fuel` и `counts` (4 столбца — по одному на тип топлива). Добавьте заголовок и подпишите ось Y: `Число объявлений`.
+
+    Тесты проверят график через объекты Matplotlib: тип (столбцы), число и высоту столбцов, заголовок и подпись оси.
+  prelude: |
+    import matplotlib.pyplot as plt
+    fuel = ['Бензин', 'Дизель', 'Гибрид', 'Газ']
+    counts = [15000, 17000, 2500, 1200]
+  starter: |
+    fig, ax = plt.subplots(figsize=(6, 3))
+    # постройте столбцы и подписи
+    ...
+    plt.show()
+  solution: |
+    fig, ax = plt.subplots(figsize=(6, 3))
+    ax.bar(fuel, counts)
+    ax.set_title('Объявления по типу топлива')
+    ax.set_ylabel('Число объявлений')
+    plt.show()
+  explanation: |
+    - `plt.subplots()` создаёт фигуру и оси `ax`; `ax.bar(подписи, высоты)` рисует столбцы.
+    - `set_title` и `set_ylabel` добавляют заголовок и подпись оси Y. Подробно о графиках — в модуле 4.
+  alternatives:
+    - |
+      plt.bar(fuel, counts)
+      plt.title('Топливо')
+      plt.ylabel('Число объявлений')
+      plt.show()
+  hints:
+    - У осей `ax` есть метод для столбчатой диаграммы и методы для подписей.
+    - "`ax.bar(fuel, counts)`, `ax.set_title('...')`, `ax.set_ylabel('Число объявлений')`."
+    - "Добавьте три строки: `ax.bar(fuel, counts)`, `ax.set_title('Объявления по типу топлива')`, `ax.set_ylabel('Число объявлений')`."
+  tests: |
+    import numpy as np
+    ax = axes()
+    bars = [p for p in ax.patches if type(p).__name__ == 'Rectangle']
+    ensure(len(bars) > 0, 'На графике нет столбцов — используйте ax.bar(...) (а не plot).')
+    ensure(len(bars) == 4, 'Столбцов должно быть 4 — по одному на тип топлива, а у вас %d.' % len(bars))
+    heights = sorted(round(b.get_height()) for b in bars)
+    ensure(heights == sorted([15000, 17000, 2500, 1200]), 'Высоты столбцов не совпадают с counts: %s.' % heights)
+    ensure(ax.get_title().strip() != '', 'Добавьте заголовок графика: ax.set_title(...).')
+    ensure(ax.get_ylabel().strip() == 'Число объявлений', 'Подпишите ось Y: «Число объявлений» (сейчас: «%s»).' % ax.get_ylabel())
+  wrong:
+    - code: |
+        fig, ax = plt.subplots()
+        ax.plot(fuel, counts)
+        ax.set_title('Топливо')
+        ax.set_ylabel('Число объявлений')
+      expect: нет столбцов
+    - code: |
+        fig, ax = plt.subplots()
+        ax.bar(fuel, counts)
+        ax.set_ylabel('Число объявлений')
+      expect: заголовок

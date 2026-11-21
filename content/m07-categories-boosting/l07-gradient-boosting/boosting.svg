@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 320" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="Сравнение леса и бустинга. В лесу 60 глубоких деревьев обучаются независимо, каждое на своей выборке с повторами, а их прогнозы усредняются. В бустинге прогноз строится по шагам: сначала средняя цена 9 574 евро, затем каждое неглубокое дерево учится на остатках — разнице между ценой и текущим прогнозом — и добавляется с множителем 0,1. MAE на validation падает с 6 527 до 6 061 после первого дерева, 5 650 после второго и 2 310 после двухсотого">
+  <defs><marker id="bst-a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor" fill-opacity="0.65"/></marker></defs>
+  <text x="12" y="22" fill="currentColor" font-weight="700">Лес (урок 6.6): деревья независимы, их прогнозы усредняют</text>
+  <rect x="12" y="36" width="170" height="26" rx="6" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="97" y="53" fill="currentColor" text-anchor="middle">глубокое дерево 1</text>
+  <line x1="186" y1="49" x2="262" y2="81" stroke="currentColor" stroke-opacity="0.6" stroke-width="1.5" marker-end="url(#bst-a)"/>
+  <rect x="12" y="68" width="170" height="26" rx="6" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="97" y="85" fill="currentColor" text-anchor="middle">глубокое дерево 2</text>
+  <line x1="186" y1="81" x2="262" y2="81" stroke="currentColor" stroke-opacity="0.6" stroke-width="1.5" marker-end="url(#bst-a)"/>
+  <rect x="12" y="100" width="170" height="26" rx="6" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="97" y="117" fill="currentColor" text-anchor="middle">… дерево 60</text>
+  <line x1="186" y1="113" x2="262" y2="81" stroke="currentColor" stroke-opacity="0.6" stroke-width="1.5" marker-end="url(#bst-a)"/>
+  <rect x="266" y="60" width="170" height="42" rx="6" fill="#3d5bd9" fill-opacity="0.12" stroke="#3d5bd9" stroke-opacity="0.6"/>
+  <text x="351" y="78" fill="currentColor" text-anchor="middle" font-weight="700">среднее прогнозов</text>
+  <text x="351" y="94" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11">MAE 2 055</text>
+  <text x="456" y="70" fill="currentColor" fill-opacity="0.85">Каждое дерево учится на своей выборке</text>
+  <text x="456" y="88" fill="currentColor" fill-opacity="0.85">с повторами и не знает о других.</text>
+  <text x="456" y="106" fill="currentColor" fill-opacity="0.85">Усреднение гасит их разброс.</text>
+  <line x1="12" y1="146" x2="748" y2="146" stroke="currentColor" stroke-opacity="0.2"/>
+  <text x="12" y="172" fill="currentColor" font-weight="700">Бустинг: каждое следующее дерево учится на ошибках суммы предыдущих</text>
+  <rect x="12" y="186" width="150" height="46" rx="6" fill="#64748b" fill-opacity="0.14" stroke="#64748b" stroke-opacity="0.6"/>
+  <text x="87" y="206" fill="currentColor" text-anchor="middle" font-weight="700">F<tspan dy="3" font-size="9">0</tspan><tspan dy="-3"> — средняя цена</tspan></text>
+  <text x="87" y="222" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11">9 574 евро всем</text>
+  <line x1="166" y1="209.0" x2="192" y2="209.0" stroke="currentColor" stroke-opacity="0.6" stroke-width="1.5" marker-end="url(#bst-a)"/>
+  <rect x="196" y="186" width="150" height="46" rx="6" fill="#c2410c" fill-opacity="0.14" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="271" y="206" fill="currentColor" text-anchor="middle" font-weight="700">+ 0,1 · дерево 1</text>
+  <text x="271" y="222" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11">учится на y − F<tspan dy="3" font-size="9">0</tspan></text>
+  <line x1="350" y1="209.0" x2="376" y2="209.0" stroke="currentColor" stroke-opacity="0.6" stroke-width="1.5" marker-end="url(#bst-a)"/>
+  <rect x="380" y="186" width="150" height="46" rx="6" fill="#c2410c" fill-opacity="0.14" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="455" y="206" fill="currentColor" text-anchor="middle" font-weight="700">+ 0,1 · дерево 2</text>
+  <text x="455" y="222" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11">учится на y − F<tspan dy="3" font-size="9">1</tspan></text>
+  <line x1="534" y1="209.0" x2="560" y2="209.0" stroke="currentColor" stroke-opacity="0.6" stroke-width="1.5" marker-end="url(#bst-a)"/>
+  <rect x="564" y="186" width="184" height="46" rx="6" fill="#c2410c" fill-opacity="0.14" stroke="#c2410c" stroke-opacity="0.6"/>
+  <text x="656" y="206" fill="currentColor" text-anchor="middle" font-weight="700">… + 0,1 · дерево 200</text>
+  <text x="656" y="222" fill="currentColor" fill-opacity="0.8" text-anchor="middle" font-size="11">учится на y − F<tspan dy="3" font-size="9">199</tspan></text>
+  <text x="87" y="254" fill="currentColor" text-anchor="middle">MAE 6 527</text>
+  <text x="271" y="254" fill="currentColor" text-anchor="middle">MAE 6 061</text>
+  <text x="455" y="254" fill="currentColor" text-anchor="middle">MAE 5 650</text>
+  <text x="656" y="254" fill="currentColor" text-anchor="middle">MAE 2 310</text>
+  <text x="12" y="284" fill="currentColor" fill-opacity="0.85">Деревья неглубокие (max_depth=3): каждое — небольшая поправка там, где прогноз ошибается сильнее.</text>
+  <text x="12" y="304" fill="currentColor" fill-opacity="0.85">Множитель 0,1 — скорость обучения (learning_rate): шаги маленькие и не «перелетают» цель.</text>
+</svg>

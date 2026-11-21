@@ -1,0 +1,448 @@
+- id: m11-l1-t1
+  title: idf своими руками
+  difficulty: warmup
+  introduces: [tf-idf]
+  uses: []
+  statement: |
+    Напишите функцию `smooth_idf(counts)`: по матрице счётчиков (NumPy-массив «документы × слова», как `counts.toarray()` из `CountVectorizer`) она возвращает массив idf для каждого слова по формуле scikit-learn:
+
+    idf = ln((1 + n) / (1 + df)) + 1,
+
+    где n — число документов (строк), df — в скольких документах слово встретилось хотя бы раз. Получите `idf_mini` для трёх предложений `mini` и `same` — совпадает ли он с `tfidf.idf_` (`np.allclose`, значение `True` или `False`).
+  prelude: |
+    import numpy as np
+    from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+    mini = ['Модель учится на обучающей выборке.',
+            'Переобученная модель запоминает шум обучающей выборки.',
+            'Тестовая выборка нужна для честной оценки модели.']
+    counts = CountVectorizer().fit_transform(mini).toarray()
+    tfidf = TfidfVectorizer().fit(mini)
+  starter: |
+    def smooth_idf(counts):
+        n = counts.shape[0]
+        df = ...                         # в скольких документах есть слово
+        return ...
+
+    idf_mini = smooth_idf(counts)
+    same = ...
+    print(np.round(idf_mini, 3))
+    print(same)
+  solution: |
+    def smooth_idf(counts):
+        n = counts.shape[0]
+        df = (counts > 0).sum(axis=0)    # в скольких документах есть слово
+        return np.log((1 + n) / (1 + df)) + 1
+
+    idf_mini = smooth_idf(counts)
+    same = bool(np.allclose(idf_mini, tfidf.idf_))
+    print(np.round(idf_mini, 3))
+    print(same)
+  explanation: |
+    - `counts > 0` — есть ли слово в документе; сумма по столбцу (`axis=0`) — в скольких документах оно встретилось. Сам счётчик слова не важен: слово, повторённое пять раз в одном документе, даёт df = 1.
+    - Единицы в формуле — сглаживание: idf не обращается в бесконечность и не падает до нуля даже у слова из каждого документа.
+    - У «модель» и «обучающей» df = 2, idf = ln(4/3) + 1 ≈ 1,288; у остальных слов df = 1, idf = ln 2 + 1 ≈ 1,693. Формула совпадает с `TfidfVectorizer`.
+  hints:
+    - "Документы со словом — `(counts > 0).sum(axis=0)`."
+    - "Формула — `np.log((1 + n) / (1 + df)) + 1`."
+    - "Сравнение массивов — `np.allclose(idf_mini, tfidf.idf_)`."
+  tests: |
+    import numpy as np
+    f = var('smooth_idf')
+    ensure(callable(f), '`smooth_idf` должна быть функцией.')
+    C = np.array([[3, 0, 1], [0, 0, 2], [1, 1, 5], [0, 0, 1]])
+    got = np.asarray(f(C), dtype=float)
+    ensure(got.shape == (3,), '`smooth_idf` должна вернуть по одному idf на слово (столбец): форма (3,), а у вас {0}.'.format(got.shape))
+    if np.allclose(got, np.log(5 / (1 + C.sum(axis=0))) + 1):
+        fail('df — число документов со словом, а не сумма счётчиков: `(counts > 0).sum(axis=0)`.')
+    same_array(got, np.array([np.log(5 / 3) + 1, np.log(5 / 2) + 1, 1.0]), 'Для матрицы счётчиков 4 × 3 idf должен быть [1.511, 1.916, 1.0], а у вас {0}.'.format(np.round(got, 3).tolist()))
+    same_array(np.asarray(var('idf_mini'), dtype=float), ref('idf_mini'), 'idf для трёх предложений не совпадает с ожидаемым.')
+    equal(var('same', bool, 'логическим значением'), True, 'Ваш idf должен совпасть с `tfidf.idf_` — проверьте формулу.')
+  files: []
+  wrong:
+    - code: |
+        def smooth_idf(counts):
+            n = counts.shape[0]
+            df = counts.sum(axis=0)
+            return np.log((1 + n) / (1 + df)) + 1
+        idf_mini = smooth_idf(counts)
+        same = bool(np.allclose(idf_mini, tfidf.idf_))
+      expect: число документов со словом
+    - code: |
+        def smooth_idf(counts):
+            n = counts.shape[0]
+            df = (counts > 0).sum(axis=0)
+            return np.log(n / df)
+        idf_mini = smooth_idf(counts)
+        same = bool(np.allclose(idf_mini, tfidf.idf_))
+      expect: idf должен быть
+
+- id: m11-l1-t2
+  title: Функция поиска
+  difficulty: main
+  introduces: [document-search]
+  uses: [tf-idf, cosine-similarity]
+  statement: |
+    Напишите функцию `search_ids(query, vectorizer, X, k)`: номера `k` документов, самых похожих на запрос, по убыванию косинусного сходства; при равном сходстве раньше меньший номер. `vectorizer` — уже обученный `TfidfVectorizer`, `X` — матрица документов из него. Номера — числа `int`.
+
+    Получите `key_lessons` — номера уроков (`docs[i]['lesson']`) трёх разделов, найденных по запросу «где хранить ключ авторизации».
+  prelude: |
+    import json
+    import numpy as np
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    texts = [d['lesson_title'] + '. ' + d['section'] + '. ' + d['text'] for d in docs]
+    vectorizer = TfidfVectorizer()
+    X = vectorizer.fit_transform(texts)
+  starter: |
+    def search_ids(query, vectorizer, X, k):
+        q = ...
+        scores = (X @ q.T).toarray().ravel()
+        order = ...
+        return [int(i) for i in order]
+
+    ids = search_ids('где хранить ключ авторизации', vectorizer, X, 3)
+    key_lessons = [docs[i]['lesson'] for i in ids]
+    for i in ids:
+        print(docs[i]['lesson'], docs[i]['section'])
+  solution: |
+    def search_ids(query, vectorizer, X, k):
+        q = vectorizer.transform([query])
+        scores = (X @ q.T).toarray().ravel()
+        order = np.argsort(-scores, kind='stable')[:k]
+        return [int(i) for i in order]
+
+    ids = search_ids('где хранить ключ авторизации', vectorizer, X, 3)
+    key_lessons = [docs[i]['lesson'] for i in ids]
+    for i in ids:
+        print(docs[i]['lesson'], docs[i]['section'])
+  explanation: |
+    - `vectorizer.transform([query])` — вектор запроса в том же словаре, что у документов. Список из одной строки: векторизатор работает с коллекциями текстов.
+    - `X @ q.T` — разреженная матрица-столбец со сходствами; `.toarray().ravel()` делает из неё обычный одномерный массив.
+    - Нашлись разделы урока 10.1 «Ключ — не в коде» и «Что запомнить», а третьим — раздел урока 0.7 о словарях: там тоже есть слово «ключ», только в другом смысле.
+  hints:
+    - "Вектор запроса — `vectorizer.transform([query])`, без `fit`."
+    - "Номера по убыванию — `np.argsort(-scores, kind='stable')[:k]`."
+    - "Уроки — `[docs[i]['lesson'] for i in ids]`."
+  tests: |
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    f = var('search_ids')
+    ensure(callable(f), '`search_ids` должна быть функцией.')
+    corpus = ['кошка ловит мышь', 'собака ловит мяч', 'кошка спит', 'погода хорошая', 'мышь и кошка дружат']
+    vec = TfidfVectorizer().fit(corpus)
+    M = vec.transform(corpus)
+    got = f('кошка и мышь', vec, M, 3)
+    ensure(isinstance(got, list) and len(got) == 3, '`search_ids(..., k=3)` должна вернуть список из 3 номеров, а вернула {0}.'.format(got))
+    if got[0] in (1, 3):
+        fail('Первым стоит документ без общих слов с запросом: сортируйте по убыванию сходства.')
+    equal(got, [0, 4, 2], 'Для запроса «кошка и мышь» на пяти коротких текстах ожидались документы {expected}, а у вас {actual}.')
+    ensure(all(type(i) is int for i in got), 'Номера документов должны быть числами int.')
+    equal(f('собака', vec, M, 1), [1], 'Для запроса «собака» единственный подходящий документ — 1.')
+    equal(var('key_lessons', list, 'списком'), ref('key_lessons'), 'По запросу «где хранить ключ авторизации» ожидались разделы уроков {expected}, а у вас {actual}.')
+  files: [course_docs.json]
+  wrong:
+    - code: |
+        def search_ids(query, vectorizer, X, k):
+            q = vectorizer.transform([query])
+            scores = (X @ q.T).toarray().ravel()
+            order = np.argsort(scores, kind='stable')[:k]
+            return [int(i) for i in order]
+        ids = search_ids('где хранить ключ авторизации', vectorizer, X, 3)
+        key_lessons = [docs[i]['lesson'] for i in ids]
+      expect: по убыванию
+    - code: |
+        def search_ids(query, vectorizer, X, k):
+            q = TfidfVectorizer().fit_transform([query])
+            scores = (X @ q.T).toarray().ravel()
+            order = np.argsort(-scores, kind='stable')[:k]
+            return [int(i) for i in order]
+        ids = search_ids('где хранить ключ авторизации', vectorizer, X, 3)
+        key_lessons = [docs[i]['lesson'] for i in ids]
+      expect: Неподходящее значение
+
+- id: m11-l1-t3
+  title: Уроки, а не разделы
+  difficulty: main
+  introduces: []
+  uses: [document-search]
+  statement: |
+    Разделы одного урока часто занимают первые места поиска подряд: по запросу о температуре — сразу несколько разделов урока 10.2. Для ссылок в ответе нужны разные уроки. Напишите функцию `top_lessons(scores, lessons, k)`:
+
+    - `scores` — массив сходств запроса со всеми разделами, `lessons` — список номеров уроков этих разделов;
+    - функция возвращает до `k` **разных** уроков в порядке лучшего сходства их разделов;
+    - разделы со сходством 0 и меньше не считаются — если похожих нет, список пустой.
+
+    Получите `temperature_lessons` — три урока для запроса «что такое температура языковой модели».
+  prelude: |
+    import json
+    import numpy as np
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    texts = [d['lesson_title'] + '. ' + d['section'] + '. ' + d['text'] for d in docs]
+    vectorizer = TfidfVectorizer()
+    X = vectorizer.fit_transform(texts)
+    lessons = [d['lesson'] for d in docs]
+  starter: |
+    def top_lessons(scores, lessons, k):
+        result = []
+        for i in np.argsort(-scores, kind='stable'):
+            if scores[i] <= 0 or len(result) == k:
+                break
+            if ...:
+                result.append(lessons[i])
+        return result
+
+    q = vectorizer.transform(['что такое температура языковой модели'])
+    scores = (X @ q.T).toarray().ravel()
+    temperature_lessons = top_lessons(scores, lessons, 3)
+    print(temperature_lessons)
+  solution: |
+    def top_lessons(scores, lessons, k):
+        result = []
+        for i in np.argsort(-scores, kind='stable'):
+            if scores[i] <= 0 or len(result) == k:
+                break
+            if lessons[i] not in result:
+                result.append(lessons[i])
+        return result
+
+    q = vectorizer.transform(['что такое температура языковой модели'])
+    scores = (X @ q.T).toarray().ravel()
+    temperature_lessons = top_lessons(scores, lessons, 3)
+    print(temperature_lessons)
+  explanation: |
+    - Разделы перебираются по убыванию сходства, и урок попадает в список, только если его там ещё нет. Так порядок уроков задаёт их лучший раздел.
+    - Цикл останавливается на первом нулевом сходстве: дальше идут разделы без общих слов с запросом. Остановка по `k` экономит время на длинных коллекциях.
+    - По запросу о температуре первые десять мест делят уроки 10.2 и 10.1. Без группировки три ссылки вели бы в эти два урока (10.2 дважды), а с ней получились три разных: 10.2, 10.1 и 5.1.
+  hints:
+    - "Урок добавляем, если его ещё нет: `if lessons[i] not in result`."
+    - "Перебор уже идёт по убыванию сходства — порядок уроков получится сам."
+    - "Остановка: `scores[i] <= 0` или набралось `k` уроков."
+  tests: |
+    import numpy as np
+    f = var('top_lessons')
+    ensure(callable(f), '`top_lessons` должна быть функцией.')
+    s = np.array([0.1, 0.9, 0.8, 0.0, 0.5, 0.7])
+    ls = ['1.1', '2.1', '2.1', '3.1', '1.1', '2.2']
+    got = f(s, ls, 3)
+    if got[:2] == ['2.1', '2.1']:
+        fail('Урок 2.1 попал в список дважды: добавляйте урок, только если его ещё нет.')
+    equal(got, ['2.1', '2.2', '1.1'], 'Для сходств {0} и уроков {1} ожидались {{expected}}, а у вас {{actual}}.'.format(list(s), ls))
+    equal(f(s, ls, 10), ['2.1', '2.2', '1.1'], 'Раздел со сходством 0 (урок 3.1) не считается, даже если k больше.')
+    equal(f(np.zeros(4), ['1.1', '1.2', '1.3', '1.4'], 2), [], 'Если похожих разделов нет (все сходства 0), список пустой.')
+    equal(f(s, ls, 1), ['2.1'], 'При k = 1 — только лучший урок.')
+    equal(var('temperature_lessons', list, 'списком'), ref('temperature_lessons'), 'Уроки для запроса о температуре — {expected}, а у вас {actual}.')
+  files: [course_docs.json]
+  wrong:
+    - code: |
+        def top_lessons(scores, lessons, k):
+            result = []
+            for i in np.argsort(-scores, kind='stable')[:k]:
+                if scores[i] > 0:
+                    result.append(lessons[i])
+            return result
+        q = vectorizer.transform(['что такое температура языковой модели'])
+        scores = (X @ q.T).toarray().ravel()
+        temperature_lessons = top_lessons(scores, lessons, 3)
+      expect: дважды
+    - code: |
+        def top_lessons(scores, lessons, k):
+            result = []
+            for i in np.argsort(-scores, kind='stable'):
+                if len(result) == k:
+                    break
+                if lessons[i] not in result:
+                    result.append(lessons[i])
+            return result
+        q = vectorizer.transform(['что такое температура языковой модели'])
+        scores = (X @ q.T).toarray().ravel()
+        temperature_lessons = top_lessons(scores, lessons, 3)
+      expect: не считается
+
+- id: m11-l1-t4
+  title: Почему нашёлся этот раздел
+  difficulty: main
+  introduces: []
+  uses: [tf-idf, document-search]
+  statement: |
+    Сходство запроса и документа — сумма произведений весов общих слов: `q[j] * d[j]` по всем словам `j`. Разложив сумму на слагаемые, видно, какое слово «притянуло» документ. Напишите функцию `explain_match(query, i, vectorizer, X)`: список пар `(слово, вклад)` для слов, которые есть и в запросе, и в документе `i`, по убыванию вклада. Вклад — `float`; сумма вкладов равна сходству.
+
+    Получите `why` — объяснение для первого раздела, найденного по запросу «как бороться с переобучением» (его номер — `top`).
+  prelude: |
+    import json
+    import numpy as np
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    texts = [d['lesson_title'] + '. ' + d['section'] + '. ' + d['text'] for d in docs]
+    vectorizer = TfidfVectorizer()
+    X = vectorizer.fit_transform(texts)
+    q = vectorizer.transform(['как бороться с переобучением'])
+    top = int(np.argmax((X @ q.T).toarray().ravel()))
+  starter: |
+    def explain_match(query, i, vectorizer, X):
+        q = vectorizer.transform([query]).toarray().ravel()
+        d = X[i].toarray().ravel()
+        words = vectorizer.get_feature_names_out()
+        both = np.nonzero(...)[0]              # номера слов, общих для запроса и документа
+        pairs = [(str(words[j]), float(q[j] * d[j])) for j in both]
+        return ...
+
+    why = explain_match('как бороться с переобучением', top, vectorizer, X)
+    print(docs[top]['lesson'], docs[top]['section'], why)
+  solution: |
+    def explain_match(query, i, vectorizer, X):
+        q = vectorizer.transform([query]).toarray().ravel()
+        d = X[i].toarray().ravel()
+        words = vectorizer.get_feature_names_out()
+        both = np.nonzero(q * d)[0]            # номера слов, общих для запроса и документа
+        pairs = [(str(words[j]), float(q[j] * d[j])) for j in both]
+        return sorted(pairs, key=lambda p: -p[1])
+
+    why = explain_match('как бороться с переобучением', top, vectorizer, X)
+    print(docs[top]['lesson'], docs[top]['section'], why)
+  explanation: |
+    - `q * d` — поэлементное произведение: ненулевое только там, где слово есть в обоих векторах. `np.nonzero` даёт номера таких слов.
+    - `sorted(..., key=lambda p: -p[1])` — по убыванию вклада.
+    - Раздел про `loc` и `iloc` нашёлся благодаря одному слову «как» с вкладом 0,174. Это и есть всё сходство: остальные слова запроса векторизатор не знает. Такое разложение — первый инструмент отладки поиска.
+  hints:
+    - "Общие слова — `np.nonzero(q * d)[0]`."
+    - "Сортировка по убыванию вклада — `sorted(pairs, key=lambda p: -p[1])`."
+    - "Проверьте себя: сумма вкладов должна равняться сходству `(X @ q.T)` для этого документа."
+  tests: |
+    import numpy as np
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    f = var('explain_match')
+    ensure(callable(f), '`explain_match` должна быть функцией.')
+    corpus = ['кошка ловит мышь', 'собака ловит мяч', 'кошка спит весь день', 'мышь и кошка дружат']
+    vec = TfidfVectorizer().fit(corpus)
+    M = vec.transform(corpus)
+    got = f('кошка ловит мышь вечером', 0, vec, M)
+    ensure(isinstance(got, list), '`explain_match` должна вернуть список пар, а вернула {0}.'.format(type(got).__name__))
+    equal(sorted(w for w, c in got), ['кошка', 'ловит', 'мышь'], 'Для запроса «кошка ловит мышь вечером» и документа «кошка ловит мышь» общие слова — {expected}, а у вас {actual}.')
+    contrib = [c for w, c in got]
+    ensure(contrib == sorted(contrib, reverse=True), 'Пары должны идти по убыванию вклада, а у вас {0}.'.format(got))
+    sim = float((M[0] @ vec.transform(['кошка ловит мышь вечером']).T).toarray()[0, 0])
+    close(sum(contrib), sim, 'Сумма вкладов должна равняться сходству запроса и документа ({expected}), а у вас {actual}.')
+    equal(sorted(w for w, c in f('кошка спит', 0, vec, M)), ['кошка'], 'Слово «спит» есть в запросе, но не в документе «кошка ловит мышь»: общие слова — только {expected}, а у вас {actual}.')
+    equal(f('погода', 2, vec, M), [], 'Если общих слов нет, список пустой.')
+    w = var('why', list, 'списком')
+    equal([x for x, c in w], [x for x, c in ref('why')], 'Для раздела, найденного по запросу «как бороться с переобучением», общие слова — {expected}, а у вас {actual}.')
+  files: [course_docs.json]
+  wrong:
+    - code: |
+        def explain_match(query, i, vectorizer, X):
+            q = vectorizer.transform([query]).toarray().ravel()
+            d = X[i].toarray().ravel()
+            words = vectorizer.get_feature_names_out()
+            both = np.nonzero(q)[0]
+            pairs = [(str(words[j]), float(q[j] * d[j])) for j in both]
+            return sorted(pairs, key=lambda p: -p[1])
+        why = explain_match('как бороться с переобучением', top, vectorizer, X)
+      expect: общие слова
+    - code: |
+        def explain_match(query, i, vectorizer, X):
+            q = vectorizer.transform([query]).toarray().ravel()
+            d = X[i].toarray().ravel()
+            words = vectorizer.get_feature_names_out()
+            both = np.nonzero(q * d)[0]
+            return [(str(words[j]), float(q[j] * d[j])) for j in both]
+        why = explain_match('как бороться с переобучением', top, vectorizer, X)
+      expect: по убыванию вклада
+
+- id: m11-l1-t5
+  title: TF-IDF целиком
+  difficulty: star
+  introduces: []
+  uses: [tf-idf]
+  statement: |
+    Соберите TF-IDF без scikit-learn. Напишите функцию `my_tfidf(counts)`: по матрице счётчиков «документы × слова» (NumPy) она возвращает матрицу TF-IDF, как `TfidfVectorizer`:
+
+    1. idf = ln((1 + n) / (1 + df)) + 1;
+    2. вес = счётчик × idf;
+    3. каждая строка делится на свою длину (норму); строка из одних нулей остаётся нулевой — без `nan` и предупреждений.
+
+    Проверьте себя на `counts` из курса: получите `max_diff` — наибольшее отличие вашей матрицы от `X_sklearn` по модулю.
+  prelude: |
+    import json
+    import numpy as np
+    from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    texts = [d['section'] + '. ' + d['text'] for d in docs[:60]]
+    counts = CountVectorizer().fit_transform(texts).toarray()
+    X_sklearn = TfidfVectorizer().fit_transform(texts).toarray()
+  starter: |
+    def my_tfidf(counts):
+        n = counts.shape[0]
+        df = (counts > 0).sum(axis=0)
+        idf = ...
+        W = counts * idf
+        norms = np.linalg.norm(W, axis=1, keepdims=True)
+        ...
+        return W
+
+    max_diff = float(np.abs(my_tfidf(counts) - X_sklearn).max())
+    print(max_diff)
+  solution: |
+    def my_tfidf(counts):
+        n = counts.shape[0]
+        df = (counts > 0).sum(axis=0)
+        idf = np.log((1 + n) / (1 + df)) + 1
+        W = counts * idf
+        norms = np.linalg.norm(W, axis=1, keepdims=True)
+        norms[norms == 0] = 1                    # нулевую строку делим на 1 — она останется нулевой
+        return W / norms
+
+    max_diff = float(np.abs(my_tfidf(counts) - X_sklearn).max())
+    print(max_diff)
+  explanation: |
+    - `counts * idf` — каждый столбец (слово) умножается на свой idf: массив idf формы (слова,) растягивается на все строки (broadcasting).
+    - `keepdims=True` оставляет длины столбцом (документы, 1), и деление идёт построчно.
+    - Длину 0 заменяем на 1: деление 0 / 1 оставляет нулевую строку нулевой, а 0 / 0 дало бы `nan`. Такая строка бывает у документа, все слова которого выброшены или неизвестны.
+    - Отличие от scikit-learn — порядка 10⁻¹⁶, ошибки округления: формулы совпадают.
+  hints:
+    - "idf — как в задании «idf своими руками»: `np.log((1 + n) / (1 + df)) + 1`."
+    - "Нулевые длины: `norms[norms == 0] = 1` перед делением."
+    - "Нормировка — `W / norms`, где `norms` формы (n, 1)."
+  tests: |
+    import numpy as np
+    from sklearn.feature_extraction.text import TfidfTransformer
+    f = var('my_tfidf')
+    ensure(callable(f), '`my_tfidf` должна быть функцией.')
+    rng = np.random.default_rng(3)
+    C = rng.integers(0, 3, size=(6, 5))
+    C[2] = 0
+    with np.errstate(all='raise'):
+        try:
+            got = np.asarray(f(C), dtype=float)
+        except FloatingPointError:
+            fail('На строке из одних нулей получилось деление 0 / 0. Замените нулевые длины на 1 перед делением.')
+    ensure(got.shape == C.shape, 'Матрица TF-IDF должна быть той же формы, что счётчики: {0}, а у вас {1}.'.format(C.shape, got.shape))
+    ensure(not np.isnan(got).any(), 'В матрице есть nan: строку из одних нулей нужно оставить нулевой.')
+    expected = TfidfTransformer().fit_transform(C).toarray()
+    same_array(got, expected, 'На случайной матрице счётчиков ваш TF-IDF отличается от scikit-learn.')
+    ensure(float(var('max_diff', 'number', 'числом')) < 1e-9, 'Отличие от `X_sklearn` должно быть порядка ошибок округления, а у вас {0}.'.format(var('max_diff')))
+  files: [course_docs.json]
+  wrong:
+    - code: |
+        def my_tfidf(counts):
+            n = counts.shape[0]
+            df = (counts > 0).sum(axis=0)
+            idf = np.log((1 + n) / (1 + df)) + 1
+            W = counts * idf
+            return W / np.linalg.norm(W, axis=1, keepdims=True)
+        max_diff = float(np.abs(my_tfidf(counts) - X_sklearn).max())
+      expect: одних нулей
+    - code: |
+        def my_tfidf(counts):
+            n = counts.shape[0]
+            df = (counts > 0).sum(axis=0)
+            idf = np.log((1 + n) / (1 + df)) + 1
+            W = counts * idf
+            norms = np.linalg.norm(W, axis=0, keepdims=True)
+            norms[norms == 0] = 1
+            return W / norms
+        max_diff = float(np.abs(my_tfidf(counts) - X_sklearn).max())
+      expect: отличается от scikit-learn

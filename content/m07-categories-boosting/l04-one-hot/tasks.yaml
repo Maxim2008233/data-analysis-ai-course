@@ -1,0 +1,436 @@
+- id: m7-l4-t1
+  title: One-Hot для топлива
+  difficulty: warmup
+  introduces: [one-hot-encoding]
+  uses: []
+  statement: |
+    Обучите `fuel_ohe` — `OneHotEncoder`, который выдаёт нули для незнакомых значений, — на `Fuel_type` обучающей части. Получите `names` — список имён его столбцов и `rows` — плотный массив (`.toarray()`) для таблицы `new_fuels`: строки — Diesel и незнакомый Hydrogen.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OneHotEncoder
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    new_fuels = pd.DataFrame({'Fuel_type': ['Diesel', 'Hydrogen']})
+  starter: |
+    fuel_ohe = OneHotEncoder(...)
+    fuel_ohe.fit(...)
+    names = ...
+    rows = ...
+    print(names)
+    print(rows)
+  solution: |
+    fuel_ohe = OneHotEncoder(handle_unknown='ignore')
+    fuel_ohe.fit(X_train[['Fuel_type']])
+    names = list(fuel_ohe.get_feature_names_out())
+    rows = fuel_ohe.transform(new_fuels).toarray()
+    print(names)
+    print(rows)
+  explanation: |
+    - Шесть видов топлива — шесть столбцов `Fuel_type_…`. У дизельной машины единица в первом столбце, остальные нули.
+    - Hydrogen в train не встречался: все шесть индикаторов равны нулю — «ни один из известных видов».
+    - `transform` возвращает разреженную матрицу; `.toarray()` превращает её в обычный массив, чтобы посмотреть глазами.
+  hints:
+    - "`OneHotEncoder(handle_unknown='ignore')`; обучение — на `X_train[['Fuel_type']]`."
+    - "Имена столбцов — `fuel_ohe.get_feature_names_out()`."
+    - "`rows = fuel_ohe.transform(new_fuels).toarray()`."
+  tests: |
+    import numpy as np
+    from sklearn.preprocessing import OneHotEncoder
+    e = var('fuel_ohe', OneHotEncoder, 'объектом OneHotEncoder')
+    ensure(e.handle_unknown == 'ignore', 'Незнакомое значение должно давать нули: `handle_unknown=\'ignore\'`.')
+    equal([str(v) for v in var('names', list, 'списком')], [str(v) for v in ref('names')], 'Имена столбцов — {expected}, а у вас {actual}.')
+    r = np.asarray(var('rows'), dtype=float)
+    ensure(r.shape == (2, 6), '`rows` — плотный массив 2 × 6: `.toarray()`.')
+    same_array(r, np.asarray(ref('rows'), dtype=float), 'Строки не совпадают: у Diesel — единица в своём столбце, у Hydrogen — все нули.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        fuel_ohe = OneHotEncoder(handle_unknown='infrequent_if_exist')
+        fuel_ohe.fit(X_train[['Fuel_type']])
+        names = list(fuel_ohe.get_feature_names_out())
+        rows = fuel_ohe.transform(new_fuels).toarray()
+      expect: "handle_unknown='ignore'"
+    - code: |
+        fuel_ohe = OneHotEncoder(handle_unknown='ignore')
+        fuel_ohe.fit(X_train[['Fuel_type']])
+        names = list(fuel_ohe.categories_[0])
+        rows = fuel_ohe.transform(new_fuels).toarray()
+      expect: Имена столбцов
+
+- id: m7-l4-t2
+  title: Сколько столбцов после One-Hot
+  difficulty: main
+  introduces: [one-hot-encoding]
+  uses: [column-transformer, standard-scaler]
+  statement: |
+    Соберите `enc` — ColumnTransformer: `'cat'` — `OneHotEncoder(handle_unknown='ignore')` для `cat_cols`, `'num'` — `StandardScaler()` для `num_cols`. Получите `Z` — результат на train, `n_indicators` — сколько всего категорий в четырёх признаках (сумма длин `categories_` кодировщика), `n_columns` — число столбцов `Z` и `density` — долю ненулевых значений (`Z.nnz` — их число).
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler
+    from sklearn.compose import ColumnTransformer
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    num_cols = ['Year', 'Distance', 'Engine', 'km_year', 'AutoTransmission']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+  starter: |
+    enc = ColumnTransformer([
+        ('cat', ..., cat_cols),
+        ('num', ..., num_cols),
+    ])
+    Z = ...
+    n_indicators = ...
+    n_columns = ...
+    density = ...
+    print(n_indicators, n_columns, round(density, 4))
+  solution: |
+    enc = ColumnTransformer([
+        ('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols),
+        ('num', StandardScaler(), num_cols),
+    ])
+    Z = enc.fit_transform(X_train)
+    n_indicators = sum(len(c) for c in enc.named_transformers_['cat'].categories_)
+    n_columns = Z.shape[1]
+    density = Z.nnz / (Z.shape[0] * Z.shape[1])
+    print(n_indicators, n_columns, round(density, 4))
+  explanation: |
+    - Категорий 22 + 725 + 12 + 6 = 765, вместе с пятью числами — 770 столбцов.
+    - Ненулевых значений 1,2 %: в каждой строке 4 единицы и 5 чисел. Поэтому результат — разреженная матрица.
+    - Обученные шаги ColumnTransformer доступны через `named_transformers_` — так можно заглянуть в кодировщик.
+  hints:
+    - "Шаги — `OneHotEncoder(handle_unknown='ignore')` и `StandardScaler()`; `Z = enc.fit_transform(X_train)`."
+    - "Категории кодировщика — `enc.named_transformers_['cat'].categories_` (список массивов)."
+    - "`density = Z.nnz / (Z.shape[0] * Z.shape[1])`."
+  tests: |
+    from sklearn.compose import ColumnTransformer
+    e = var('enc', ColumnTransformer, 'объектом ColumnTransformer')
+    kinds = {name: type(t).__name__ for name, t, cols in e.transformers}
+    ensure(kinds.get('cat') == 'OneHotEncoder' and kinds.get('num') == 'StandardScaler', 'Шаги — `(\'cat\', OneHotEncoder(...), cat_cols)` и `(\'num\', StandardScaler(), num_cols)`.')
+    equal(var('n_indicators', 'number', 'числом'), ref('n_indicators'), 'Всего категорий — {expected}, а у вас {actual}.')
+    equal(var('n_columns', 'number', 'числом'), ref('n_columns'), 'Столбцов после кодирования — {expected}, а у вас {actual}.')
+    close(var('density', 'number', 'числом'), ref('density'), 'Доля ненулевых — {expected}, а у вас {actual}.')
+    close(alt('density'), alt_ref('density'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        enc = ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols), ('num', StandardScaler(), num_cols)])
+        Z = enc.fit_transform(X_train)
+        n_indicators = len(enc.named_transformers_['cat'].categories_)
+        n_columns = Z.shape[1]
+        density = Z.nnz / (Z.shape[0] * Z.shape[1])
+      expect: Всего категорий
+    - code: |
+        enc = ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols), ('num', StandardScaler(), num_cols)])
+        Z = enc.fit_transform(X_train)
+        n_indicators = sum(len(c) for c in enc.named_transformers_['cat'].categories_)
+        n_columns = Z.shape[1]
+        density = Z.nnz / Z.shape[0]
+      expect: Доля ненулевых
+
+- id: m7-l4-t3
+  title: Линейная модель с One-Hot
+  difficulty: main
+  introduces: [one-hot-encoding]
+  uses: [linear-regression, sk-pipeline]
+  statement: |
+    Соберите `linear` — Pipeline: кодировщик `enc` (One-Hot + StandardScaler, уже создан) и `LinearRegression`. Получите `mae` на validation, `gain` — выигрыш по сравнению с линейной моделью на числах и коробке (`base_mae` дана) и `gap` — разрыв «validation минус train».
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    num_cols = ['Year', 'Distance', 'Engine', 'km_year', 'AutoTransmission']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    enc = ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols), ('num', StandardScaler(), num_cols)])
+    base_mae = 4144.3
+  starter: |
+    linear = ...
+    linear.fit(X_train, y_train)
+    mae = ...
+    gain = ...
+    gap = ...
+    print(round(mae, 1), round(gain, 1), round(gap, 1))
+  solution: |
+    linear = Pipeline([('enc', enc), ('model', LinearRegression())])
+    linear.fit(X_train, y_train)
+    mae = mean_absolute_error(y_valid, linear.predict(X_valid))
+    gain = base_mae - mae
+    gap = mae - mean_absolute_error(y_train, linear.predict(X_train))
+    print(round(mae, 1), round(gain, 1), round(gap, 1))
+  explanation: |
+    - MAE ≈ 3 190 — на ≈ 954 евро лучше, чем без категорий.
+    - На train ошибка ≈ 2 949: разрыв ≈ 241 евро. 770 коэффициентов — модель уже может подстраиваться под отдельные машины (особенно редких моделей), но в целом переобучение умеренное.
+  hints:
+    - "Pipeline — `[('enc', enc), ('model', LinearRegression())]`."
+    - "`gain = base_mae - mae`."
+    - "Разрыв — MAE на validation минус MAE на train."
+  tests: |
+    from sklearn.pipeline import Pipeline
+    p = var('linear', Pipeline, 'объектом Pipeline')
+    ensure(type(p.named_steps.get('model')).__name__ == 'LinearRegression', 'Шаг `model` — `LinearRegression()`.')
+    close(var('mae', 'number', 'числом'), ref('mae'), 'MAE линейной модели с One-Hot — {expected}, а у вас {actual}.')
+    close(var('gain', 'number', 'числом'), ref('gain'), 'Выигрыш — {expected}, а у вас {actual}.')
+    g = var('gap', 'number', 'числом')
+    if abs(g + ref('gap')) < 1e-6:
+        fail('Знак наоборот: разрыв — ошибка validation минус ошибка train.')
+    close(g, ref('gap'), 'Разрыв — {expected}, а у вас {actual}.')
+    close(alt('mae'), alt_ref('mae'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        linear = Pipeline([('enc', enc), ('model', LinearRegression())])
+        linear.fit(X_train, y_train)
+        mae = mean_absolute_error(y_valid, linear.predict(X_valid))
+        gain = base_mae - mae
+        gap = mean_absolute_error(y_train, linear.predict(X_train)) - mae
+      expect: Знак наоборот
+    - code: |
+        linear = Pipeline([('enc', enc), ('model', LinearRegression())])
+        linear.fit(X_train, y_train)
+        mae = mean_absolute_error(y_train, linear.predict(X_train))
+        gain = base_mae - mae
+        gap = mae - mean_absolute_error(y_train, linear.predict(X_train))
+      expect: MAE линейной модели
+
+- id: m7-l4-t4
+  title: BMW против Dacia при прочих равных
+  difficulty: main
+  introduces: [one-hot-encoding]
+  uses: [linear-regression]
+  statement: |
+    Модель `make_model` (One-Hot только для марки + числа) уже обучена. Получите `coef` — Series коэффициентов с именами столбцов, `bmw_vs_dacia` — разность коэффициентов `cat__Make_BMW` и `cat__Make_Dacia`. Затем обучите `drop_model` — ту же модель, но с `OneHotEncoder(handle_unknown='ignore', drop='first', sparse_output=False)`, и проверьте: `same_pred` — совпадают ли прогнозы двух моделей на validation (`np.allclose`), и `drop_diff` — та же разность во второй модели.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.linear_model import LinearRegression
+    df = pd.read_csv('cars_processed.csv')
+    num_cols = ['Year', 'Distance', 'Engine', 'km_year', 'AutoTransmission']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    cols = ['Make'] + num_cols
+    make_model = Pipeline([('enc', ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore', sparse_output=False), ['Make']),
+                                                      ('num', StandardScaler(), num_cols)])),
+                           ('model', LinearRegression())]).fit(X_train[cols], y_train)
+  starter: |
+    coef = pd.Series(make_model.named_steps['model'].coef_, index=...)
+    bmw_vs_dacia = ...
+    drop_model = Pipeline([('enc', ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore', drop='first', sparse_output=False), ['Make']),
+                                                      ('num', StandardScaler(), num_cols)])),
+                           ('model', LinearRegression())]).fit(X_train[cols], y_train)
+    drop_coef = pd.Series(drop_model.named_steps['model'].coef_, index=drop_model.named_steps['enc'].get_feature_names_out())
+    same_pred = ...
+    drop_diff = ...
+    print(round(bmw_vs_dacia), same_pred, round(drop_diff))
+  solution: |
+    coef = pd.Series(make_model.named_steps['model'].coef_, index=make_model.named_steps['enc'].get_feature_names_out())
+    bmw_vs_dacia = coef['cat__Make_BMW'] - coef['cat__Make_Dacia']
+    drop_model = Pipeline([('enc', ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore', drop='first', sparse_output=False), ['Make']),
+                                                      ('num', StandardScaler(), num_cols)])),
+                           ('model', LinearRegression())]).fit(X_train[cols], y_train)
+    drop_coef = pd.Series(drop_model.named_steps['model'].coef_, index=drop_model.named_steps['enc'].get_feature_names_out())
+    same_pred = bool(np.allclose(make_model.predict(X_valid[cols]), drop_model.predict(X_valid[cols])))
+    drop_diff = drop_coef['cat__Make_BMW'] - drop_coef['cat__Make_Dacia']
+    print(round(bmw_vs_dacia), same_pred, round(drop_diff))
+  explanation: |
+    - При одинаковых годе, пробеге, объёме и коробке BMW дороже Dacia на ≈ 6 500 евро — в обеих моделях.
+    - С `drop='first'` первая марка (Audi) столбца не получает, остальные коэффициенты становятся поправками относительно Audi. Прогнозы те же: убранный столбец восстанавливается из остальных и свободного члена.
+    - Здесь кодировщик выдаёт обычную (плотную) матрицу — `sparse_output=False`: для 22 марок это дёшево, и решение точное. С разреженной матрицей прогнозы совпали бы с точностью до евро — решатель для неё приближённый.
+    - Поэтому смысл имеют разности коэффициентов, а не сами коэффициенты категорий.
+  hints:
+    - "Имена — `make_model.named_steps['enc'].get_feature_names_out()`."
+    - "Разность — `coef['cat__Make_BMW'] - coef['cat__Make_Dacia']`."
+    - "`same_pred = bool(np.allclose(make_model.predict(X_valid[cols]), drop_model.predict(X_valid[cols])))`."
+  tests: |
+    close(var('bmw_vs_dacia', 'number', 'числом'), ref('bmw_vs_dacia'), 'BMW дороже Dacia на {expected} евро, а у вас {actual}.')
+    equal(bool(var('same_pred')), True, 'Прогнозы моделей с drop=\'first\' и без должны совпадать: `np.allclose(...)` даёт True.')
+    close(var('drop_diff', 'number', 'числом'), ref('drop_diff'), 'Разность во второй модели — {expected}, а у вас {actual}.')
+    close(alt('bmw_vs_dacia'), alt_ref('bmw_vs_dacia'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        coef = pd.Series(make_model.named_steps['model'].coef_, index=make_model.named_steps['enc'].get_feature_names_out())
+        bmw_vs_dacia = coef['cat__Make_BMW']
+        drop_model = Pipeline([('enc', ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore', drop='first', sparse_output=False), ['Make']), ('num', StandardScaler(), num_cols)])), ('model', LinearRegression())]).fit(X_train[cols], y_train)
+        drop_coef = pd.Series(drop_model.named_steps['model'].coef_, index=drop_model.named_steps['enc'].get_feature_names_out())
+        same_pred = bool(np.allclose(make_model.predict(X_valid[cols]), drop_model.predict(X_valid[cols])))
+        drop_diff = drop_coef['cat__Make_BMW'] - drop_coef['cat__Make_Dacia']
+      expect: BMW дороже Dacia
+    - code: |
+        coef = pd.Series(make_model.named_steps['model'].coef_, index=make_model.named_steps['enc'].get_feature_names_out())
+        bmw_vs_dacia = coef['cat__Make_BMW'] - coef['cat__Make_Dacia']
+        drop_model = Pipeline([('enc', ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore', drop='first', sparse_output=False), ['Make']), ('num', StandardScaler(), num_cols)])), ('model', LinearRegression())]).fit(X_train[cols], y_train)
+        drop_coef = pd.Series(drop_model.named_steps['model'].coef_, index=drop_model.named_steps['enc'].get_feature_names_out())
+        same_pred = False
+        drop_diff = drop_coef['cat__Make_BMW']
+      expect: должны совпадать
+
+- id: m7-l4-t5
+  title: Ловушка get_dummies
+  difficulty: main
+  introduces: [one-hot-encoding]
+  uses: []
+  statement: |
+    Таблицы `d_train` и `d_valid` получены `pd.get_dummies` отдельно для train и validation. Посчитайте `n_missing` — сколько столбцов train нет в validation, `n_extra` — сколько лишних столбцов в validation, и выровняйте validation по train: `d_valid_aligned` — те же столбцы в том же порядке, отсутствующие заполнены нулями.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    d_train = pd.get_dummies(X_train, columns=cat_cols, dtype=int)
+    d_valid = pd.get_dummies(X_valid, columns=cat_cols, dtype=int)
+  starter: |
+    n_missing = ...
+    n_extra = ...
+    d_valid_aligned = ...
+    print(d_train.shape, d_valid.shape, n_missing, n_extra, d_valid_aligned.shape)
+  solution: |
+    n_missing = len(set(d_train.columns) - set(d_valid.columns))
+    n_extra = len(set(d_valid.columns) - set(d_train.columns))
+    d_valid_aligned = d_valid.reindex(columns=d_train.columns, fill_value=0)
+    print(d_train.shape, d_valid.shape, n_missing, n_extra, d_valid_aligned.shape)
+  explanation: |
+    - В validation нет 191 столбца (моделей, которых в ней не оказалось) и есть 43 лишних (моделей, которых нет в train). Модель обучена на 770 столбцах — подать ей таблицу другой формы нельзя.
+    - `reindex(columns=d_train.columns, fill_value=0)` ставит столбцы в порядке train, недостающие заполняет нулями, лишние отбрасывает — ровно то, что делает `OneHotEncoder(handle_unknown='ignore')`.
+  hints:
+    - "Разность множеств столбцов: `set(d_train.columns) - set(d_valid.columns)`."
+    - "Лишние — наоборот: `set(d_valid.columns) - set(d_train.columns)`."
+    - "Выравнивание — `d_valid.reindex(columns=d_train.columns, fill_value=0)`."
+  tests: |
+    import pandas as pd
+    equal(var('n_missing', 'number', 'числом'), ref('n_missing'), 'Столбцов train, которых нет в validation, — {expected}, а у вас {actual}.')
+    equal(var('n_extra', 'number', 'числом'), ref('n_extra'), 'Лишних столбцов в validation — {expected}, а у вас {actual}.')
+    a = var('d_valid_aligned', pd.DataFrame, 'таблицей DataFrame')
+    ensure(list(a.columns) == list(ref('d_train').columns), 'Столбцы выровненной таблицы — ровно столбцы train в том же порядке: `reindex(columns=d_train.columns, ...)`.')
+    ensure(not a.isna().any().any(), 'Недостающие столбцы заполните нулями: `fill_value=0`.')
+    same_frame(a, ref('d_valid_aligned'), 'Выровненная таблица не совпадает.', check_dtype=False)
+    equal(alt('n_extra'), alt_ref('n_extra'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        n_missing = len(set(d_train.columns) - set(d_valid.columns))
+        n_extra = len(set(d_valid.columns) - set(d_train.columns))
+        d_valid_aligned = d_valid.reindex(columns=d_train.columns)
+      expect: заполните нулями
+    - code: |
+        n_missing = len(set(d_train.columns) - set(d_valid.columns))
+        n_extra = len(set(d_valid.columns) - set(d_train.columns))
+        d_valid_aligned = d_valid
+      expect: ровно столбцы train
+
+- id: m7-l4-t6
+  title: Поправки редких моделей
+  difficulty: star
+  introduces: [one-hot-encoding]
+  uses: [error-analysis, pd-value-counts]
+  statement: |
+    Модель `linear` (One-Hot + линейная регрессия) уже обучена. Соберите `model_coef` — Series коэффициентов столбцов моделей машин, подписанную **названиями моделей** (без префикса `cat__Model_`). Получите `top20` — 20 моделей с наибольшими по модулю коэффициентами, `few_share` — долю среди них моделей, у которых в train не больше 2 машин, и `clarus_coef` — коэффициент модели `Clarus`.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.linear_model import LinearRegression
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    num_cols = ['Year', 'Distance', 'Engine', 'km_year', 'AutoTransmission']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    linear = Pipeline([('enc', ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols),
+                                                  ('num', StandardScaler(), num_cols)])),
+                       ('model', LinearRegression())]).fit(X_train, y_train)
+  starter: |
+    names = linear.named_steps['enc'].get_feature_names_out()
+    coef = pd.Series(linear.named_steps['model'].coef_, index=names)
+    model_coef = ...
+    counts = X_train['Model'].value_counts()
+    top20 = ...
+    few_share = ...
+    clarus_coef = ...
+    print(model_coef[top20].round(0))
+    print(round(few_share, 2), round(clarus_coef))
+  solution: |
+    names = linear.named_steps['enc'].get_feature_names_out()
+    coef = pd.Series(linear.named_steps['model'].coef_, index=names)
+    model_coef = coef[coef.index.str.startswith('cat__Model_')]
+    model_coef.index = model_coef.index.str.replace('cat__Model_', '', regex=False)
+    counts = X_train['Model'].value_counts()
+    top20 = list(model_coef.abs().sort_values(ascending=False).index[:20])
+    few_share = (counts[top20] <= 2).mean()
+    clarus_coef = model_coef['Clarus']
+    print(model_coef[top20].round(0))
+    print(round(few_share, 2), round(clarus_coef))
+  explanation: |
+    - Столбцы моделей выделяются по префиксу `cat__Model_`; `str.replace` убирает его, чтобы индекс совпал с названиями в `value_counts`.
+    - Половина из 20 самых больших поправок (10 моделей) — у моделей с одной-двумя машинами, а среди всех 725 моделей таких 28 %. Чем меньше машин, тем свободнее коэффициент подгоняется под их цены. Все 20 поправок положительные: модель «доплачивает» за редкие дорогие машины.
+    - Clarus: одна машина в train — Kia 1998 года за 100 000 евро (ошибка в данных) — и поправка ≈ +91 000. Модель выучила ошибку. Регуляризация (урок 7.6) сжимает такие коэффициенты.
+  hints:
+    - "Столбцы моделей — `coef[coef.index.str.startswith('cat__Model_')]`; префикс убирает `index.str.replace('cat__Model_', '', regex=False)`."
+    - "Топ-20 по модулю — `model_coef.abs().sort_values(ascending=False).index[:20]`."
+    - "Доля редких — среднее маски `counts[top20] <= 2`."
+  tests: |
+    import pandas as pd
+    m = var('model_coef', pd.Series, 'Series')
+    ensure(len(m) == len(ref('model_coef')), 'Коэффициентов моделей машин — {0}: столбцы с префиксом `cat__Model_`.'.format(len(ref('model_coef'))))
+    ensure('Clarus' in m.index, 'Индекс `model_coef` — названия моделей без префикса `cat__Model_`.')
+    t = [str(v) for v in var('top20', list, 'списком')]
+    ensure(len(t) == 20, 'В `top20` — 20 моделей.')
+    if set(t) == set(ref('model_coef').sort_values(ascending=False).index[:20]) and set(t) != set(ref('top20')):
+        fail('Нужны наибольшие **по модулю** коэффициенты: `.abs()` перед сортировкой.')
+    equal(set(t), set(ref('top20')), 'Набор 20 моделей с наибольшими по модулю коэффициентами не совпадает.')
+    close(var('few_share', 'number', 'числом'), ref('few_share'), 'Доля моделей с одной-двумя машинами — {expected}, а у вас {actual}.')
+    close(var('clarus_coef', 'number', 'числом'), ref('clarus_coef'), 'Коэффициент Clarus — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        names = linear.named_steps['enc'].get_feature_names_out()
+        coef = pd.Series(linear.named_steps['model'].coef_, index=names)
+        model_coef = coef[coef.index.str.startswith('cat__Model_')]
+        model_coef.index = model_coef.index.str.replace('cat__Model_', '', regex=False)
+        counts = X_train['Model'].value_counts()
+        top20 = list(model_coef.abs().sort_values(ascending=False).index[:20])
+        few_share = (counts[top20] < 2).mean()
+        clarus_coef = model_coef['Clarus']
+      expect: Доля моделей с одной-двумя
+    - code: |
+        names = linear.named_steps['enc'].get_feature_names_out()
+        coef = pd.Series(linear.named_steps['model'].coef_, index=names)
+        model_coef = coef[coef.index.str.startswith('cat__Model_')]
+        model_coef.index = model_coef.index.str.replace('cat__Model_', '', regex=False)
+        counts = X_train['Model'].value_counts()
+        top20 = list(model_coef.abs().sort_values(ascending=False).index[:20])
+        few_share = (counts[top20] <= 2).sum()
+        clarus_coef = model_coef['Clarus']
+      expect: Доля моделей

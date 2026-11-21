@@ -1,0 +1,504 @@
+- id: m11-l3-t1
+  title: Контекст в бюджете
+  difficulty: warmup
+  introduces: []
+  uses: [document-search, context-window]
+  statement: |
+    Напишите функцию `format_context(hits, max_chars)`. `hits` — найденные разделы (словари с ключами `lesson`, `lesson_title`, `section`, `text`) по убыванию сходства. Функция возвращает строку контекста для промпта:
+
+    - блок раздела — строка `[номер урока] название урока — заголовок раздела`, перенос строки и текст раздела;
+    - блоки соединяются пустой строкой (`'\n\n'`);
+    - блоки добавляются по порядку, пока длина контекста не больше `max_chars`. Первый блок, который не помещается, останавливает добавление: остальные разделы ещё менее похожи;
+    - если не помещается даже первый блок, функция возвращает его первые `max_chars` символов — контекст не должен быть пустым.
+
+    Получите `context` для трёх разделов `hits` с бюджетом 1000 символов и `n_blocks` — сколько блоков в него вошло.
+  prelude: |
+    import json
+    import numpy as np
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    texts = [d['lesson_title'] + '. ' + d['section'] + '. ' + d['text'] for d in docs]
+    vectorizer = TfidfVectorizer(analyzer='char_wb', ngram_range=(3, 5))
+    X = vectorizer.fit_transform(texts)
+    scores = (X @ vectorizer.transform(['Что такое кросс-валидация?']).T).toarray().ravel()
+    hits = [docs[i] for i in np.argsort(-scores, kind='stable')[:3]]
+  starter: |
+    def format_context(hits, max_chars):
+        context = ''
+        for d in hits:
+            block = f"[{d['lesson']}] {d['lesson_title']} — {d['section']}\n{d['text']}"
+            candidate = block if not context else context + '\n\n' + block
+            if len(candidate) > max_chars:
+                if not context:
+                    return ...
+                break
+            context = ...
+        return context
+
+    context = format_context(hits, 1000)
+    n_blocks = context.count('\n\n') + 1
+    print(context)
+    print(len(context), n_blocks)
+  solution: |
+    def format_context(hits, max_chars):
+        context = ''
+        for d in hits:
+            block = f"[{d['lesson']}] {d['lesson_title']} — {d['section']}\n{d['text']}"
+            candidate = block if not context else context + '\n\n' + block
+            if len(candidate) > max_chars:
+                if not context:
+                    return block[:max_chars]
+                break
+            context = candidate
+        return context
+
+    context = format_context(hits, 1000)
+    n_blocks = context.count('\n\n') + 1
+    print(context)
+    print(len(context), n_blocks)
+  explanation: |
+    - `candidate` — каким стал бы контекст с новым блоком. Его длину сравниваем с бюджетом до того, как принять блок.
+    - Разделитель `'\n\n'` ставится только между блоками: у первого блока перед собой разделителя нет.
+    - Обрезанный первый блок лучше пустого контекста: модель увидит хотя бы начало самого похожего раздела.
+    - Для вопроса о кросс-валидации в 1000 символов поместились два раздела урока 6.8 (954 символа), а раздел урока 6.1 пришлось оставить. Бюджет в символах легко пересчитать в токены: примерно 5 символов на токен GigaChat (урок 10.3).
+  hints:
+    - "Блок принимается, если `len(candidate) <= max_chars`: тогда `context = candidate`."
+    - "Если не помещается первый блок (`context` ещё пустой) — `return block[:max_chars]`."
+    - "Блоков в контексте — число разделителей `'\\n\\n'` плюс один (если в текстах разделов нет пустых строк)."
+  tests: |
+    f = var('format_context')
+    ensure(callable(f), '`format_context` должна быть функцией.')
+    a = {'lesson': '1.1', 'lesson_title': 'Урок А', 'section': 'Раздел', 'text': 'x' * 20}
+    b = {'lesson': '2.2', 'lesson_title': 'Урок Б', 'section': 'Другой', 'text': 'y' * 30}
+    c = {'lesson': '3.3', 'lesson_title': 'Урок В', 'section': 'Третий', 'text': 'z' * 5}
+    block_a = '[1.1] Урок А — Раздел\n' + 'x' * 20
+    block_b = '[2.2] Урок Б — Другой\n' + 'y' * 30
+    block_c = '[3.3] Урок В — Третий\n' + 'z' * 5
+    equal(f([a], 1000), block_a, 'Блок раздела — «[урок] название — раздел», перенос строки и текст: ожидалось {expected}, а у вас {actual}.')
+    full = block_a + '\n\n' + block_b + '\n\n' + block_c
+    equal(f([a, b, c], 1000), full, 'Три блока в большом бюджете соединяются пустой строкой: ожидалось {expected}, а у вас {actual}.')
+    two = block_a + '\n\n' + block_b
+    if f([a, b, c], len(two)) == two + '\n\n' + block_c:
+        fail('Контекст вышел за бюджет: блок добавляют, только если длина с ним не больше max_chars.')
+    equal(f([a, b, c], len(two)), two, 'При бюджете ровно на два блока ({0} символов) должны войти первые два блока.'.format(len(two)))
+    got = f([b, c], 10)
+    equal(got, block_b[:10], 'Если не помещается даже первый блок, нужны его первые max_chars символов: {expected}, а у вас {actual}.')
+    equal(f([a, b, c], len(block_a) + 2 + len(block_c)), block_a, 'Если второй блок не помещается, добавление останавливается — даже если третий короткий и поместился бы.')
+    equal(var('context', str, 'строкой'), ref('context'), 'Контекст для вопроса о кросс-валидации не совпадает с ожидаемым.')
+    equal(int(var('n_blocks', 'number', 'числом')), int(ref('n_blocks')), 'В бюджет 1000 символов входит блоков: {expected}, а у вас {actual}.')
+  files: [course_docs.json]
+  wrong:
+    - code: |
+        def format_context(hits, max_chars):
+            blocks = [f"[{d['lesson']}] {d['lesson_title']} — {d['section']}\n{d['text']}" for d in hits]
+            return '\n\n'.join(blocks)
+        context = format_context(hits, 1000)
+        n_blocks = context.count('\n\n') + 1
+      expect: вышел за бюджет
+    - code: |
+        def format_context(hits, max_chars):
+            context = ''
+            for d in hits:
+                block = f"[{d['lesson']}] {d['lesson_title']} — {d['section']}\n{d['text']}"
+                candidate = block if not context else context + '\n\n' + block
+                if len(candidate) > max_chars:
+                    continue
+                context = candidate
+            return context
+        context = format_context(hits, 1000)
+        n_blocks = context.count('\n\n') + 1
+      expect: первые max_chars
+
+- id: m11-l3-t2
+  title: Порог «не знаю»
+  difficulty: main
+  introduces: [rag]
+  uses: [document-search, llm-evaluation]
+  statement: |
+    Для каждого из 60 размеченных вопросов уже посчитано сходство с лучшим разделом (`best`), известно, по курсу ли вопрос (`about`), и к какой половине он относится (`part`: `'dev'` или `'test'`). Помощник отвечает, если `best >= порог`, иначе говорит «не знаю».
+
+    1. Напишите функцию `accuracy_at(t, scores, labels)`: доля верных решений «отвечать / не знаю» при пороге `t` (`labels` — по курсу ли вопрос). Результат — `float`.
+    2. Выберите `best_t` — порог из `candidates` с наибольшей долей верных решений на `dev`; при равенстве — меньший порог.
+    3. Получите `test_acc` — долю верных решений с этим порогом на `test` и `lost` — список вопросов по курсу из `test`, на которые помощник ответит «не знаю».
+  prelude: |
+    import json
+    import numpy as np
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    with open('assistant_questions.json', encoding='utf-8') as fh:
+        questions = json.load(fh)['questions']
+    texts = [d['lesson_title'] + '. ' + d['section'] + '. ' + d['text'] for d in docs]
+    vectorizer = TfidfVectorizer(analyzer='char_wb', ngram_range=(3, 5))
+    X = vectorizer.fit_transform(texts)
+    best = (vectorizer.transform([q['question'] for q in questions]) @ X.T).toarray().max(axis=1)
+    about = np.array([q['about_course'] for q in questions])
+    part = np.array([q['part'] for q in questions])
+    candidates = [round(0.10 + 0.01 * i, 2) for i in range(21)]     # 0.10, 0.11, …, 0.30
+  starter: |
+    def accuracy_at(t, scores, labels):
+        answer = scores >= t
+        return float(np.mean(...))
+
+    dev, test = part == 'dev', part == 'test'
+    best_t = max(candidates, key=lambda t: ...)
+    test_acc = accuracy_at(best_t, best[test], about[test])
+    lost = [q['question'] for q, s in zip(questions, best) if ...]
+    print(best_t, accuracy_at(best_t, best[dev], about[dev]), test_acc)
+    print(lost)
+  solution: |
+    def accuracy_at(t, scores, labels):
+        answer = scores >= t
+        return float(np.mean(answer == labels))
+
+    dev, test = part == 'dev', part == 'test'
+    best_t = max(candidates, key=lambda t: accuracy_at(t, best[dev], about[dev]))
+    test_acc = accuracy_at(best_t, best[test], about[test])
+    lost = [q['question'] for q, s in zip(questions, best) if q['part'] == 'test' and q['about_course'] and s < best_t]
+    print(best_t, accuracy_at(best_t, best[dev], about[dev]), test_acc)
+    print(lost)
+  explanation: |
+    - `answer == labels` — решение верное, когда помощник отвечает на вопрос по курсу или отказывается от вопроса не по курсу. Доля верных — среднее.
+    - `max(candidates, key=...)` при равенстве оставляет первый элемент — а список идёт по возрастанию, значит, меньший порог.
+    - На `dev` порог 0,20 разделяет вопросы без единой ошибки. На `test` с тем же порогом верных решений 96,7 %: вопрос «Зачем нужна валидационная выборка?» набрал 0,189 и получит «не знаю». Зазор на `dev` был всего в сотую — новые вопросы в него не обязаны попадать.
+  hints:
+    - "Доля верных — `np.mean(answer == labels)`."
+    - "Выбор по dev — `key=lambda t: accuracy_at(t, best[dev], about[dev])`."
+    - "Потерянные вопросы: часть `test`, вопрос по курсу и `s < best_t`."
+  tests: |
+    import numpy as np
+    f = var('accuracy_at')
+    ensure(callable(f), '`accuracy_at` должна быть функцией.')
+    sc = np.array([0.30, 0.25, 0.10, 0.05, 0.22])
+    lab = np.array([True, True, False, False, False])
+    close(f(0.2, sc, lab), 0.8, 'Для сходств {0}, меток {1} и порога 0.2 верных решений 4 из 5 = {{expected}}, а у вас {{actual}}.'.format(sc.tolist(), lab.tolist()))
+    close(f(0.26, sc, lab), 0.8, 'При пороге 0.26 помощник откажется от второго вопроса по курсу, но правильно откажется от вопроса со сходством 0.22: {expected}, а у вас {actual}.')
+    close(f(0.0, sc, lab), 0.4, 'При пороге 0 помощник отвечает на всё: верны только два ответа из пяти — {expected}, а у вас {actual}.')
+    ensure(isinstance(f(0.2, sc, lab), float), '`accuracy_at` должна вернуть float.')
+    bt = var('best_t', 'number', 'числом')
+    close(bt, ref('best_t'), 'Лучший порог на dev — {expected}, а у вас {actual}.')
+    close(var('test_acc', 'number', 'числом'), ref('test_acc'), 'Доля верных решений на test — {expected}, а у вас {actual}.')
+    equal(var('lost', list, 'списком'), ref('lost'), 'Вопросы по курсу из test, на которые помощник скажет «не знаю», — {expected}, а у вас {actual}.')
+  files: [course_docs.json, assistant_questions.json]
+  wrong:
+    - code: |
+        def accuracy_at(t, scores, labels):
+            answer = scores >= t
+            return float(np.mean(answer == labels))
+        dev, test = part == 'dev', part == 'test'
+        best_t = max(candidates, key=lambda t: accuracy_at(t, best[test], about[test]))
+        test_acc = accuracy_at(best_t, best[test], about[test])
+        lost = [q['question'] for q, s in zip(questions, best) if q['part'] == 'test' and q['about_course'] and s < best_t]
+      expect: Лучший порог на dev
+    - code: |
+        def accuracy_at(t, scores, labels):
+            answer = scores >= t
+            return float(np.mean(answer & labels))
+        dev, test = part == 'dev', part == 'test'
+        best_t = max(candidates, key=lambda t: accuracy_at(t, best[dev], about[dev]))
+        test_acc = accuracy_at(best_t, best[test], about[test])
+        lost = [q['question'] for q, s in zip(questions, best) if q['part'] == 'test' and q['about_course'] and s < best_t]
+      expect: верных решений 4 из 5
+
+- id: m11-l3-t3
+  title: Проверка ссылок
+  difficulty: main
+  introduces: []
+  uses: [rag, structured-output]
+  statement: |
+    Модель ставит ссылки на уроки в квадратных скобках: `[10.2]` или несколько через запятую — `[9.1, 10.2]`. Напишите функцию `check_citations(answer, allowed)`. Она возвращает кортеж `(cited, bad)`:
+
+    - `cited` — номера уроков, на которые ссылается ответ, без повторов, в порядке первого появления;
+    - `bad` — те из них, которых нет в `allowed` (уроки разделов из контекста).
+
+    Номер урока — два числа через точку. Квадратные скобки без номеров (например, `[1, 2, 3]` — список в тексте ответа) — не ссылки. Проверьте функцию на ответах модели из списка `answers`: получите `report` — список `(cited, bad)` для них.
+  prelude: |
+    import re
+    allowed = {'6.8', '6.1'}
+    answers = [
+        'Кросс-валидация делит данные на блоки [6.8]. Её удобно запускать вместе с Pipeline [6.1, 6.8].',
+        'Кросс-валидация надёжнее одной проверки [6.8], а переобучение описано в уроке [5.3].',
+        'Например, блоки [1, 2, 3] по очереди становятся проверочными [6.8].',
+        'Не знаю.',
+        'Об этом рассказано в уроках [6.8,5.4] и [7.7].',
+    ]
+  starter: |
+    def check_citations(answer, allowed):
+        cited = []
+        for group in re.findall(r'\[([^\]]*)\]', answer):        # текст внутри каждой пары скобок
+            for part in group.split(','):
+                part = part.strip()
+                if ... and part not in cited:
+                    cited.append(part)
+        bad = ...
+        return cited, bad
+
+    report = [check_citations(a, allowed) for a in answers]
+    for a, r in zip(answers, report):
+        print(r, '←', a[:60])
+  solution: |
+    def check_citations(answer, allowed):
+        cited = []
+        for group in re.findall(r'\[([^\]]*)\]', answer):        # текст внутри каждой пары скобок
+            for part in group.split(','):
+                part = part.strip()
+                if re.fullmatch(r'\d+\.\d+', part) and part not in cited:
+                    cited.append(part)
+        bad = [c for c in cited if c not in allowed]
+        return cited, bad
+
+    report = [check_citations(a, allowed) for a in answers]
+    for a, r in zip(answers, report):
+        print(r, '←', a[:60])
+  explanation: |
+    - `\[([^\]]*)\]` находит каждую пару квадратных скобок и запоминает текст внутри: `[^\]]*` — любые символы, кроме закрывающей скобки.
+    - Внутри скобок может быть несколько номеров через запятую. `re.fullmatch(r'\d+\.\d+', ...)` оставляет только то, что целиком похоже на номер урока: «1» из списка `[1, 2, 3]` не пройдёт.
+    - Во втором ответе ссылка на урок 5.3 — не из контекста; в последнем — 5.4 и 7.7. Такие ответы помечают: модель сослалась на то, чего не видела.
+  hints:
+    - "Номер урока целиком — `re.fullmatch(r'\\d+\\.\\d+', part)`."
+    - "Без повторов: добавлять, только если `part not in cited`."
+    - "Плохие ссылки — `[c for c in cited if c not in allowed]`."
+  tests: |
+    f = var('check_citations')
+    ensure(callable(f), '`check_citations` должна быть функцией.')
+    equal(f('Ответ [1.2].', {'1.2'}), (['1.2'], []), 'Одна верная ссылка: ожидалось {expected}, а у вас {actual}.')
+    equal(f('А [2.1] и Б [1.2], снова [2.1].', {'1.2'}), (['2.1', '1.2'], ['2.1']), 'Ссылки без повторов в порядке появления, плохие — не из allowed: ожидалось {expected}, а у вас {actual}.')
+    got = f('Несколько сразу [3.4, 10.12].', {'3.4'})
+    if got[0] in (['3.4, 10.12'], []):
+        fail('Внутри скобок может быть несколько номеров через запятую: «[3.4, 10.12]» — это ссылки 3.4 и 10.12.')
+    equal(got, (['3.4', '10.12'], ['10.12']), 'Для «[3.4, 10.12]» ожидалось {expected}, а у вас {actual}.')
+    equal(f('Список [1, 2, 3] — не ссылка.', set()), ([], []), 'Квадратные скобки без номеров уроков — не ссылки.')
+    equal(f('Без ссылок.', {'1.1'}), ([], []), 'В ответе без ссылок — два пустых списка.')
+    equal(var('report', list, 'списком'), ref('report'), 'Результаты проверки ответов модели — {expected}, а у вас {actual}.')
+  files: []
+  wrong:
+    - code: |
+        def check_citations(answer, allowed):
+            cited = []
+            for c in re.findall(r'\[(\d+\.\d+)\]', answer):
+                if c not in cited:
+                    cited.append(c)
+            bad = [c for c in cited if c not in allowed]
+            return cited, bad
+        report = [check_citations(a, allowed) for a in answers]
+      expect: несколько номеров через запятую
+    - code: |
+        def check_citations(answer, allowed):
+            cited = []
+            for group in re.findall(r'\[([^\]]*)\]', answer):
+                for part in group.split(','):
+                    part = part.strip()
+                    if part not in cited:
+                        cited.append(part)
+            bad = [c for c in cited if c not in allowed]
+            return cited, bad
+        report = [check_citations(a, allowed) for a in answers]
+      expect: не ссылки
+
+- id: m11-l3-t4
+  title: RAG без лишних вызовов
+  difficulty: main
+  introduces: []
+  uses: [rag, llm-chain]
+  statement: |
+    Соберите функцию `rag_answer(question, model, threshold=0.20, k=3)`. Функции `search(question, k)` (список пар `(сходство, раздел)`) и `build_messages(question, hits)` уже есть. Функция возвращает кортеж `(ответ, источники)`:
+
+    1. если сходство лучшего раздела меньше `threshold`, модель **не вызывается**, ответ — `'Не знаю: в уроках курса об этом нет.'`, источники — пустой список;
+    2. иначе модель получает `build_messages(question, hits)`, а источники — номера уроков найденных разделов без повторов, в порядке сходства;
+    3. если в ответе есть ссылки `[x.y]` на уроки не из источников, к ответу добавляется строка `\n(Ссылки [...] не из найденных разделов — проверьте их.)` со списком таких уроков.
+
+    Проверьте функцию на тестовой модели: получите `result` — ответ на вопрос «Как работает градиентный бустинг?».
+  prelude: |
+    import json
+    import re
+    import numpy as np
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from langchain_core.messages import SystemMessage, HumanMessage
+    from langchain_core.language_models import FakeListChatModel
+    with open('course_docs.json', encoding='utf-8') as fh:
+        docs = json.load(fh)
+    texts = [d['lesson_title'] + '. ' + d['section'] + '. ' + d['text'] for d in docs]
+    vectorizer = TfidfVectorizer(analyzer='char_wb', ngram_range=(3, 5))
+    X = vectorizer.fit_transform(texts)
+
+    def search(question, k=3):
+        scores = (X @ vectorizer.transform([question]).T).toarray().ravel()
+        top = np.argsort(-scores, kind='stable')[:k]
+        return [(float(scores[i]), docs[i]) for i in top]
+
+    SYSTEM = ('Ты — помощник по курсу «Анализ данных и искусственный интеллект». Отвечай только по разделам уроков '
+              'из контекста. После каждого утверждения ставь номер урока в квадратных скобках, например [10.2]. '
+              'Если в контексте нет ответа, ответь: «Не знаю».')
+
+    def build_messages(question, hits):
+        blocks = [f"[{d['lesson']}] {d['lesson_title']} — {d['section']}\n{d['text']}" for score, d in hits]
+        return [SystemMessage(SYSTEM), HumanMessage('Контекст:\n' + '\n\n'.join(blocks) + f'\n\nВопрос: {question}')]
+
+    model = FakeListChatModel(responses=['Бустинг строит деревья по очереди: каждое исправляет ошибки предыдущих [7.7]. Похоже устроен градиентный спуск [5.2].'])
+  starter: |
+    def rag_answer(question, model, threshold=0.20, k=3):
+        hits = search(question, k)
+        if ...:
+            return 'Не знаю: в уроках курса об этом нет.', []
+        sources = []
+        for score, d in hits:
+            if d['lesson'] not in sources:
+                sources.append(d['lesson'])
+        answer = ...
+        bad = [c for c in re.findall(r'\[(\d+\.\d+)\]', answer) if c not in sources]
+        if bad:
+            answer += f'\n(Ссылки {bad} не из найденных разделов — проверьте их.)'
+        return answer, sources
+
+    result = rag_answer('Как работает градиентный бустинг?', model)
+    print(result[0])
+    print('источники:', result[1], '| вызовов модели:', len(model.calls))
+  solution: |
+    def rag_answer(question, model, threshold=0.20, k=3):
+        hits = search(question, k)
+        if hits[0][0] < threshold:
+            return 'Не знаю: в уроках курса об этом нет.', []
+        sources = []
+        for score, d in hits:
+            if d['lesson'] not in sources:
+                sources.append(d['lesson'])
+        answer = model.invoke(build_messages(question, hits)).content
+        bad = [c for c in re.findall(r'\[(\d+\.\d+)\]', answer) if c not in sources]
+        if bad:
+            answer += f'\n(Ссылки {bad} не из найденных разделов — проверьте их.)'
+        return answer, sources
+
+    result = rag_answer('Как работает градиентный бустинг?', model)
+    print(result[0])
+    print('источники:', result[1], '| вызовов модели:', len(model.calls))
+  explanation: |
+    - Проверка порога стоит до вызова модели: «не знаю» без запроса — и честнее, и бесплатно.
+    - `model.invoke(сообщения).content` — текст ответа. Та же строка работает и с настоящим GigaChat из `langchain_gigachat`.
+    - Поиск нашёл разделы уроков 7.7 и 5.2 — урок о градиентном спуске тоже попал в контекст, поэтому ссылка [5.2] здесь законна, и предупреждения нет. Проверка не судит, хорош ли ответ, — только опирается ли он на то, что модель видела.
+  hints:
+    - "Порог — `if hits[0][0] < threshold:`; `hits[0]` — самый похожий раздел."
+    - "Ответ модели — `model.invoke(build_messages(question, hits)).content`."
+    - "Вызовы тестовой модели видны в `model.calls`: на вопросе ниже порога список не должен расти."
+  tests: |
+    from langchain_core.language_models import FakeListChatModel
+    f = var('rag_answer')
+    ensure(callable(f), '`rag_answer` должна быть функцией.')
+    m = FakeListChatModel(responses=['Кросс-валидация проверяет модель на каждом блоке [6.8].'])
+    got = f('Рецепт борща', m)
+    ensure(isinstance(got, tuple) and len(got) == 2, '`rag_answer` должна вернуть кортеж (ответ, источники), а вернула {0}.'.format(got))
+    if m.calls:
+        fail('На вопрос «Рецепт борща» модель была вызвана, хотя сходство ниже порога: решение «не знаю» принимается до запроса.')
+    equal(got, ('Не знаю: в уроках курса об этом нет.', []), 'На вопрос не по курсу ожидалось {expected}, а у вас {actual}.')
+    got = f('Что такое кросс-валидация?', m)
+    equal(len(m.calls), 1, 'На вопрос по курсу модель вызывается один раз, а у вас {actual}.')
+    sent = ' '.join(x.content for x in m.calls[0])
+    ensure('Что такое кросс-валидация?' in sent and '[6.8]' in sent, 'Модель должна получить сообщения из `build_messages`: вопрос и контекст с найденными разделами.')
+    equal(got[0], 'Кросс-валидация проверяет модель на каждом блоке [6.8].', 'Ответ модели без чужих ссылок возвращается как есть: {expected}, а у вас {actual}.')
+    ensure(got[1] and got[1][0] == '6.8' and len(set(got[1])) == len(got[1]), 'Источники — уроки найденных разделов без повторов, первым — 6.8; у вас {0}.'.format(got[1]))
+    m2 = FakeListChatModel(responses=['Ответ со ссылкой на чужой урок [9.9].'])
+    got2 = f('Что такое кросс-валидация?', m2)
+    ensure('9.9' in got2[0] and 'не из найденных разделов' in got2[0], 'Ссылку на урок 9.9 (не из найденных) нужно пометить строкой «(Ссылки [...] не из найденных разделов — проверьте их.)», а ответ: {0!r}.'.format(got2[0]))
+    r = var('result', tuple, 'кортежем')
+    equal(r, ref('result'), 'Ответ на вопрос о градиентном бустинге — {expected}, а у вас {actual}.')
+  files: [course_docs.json]
+  wrong:
+    - code: |
+        def rag_answer(question, model, threshold=0.20, k=3):
+            hits = search(question, k)
+            answer = model.invoke(build_messages(question, hits)).content
+            if hits[0][0] < threshold:
+                return 'Не знаю: в уроках курса об этом нет.', []
+            sources = []
+            for score, d in hits:
+                if d['lesson'] not in sources:
+                    sources.append(d['lesson'])
+            bad = [c for c in re.findall(r'\[(\d+\.\d+)\]', answer) if c not in sources]
+            if bad:
+                answer += f'\n(Ссылки {bad} не из найденных разделов — проверьте их.)'
+            return answer, sources
+        result = rag_answer('Как работает градиентный бустинг?', model)
+      expect: модель была вызвана
+    - code: |
+        def rag_answer(question, model, threshold=0.20, k=3):
+            hits = search(question, k)
+            if hits[0][0] < threshold:
+                return 'Не знаю: в уроках курса об этом нет.', []
+            sources = [d['lesson'] for score, d in hits]
+            answer = model.invoke(build_messages(question, hits)).content
+            return answer, sources
+        result = rag_answer('Как работает градиентный бустинг?', model)
+      expect: без повторов
+
+- id: m11-l3-t5
+  title: Утверждения без ссылок
+  difficulty: star
+  introduces: []
+  uses: [rag]
+  statement: |
+    Инструкция требует ссылку после каждого утверждения. Напишите проверку `ungrounded(answer)`: список предложений ответа, в которых нет ни одной ссылки вида `[x.y]` (в том числе внутри скобок с несколькими номерами: `[9.1, 10.2]`). Предложения разделяются концом предложения (`.`, `!` или `?`) и пробелами после него: `re.split(r'(?<=[.!?])\s+', answer.strip())`. Пустые куски не считаются. Ответ «Не знаю…» — честный отказ: для него список пустой.
+
+    Получите `flagged` — результаты проверки для ответов из `answers`.
+  prelude: |
+    import re
+    answers = [
+        'Температура меняет вероятности токенов [10.2]. При низкой температуре ответы стабильнее [10.2].',
+        'Кросс-валидация надёжнее одной проверки [6.8]. Обычно берут пять блоков. Это занимает больше времени!',
+        'Не знаю.',
+        'Эмбеддинг — вектор слова [9.2]. Близкие по смыслу слова получают близкие векторы [9.1, 9.2]? Да.',
+        'Модель выбирает токен по вероятностям, а температура их меняет (об этом урок 10.2).',
+    ]
+  starter: |
+    def ungrounded(answer):
+        if answer.strip().startswith('Не знаю'):
+            return []
+        sentences = [s for s in re.split(r'(?<=[.!?])\s+', answer.strip()) if s]
+        return [s for s in sentences if ...]
+
+    flagged = [ungrounded(a) for a in answers]
+    for a, f in zip(answers, flagged):
+        print(f, '←', a[:50])
+  solution: |
+    def ungrounded(answer):
+        if answer.strip().startswith('Не знаю'):
+            return []
+        sentences = [s for s in re.split(r'(?<=[.!?])\s+', answer.strip()) if s]
+        return [s for s in sentences if not re.search(r'\[\s*\d+\.\d+', s)]
+
+    flagged = [ungrounded(a) for a in answers]
+    for a, f in zip(answers, flagged):
+        print(f, '←', a[:50])
+  explanation: |
+    - `(?<=[.!?])\s+` — пробелы, перед которыми стоит конец предложения. Сам знак `(?<=...)` не «съедает», и точка остаётся в предложении.
+    - Ссылку ищем по началу: открывающая скобка и номер урока `\[\s*\d+\.\d+`. Так находится и `[10.2]`, и `[9.1, 9.2]`.
+    - «(об этом урок 10.2)» без квадратных скобок — тоже не ссылка в заданном формате. Модель нарушила инструкцию, и программа это видит. Короткое «Да.» после вопроса — формально предложение без ссылки; на таких мелочах строгие проверки и спотыкаются, поэтому их результат — повод посмотреть, а не автоматический приговор.
+  hints:
+    - "Предложение без ссылки — `not re.search(r'\\[\\s*\\d+\\.\\d+', s)`."
+    - "Отказ проверяется до разбора: `answer.strip().startswith('Не знаю')`."
+    - "Пустые куски убирает условие `if s` в списке предложений."
+  tests: |
+    f = var('ungrounded')
+    ensure(callable(f), '`ungrounded` должна быть функцией.')
+    equal(f('Первое [1.1]. Второе [2.2].'), [], 'Все предложения со ссылками — пустой список, а у вас {actual}.')
+    equal(f('Первое [1.1]. Второе без ссылки.'), ['Второе без ссылки.'], 'Ожидалось {expected}, а у вас {actual}.')
+    equal(f('Несколько сразу [1.1, 2.2]! А тут нет?'), ['А тут нет?'], 'Ссылка с несколькими номерами — тоже ссылка, а «?» — конец предложения: ожидалось {expected}, а у вас {actual}.')
+    equal(f('Список [1, 2] — не ссылка.'), ['Список [1, 2] — не ссылка.'], 'Квадратные скобки без номера урока — не ссылка.')
+    equal(f('Не знаю: в уроках об этом нет.'), [], 'Честный отказ «Не знаю…» не проверяется — пустой список.')
+    equal(f('  Одно утверждение.  '), ['Одно утверждение.'], 'Пробелы по краям ответа не дают пустых предложений: ожидалось {expected}, а у вас {actual}.')
+    equal(var('flagged', list, 'списком'), ref('flagged'), 'Результаты проверки ответов — {expected}, а у вас {actual}.')
+  files: []
+  wrong:
+    - code: |
+        def ungrounded(answer):
+            if answer.strip().startswith('Не знаю'):
+                return []
+            sentences = [s for s in re.split(r'(?<=[.!?])\s+', answer.strip()) if s]
+            return [s for s in sentences if not re.search(r'\[\d+\.\d+\]', s)]
+        flagged = [ungrounded(a) for a in answers]
+      expect: несколькими номерами
+    - code: |
+        def ungrounded(answer):
+            sentences = [s for s in re.split(r'(?<=[.!?])\s+', answer.strip()) if s]
+            return [s for s in sentences if not re.search(r'\[\s*\d+\.\d+', s)]
+        flagged = [ungrounded(a) for a in answers]
+      expect: Честный отказ

@@ -1,0 +1,405 @@
+- id: m8-l6-t1
+  title: Вклад ценовых групп
+  difficulty: warmup
+  introduces: [error-contribution]
+  uses: [regression-metrics]
+  statement: |
+    `errors` — модули ошибок на validation двух моделей: линейной регрессии (`'linear'`) и сети (16, 8) (`'net'`). `groups` — ценовая группа каждой машины (границы по train). Получите:
+
+    - `summary` — DataFrame: индекс — группа, колонки `'n'` (машин), `'share'` (доля машин), `'mae_linear'`, `'mae_net'`, `'reduction'` (снижение MAE в группе: линейная − сеть) и `'contribution'` (вклад: доля × снижение);
+    - `total_reduction` — снижение общей MAE: MAE линейной минус MAE сети по всем машинам.
+  prelude: |
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    from sklearn.neural_network import MLPRegressor
+    from sklearn.exceptions import ConvergenceWarning
+    warnings.filterwarnings('ignore', category=ConvergenceWarning)
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s, X_valid_s = scaler.transform(X_train), scaler.transform(X_valid)
+    linear = LinearRegression().fit(X_train_s, y_train)
+    net = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=30, random_state=42).fit(X_train_s, y_train / 10000)
+    errors = pd.DataFrame({'linear': np.abs(y_valid - linear.predict(X_valid_s)),
+                           'net': np.abs(y_valid - net.predict(X_valid_s) * 10000)})
+    low, high = y_train.quantile([1 / 3, 2 / 3])
+    groups = pd.cut(y_valid, bins=[-np.inf, low, high, np.inf], labels=['дешёвые', 'средние', 'дорогие'])
+  starter: |
+    summary = errors.groupby(groups, observed=True).mean().rename(columns={'linear': 'mae_linear', 'net': 'mae_net'})
+    summary.insert(0, 'n', groups.value_counts().sort_index())
+    summary['share'] = ...
+    summary['reduction'] = ...
+    summary['contribution'] = ...
+    total_reduction = ...
+    print(summary.round(3))
+    print(round(summary['contribution'].sum(), 1), round(total_reduction, 1))
+  solution: |
+    summary = errors.groupby(groups, observed=True).mean().rename(columns={'linear': 'mae_linear', 'net': 'mae_net'})
+    summary.insert(0, 'n', groups.value_counts().sort_index())
+    summary['share'] = summary['n'] / len(errors)
+    summary['reduction'] = summary['mae_linear'] - summary['mae_net']
+    summary['contribution'] = summary['share'] * summary['reduction']
+    total_reduction = errors['linear'].mean() - errors['net'].mean()
+    print(summary.round(3))
+    print(round(summary['contribution'].sum(), 1), round(total_reduction, 1))
+  explanation: |
+    - На validation сеть точнее линейной регрессии на 1 444 евро. Вклады групп — 765 (дешёвые), 453 (средние) и 226 евро (дорогие), в сумме ровно 1 444.
+    - Группы почти равны по размеру, поэтому порядок вкладов задаёт снижение внутри группы: 2 265 евро на дешёвых машинах против 686 на дорогих.
+    - Равенство суммы вкладов и общего снижения — не совпадение: MAE — среднее по машинам, и сумму можно разбить по группам. Если суммы не совпали — ошибка в коде.
+  hints:
+    - "Доля — `summary['n'] / len(errors)`."
+    - "Снижение — `summary['mae_linear'] - summary['mae_net']`, вклад — доля × снижение."
+    - "Общее снижение — `errors['linear'].mean() - errors['net'].mean()`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    s = var('summary', pd.DataFrame, 'таблицей DataFrame')
+    ensure([str(i) for i in s.index] == ['дешёвые', 'средние', 'дорогие'], 'Индекс `summary` — группы «дешёвые», «средние», «дорогие».')
+    ensure({'n', 'share', 'mae_linear', 'mae_net', 'reduction', 'contribution'} <= set(s.columns), 'Колонки `summary` — n, share, mae_linear, mae_net, reduction и contribution.')
+    r = ref('summary')
+    sh = s['share'].to_numpy(dtype=float)
+    if np.allclose(sh, r['n'].to_numpy(dtype=float)):
+        fail('`share` — доля машин группы: разделите `n` на общее число машин `len(errors)`.')
+    same_array(sh, r['share'].to_numpy(dtype=float), '`share` — `summary[\'n\'] / len(errors)`.')
+    rd = s['reduction'].to_numpy(dtype=float)
+    if np.allclose(rd, -r['reduction'].to_numpy(dtype=float)):
+        fail('Снижение — MAE линейной минус MAE сети.')
+    same_array(rd, r['reduction'].to_numpy(dtype=float), '`reduction` — `mae_linear - mae_net`.')
+    ct = s['contribution'].to_numpy(dtype=float)
+    if np.allclose(ct, r['reduction'].to_numpy(dtype=float)):
+        fail('Вклад — снижение, умноженное на долю группы: `share * reduction`.')
+    same_array(ct, r['contribution'].to_numpy(dtype=float), '`contribution` — `share * reduction`.')
+    close(var('total_reduction', 'number', 'числом'), ref('total_reduction'), 'Снижение общей MAE — {expected}, а у вас {actual}.')
+    same_array(alt('summary')['contribution'].to_numpy(dtype=float), alt_ref('summary')['contribution'].to_numpy(dtype=float), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        summary = errors.groupby(groups, observed=True).mean().rename(columns={'linear': 'mae_linear', 'net': 'mae_net'})
+        summary.insert(0, 'n', groups.value_counts().sort_index())
+        summary['share'] = summary['n'] / len(errors)
+        summary['reduction'] = summary['mae_linear'] - summary['mae_net']
+        summary['contribution'] = summary['reduction']
+        total_reduction = errors['linear'].mean() - errors['net'].mean()
+      expect: умноженное на долю
+    - code: |
+        summary = errors.groupby(groups, observed=True).mean().rename(columns={'linear': 'mae_linear', 'net': 'mae_net'})
+        summary.insert(0, 'n', groups.value_counts().sort_index())
+        summary['share'] = summary['n']
+        summary['reduction'] = summary['mae_linear'] - summary['mae_net']
+        summary['contribution'] = summary['share'] * summary['reduction']
+        total_reduction = errors['linear'].mean() - errors['net'].mean()
+      expect: доля машин
+
+- id: m8-l6-t2
+  title: Выбор по validation и одна проверка на test
+  difficulty: main
+  introduces: []
+  uses: [model-comparison, mlp, regression-metrics]
+  statement: |
+    В словаре `candidates` — три сети: название → параметры `MLPRegressor`. Каждую обучите с общими параметрами `batch_size=256, max_iter=30, random_state=42` на цене / 10 000. Получите:
+
+    - `valid_mae` — словарь: название → MAE на validation в евро;
+    - `chosen` — название сети с наименьшей MAE на validation;
+    - `test_mae` — MAE **выбранной** сети на test и `linear_test` — MAE линейной регрессии `linear` на test;
+    - `optimism` — на сколько MAE выбранной сети на test больше, чем на validation.
+  prelude: |
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    from sklearn.neural_network import MLPRegressor
+    from sklearn.metrics import mean_absolute_error
+    from sklearn.exceptions import ConvergenceWarning
+    warnings.filterwarnings('ignore', category=ConvergenceWarning)
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s, X_valid_s, X_test_s = scaler.transform(X_train), scaler.transform(X_valid), scaler.transform(X_test)
+    unit = 10000
+    linear = LinearRegression().fit(X_train_s, y_train)
+    candidates = {'relu (16, 8)': {'hidden_layer_sizes': (16, 8)},
+                  'relu (8,)': {'hidden_layer_sizes': (8,)},
+                  'identity (16, 8)': {'hidden_layer_sizes': (16, 8), 'activation': 'identity'}}
+  starter: |
+    nets, valid_mae = {}, {}
+    for name, params in candidates.items():
+        nets[name] = MLPRegressor(batch_size=256, max_iter=30, random_state=42, **params).fit(...)
+        valid_mae[name] = ...
+    chosen = ...
+    test_mae = ...
+    linear_test = ...
+    optimism = ...
+    print({k: round(v) for k, v in valid_mae.items()}, chosen)
+    print(round(test_mae), round(linear_test), round(optimism))
+  solution: |
+    nets, valid_mae = {}, {}
+    for name, params in candidates.items():
+        nets[name] = MLPRegressor(batch_size=256, max_iter=30, random_state=42, **params).fit(X_train_s, y_train / unit)
+        valid_mae[name] = mean_absolute_error(y_valid, nets[name].predict(X_valid_s) * unit)
+    chosen = min(valid_mae, key=valid_mae.get)
+    test_mae = mean_absolute_error(y_test, nets[chosen].predict(X_test_s) * unit)
+    linear_test = mean_absolute_error(y_test, linear.predict(X_test_s))
+    optimism = test_mae - valid_mae[chosen]
+    print({k: round(v) for k, v in valid_mae.items()}, chosen)
+    print(round(test_mae), round(linear_test), round(optimism))
+  explanation: |
+    - На validation: 2 826 евро у сети (16, 8) с ReLU, 3 175 у узкой (8,) и 4 320 у сети без активации — она схлопывается в линейную модель (урок 8.2). Выбираем (16, 8).
+    - На test выбранная сеть ошибается на 2 866 евро — на 40 больше, чем на validation: это оптимизм выбора. Линейная регрессия на test — 4 368.
+    - На test смотрим только выбранную сеть и только один раз. Если бы мы сравнивали кандидатов по test, его число перестало бы быть честной оценкой.
+  hints:
+    - "`**params` подставляет параметры кандидата; учите на `X_train_s` и `y_train / unit`."
+    - "Название с наименьшим значением в словаре — `min(valid_mae, key=valid_mae.get)`."
+    - "`test_mae = mean_absolute_error(y_test, nets[chosen].predict(X_test_s) * unit)`; `optimism = test_mae - valid_mae[chosen]`."
+  tests: |
+    import numpy as np
+    vm = var('valid_mae', dict, 'словарём')
+    ensure(set(vm) == set(ref('candidates')), 'Ключи `valid_mae` — названия кандидатов из `candidates`.')
+    for k in ref('candidates'):
+        if vm[k] < 10:
+            fail('MAE нужна в евро: прогноз сети умножьте на `unit`.')
+        close(vm[k], ref('valid_mae')[k], 'MAE на validation у «' + k + '» — {expected}, а у вас {actual}.', rtol=1e-4)
+    equal(var('chosen', str, 'строкой'), ref('chosen'), 'Выбрать нужно «{expected}» — с наименьшей MAE на validation, а у вас «{actual}».')
+    tm = var('test_mae', 'number', 'числом')
+    if abs(tm - ref('valid_mae')[ref('chosen')]) < 1e-6:
+        fail('`test_mae` считают на test: `X_test_s` и `y_test`.')
+    close(tm, ref('test_mae'), 'MAE выбранной сети на test — {expected}, а у вас {actual}.', rtol=1e-4)
+    close(var('linear_test', 'number', 'числом'), ref('linear_test'), 'MAE линейной регрессии на test — {expected}, а у вас {actual}.')
+    op = var('optimism', 'number', 'числом')
+    if abs(op + ref('optimism')) < 1e-3:
+        fail('`optimism` — test минус validation.')
+    close(op, ref('optimism'), '`optimism` — {expected}, а у вас {actual}.', rtol=1e-3)
+    close(alt('test_mae'), alt_ref('test_mae'), HARDCODE_MSG, rtol=1e-4)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        nets, valid_mae = {}, {}
+        for name, params in candidates.items():
+            nets[name] = MLPRegressor(batch_size=256, max_iter=30, random_state=42, **params).fit(X_train_s, y_train / unit)
+            valid_mae[name] = mean_absolute_error(y_valid, nets[name].predict(X_valid_s) * unit)
+        chosen = min(valid_mae, key=valid_mae.get)
+        test_mae = valid_mae[chosen]
+        linear_test = mean_absolute_error(y_test, linear.predict(X_test_s))
+        optimism = test_mae - valid_mae[chosen]
+      expect: на test
+    - code: |
+        nets, valid_mae = {}, {}
+        for name, params in candidates.items():
+            nets[name] = MLPRegressor(batch_size=256, max_iter=30, random_state=42, **params).fit(X_train_s, y_train / unit)
+            valid_mae[name] = mean_absolute_error(y_valid, nets[name].predict(X_valid_s) * unit)
+        chosen = min(valid_mae, key=valid_mae.get)
+        test_mae = mean_absolute_error(y_test, nets[chosen].predict(X_test_s) * unit)
+        linear_test = mean_absolute_error(y_test, linear.predict(X_test_s))
+        optimism = valid_mae[chosen] - test_mae
+      expect: test минус validation
+
+- id: m8-l6-t3
+  title: Вклад пяти ценовых групп на test
+  difficulty: main
+  introduces: []
+  uses: [error-contribution, regression-metrics]
+  statement: |
+    `errors` — модули ошибок линейной регрессии и сети (16, 8) на **test**. Разбейте машины test на пять групп по квинтилям цены **train** (границы — квантили 0.2, 0.4, 0.6, 0.8) с подписями `'Q1'`…`'Q5'`. Получите:
+
+    - `contrib` — Series: вклад каждой группы в снижение MAE (доля машин группы × (MAE линейной − MAE сети) в группе);
+    - `weakest` — группу с наименьшим вкладом;
+    - `top2_share` — какую долю общего снижения MAE дают две группы с наибольшими вкладами.
+  prelude: |
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    from sklearn.neural_network import MLPRegressor
+    from sklearn.exceptions import ConvergenceWarning
+    warnings.filterwarnings('ignore', category=ConvergenceWarning)
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s, X_test_s = scaler.transform(X_train), scaler.transform(X_test)
+    linear = LinearRegression().fit(X_train_s, y_train)
+    net = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=30, random_state=42).fit(X_train_s, y_train / 10000)
+    errors = pd.DataFrame({'linear': np.abs(y_test - linear.predict(X_test_s)),
+                           'net': np.abs(y_test - net.predict(X_test_s) * 10000)})
+  starter: |
+    bounds = ...
+    groups = pd.cut(y_test, bins=[-np.inf] + bounds + [np.inf], labels=['Q1', 'Q2', 'Q3', 'Q4', 'Q5'])
+    by_group = errors.groupby(groups, observed=True).mean()
+    share = ...
+    contrib = ...
+    weakest = ...
+    top2_share = ...
+    print(contrib.round(1))
+    print(weakest, round(top2_share, 3))
+  solution: |
+    bounds = y_train.quantile([0.2, 0.4, 0.6, 0.8]).tolist()
+    groups = pd.cut(y_test, bins=[-np.inf] + bounds + [np.inf], labels=['Q1', 'Q2', 'Q3', 'Q4', 'Q5'])
+    by_group = errors.groupby(groups, observed=True).mean()
+    share = groups.value_counts().sort_index() / len(errors)
+    contrib = share * (by_group['linear'] - by_group['net'])
+    weakest = contrib.idxmin()
+    top2_share = contrib.nlargest(2).sum() / (errors['linear'].mean() - errors['net'].mean())
+    print(contrib.round(1))
+    print(weakest, round(top2_share, 3))
+  explanation: |
+    - Границы квинтилей по train — 3 000, 5 499, 8 300 и 13 900 евро. Вклады групп: 539, 400, 296, −22 и 289 евро, в сумме 1 502 — ровно снижение общей MAE на test.
+    - Две самые дешёвые группы дают 62,5 % всего выигрыша: там линейная модель ошибается сильнее всего.
+    - В группе Q4 (8 300–13 900 евро) вклад **отрицательный**: на этих машинах сеть ошибается сильнее линейной регрессии (3 066 против 2 948 евро). На трёх группах общая картина это прятала: в «дорогих» Q4 смешалась с Q5, где сеть сильно выигрывает. Чем мельче группы, тем больше видно, но тем шумнее оценки.
+  hints:
+    - "Границы — `y_train.quantile([0.2, 0.4, 0.6, 0.8]).tolist()`."
+    - "Доли групп — `groups.value_counts().sort_index() / len(errors)`, вклад — доля × (`by_group['linear'] - by_group['net']`)."
+    - "Две наибольших — `contrib.nlargest(2).sum()`; общее снижение — `errors['linear'].mean() - errors['net'].mean()`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    c = var('contrib', pd.Series, 'Series')
+    ensure([str(i) for i in c.index] == ['Q1', 'Q2', 'Q3', 'Q4', 'Q5'], 'Индекс `contrib` — группы Q1…Q5 по порядку.')
+    r = ref('contrib')
+    yt = ref('y_test')
+    bt = yt.quantile([0.2, 0.4, 0.6, 0.8]).tolist()
+    gt = pd.cut(yt, bins=[-np.inf] + bt + [np.inf], labels=['Q1', 'Q2', 'Q3', 'Q4', 'Q5'])
+    e = ref('errors')
+    wrong = (gt.value_counts().sort_index() / len(e)) * (e.groupby(gt, observed=True).mean()['linear'] - e.groupby(gt, observed=True).mean()['net'])
+    if np.allclose(c.to_numpy(dtype=float), wrong.to_numpy(dtype=float)):
+        fail('Границы квинтилей берут по train: `y_train.quantile([0.2, 0.4, 0.6, 0.8])`.')
+    same_array(c.to_numpy(dtype=float), r.to_numpy(dtype=float), '`contrib` не совпадает: доля группы × (MAE линейной − MAE сети) в группе.')
+    ensure(abs(c.sum() - (e['linear'].mean() - e['net'].mean())) < 1e-6, 'Сумма вкладов должна совпасть со снижением общей MAE — проверьте формулу.')
+    equal(str(var('weakest')), str(ref('weakest')), 'Наименьший вклад — у группы {expected}, а у вас {actual}.')
+    close(var('top2_share', 'number', 'числом'), ref('top2_share'), 'Доля двух крупнейших вкладов — {expected}, а у вас {actual}.')
+    same_array(alt('contrib').to_numpy(dtype=float), alt_ref('contrib').to_numpy(dtype=float), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        bounds = y_test.quantile([0.2, 0.4, 0.6, 0.8]).tolist()
+        groups = pd.cut(y_test, bins=[-np.inf] + bounds + [np.inf], labels=['Q1', 'Q2', 'Q3', 'Q4', 'Q5'])
+        by_group = errors.groupby(groups, observed=True).mean()
+        share = groups.value_counts().sort_index() / len(errors)
+        contrib = share * (by_group['linear'] - by_group['net'])
+        weakest = contrib.idxmin()
+        top2_share = contrib.nlargest(2).sum() / (errors['linear'].mean() - errors['net'].mean())
+      expect: по train
+    - code: |
+        bounds = y_train.quantile([0.2, 0.4, 0.6, 0.8]).tolist()
+        groups = pd.cut(y_test, bins=[-np.inf] + bounds + [np.inf], labels=['Q1', 'Q2', 'Q3', 'Q4', 'Q5'])
+        by_group = errors.groupby(groups, observed=True).mean()
+        share = groups.value_counts().sort_index() / len(errors)
+        contrib = share * (by_group['linear'] - by_group['net'])
+        weakest = contrib.idxmin()
+        top2_share = contrib.nlargest(2).sum()
+      expect: Доля двух крупнейших
+
+- id: m8-l6-t4
+  title: Где kNN обгоняет сеть
+  difficulty: star
+  introduces: []
+  uses: [error-contribution, knn, model-comparison]
+  statement: |
+    На validation kNN с k = 20 точнее сети (16, 8) на 134 евро. Разложите этот разрыв по пяти ценовым группам (квинтили цены train, подписи `'Q1'`…`'Q5'`):
+
+    - `gap_contrib` — Series: вклад группы в разность MAE «сеть − kNN» (доля группы × (MAE сети − MAE kNN) в группе). Положительный вклад — kNN лучше;
+    - `net_better` — список групп, где сеть точнее kNN (вклад меньше нуля);
+    - `q5_share` — какую долю всего разрыва даёт самая дорогая группа Q5.
+  prelude: |
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.neighbors import KNeighborsRegressor
+    from sklearn.neural_network import MLPRegressor
+    from sklearn.exceptions import ConvergenceWarning
+    warnings.filterwarnings('ignore', category=ConvergenceWarning)
+    df = pd.read_csv('cars_processed.csv')
+    features = ['Year', 'Distance', 'Engine', 'km_year']
+    X, y = df[features], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    X_train_s, X_valid_s = scaler.transform(X_train), scaler.transform(X_valid)
+    knn = KNeighborsRegressor(n_neighbors=20).fit(X_train_s, y_train)
+    net = MLPRegressor(hidden_layer_sizes=(16, 8), batch_size=256, max_iter=30, random_state=42).fit(X_train_s, y_train / 10000)
+  starter: |
+    errors = pd.DataFrame({'knn': ..., 'net': ...})
+    bounds = y_train.quantile([0.2, 0.4, 0.6, 0.8]).tolist()
+    groups = pd.cut(y_valid, bins=[-np.inf] + bounds + [np.inf], labels=['Q1', 'Q2', 'Q3', 'Q4', 'Q5'])
+    by_group = errors.groupby(groups, observed=True).mean()
+    share = groups.value_counts().sort_index() / len(errors)
+    gap_contrib = ...
+    net_better = ...
+    q5_share = ...
+    print(gap_contrib.round(1), round(gap_contrib.sum(), 1))
+    print(net_better, round(q5_share, 3))
+  solution: |
+    errors = pd.DataFrame({'knn': np.abs(y_valid - knn.predict(X_valid_s)),
+                           'net': np.abs(y_valid - net.predict(X_valid_s) * 10000)})
+    bounds = y_train.quantile([0.2, 0.4, 0.6, 0.8]).tolist()
+    groups = pd.cut(y_valid, bins=[-np.inf] + bounds + [np.inf], labels=['Q1', 'Q2', 'Q3', 'Q4', 'Q5'])
+    by_group = errors.groupby(groups, observed=True).mean()
+    share = groups.value_counts().sort_index() / len(errors)
+    gap_contrib = share * (by_group['net'] - by_group['knn'])
+    net_better = [str(g) for g in gap_contrib.index[gap_contrib < 0]]
+    q5_share = gap_contrib['Q5'] / gap_contrib.sum()
+    print(gap_contrib.round(1), round(gap_contrib.sum(), 1))
+    print(net_better, round(q5_share, 3))
+  explanation: |
+    - Вклады в разрыв: +9, +13, −1, +33 и +80 евро, в сумме 134. Сеть точнее kNN только в группе Q3 (5 499–8 300 евро), и то на копейки.
+    - Самая дорогая пятая часть машин даёт почти 60 % разрыва: kNN, усредняя цены 20 похожих дорогих машин, точнее сети, которая на дорогих машинах ошибается сильнее всего.
+    - Значит, улучшать сеть стоит в первую очередь для дорогих машин: например, выбрать потерю, которая сильнее тянется к крупным промахам (урок 8.4), или добавить признаки марки и модели — от них цена дорогих машин зависит сильнее всего (модуль 7).
+  hints:
+    - "Модули ошибок: `np.abs(y_valid - knn.predict(X_valid_s))` и `np.abs(y_valid - net.predict(X_valid_s) * 10000)`."
+    - "`gap_contrib = share * (by_group['net'] - by_group['knn'])`; группы с отрицательным вкладом — `gap_contrib.index[gap_contrib < 0]`."
+    - "`q5_share = gap_contrib['Q5'] / gap_contrib.sum()`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    g = var('gap_contrib', pd.Series, 'Series')
+    ensure([str(i) for i in g.index] == ['Q1', 'Q2', 'Q3', 'Q4', 'Q5'], 'Индекс `gap_contrib` — группы Q1…Q5 по порядку.')
+    r = ref('gap_contrib')
+    if np.allclose(g.to_numpy(dtype=float), -r.to_numpy(dtype=float)):
+        fail('Вклад в разрыв «сеть − kNN»: MAE сети минус MAE kNN, умноженное на долю группы. Положительный вклад — kNN лучше.')
+    if g.sum() > 1000:
+        fail('Разрыв огромный: прогноз сети верните в евро — `net.predict(X_valid_s) * 10000`.')
+    same_array(g.to_numpy(dtype=float), r.to_numpy(dtype=float), '`gap_contrib` не совпадает: доля группы × (MAE сети − MAE kNN) в группе.')
+    nb = var('net_better', list, 'списком')
+    ensure([str(v) for v in nb] == list(ref('net_better')), 'Сеть точнее kNN в группах {0}, а у вас {1}.'.format(list(ref('net_better')), [str(v) for v in nb]))
+    close(var('q5_share', 'number', 'числом'), ref('q5_share'), 'Доля группы Q5 в разрыве — {expected}, а у вас {actual}.')
+    same_array(alt('gap_contrib').to_numpy(dtype=float), alt_ref('gap_contrib').to_numpy(dtype=float), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        errors = pd.DataFrame({'knn': np.abs(y_valid - knn.predict(X_valid_s)),
+                               'net': np.abs(y_valid - net.predict(X_valid_s) * 10000)})
+        bounds = y_train.quantile([0.2, 0.4, 0.6, 0.8]).tolist()
+        groups = pd.cut(y_valid, bins=[-np.inf] + bounds + [np.inf], labels=['Q1', 'Q2', 'Q3', 'Q4', 'Q5'])
+        by_group = errors.groupby(groups, observed=True).mean()
+        share = groups.value_counts().sort_index() / len(errors)
+        gap_contrib = share * (by_group['knn'] - by_group['net'])
+        net_better = [str(g) for g in gap_contrib.index[gap_contrib < 0]]
+        q5_share = gap_contrib['Q5'] / gap_contrib.sum()
+      expect: MAE сети минус MAE kNN
+    - code: |
+        errors = pd.DataFrame({'knn': np.abs(y_valid - knn.predict(X_valid_s)),
+                               'net': np.abs(y_valid - net.predict(X_valid_s) * 10000)})
+        bounds = y_train.quantile([0.2, 0.4, 0.6, 0.8]).tolist()
+        groups = pd.cut(y_valid, bins=[-np.inf] + bounds + [np.inf], labels=['Q1', 'Q2', 'Q3', 'Q4', 'Q5'])
+        by_group = errors.groupby(groups, observed=True).mean()
+        share = groups.value_counts().sort_index() / len(errors)
+        gap_contrib = share * (by_group['net'] - by_group['knn'])
+        net_better = [str(g) for g in gap_contrib.index[gap_contrib > 0]]
+        q5_share = gap_contrib['Q5'] / gap_contrib.sum()
+      expect: Сеть точнее kNN в группах

@@ -1,0 +1,621 @@
+- id: m7-l6-t1
+  title: Штраф Ridge своими руками
+  difficulty: warmup
+  introduces: [regularization]
+  uses: []
+  statement: |
+    Допишите функцию `ridge_loss(w, b, X, y, alpha)`: сумма квадратов ошибок прогноза плюс штраф `alpha` × сумма квадратов коэффициентов `w`. Свободный член `b` не штрафуется. Прогноз уже записан: `X @ w + b` — для каждой строки сумма произведений признаков на коэффициенты плюс `b`.
+
+    Посчитайте потери для двух наборов коэффициентов — `w_big` и `w_small` (свободный член 0) — при `alpha = 0` и `alpha = 5`. Получите `losses` — DataFrame с индексом `['w_big', 'w_small']` и колонками `[0, 5]`, и `best` — словарь «alpha → имя набора с меньшей потерей».
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    X = np.array([[1, 0], [0, 1], [1, 1], [2, 1], [0, 2]], dtype=float)
+    y = np.array([3.1, 1.9, 5.2, 7.0, 4.1])
+    w_big = np.array([3.0, 2.0])
+    w_small = np.array([2.0, 1.5])
+  starter: |
+    def ridge_loss(w, b, X, y, alpha):
+        pred = X @ w + b
+        errors = ...
+        penalty = ...
+        return errors + penalty
+
+    losses = pd.DataFrame({alpha: {'w_big': ridge_loss(w_big, 0, X, y, alpha),
+                                   'w_small': ...}
+                           for alpha in [0, 5]})
+    best = {alpha: ... for alpha in [0, 5]}
+    print(losses.round(2))
+    print(best)
+  solution: |
+    def ridge_loss(w, b, X, y, alpha):
+        pred = X @ w + b
+        errors = ((pred - y) ** 2).sum()
+        penalty = alpha * (w ** 2).sum()
+        return errors + penalty
+
+    losses = pd.DataFrame({alpha: {'w_big': ridge_loss(w_big, 0, X, y, alpha),
+                                   'w_small': ridge_loss(w_small, 0, X, y, alpha)}
+                           for alpha in [0, 5]})
+    best = {alpha: losses[alpha].idxmin() for alpha in [0, 5]}
+    print(losses.round(2))
+    print(best)
+  explanation: |
+    - Без штрафа побеждают большие коэффициенты: сумма квадратов ошибок 1,07 против 7,72.
+    - При α = 5 штраф больших коэффициентов 5 · (9 + 4) = 65, маленьких — 5 · (4 + 2,25) = 31,25. Итог 66,07 против 38,97: выгоднее чуть хуже подогнать данные, зато со скромными весами.
+    - Ridge ищет именно такой компромисс, только перебирает не два набора, а все возможные коэффициенты.
+  hints:
+    - "Ошибки — `((pred - y) ** 2).sum()`."
+    - "Штраф — `alpha * (w ** 2).sum()`; `b` в него не входит."
+    - "Лучший набор для α — `losses[alpha].idxmin()`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    f = var('ridge_loss')
+    ensure(callable(f), '`ridge_loss` должна быть функцией.')
+    rng = np.random.default_rng(7)
+    Xr, yr, wr = rng.normal(size=(6, 3)), rng.normal(size=6), rng.normal(size=3)
+    expected = ((Xr @ wr + 0.5 - yr) ** 2).sum() + 2.0 * (wr ** 2).sum()
+    got = f(wr, 0.5, Xr, yr, 2.0)
+    ensure(np.ndim(got) == 0, '`ridge_loss` должна возвращать одно число.')
+    if abs(float(got) - (expected + 2.0 * 0.25)) < 1e-9:
+        fail('Свободный член `b` не штрафуют: в штраф входят только коэффициенты `w`.')
+    close(got, expected, 'На других данных `ridge_loss` вернула {actual}, а должна {expected}: сумма квадратов ошибок плюс `alpha * (w ** 2).sum()`.')
+    t = var('losses', pd.DataFrame, 'таблицей DataFrame')
+    ensure(list(t.index) == ['w_big', 'w_small'] and list(t.columns) == [0, 5], 'Индекс `losses` — `[\'w_big\', \'w_small\']`, колонки — `[0, 5]`.')
+    same_array(t.to_numpy(dtype=float), ref('losses').to_numpy(dtype=float), 'Потери в `losses` не совпадают с ожидаемыми.')
+    b = var('best', dict, 'словарём')
+    equal(b.get(0), 'w_big', 'При alpha = 0 меньше потеря у {expected}, а у вас {actual}.')
+    equal(b.get(5), 'w_small', 'При alpha = 5 меньше потеря у {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        def ridge_loss(w, b, X, y, alpha):
+            pred = X @ w + b
+            errors = ((pred - y) ** 2).sum()
+            penalty = alpha * ((w ** 2).sum() + b ** 2)
+            return errors + penalty
+        losses = pd.DataFrame({alpha: {'w_big': ridge_loss(w_big, 0, X, y, alpha),
+                                       'w_small': ridge_loss(w_small, 0, X, y, alpha)}
+                               for alpha in [0, 5]})
+        best = {alpha: losses[alpha].idxmin() for alpha in [0, 5]}
+      expect: Свободный член
+    - code: |
+        def ridge_loss(w, b, X, y, alpha):
+            pred = X @ w + b
+            errors = ((pred - y) ** 2).mean()
+            penalty = alpha * (w ** 2).sum()
+            return errors + penalty
+        losses = pd.DataFrame({alpha: {'w_big': ridge_loss(w_big, 0, X, y, alpha),
+                                       'w_small': ridge_loss(w_small, 0, X, y, alpha)}
+                               for alpha in [0, 5]})
+        best = {alpha: losses[alpha].idxmin() for alpha in [0, 5]}
+      expect: сумма квадратов ошибок
+
+- id: m7-l6-t2
+  title: Ridge и редкие модели
+  difficulty: main
+  introduces: [ridge-lasso]
+  uses: [one-hot-encoding, linear-regression, pd-map]
+  statement: |
+    Обучите на train две модели (цены в евро): `linear = linear_pipe(LinearRegression())` и `ridge = linear_pipe(Ridge(alpha=1))`. Функция `linear_pipe` уже есть: One-Hot для категорий и StandardScaler для чисел.
+
+    Получите `rare` — булев массив для машин validation: `True`, если модель машины встречается в train один или два раза. Посчитайте `mae_all` — MAE на всей validation и `mae_rare` — MAE только на машинах `rare`, оба словарями `{'linear': ..., 'ridge': ...}`. И `clarus` — поправку `cat__Model_Clarus` у обеих моделей, таким же словарём.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.linear_model import LinearRegression, Ridge
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    num_cols = ['Year', 'Distance', 'Engine', 'km_year', 'AutoTransmission']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    def linear_pipe(model):
+        enc = ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols),
+                                 ('num', StandardScaler(), num_cols)])
+        return Pipeline([('enc', enc), ('model', model)])
+  starter: |
+    linear = linear_pipe(LinearRegression()).fit(X_train, y_train)
+    ridge = ...
+    counts = X_train['Model'].value_counts()
+    rare = ...
+    mae_all, mae_rare, clarus = {}, {}, {}
+    for name, model in [('linear', linear), ('ridge', ridge)]:
+        pred = model.predict(X_valid)
+        mae_all[name] = ...
+        mae_rare[name] = ...
+        coef = pd.Series(model.named_steps['model'].coef_, index=model.named_steps['enc'].get_feature_names_out())
+        clarus[name] = ...
+    print(rare.sum(), {k: round(v) for k, v in mae_all.items()}, {k: round(v) for k, v in mae_rare.items()})
+    print({k: round(v) for k, v in clarus.items()})
+  solution: |
+    linear = linear_pipe(LinearRegression()).fit(X_train, y_train)
+    ridge = linear_pipe(Ridge(alpha=1)).fit(X_train, y_train)
+    counts = X_train['Model'].value_counts()
+    rare = X_valid['Model'].map(counts).between(1, 2).to_numpy()
+    mae_all, mae_rare, clarus = {}, {}, {}
+    for name, model in [('linear', linear), ('ridge', ridge)]:
+        pred = model.predict(X_valid)
+        mae_all[name] = mean_absolute_error(y_valid, pred)
+        mae_rare[name] = mean_absolute_error(y_valid[rare], pred[rare])
+        coef = pd.Series(model.named_steps['model'].coef_, index=model.named_steps['enc'].get_feature_names_out())
+        clarus[name] = coef['cat__Model_Clarus']
+    print(rare.sum(), {k: round(v) for k, v in mae_all.items()}, {k: round(v) for k, v in mae_rare.items()})
+    print({k: round(v) for k, v in clarus.items()})
+  explanation: |
+    - Машин редких моделей в validation 102. На них Ridge ошибается на 6 708 евро против 7 354, а на всей validation разница всего 12 евро (3 178 против 3 190).
+    - Поправка Clarus сократилась почти вдвое: с 90 976 до 49 155. За ней одна машина, и штраф перевешивает её пользу.
+    - Незнакомые модели (их в train нет) в `rare` не входят: `map` даёт для них `NaN`, а `between(1, 2)` — `False`.
+  hints:
+    - "`ridge = linear_pipe(Ridge(alpha=1)).fit(X_train, y_train)`."
+    - "Число машин модели в train — `X_valid['Model'].map(counts)`; редкие — `.between(1, 2)`, затем `.to_numpy()`."
+    - "MAE на редких — `mean_absolute_error(y_valid[rare], pred[rare])`; поправка — `coef['cat__Model_Clarus']`."
+  tests: |
+    import numpy as np
+    r = var('ridge')
+    ensure(type(r.named_steps['model']).__name__ == 'Ridge' and r.named_steps['model'].alpha == 1, '`ridge` — `linear_pipe(Ridge(alpha=1))`.')
+    rr = np.asarray(var('rare'), dtype=bool)
+    ensure(rr.shape == ref('rare').shape, '`rare` — по значению на каждую машину validation.')
+    if rr.sum() != ref('rare').sum() and rr.sum() > 0:
+        fail('В `rare` {0} машин, а должно быть {1}. Редкость модели определяют по числу машин в train: `X_valid[\'Model\'].map(counts)`.'.format(int(rr.sum()), int(ref('rare').sum())))
+    ensure((rr == ref('rare')).all(), '`rare` не совпадает: модели, которых в train одна или две машины.')
+    for d, name in [(var('mae_all', dict, 'словарём'), 'mae_all'), (var('mae_rare', dict, 'словарём'), 'mae_rare'), (var('clarus', dict, 'словарём'), 'clarus')]:
+        ensure(set(d) == {'linear', 'ridge'}, 'Ключи `{0}` — `\'linear\'` и `\'ridge\'`.'.format(name))
+        for k in ['linear', 'ridge']:
+            close(d[k], ref(name)[k], '`{0}[\'{1}\']` — {{expected}}, а у вас {{actual}}.'.format(name, k), rtol=1e-4)
+    close(alt('mae_rare')['ridge'], alt_ref('mae_rare')['ridge'], HARDCODE_MSG, rtol=1e-4)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        linear = linear_pipe(LinearRegression()).fit(X_train, y_train)
+        ridge = linear_pipe(Ridge(alpha=1)).fit(X_train, y_train)
+        counts = X_valid['Model'].value_counts()
+        rare = X_valid['Model'].map(counts).between(1, 2).to_numpy()
+        mae_all, mae_rare, clarus = {}, {}, {}
+        for name, model in [('linear', linear), ('ridge', ridge)]:
+            pred = model.predict(X_valid)
+            mae_all[name] = mean_absolute_error(y_valid, pred)
+            mae_rare[name] = mean_absolute_error(y_valid[rare], pred[rare])
+            coef = pd.Series(model.named_steps['model'].coef_, index=model.named_steps['enc'].get_feature_names_out())
+            clarus[name] = coef['cat__Model_Clarus']
+      expect: по числу машин в train
+    - code: |
+        linear = linear_pipe(LinearRegression()).fit(X_train, y_train)
+        ridge = linear_pipe(Ridge(alpha=10)).fit(X_train, y_train)
+        counts = X_train['Model'].value_counts()
+        rare = X_valid['Model'].map(counts).between(1, 2).to_numpy()
+        mae_all, mae_rare, clarus = {}, {}, {}
+        for name, model in [('linear', linear), ('ridge', ridge)]:
+            pred = model.predict(X_valid)
+            mae_all[name] = mean_absolute_error(y_valid, pred)
+            mae_rare[name] = mean_absolute_error(y_valid[rare], pred[rare])
+            coef = pd.Series(model.named_steps['model'].coef_, index=model.named_steps['enc'].get_feature_names_out())
+            clarus[name] = coef['cat__Model_Clarus']
+      expect: "Ridge(alpha=1)"
+
+- id: m7-l6-t3
+  title: Подбор α на логарифме цены
+  difficulty: main
+  introduces: [ridge-lasso]
+  uses: [log-target, hyperparameter]
+  statement: |
+    Учите модели на `np.log(y_train)`, а прогноз возвращайте в евро через `np.exp`. Для каждого α из `alphas` обучите `linear_pipe(Ridge(alpha=a))` и посчитайте MAE на validation в евро. Получите `alpha_mae` — Series «α → MAE», `best_alpha` — α с наименьшей ошибкой, `linear_log_mae` — MAE `linear_pipe(LinearRegression())` на логарифме цены и `gain` — на сколько евро лучший Ridge точнее LinearRegression.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.linear_model import LinearRegression, Ridge
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    num_cols = ['Year', 'Distance', 'Engine', 'km_year', 'AutoTransmission']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    def linear_pipe(model):
+        enc = ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols),
+                                 ('num', StandardScaler(), num_cols)])
+        return Pipeline([('enc', enc), ('model', model)])
+    alphas = [0.1, 0.3, 1, 3, 10]
+  starter: |
+    log_train = np.log(y_train)
+    result = {}
+    for a in alphas:
+        pipe = linear_pipe(Ridge(alpha=a)).fit(X_train, log_train)
+        result[a] = ...
+    alpha_mae = pd.Series(result)
+    best_alpha = ...
+    linear_log_mae = ...
+    gain = ...
+    print(alpha_mae.round(0))
+    print(best_alpha, round(linear_log_mae), round(gain, 1))
+  solution: |
+    log_train = np.log(y_train)
+    result = {}
+    for a in alphas:
+        pipe = linear_pipe(Ridge(alpha=a)).fit(X_train, log_train)
+        result[a] = mean_absolute_error(y_valid, np.exp(pipe.predict(X_valid)))
+    alpha_mae = pd.Series(result)
+    best_alpha = alpha_mae.idxmin()
+    linear = linear_pipe(LinearRegression()).fit(X_train, log_train)
+    linear_log_mae = mean_absolute_error(y_valid, np.exp(linear.predict(X_valid)))
+    gain = linear_log_mae - alpha_mae.min()
+    print(alpha_mae.round(0))
+    print(best_alpha, round(linear_log_mae), round(gain, 1))
+  explanation: |
+    - Ошибка в зависимости от α — знакомая кривая (урок 6.3): при слабом штрафе 2 164, лучшее α = 0,3 даёт 2 157, а при α = 10 ошибка растёт до 2 330 — модель недообучается.
+    - LinearRegression на логарифме — 2 174. Выигрыш Ridge в целом невелик, около 17 евро; основная польза — на машинах редких моделей.
+    - MAE считают в евро: модель предсказывает логарифм, поэтому прогноз сначала возвращают через `np.exp`.
+  hints:
+    - "MAE в евро — `mean_absolute_error(y_valid, np.exp(pipe.predict(X_valid)))`."
+    - "Лучшее α — `alpha_mae.idxmin()`."
+    - "LinearRegression учите на том же `log_train`; `gain = linear_log_mae - alpha_mae.min()`."
+  tests: |
+    import pandas as pd
+    s = var('alpha_mae', pd.Series, 'Series')
+    ensure([float(v) for v in s.index] == [float(v) for v in ref('alphas')], 'Индекс `alpha_mae` — значения из `alphas`.')
+    if (s.to_numpy(dtype=float) < 10).all():
+        fail('MAE получились меньше 10 — это ошибка в логарифмах. Верните прогноз в евро: `np.exp(pipe.predict(X_valid))`.')
+    same_array(s.to_numpy(dtype=float), ref('alpha_mae').to_numpy(dtype=float), 'MAE для разных α не совпадают: Ridge учат на `np.log(y_train)`, ошибку считают в евро.', rtol=1e-4)
+    equal(float(var('best_alpha', 'number', 'числом')), float(ref('best_alpha')), 'Лучшее α — {expected}, а у вас {actual}: α с наименьшей MAE.')
+    close(var('linear_log_mae', 'number', 'числом'), ref('linear_log_mae'), 'MAE LinearRegression на логарифме — {expected}, а у вас {actual}.', rtol=1e-4)
+    close(var('gain', 'number', 'числом'), ref('gain'), '`gain` — {expected}, а у вас {actual}: MAE LinearRegression минус лучшая MAE Ridge.', rtol=1e-3)
+    same_array(alt('alpha_mae').to_numpy(dtype=float), alt_ref('alpha_mae').to_numpy(dtype=float), HARDCODE_MSG, rtol=1e-4)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        log_train = np.log(y_train)
+        result = {}
+        for a in alphas:
+            pipe = linear_pipe(Ridge(alpha=a)).fit(X_train, log_train)
+            result[a] = mean_absolute_error(np.log(y_valid), pipe.predict(X_valid))
+        alpha_mae = pd.Series(result)
+        best_alpha = alpha_mae.idxmin()
+        linear = linear_pipe(LinearRegression()).fit(X_train, log_train)
+        linear_log_mae = mean_absolute_error(np.log(y_valid), linear.predict(X_valid))
+        gain = linear_log_mae - alpha_mae.min()
+      expect: в логарифмах
+    - code: |
+        log_train = np.log(y_train)
+        result = {}
+        for a in alphas:
+            pipe = linear_pipe(Ridge(alpha=a)).fit(X_train, log_train)
+            result[a] = mean_absolute_error(y_valid, np.exp(pipe.predict(X_valid)))
+        alpha_mae = pd.Series(result)
+        best_alpha = alpha_mae.idxmax()
+        linear = linear_pipe(LinearRegression()).fit(X_train, log_train)
+        linear_log_mae = mean_absolute_error(y_valid, np.exp(linear.predict(X_valid)))
+        gain = linear_log_mae - alpha_mae.min()
+      expect: Лучшее α
+
+- id: m7-l6-t4
+  title: Сколько признаков оставляет Lasso
+  difficulty: main
+  introduces: [ridge-lasso]
+  uses: [log-target, feature-selection]
+  statement: |
+    Для каждого α из `alphas` обучите `linear_pipe(Lasso(alpha=a))` на `np.log(y_train)`. Соберите `lasso_table` — DataFrame с индексом α и колонками `'ненулевых'` (сколько коэффициентов не равны нулю) и `'MAE'` (на validation, в евро).
+
+    Затем для модели с α = 0.003 получите `kept` — список имён признаков с ненулевыми коэффициентами (имена — `get_feature_names_out()` шага `'enc'`) и `kept_models` — сколько из них относятся к моделям машин (начинаются с `'cat__Model_'`).
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.linear_model import Lasso
+    from sklearn.metrics import mean_absolute_error
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    num_cols = ['Year', 'Distance', 'Engine', 'km_year', 'AutoTransmission']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    def linear_pipe(model):
+        enc = ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols),
+                                 ('num', StandardScaler(), num_cols)])
+        return Pipeline([('enc', enc), ('model', model)])
+    alphas = [0.0003, 0.001, 0.003, 0.01]
+  starter: |
+    log_train = np.log(y_train)
+    rows, models = {}, {}
+    for a in alphas:
+        lasso = linear_pipe(Lasso(alpha=a)).fit(X_train, log_train)
+        coef = lasso.named_steps['model'].coef_
+        rows[a] = {'ненулевых': ..., 'MAE': ...}
+        models[a] = lasso
+    lasso_table = pd.DataFrame(rows).T
+    chosen = models[0.003]
+    names = chosen.named_steps['enc'].get_feature_names_out()
+    kept = ...
+    kept_models = ...
+    print(lasso_table.round(0))
+    print(len(kept), kept_models)
+  solution: |
+    log_train = np.log(y_train)
+    rows, models = {}, {}
+    for a in alphas:
+        lasso = linear_pipe(Lasso(alpha=a)).fit(X_train, log_train)
+        coef = lasso.named_steps['model'].coef_
+        rows[a] = {'ненулевых': np.sum(coef != 0),
+                   'MAE': mean_absolute_error(y_valid, np.exp(lasso.predict(X_valid)))}
+        models[a] = lasso
+    lasso_table = pd.DataFrame(rows).T
+    chosen = models[0.003]
+    names = chosen.named_steps['enc'].get_feature_names_out()
+    kept = list(names[chosen.named_steps['model'].coef_ != 0])
+    kept_models = sum(n.startswith('cat__Model_') for n in kept)
+    print(lasso_table.round(0))
+    print(len(kept), kept_models)
+  explanation: |
+    - Чем больше α, тем меньше ненулевых коэффициентов: 150, 53, 26 и 13 из 770. Ошибка при этом растёт: от 2 453 до 2 959 евро.
+    - При α = 0,003 остаются 26 признаков: все пять числовых, 11 марок, кузова, виды топлива и лишь две модели машин — Logan и Superb. Остальные 723 модели Lasso счёл не стоящими штрафа.
+    - Отрицательные коэффициенты тоже ненулевые: у Dacia и Logan поправки отрицательные, и их нужно считать (`coef != 0`, а не `coef > 0`).
+  hints:
+    - "Ненулевые — `np.sum(coef != 0)`; MAE — по `np.exp(lasso.predict(X_valid))`."
+    - "Имена ненулевых признаков — `names[chosen.named_steps['model'].coef_ != 0]`, затем `list(...)`."
+    - "Модели машин — `sum(n.startswith('cat__Model_') for n in kept)`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    t = var('lasso_table', pd.DataFrame, 'таблицей DataFrame')
+    rt = ref('lasso_table')
+    ensure([float(v) for v in t.index] == [float(v) for v in rt.index], 'Индекс `lasso_table` — значения из `alphas`.')
+    ensure(list(t.columns) == ['ненулевых', 'MAE'], 'Колонки `lasso_table` — `[\'ненулевых\', \'MAE\']`.')
+    nz, rnz = t['ненулевых'].to_numpy(dtype=float), rt['ненулевых'].to_numpy(dtype=float)
+    if (nz < rnz).all() and (nz > 0).all():
+        fail('Ненулевых коэффициентов меньше, чем должно быть: отрицательные коэффициенты тоже считаются — `np.sum(coef != 0)`.')
+    same_array(nz, rnz, 'Число ненулевых коэффициентов не совпадает: `np.sum(coef != 0)` у Lasso, обученного на `np.log(y_train)`.')
+    if (t['MAE'].to_numpy(dtype=float) < 10).all():
+        fail('MAE получились меньше 10 — это ошибка в логарифмах. Верните прогноз в евро: `np.exp(lasso.predict(X_valid))`.')
+    same_array(t['MAE'].to_numpy(dtype=float), rt['MAE'].to_numpy(dtype=float), 'MAE не совпадают: прогноз в евро, ошибка на validation.', rtol=1e-4)
+    k = [str(v) for v in var('kept', list, 'списком')]
+    ensure(sorted(k) == sorted(str(v) for v in ref('kept')), 'В `kept` должно быть {0} имён ненулевых признаков модели с α = 0.003, а у вас {1}.'.format(len(ref('kept')), len(k)))
+    equal(int(var('kept_models', 'number', 'числом')), int(ref('kept_models')), 'Моделей машин среди оставшихся — {expected}, а у вас {actual}.')
+    same_array(alt('lasso_table')['ненулевых'].to_numpy(dtype=float), alt_ref('lasso_table')['ненулевых'].to_numpy(dtype=float), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        log_train = np.log(y_train)
+        rows, models = {}, {}
+        for a in alphas:
+            lasso = linear_pipe(Lasso(alpha=a)).fit(X_train, log_train)
+            coef = lasso.named_steps['model'].coef_
+            rows[a] = {'ненулевых': np.sum(coef > 0),
+                       'MAE': mean_absolute_error(y_valid, np.exp(lasso.predict(X_valid)))}
+            models[a] = lasso
+        lasso_table = pd.DataFrame(rows).T
+        chosen = models[0.003]
+        names = chosen.named_steps['enc'].get_feature_names_out()
+        kept = list(names[chosen.named_steps['model'].coef_ > 0])
+        kept_models = sum(n.startswith('cat__Model_') for n in kept)
+      expect: отрицательные коэффициенты тоже
+    - code: |
+        log_train = np.log(y_train)
+        rows, models = {}, {}
+        for a in alphas:
+            lasso = linear_pipe(Lasso(alpha=a)).fit(X_train, log_train)
+            coef = lasso.named_steps['model'].coef_
+            rows[a] = {'ненулевых': np.sum(coef != 0),
+                       'MAE': mean_absolute_error(np.log(y_valid), lasso.predict(X_valid))}
+            models[a] = lasso
+        lasso_table = pd.DataFrame(rows).T
+        chosen = models[0.003]
+        names = chosen.named_steps['enc'].get_feature_names_out()
+        kept = list(names[chosen.named_steps['model'].coef_ != 0])
+        kept_models = sum(n.startswith('cat__Model_') for n in kept)
+      expect: в логарифмах
+
+- id: m7-l6-t5
+  title: Кого Ridge сжимает сильнее
+  difficulty: star
+  introduces: [regularization, ridge-lasso]
+  uses: [pd-map, pd-groupby]
+  statement: |
+    Проверьте, что Ridge сильнее сжимает поправки моделей, за которыми мало машин. Обучите `weak = linear_pipe(Ridge(alpha=0.01))` и `strong = linear_pipe(Ridge(alpha=1))` на train (цены в евро). Для каждой модели машины (признаки `cat__Model_...`) посчитайте `ratio` — |поправка в `strong`| / |поправка в `weak`|: какая доля поправки осталась после усиления штрафа. `ratio` — Series с индексом «название модели» (без приставки `cat__Model_`).
+
+    Разбейте модели на группы по числу машин в train через `pd.cut` (урок 2.9) с границами `[0, 2, 9, 49, np.inf]` и подписями `['1–2', '3–9', '10–49', '50+']`. `median_ratio` — медиана `ratio` в каждой группе: Series с индексом-подписью группы.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.linear_model import Ridge
+    df = pd.read_csv('cars_processed.csv')
+    cat_cols = ['Make', 'Model', 'Style', 'Fuel_type']
+    num_cols = ['Year', 'Distance', 'Engine', 'km_year', 'AutoTransmission']
+    features = ['Make', 'Model', 'Year', 'Style', 'Distance', 'Engine', 'Fuel_type', 'AutoTransmission', 'km_year']
+    X, y = df[features].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    def linear_pipe(model):
+        enc = ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols),
+                                 ('num', StandardScaler(), num_cols)])
+        return Pipeline([('enc', enc), ('model', model)])
+  starter: |
+    weak = linear_pipe(Ridge(alpha=0.01)).fit(X_train, y_train)
+    strong = ...
+    names = weak.named_steps['enc'].get_feature_names_out()
+    coef_weak = pd.Series(weak.named_steps['model'].coef_, index=names)
+    coef_strong = ...
+    model_cols = [n for n in names if n.startswith('cat__Model_')]
+    ratio = ...
+    ratio.index = [n.replace('cat__Model_', '') for n in model_cols]
+    n_cars = ratio.index.map(X_train['Model'].value_counts())
+    group = pd.cut(n_cars, ...)
+    median_ratio = ...
+    print(median_ratio.round(3))
+  solution: |
+    weak = linear_pipe(Ridge(alpha=0.01)).fit(X_train, y_train)
+    strong = linear_pipe(Ridge(alpha=1)).fit(X_train, y_train)
+    names = weak.named_steps['enc'].get_feature_names_out()
+    coef_weak = pd.Series(weak.named_steps['model'].coef_, index=names)
+    coef_strong = pd.Series(strong.named_steps['model'].coef_, index=names)
+    model_cols = [n for n in names if n.startswith('cat__Model_')]
+    ratio = coef_strong[model_cols].abs() / coef_weak[model_cols].abs()
+    ratio.index = [n.replace('cat__Model_', '') for n in model_cols]
+    n_cars = ratio.index.map(X_train['Model'].value_counts())
+    group = pd.cut(n_cars, [0, 2, 9, 49, np.inf], labels=['1–2', '3–9', '10–49', '50+'])
+    median_ratio = ratio.groupby(group, observed=True).median()
+    print(median_ratio.round(3))
+  explanation: |
+    - У моделей с одной-двумя машинами после усиления штрафа остаётся в среднем (по медиане) половина поправки — 0,50. С 3–9 машинами — 0,72, с 10–49 — 0,78, с 50 и больше — 0,79.
+    - Штраф одинаков для всех коэффициентов, а польза поправки растёт с числом машин, которые она помогает предсказать. Поэтому Ridge «доверяет» частым моделям и сомневается в редких — то, что нужно.
+    - Обе модели обучены на одном и том же кодировщике (те же 770 столбцов в том же порядке), поэтому коэффициенты можно сравнивать по именам.
+  hints:
+    - "`coef_strong` — так же, как `coef_weak`, но из `strong`; `ratio = coef_strong[model_cols].abs() / coef_weak[model_cols].abs()`."
+    - "`group = pd.cut(n_cars, [0, 2, 9, 49, np.inf], labels=['1–2', '3–9', '10–49', '50+'])`."
+    - "Медианы по группам — `ratio.groupby(group, observed=True).median()`."
+  tests: |
+    import pandas as pd
+    r = var('ratio', pd.Series, 'Series')
+    ensure(len(r) == len(ref('ratio')), '`ratio` — по значению на каждую модель машины: {0}, а у вас {1}.'.format(len(ref('ratio')), len(r)))
+    same_array(r.sort_index().to_numpy(dtype=float), ref('ratio').sort_index().to_numpy(dtype=float), '`ratio` не совпадает: |поправка при α = 1| / |поправка при α = 0.01| для признаков `cat__Model_`.', rtol=1e-4)
+    m = var('median_ratio', pd.Series, 'Series')
+    ensure([str(v) for v in m.index] == ['1–2', '3–9', '10–49', '50+'], 'Индекс `median_ratio` — подписи групп по порядку: 1–2, 3–9, 10–49, 50+.')
+    same_array(m.to_numpy(dtype=float), ref('median_ratio').to_numpy(dtype=float), 'Медианы по группам не совпадают: `ratio.groupby(group, observed=True).median()`.', rtol=1e-4)
+    same_array(alt('median_ratio').to_numpy(dtype=float), alt_ref('median_ratio').to_numpy(dtype=float), HARDCODE_MSG, rtol=1e-4)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        weak = linear_pipe(Ridge(alpha=0.01)).fit(X_train, y_train)
+        strong = linear_pipe(Ridge(alpha=1)).fit(X_train, y_train)
+        names = weak.named_steps['enc'].get_feature_names_out()
+        coef_weak = pd.Series(weak.named_steps['model'].coef_, index=names)
+        coef_strong = pd.Series(strong.named_steps['model'].coef_, index=names)
+        model_cols = [n for n in names if n.startswith('cat__Model_')]
+        ratio = coef_strong[model_cols] / coef_weak[model_cols]
+        ratio.index = [n.replace('cat__Model_', '') for n in model_cols]
+        n_cars = ratio.index.map(X_train['Model'].value_counts())
+        group = pd.cut(n_cars, [0, 2, 9, 49, np.inf], labels=['1–2', '3–9', '10–49', '50+'])
+        median_ratio = ratio.groupby(group, observed=True).median()
+      expect: "`ratio` не совпадает"
+    - code: |
+        weak = linear_pipe(Ridge(alpha=0.01)).fit(X_train, y_train)
+        strong = linear_pipe(Ridge(alpha=1)).fit(X_train, y_train)
+        names = weak.named_steps['enc'].get_feature_names_out()
+        coef_weak = pd.Series(weak.named_steps['model'].coef_, index=names)
+        coef_strong = pd.Series(strong.named_steps['model'].coef_, index=names)
+        model_cols = [n for n in names if n.startswith('cat__Model_')]
+        ratio = coef_strong[model_cols].abs() / coef_weak[model_cols].abs()
+        ratio.index = [n.replace('cat__Model_', '') for n in model_cols]
+        n_cars = ratio.index.map(X_train['Model'].value_counts())
+        group = pd.cut(n_cars, [0, 2, 9, 49, np.inf], labels=['1–2', '3–9', '10–49', '50+'])
+        median_ratio = ratio.groupby(group, observed=True).mean()
+      expect: Медианы по группам
+
+- id: m7-l6-t6
+  title: Ridge по формуле
+  difficulty: star
+  introduces: [regularization, ridge-lasso]
+  uses: [standard-scaler]
+  statement: |
+    У Ridge есть точная формула. Если признаки `Xn` и цена `yc` центрированы (среднее 0), коэффициенты — решение системы уравнений `(XᵀX + α·I)·w = Xᵀy`, где `I` — единичная матрица. Без штрафа (α = 0) это обычная линейная регрессия. Систему решает `np.linalg.solve(A, b)`, а единичную матрицу 5 × 5 даёт `np.eye(5)`.
+
+    Матрицы `XtX` и `Xty` для пяти числовых признаков уже посчитаны. Найдите `w_linear` (α = 0) и для каждого α из `alphas` — коэффициенты Ridge по формуле. Получите `shrink` — Series «α → доля суммы квадратов коэффициентов, оставшаяся от `w_linear`» (Σw² / Σw_linear²). Для α = 10 000 сравните свои коэффициенты с `Ridge(alpha=10000)` из scikit-learn: `max_diff` — наибольшее расхождение по модулю.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import Ridge
+    df = pd.read_csv('cars_processed.csv')
+    num_cols = ['Year', 'Distance', 'Engine', 'km_year', 'AutoTransmission']
+    X, y = df[num_cols].copy(), df['Price']
+    X['AutoTransmission'] = X['AutoTransmission'].map({True: 1, False: 0})
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    Xn = StandardScaler().fit_transform(X_train)          # среднее каждого столбца — 0
+    yc = (y_train - y_train.mean()).to_numpy()            # центрированная цена
+    XtX = Xn.T @ Xn                                       # матрица 5 × 5
+    Xty = Xn.T @ yc                                       # вектор из 5 чисел
+    alphas = [1000, 10000, 100000]
+  starter: |
+    w_linear = np.linalg.solve(..., Xty)
+    result = {}
+    for a in alphas:
+        w = np.linalg.solve(..., Xty)
+        result[a] = ...
+    shrink = pd.Series(result)
+    w_10000 = ...
+    sk = Ridge(alpha=10000).fit(Xn, y_train)
+    max_diff = ...
+    print(np.round(w_linear, 1))
+    print(shrink.round(3))
+    print(max_diff)
+  solution: |
+    w_linear = np.linalg.solve(XtX, Xty)
+    result = {}
+    for a in alphas:
+        w = np.linalg.solve(XtX + a * np.eye(5), Xty)
+        result[a] = (w ** 2).sum() / (w_linear ** 2).sum()
+    shrink = pd.Series(result)
+    w_10000 = np.linalg.solve(XtX + 10000 * np.eye(5), Xty)
+    sk = Ridge(alpha=10000).fit(Xn, y_train)
+    max_diff = np.abs(w_10000 - sk.coef_).max()
+    print(np.round(w_linear, 1))
+    print(shrink.round(3))
+    print(max_diff)
+  explanation: |
+    - Штраф добавляет α к диагонали матрицы XᵀX. Диагональ здесь порядка 19 239 (число машин: у стандартизованного признака сумма квадратов равна N), поэтому заметный эффект начинается с α порядка тысяч. Доля Σw² — 0,91 при α = 1 000, 0,51 при α = 10 000 и 0,05 при α = 100 000.
+    - Совпадение с `Ridge` из scikit-learn — до погрешности вычислений (≈ 1e-10): библиотека решает ту же задачу.
+    - Добавка к диагонали делает систему устойчивой: даже если признаки почти повторяют друг друга и XᵀX близка к вырожденной, у XᵀX + α·I всегда есть единственное решение.
+  hints:
+    - "Без штрафа — `np.linalg.solve(XtX, Xty)`."
+    - "С штрафом — `np.linalg.solve(XtX + a * np.eye(5), Xty)`; доля — `(w ** 2).sum() / (w_linear ** 2).sum()`."
+    - "`max_diff = np.abs(w_10000 - sk.coef_).max()`."
+  tests: |
+    import numpy as np
+    import pandas as pd
+    wl = np.asarray(var('w_linear'), dtype=float)
+    same_array(wl, ref('w_linear'), '`w_linear` не совпадает: решение `np.linalg.solve(XtX, Xty)`.', rtol=1e-6)
+    s = var('shrink', pd.Series, 'Series')
+    ensure([float(v) for v in s.index] == [float(v) for v in ref('alphas')], 'Индекс `shrink` — значения из `alphas`.')
+    if abs(float(s.iloc[0]) - 1) < 1e-6 and abs(float(s.iloc[-1]) - 1) < 1e-6:
+        fail('Доля для всех α равна 1: штраф не подействовал. Прибавьте `a * np.eye(5)` к `XtX`.')
+    same_array(s.to_numpy(dtype=float), ref('shrink').to_numpy(dtype=float), '`shrink` не совпадает: Σw² / Σw_linear² для коэффициентов `np.linalg.solve(XtX + a * np.eye(5), Xty)`.', rtol=1e-6)
+    mx = var('max_diff', 'number', 'числом')
+    ensure(mx < 1e-6, 'Расхождение с `Ridge(alpha=10000)` — {0:.3g}. Коэффициенты по формуле для α = 10 000 — `np.linalg.solve(XtX + 10000 * np.eye(5), Xty)`.'.format(mx))
+    same_array(alt('shrink').to_numpy(dtype=float), alt_ref('shrink').to_numpy(dtype=float), HARDCODE_MSG, rtol=1e-6)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        w_linear = np.linalg.solve(XtX, Xty)
+        result = {}
+        for a in alphas:
+            w = np.linalg.solve(XtX + a, Xty)
+            result[a] = (w ** 2).sum() / (w_linear ** 2).sum()
+        shrink = pd.Series(result)
+        w_10000 = np.linalg.solve(XtX + 10000, Xty)
+        sk = Ridge(alpha=10000).fit(Xn, y_train)
+        max_diff = np.abs(w_10000 - sk.coef_).max()
+      expect: "`shrink` не совпадает"
+    - code: |
+        w_linear = np.linalg.solve(XtX, Xty)
+        result = {}
+        for a in alphas:
+            w = np.linalg.solve(XtX, Xty)
+            result[a] = (w ** 2).sum() / (w_linear ** 2).sum()
+        shrink = pd.Series(result)
+        w_10000 = np.linalg.solve(XtX, Xty)
+        sk = Ridge(alpha=10000).fit(Xn, y_train)
+        max_diff = np.abs(w_10000 - sk.coef_).max()
+      expect: штраф не подействовал

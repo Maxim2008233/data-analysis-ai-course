@@ -1,0 +1,398 @@
+- id: m2-l10-t1
+  title: Доли марок и редкие марки
+  difficulty: warmup
+  introduces: [rare-categories]
+  uses: [pd-value-counts]
+  statement: |
+    Получите `make_share` — долю объявлений каждой марки (Series, по убыванию), и `n_rare` — сколько марок имеют долю **не больше** 1 %.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    # уроки 2.6–2.9: очистка и новые признаки
+    cars = raw.drop_duplicates().dropna().copy()
+    cars = cars[cars['Year'].between(1951, 2021) & cars['Distance'].between(0, 1_000_000) &
+                cars['Engine_capacity(cm3)'].between(200, 5000) & cars['Price(euro)'].between(101, 500_000) &
+                ~((cars['Year'] < 2021) & (cars['Distance'] < 1100))].copy()
+    cars = cars.reset_index(drop=True).rename(columns={'Engine_capacity(cm3)': 'Engine', 'Price(euro)': 'Price'})
+  starter: |
+    make_share = ...
+    n_rare = ...
+    print(n_rare)
+    make_share.head()
+  solution: |
+    make_share = cars['Make'].value_counts(normalize=True)
+    n_rare = (make_share <= 0.01).sum()
+    print(n_rare)
+    make_share.head()
+  explanation: |
+    - `value_counts(normalize=True)` — доли вместо количеств, уже по убыванию.
+    - `make_share <= 0.01` — маска «доля не больше 1 %»; её сумма — число редких марок.
+  alternatives:
+    - |
+      make_share = cars['Make'].value_counts() / len(cars)
+      n_rare = int((make_share <= 0.01).sum())
+  hints:
+    - Доли можно получить параметром `value_counts` или делением количеств на число строк.
+    - "`cars['Make'].value_counts(normalize=True)`; маска `<= 0.01` и её `.sum()`."
+    - "`n_rare = (make_share <= 0.01).sum()`."
+  tests: |
+    import pandas as pd
+    s = var('make_share', pd.Series, 'Series')
+    if (s > 1).any():
+        fail('В `make_share` значения больше 1 — это количества, а нужны доли: `normalize=True` или деление на `len(cars)`.')
+    same_frame(s, ref('make_share'), 'Доли марок не совпадают.')
+    n = var('n_rare', 'number', 'числом')
+    if n == int((ref('make_share') < 0.01).sum()) and n != ref('n_rare'):
+        fail('«Не больше 1 %» включает границу: нужно `<= 0.01`.')
+    close(n, ref('n_rare'), 'Редких марок — {expected}, а у вас {actual}.')
+    close(alt('n_rare'), alt_ref('n_rare'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        make_share = cars['Make'].value_counts()
+        n_rare = (make_share <= 0.01).sum()
+      expect: нужны доли
+    - code: |
+        make_share = cars['Make'].value_counts(normalize=True)
+        n_rare = (make_share > 0.01).sum()
+      expect: Редких марок
+
+- id: m2-l10-t2
+  title: Объединение редких марок в Rare
+  difficulty: main
+  introduces: [rare-categories]
+  uses: [pd-loc-assign, pd-isin-between]
+  statement: |
+    Объедините марки с долей не больше 1 % в категорию `'Rare'`:
+
+    1. сохраните исходную марку в колонку `Make_original`;
+    2. запишите `'Rare'` в колонку `Make` для редких марок.
+
+    Затем получите `n_makes_after` — число разных значений в `Make` и `n_rare_rows` — число строк с `'Rare'`.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    cars = raw.drop_duplicates().dropna().copy()   # уроки 2.6–2.9
+    cars = cars[cars['Year'].between(1951, 2021) & cars['Distance'].between(0, 1_000_000) &
+                cars['Engine_capacity(cm3)'].between(200, 5000) & cars['Price(euro)'].between(101, 500_000) &
+                ~((cars['Year'] < 2021) & (cars['Distance'] < 1100))].copy()
+    cars = cars.reset_index(drop=True).rename(columns={'Engine_capacity(cm3)': 'Engine', 'Price(euro)': 'Price'})
+    make_share = cars['Make'].value_counts(normalize=True)   # задание 2.10.1
+    rare_makes = make_share[make_share <= 0.01].index
+  starter: |
+    cars['Make_original'] = ...
+    ...
+    n_makes_after = ...
+    n_rare_rows = ...
+    print(n_makes_after, n_rare_rows)
+  solution: |
+    cars['Make_original'] = cars['Make']
+    cars.loc[cars['Make'].isin(rare_makes), 'Make'] = 'Rare'
+    n_makes_after = cars['Make'].nunique()
+    n_rare_rows = (cars['Make'] == 'Rare').sum()
+    print(n_makes_after, n_rare_rows)
+  explanation: |
+    - Копия в `Make_original` делается **до** замены — иначе исходные марки потеряются.
+    - `cars['Make'].isin(rare_makes)` — маска строк редких марок; `loc` записывает в них `'Rare'` одной операцией.
+    - После объединения в `Make` остаются частые марки и одна категория `Rare`; число строк не меняется.
+  alternatives:
+    - |
+      cars['Make_original'] = cars['Make'].copy()
+      cars['Make'] = cars['Make'].where(~cars['Make'].isin(rare_makes), 'Rare')
+      n_makes_after = len(cars['Make'].unique())
+      n_rare_rows = int(cars['Make'].eq('Rare').sum())
+  hints:
+    - "Порядок важен: сначала сохраните исходные марки, потом заменяйте."
+    - "`cars['Make_original'] = cars['Make']`; маска — `cars['Make'].isin(rare_makes)`; запись — через `cars.loc[маска, 'Make']`."
+    - "`cars.loc[cars['Make'].isin(rare_makes), 'Make'] = 'Rare'`."
+  tests: |
+    import pandas as pd
+    c = var('cars', pd.DataFrame, 'таблицей DataFrame')
+    ensure('Make_original' in c.columns, 'Нет колонки `Make_original` — сохраните исходную марку до замены.')
+    if (c['Make_original'] == 'Rare').any():
+        fail('В `Make_original` есть значение \'Rare\'. Копию нужно сделать до замены, чтобы сохранить исходные марки.')
+    same_frame(c['Make_original'], ref('cars')['Make_original'], 'В `Make_original` должны быть исходные марки.')
+    same_frame(c['Make'], ref('cars')['Make'], 'Колонка Make после объединения не совпадает: редкие марки (доля ≤ 1 %) должны стать \'Rare\'.')
+    equal(int(var('n_makes_after', 'number', 'числом')), int(ref('n_makes_after')), 'Категорий в Make должно быть {expected}, а у вас {actual}.')
+    close(var('n_rare_rows', 'number', 'числом'), ref('n_rare_rows'), 'Строк в Rare — {expected}, а у вас {actual}.')
+    close(alt('n_rare_rows'), alt_ref('n_rare_rows'), HARDCODE_MSG)
+  wrong:
+    - code: |
+        cars.loc[cars['Make'].isin(rare_makes), 'Make'] = 'Rare'
+        cars['Make_original'] = cars['Make']
+        n_makes_after = cars['Make'].nunique()
+        n_rare_rows = (cars['Make'] == 'Rare').sum()
+      expect: до замены
+    - code: |
+        cars['Make_original'] = cars['Make']
+        cars[cars['Make'].isin(rare_makes)]['Make'] = 'Rare'
+        n_makes_after = cars['Make'].nunique()
+        n_rare_rows = (cars['Make'] == 'Rare').sum()
+      expect: Колонка Make после объединения
+
+- id: m2-l10-t3
+  title: Что скрывает Rare
+  difficulty: main
+  introduces: [rare-categories]
+  uses: [pd-bool-filter, mean-median]
+  statement: |
+    В таблице уже есть колонки `Make` (с `'Rare'`) и `Make_original`. Получите:
+
+    - `rare_median` — медианную цену объявлений категории `'Rare'`;
+    - `porsche_median` и `fiat_median` — медианные цены Porsche и Fiat (по `Make_original`);
+    - `ratio` — во сколько раз медиана Porsche больше медианы Fiat.
+  prelude: |
+    import pandas as pd
+    cars = pd.read_csv('cars_processed.csv')   # результат модуля 2: таблица после всех шагов обработки
+  starter: |
+    rare_median = ...
+    porsche_median = ...
+    fiat_median = ...
+    ratio = ...
+    print(rare_median, porsche_median, fiat_median, round(ratio, 1))
+  solution: |
+    rare_median = cars.loc[cars['Make'] == 'Rare', 'Price'].median()
+    porsche_median = cars.loc[cars['Make_original'] == 'Porsche', 'Price'].median()
+    fiat_median = cars.loc[cars['Make_original'] == 'Fiat', 'Price'].median()
+    ratio = porsche_median / fiat_median
+    print(rare_median, porsche_median, fiat_median, round(ratio, 1))
+  explanation: |
+    - `cars.loc[маска, 'Price']` — цены только нужных строк; `.median()` — их медиана.
+    - Porsche и Fiat ищем по `Make_original`: в `Make` у обеих стоит `'Rare'`.
+    - Медианы различаются почти в десять раз — а модель видит их как одну категорию.
+  alternatives:
+    - |
+      rare_median = cars[cars['Make'] == 'Rare']['Price'].median()
+      porsche_median = cars[cars['Make_original'] == 'Porsche']['Price'].median()
+      fiat_median = cars[cars['Make_original'] == 'Fiat']['Price'].median()
+      ratio = porsche_median / fiat_median
+  hints:
+    - Для Rare фильтруйте по `Make`, для конкретных марок — по `Make_original`.
+    - "`cars.loc[cars['Make_original'] == 'Porsche', 'Price'].median()`."
+    - "`ratio = porsche_median / fiat_median`."
+  tests: |
+    import math
+    p = var('porsche_median', 'number', 'числом')
+    if math.isnan(float(p)):
+        fail('Медиана Porsche получилась nan — ни одной строки не найдено. Ищите по `Make_original`: в `Make` у Porsche стоит \'Rare\'.')
+    close(var('rare_median', 'number', 'числом'), ref('rare_median'), 'Медиана цены в Rare — {expected}, а у вас {actual}.')
+    close(p, ref('porsche_median'), 'Медиана Porsche — {expected}, а у вас {actual}.')
+    close(var('fiat_median', 'number', 'числом'), ref('fiat_median'), 'Медиана Fiat — {expected}, а у вас {actual}.')
+    close(var('ratio', 'number', 'числом'), ref('ratio'), 'Отношение медиан — {expected}, а у вас {actual}.')
+    close(alt('porsche_median'), alt_ref('porsche_median'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        rare_median = cars.loc[cars['Make'] == 'Rare', 'Price'].median()
+        porsche_median = cars.loc[cars['Make'] == 'Porsche', 'Price'].median()
+        fiat_median = cars.loc[cars['Make'] == 'Fiat', 'Price'].median()
+        ratio = porsche_median / fiat_median
+      expect: Make_original
+    - code: |
+        rare_median = cars.loc[cars['Make'] == 'Rare', 'Price'].mean()
+        porsche_median = cars.loc[cars['Make_original'] == 'Porsche', 'Price'].median()
+        fiat_median = cars.loc[cars['Make_original'] == 'Fiat', 'Price'].median()
+        ratio = porsche_median / fiat_median
+      expect: Медиана цены в Rare
+
+- id: m2-l10-t4
+  kind: quiz
+  title: Rare — за и против
+  difficulty: main
+  introduces: [rare-categories]
+  uses: []
+  statement: |
+    Ответьте на вопросы об объединении редких категорий.
+  quiz:
+    - q: Сколько строк станет в таблице после объединения редких марок в Rare?
+      options:
+        - Меньше — редкие марки удаляются
+        - Столько же — меняются только значения в колонке Make
+        - Больше — добавляются строки Rare
+      answer: 1
+      explain: Объединение переписывает значения, но строки не удаляет.
+    - q: Порог 1 % заменили на 2 %. Что произойдёт с числом категорий в Make?
+      options:
+        - Уменьшится — в Rare попадёт больше марок
+        - Увеличится
+        - Не изменится
+      answer: 0
+      explain: При пороге 2 % редкими станут и марки с долей от 1 до 2 % — категорий останется меньше (у нас 15 вместо 22).
+    - q: Какое утверждение верно?
+      options:
+        - Объединение в Rare всегда повышает точность модели
+        - Объединение — гипотеза; оно может скрыть важные различия, и его проверяют сравнением моделей
+        - После объединения исходные марки восстановить нельзя
+      answer: 1
+      explain: Porsche и Fiat в одной категории — пример скрытого различия. Исходные марки сохраняет `Make_original`.
+    - q: Почему редкость модели лучше считать в паре с маркой?
+      options:
+        - Одинаковые названия моделей встречаются у разных марок
+        - Так быстрее
+        - У моделей нет пропусков
+      answer: 0
+      explain: Например, заглушка 'Altele' встречается у 48 марок, а модель '3' — у разных производителей.
+  hints:
+    - Вспомните, что делает `loc`-присваивание со строками и как порог влияет на список редких.
+    - "Строки не удаляются; больший порог — больше марок в Rare; объединение — гипотеза; названия моделей повторяются у разных марок."
+    - "Ответы: столько же; уменьшится; гипотеза; одинаковые названия у разных марок."
+
+- id: m2-l10-t5
+  title: Порог меняет результат
+  difficulty: main
+  introduces: [rare-categories]
+  uses: [py-functions]
+  statement: |
+    Напишите функцию `n_categories(table, column, share)`, которая возвращает, сколько категорий останется в колонке `column`, если объединить значения с долей не больше `share` в одну категорию `Rare` (если редких нет, `Rare` не появляется). Таблицу менять не нужно — достаточно посчитать.
+
+    Затем `by_threshold` — словарь «порог → число категорий в `Make`» для порогов 0.005, 0.01 и 0.02.
+  prelude: |
+    import pandas as pd
+    raw = pd.read_csv('cars.csv')
+    cars = raw.drop_duplicates().dropna().copy()   # уроки 2.6–2.9
+    cars = cars[cars['Year'].between(1951, 2021) & cars['Distance'].between(0, 1_000_000) &
+                cars['Engine_capacity(cm3)'].between(200, 5000) & cars['Price(euro)'].between(101, 500_000) &
+                ~((cars['Year'] < 2021) & (cars['Distance'] < 1100))].copy()
+  starter: |
+    def n_categories(table, column, share):
+        ...
+
+    by_threshold = ...
+    print(by_threshold)
+  solution: |
+    def n_categories(table, column, share):
+        shares = table[column].value_counts(normalize=True)
+        n_frequent = (shares > share).sum()
+        has_rare = (shares <= share).any()
+        return int(n_frequent + (1 if has_rare else 0))
+
+    by_threshold = {t: n_categories(cars, 'Make', t) for t in [0.005, 0.01, 0.02]}
+    print(by_threshold)
+  explanation: |
+    - Частые категории — с долей больше порога; каждая остаётся отдельной.
+    - Все редкие превращаются в одну категорию `Rare` — плюс один, если редкие вообще есть.
+    - Чем выше порог, тем больше марок уходит в `Rare` и тем меньше категорий остаётся.
+  alternatives:
+    - |
+      def n_categories(table, column, share):
+          counts = table[column].value_counts()
+          shares = counts / counts.sum()
+          rare = shares[shares <= share]
+          return len(shares) - len(rare) + (1 if len(rare) else 0)
+      by_threshold = {}
+      for t in [0.005, 0.01, 0.02]:
+          by_threshold[t] = n_categories(cars, 'Make', t)
+  hints:
+    - Сколько категорий не тронет объединение? И сколько категорий получится из всех редких вместе?
+    - "Доли — `table[column].value_counts(normalize=True)`; частых — `(shares > share).sum()`; плюс 1, если `(shares <= share).any()`."
+    - "`by_threshold = {t: n_categories(cars, 'Make', t) for t in [0.005, 0.01, 0.02]}`."
+  tests: |
+    import pandas as pd
+    f = var('n_categories')
+    ensure(callable(f), '`n_categories` должна быть функцией.')
+    d = ref('cars')
+    ref_f = ref('n_categories')
+    for t in [0.005, 0.01, 0.02, 0.0]:
+        got = f(d, 'Make', t)
+        if got is None:
+            fail('Функция ничего не вернула — добавьте `return`.')
+        exp = ref_f(d, 'Make', t)
+        if t == 0.0 and got == exp + 1:
+            fail('При пороге 0 редких марок нет, и категория Rare не должна появляться. Добавляйте 1, только если редкие есть.')
+        equal(int(got), int(exp), 'n_categories(cars, \'Make\', ' + str(t) + ') должна вернуть {expected}, а вернула {actual}.')
+    equal(int(f(d, 'Style', 0.02)), int(ref_f(d, 'Style', 0.02)), 'Для колонки Style функция вернула {actual}, а нужно {expected}. Используйте аргумент `column`, а не жёстко Make.')
+    bt = var('by_threshold', dict, 'словарём')
+    for t in [0.005, 0.01, 0.02]:
+        ensure(t in bt, 'В `by_threshold` нет ключа {0}.'.format(t))
+        equal(int(bt[t]), int(ref('by_threshold')[t]), 'Для порога ' + str(t) + ' должно быть {expected} категорий, а у вас {actual}.')
+  wrong:
+    - code: |
+        def n_categories(table, column, share):
+            shares = table[column].value_counts(normalize=True)
+            return int((shares > share).sum()) + 1
+        by_threshold = {t: n_categories(cars, 'Make', t) for t in [0.005, 0.01, 0.02]}
+      expect: При пороге 0
+    - code: |
+        def n_categories(table, column, share):
+            shares = table['Make'].value_counts(normalize=True)
+            return int((shares > share).sum()) + int((shares <= share).any())
+        by_threshold = {t: n_categories(cars, 'Make', t) for t in [0.005, 0.01, 0.02]}
+      expect: аргумент `column`
+
+- id: m2-l10-t6
+  title: Самое частое значение в сегменте
+  difficulty: star
+  introduces: [rare-categories]
+  uses: [pd-bool-filter, pd-value-counts]
+  statement: |
+    Напишите функцию `most_common(table, make, model, year, column)`: для автомобилей заданных **исходной** марки (`Make_original`), модели и года выпуска она возвращает самое частое значение колонки `column` (например, кузов или тип топлива). Если таких автомобилей нет, функция возвращает `None`.
+
+    Такая функция пригодится, чтобы обоснованно заполнять пропуски входных признаков по похожим записям.
+  prelude: |
+    import pandas as pd
+    cars = pd.read_csv('cars_processed.csv')   # результат модуля 2
+  starter: |
+    def most_common(table, make, model, year, column):
+        ...
+
+    print(most_common(cars, 'Toyota', 'Camry', 2016, 'Style'))
+    print(most_common(cars, 'Volkswagen', 'Passat', 2012, 'Fuel_type'))
+    print(most_common(cars, 'Tesla', 'Model S', 1990, 'Style'))
+  solution: |
+    def most_common(table, make, model, year, column):
+        segment = table[(table['Make_original'] == make) & (table['Model'] == model) & (table['Year'] == year)]
+        if segment.empty:
+            return None
+        return segment[column].value_counts().index[0]
+
+    print(most_common(cars, 'Toyota', 'Camry', 2016, 'Style'))
+    print(most_common(cars, 'Volkswagen', 'Passat', 2012, 'Fuel_type'))
+    print(most_common(cars, 'Tesla', 'Model S', 1990, 'Style'))
+  explanation: |
+    - Сегмент отбирается тремя условиями; марку берём из `Make_original`, ведь в `Make` редкие марки стали `'Rare'`.
+    - Пустой сегмент проверяем **до** `value_counts`: у пустой Series нет первого элемента.
+    - `value_counts()` сортирует частоты по убыванию, поэтому `.index[0]` — самое частое значение. При равных частотах возможен любой из лидеров — это нужно помнить, заполняя пропуски.
+  alternatives:
+    - |
+      def most_common(table, make, model, year, column):
+          mask = (table['Make_original'] == make) & (table['Model'] == model) & (table['Year'] == year)
+          values = table.loc[mask, column]
+          if len(values) == 0:
+              return None
+          return values.mode().iloc[0]
+  files: [cars_processed.csv]
+  hints:
+    - Сначала отберите сегмент, затем проверьте, не пуст ли он, и только потом считайте частоты.
+    - "Маска по `Make_original`, `Model`, `Year`; пустоту проверяет `segment.empty`; самое частое — `value_counts().index[0]`."
+    - "`return segment[column].value_counts().index[0]`, а перед этим `if segment.empty: return None`."
+  tests: |
+    import pandas as pd
+    f = var('most_common')
+    ensure(callable(f), '`most_common` должна быть функцией.')
+    d = ref('cars')
+    try:
+        empty = f(d, 'Tesla', 'Model S', 1990, 'Style')
+    except Exception as e:
+        fail('Для несуществующего сегмента функция упала с ошибкой {0}. Проверьте `segment.empty` до `value_counts()` и верните None.'.format(type(e).__name__))
+    ensure(empty is None, 'Для несуществующего сегмента функция должна вернуть None, а вернула {0!r}.'.format(empty))
+    for args in [('Toyota', 'Camry', 2016, 'Style'), ('Volkswagen', 'Passat', 2012, 'Fuel_type'), ('Porsche', 'Cayenne', 2008, 'Fuel_type'), ('BMW', '5 Series', 2010, 'Style')]:
+        seg = d[(d['Make_original'] == args[0]) & (d['Model'] == args[1]) & (d['Year'] == args[2])][args[3]]
+        got = f(d, *args)
+        if len(seg) == 0:
+            continue
+        top = seg.value_counts()
+        leaders = set(top[top == top.max()].index)
+        if got not in leaders:
+            fail('most_common(cars, {0!r}, {1!r}, {2}, {3!r}) вернула {4!r}, а самое частое значение — {5}.'.format(*args, got, ' или '.join(sorted(map(str, leaders)))))
+  wrong:
+    - code: |
+        def most_common(table, make, model, year, column):
+            segment = table[(table['Make_original'] == make) & (table['Model'] == model) & (table['Year'] == year)]
+            return segment[column].value_counts().index[0]
+      expect: segment.empty
+    - code: |
+        def most_common(table, make, model, year, column):
+            segment = table[(table['Make'] == make) & (table['Model'] == model) & (table['Year'] == year)]
+            if segment.empty:
+                return None
+            return segment[column].value_counts().index[-1]
+      expect: самое частое значение

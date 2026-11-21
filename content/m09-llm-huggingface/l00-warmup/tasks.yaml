@@ -1,0 +1,318 @@
+- id: m9-l0-t1
+  title: Самые частые слова
+  difficulty: warmup
+  introduces: []
+  uses: [pd-value-counts]
+  statement: |
+    `words` — список всех русских слов корпуса курса в нижнем регистре. Получите:
+
+    - `counts` — Series: слово → сколько раз встретилось, по убыванию;
+    - `top5` — список пяти самых частых слов;
+    - `share_top` — долю самого частого слова среди всех слов корпуса;
+    - `n_once` — сколько разных слов встретилось ровно один раз.
+  prelude: |
+    import re
+    import pandas as pd
+    with open('course_texts.txt', encoding='utf-8') as fh:
+        text = fh.read()
+    words = re.findall(r'[а-яё]+', text.lower())
+  starter: |
+    counts = ...
+    top5 = ...
+    share_top = ...
+    n_once = ...
+    print(top5, round(share_top, 4), n_once)
+  solution: |
+    counts = pd.Series(words).value_counts()
+    top5 = list(counts.index[:5])
+    share_top = counts.iloc[0] / len(words)
+    n_once = int((counts == 1).sum())
+    print(top5, round(share_top, 4), n_once)
+  explanation: |
+    - Пять самых частых слов — служебные: «и», «в», «на», «не», «по». Первое из них — 3,3 % всех слов корпуса.
+    - Ровно один раз встретились 3 209 разных слов, почти половина словаря. Языковой модели, которая учится по подсчётам, о таких словах почти нечего узнать — к этому вернёмся в уроке 9.1.
+    - Доля — число вхождений, делённое на число **всех** слов (`len(words)`), а не на число разных.
+  hints:
+    - "`pd.Series(words).value_counts()` считает и сразу сортирует по убыванию."
+    - "Пять первых — `list(counts.index[:5])`; самое частое — `counts.iloc[0]`."
+    - "Слова, встретившиеся один раз, — маска `counts == 1`, её сумма."
+  tests: |
+    import pandas as pd
+    c = var('counts', pd.Series, 'Series')
+    same_array(c.to_numpy(dtype=float), ref('counts').to_numpy(dtype=float), '`counts` — `pd.Series(words).value_counts()`.')
+    equal(list(var('top5', list, 'списком')), list(ref('top5')), 'Пять самых частых слов — {expected}, а у вас {actual}.')
+    sh = var('share_top', 'number', 'числом')
+    if abs(sh - ref('counts').iloc[0] / ref('counts').size) < 1e-9:
+        fail('Долю считают от всех слов корпуса (`len(words)`), а не от числа разных слов.')
+    close(sh, ref('share_top'), 'Доля самого частого слова — {expected}, а у вас {actual}.')
+    equal(int(var('n_once', 'number', 'числом')), int(ref('n_once')), 'Слов, встретившихся один раз, — {expected}, а у вас {actual}.')
+    equal(int(alt('n_once')), int(alt_ref('n_once')), HARDCODE_MSG)
+  files: [course_texts.txt]
+  wrong:
+    - code: |
+        counts = pd.Series(words).value_counts()
+        top5 = list(counts.index[:5])
+        share_top = counts.iloc[0] / counts.size
+        n_once = int((counts == 1).sum())
+      expect: от всех слов
+    - code: |
+        counts = pd.Series(words).value_counts()
+        top5 = list(counts.index[:5])
+        share_top = counts.iloc[0] / len(words)
+        n_once = int((counts <= 2).sum())
+      expect: один раз
+
+- id: m9-l0-t2
+  title: Длина вектора и нормировка
+  difficulty: warmup
+  introduces: []
+  uses: [vectorization, artificial-neuron]
+  statement: |
+    Напишите функции:
+
+    - `vec_len(v)` — длина вектора: корень из суммы квадратов его элементов (через скалярное произведение `v @ v`);
+    - `normalize(v)` — тот же вектор, делённый на свою длину.
+
+    Для векторов `a` и `b` получите `dot_ab` — их скалярное произведение и `dot_unit` — скалярное произведение их нормированных версий.
+  prelude: |
+    import numpy as np
+    a = np.array([1.0, 2.0, 2.0])
+    b = np.array([2.0, 1.0, 2.0])
+  starter: |
+    def vec_len(v):
+        return ...
+
+    def normalize(v):
+        return ...
+
+    dot_ab = ...
+    dot_unit = ...
+    print(vec_len(a), normalize(a), dot_ab, round(dot_unit, 4))
+  solution: |
+    def vec_len(v):
+        return np.sqrt(v @ v)
+
+    def normalize(v):
+        return v / vec_len(v)
+
+    dot_ab = a @ b
+    dot_unit = normalize(a) @ normalize(b)
+    print(vec_len(a), normalize(a), dot_ab, round(dot_unit, 4))
+  explanation: |
+    - Длина `a` — √(1 + 4 + 4) = 3. Нормированный вектор [1/3, 2/3, 2/3] смотрит туда же, но его длина 1.
+    - Скалярное произведение `a` и `b` — 8, а у нормированных версий — 8/9 ≈ 0,889. Оно уже не зависит от длины векторов, только от того, насколько похожи их направления. В уроке 9.2 это число получит имя — косинусное сходство.
+  hints:
+    - "Длина — `np.sqrt(v @ v)`."
+    - "Нормировка — `v / vec_len(v)`."
+    - "`dot_unit = normalize(a) @ normalize(b)`."
+  tests: |
+    import numpy as np
+    f, g = var('vec_len'), var('normalize')
+    ensure(callable(f) and callable(g), '`vec_len` и `normalize` должны быть функциями.')
+    rng = np.random.default_rng(5)
+    for _ in range(3):
+        v = rng.normal(size=6)
+        close(float(f(v)), float(np.linalg.norm(v)), 'На другом векторе `vec_len` дала {actual}, а длина {expected}: корень из `v @ v`.')
+        u = np.asarray(g(v), dtype=float)
+        same_array(u, v / np.linalg.norm(v), '`normalize` должна делить вектор на его длину.')
+    close(var('dot_ab', 'number', 'числом'), ref('dot_ab'), 'Скалярное произведение a и b — {expected}, а у вас {actual}.')
+    close(var('dot_unit', 'number', 'числом'), ref('dot_unit'), 'Скалярное произведение нормированных векторов — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        def vec_len(v):
+            return v @ v
+        def normalize(v):
+            return v / vec_len(v)
+        dot_ab = a @ b
+        dot_unit = normalize(a) @ normalize(b)
+      expect: корень
+    - code: |
+        def vec_len(v):
+            return np.sqrt(v @ v)
+        def normalize(v):
+            return v / vec_len(v)
+        dot_ab = a @ b
+        dot_unit = a @ b
+      expect: нормированных
+
+- id: m9-l0-t3
+  title: Вероятность и порог
+  difficulty: warmup
+  introduces: []
+  uses: [activation-function, binary-classification]
+  statement: |
+    `z` — оценки модели для отзывов, `y` — настоящие классы (1 — положительный). Напишите функцию `sigmoid(z)` для массива и получите:
+
+    - `p` — вероятности класса 1;
+    - `pred` — классы по порогу 0,5 (массив из 0 и 1);
+    - `acc` — долю верных ответов;
+    - `n_sure` — сколько отзывов модель оценила уверенно: вероятность больше 0,9 или меньше 0,1.
+  prelude: |
+    import numpy as np
+    z = np.array([2.3, -1.1, 0.4, -3.0, 4.2, -0.2, 1.5, -2.2])
+    y = np.array([1, 0, 0, 0, 1, 1, 1, 0])
+  starter: |
+    def sigmoid(z):
+        return ...
+
+    p = ...
+    pred = ...
+    acc = ...
+    n_sure = ...
+    print(p.round(3), pred, acc, n_sure)
+  solution: |
+    def sigmoid(z):
+        return 1 / (1 + np.exp(-z))
+
+    p = sigmoid(z)
+    pred = (p >= 0.5).astype(int)
+    acc = (pred == y).mean()
+    n_sure = int(((p > 0.9) | (p < 0.1)).sum())
+    print(p.round(3), pred, acc, n_sure)
+  explanation: |
+    - Модель верно оценила 6 отзывов из 8: доля верных 0,75. Ошиблась на третьем (z = 0,4 — небольшая оценка) и шестом (z = −0,2).
+    - Уверенных ответов три — с вероятностью выше 0,9 или ниже 0,1. Обе ошибки модель сделала неуверенно — вероятность около 0,5. Это частая картина: уверенные ответы обычно верные, а сомнительные оценки близки к порогу.
+  hints:
+    - "Сигмоида — `1 / (1 + np.exp(-z))`."
+    - "Класс — `(p >= 0.5).astype(int)`, доля верных — `(pred == y).mean()`."
+    - "Уверенные — `(p > 0.9) | (p < 0.1)`: два условия в скобках через «или»."
+  tests: |
+    import numpy as np
+    f = var('sigmoid')
+    ensure(callable(f), '`sigmoid` должна быть функцией.')
+    zz = np.random.default_rng(2).normal(0, 3, size=7)
+    same_array(np.asarray(f(zz), dtype=float), 1 / (1 + np.exp(-zz)), 'На других оценках `sigmoid` неверна: `1 / (1 + np.exp(-z))`.')
+    same_array(np.asarray(var('p'), dtype=float), ref('p'), '`p` — сигмоида оценок `z`.')
+    same_array(np.asarray(var('pred'), dtype=float), np.asarray(ref('pred'), dtype=float), '`pred` — классы по порогу 0,5.')
+    close(var('acc', 'number', 'числом'), ref('acc'), 'Доля верных ответов — {expected}, а у вас {actual}.')
+    ns = int(var('n_sure', 'number', 'числом'))
+    if ns == int((ref('p') > 0.9).sum()):
+        fail('Уверенные ответы — и с вероятностью выше 0,9, и ниже 0,1: `(p > 0.9) | (p < 0.1)`.')
+    equal(ns, int(ref('n_sure')), 'Уверенных ответов — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        def sigmoid(z):
+            return 1 / (1 + np.exp(z))
+        p = sigmoid(z)
+        pred = (p >= 0.5).astype(int)
+        acc = (pred == y).mean()
+        n_sure = int(((p > 0.9) | (p < 0.1)).sum())
+      expect: "`sigmoid` неверна"
+    - code: |
+        def sigmoid(z):
+            return 1 / (1 + np.exp(-z))
+        p = sigmoid(z)
+        pred = (p >= 0.5).astype(int)
+        acc = (pred == y).mean()
+        n_sure = int((p > 0.9).sum())
+      expect: ниже 0,1
+
+- id: m9-l0-t4
+  title: Отзывы по темам
+  difficulty: warmup
+  introduces: []
+  uses: [pd-groupby, pd-value-counts]
+  statement: |
+    `reviews` — таблица коротких отзывов: `text` — текст, `label` — класс (1 — положительный, 0 — отрицательный), `domain` — тема. Столбец `n_words` — длина отзыва в словах — уже посчитан. Получите:
+
+    - `n_by_domain` — Series: сколько отзывов в каждой теме;
+    - `pos_share` — Series: доля положительных отзывов в каждой теме;
+    - `words_by_domain` — Series: средняя длина отзыва в словах для каждой темы;
+    - `longest` — тему, в которой отзывы в среднем самые длинные.
+  prelude: |
+    import pandas as pd
+    reviews = pd.read_csv('reviews.csv')
+    reviews['n_words'] = reviews['text'].str.split().str.len()
+  starter: |
+    n_by_domain = ...
+    pos_share = ...
+    words_by_domain = ...
+    longest = ...
+    print(pos_share.round(2))
+    print(words_by_domain.round(1), longest)
+  solution: |
+    n_by_domain = reviews['domain'].value_counts()
+    pos_share = reviews.groupby('domain')['label'].mean()
+    words_by_domain = reviews.groupby('domain')['n_words'].mean()
+    longest = words_by_domain.idxmax()
+    print(pos_share.round(2))
+    print(words_by_domain.round(1), longest)
+  explanation: |
+    - `groupby('domain')['label'].mean()` — среднее нулей и единиц внутри каждой темы, то есть доля положительных. Почти везде она 0,5: отзывы подобраны поровну. В «tricky» — 0,44.
+    - Длиннее всего отзывы о кино — в среднем 8,9 слова. Короче всего русские — 4,4 слова. В уроке 9.4 выясним, справится ли с ними английская модель тональности.
+    - `idxmax()` возвращает не само наибольшее значение, а его метку в индексе — название темы.
+  hints:
+    - "Число отзывов по темам — `reviews['domain'].value_counts()`."
+    - "Статистика по группам — `reviews.groupby('domain')['label'].mean()`; так же для `'n_words'`."
+    - "Метка наибольшего значения — `words_by_domain.idxmax()`."
+  tests: |
+    import pandas as pd
+    n = var('n_by_domain', pd.Series, 'Series')
+    same_array(n.reindex(ref('n_by_domain').index).to_numpy(dtype=float), ref('n_by_domain').to_numpy(dtype=float), '`n_by_domain` — число отзывов в каждой теме: `value_counts()`.')
+    ps = var('pos_share', pd.Series, 'Series')
+    pos_count = ref('reviews').groupby('domain')['label'].sum()
+    if ps.reindex(pos_count.index).fillna(-1).to_numpy(dtype=float).tolist() == pos_count.to_numpy(dtype=float).tolist():
+        fail('Это число положительных отзывов, а нужна доля: `.mean()` вместо `.sum()`.')
+    same_array(ps.reindex(ref('pos_share').index).to_numpy(dtype=float), ref('pos_share').to_numpy(dtype=float), '`pos_share` — доля положительных в каждой теме: среднее `label` по группе.')
+    wb = var('words_by_domain', pd.Series, 'Series')
+    same_array(wb.reindex(ref('words_by_domain').index).to_numpy(dtype=float), ref('words_by_domain').to_numpy(dtype=float), '`words_by_domain` — среднее `n_words` по темам.')
+    lg = var('longest')
+    if not isinstance(lg, str):
+        fail('`longest` — название темы, строка. `max()` возвращает само значение, а метку даёт `idxmax()`.')
+    equal(lg, ref('longest'), 'Самые длинные отзывы — в теме {expected}, а у вас {actual}.')
+    equal(alt('n_by_domain').to_dict(), alt_ref('n_by_domain').to_dict(), HARDCODE_MSG)
+  files: [reviews.csv]
+  wrong:
+    - code: |
+        n_by_domain = reviews['domain'].value_counts()
+        pos_share = reviews.groupby('domain')['label'].sum()
+        words_by_domain = reviews.groupby('domain')['n_words'].mean()
+        longest = words_by_domain.idxmax()
+      expect: нужна доля
+    - code: |
+        n_by_domain = reviews['domain'].value_counts()
+        pos_share = reviews.groupby('domain')['label'].mean()
+        words_by_domain = reviews.groupby('domain')['n_words'].mean()
+        longest = words_by_domain.max()
+      expect: idxmax
+    - code: |
+        n_by_domain = pd.Series({'movie': 16, 'tricky': 16, 'food': 12, 'product': 12, 'service': 12, 'hotel': 8, 'russian': 8, 'notebook': 4})
+        pos_share = reviews.groupby('domain')['label'].mean()
+        words_by_domain = reviews.groupby('domain')['n_words'].mean()
+        longest = words_by_domain.idxmax()
+      expect: вписан вручную
+
+- id: m9-l0-t5
+  kind: quiz
+  title: Что понадобится в модуле 9
+  difficulty: warmup
+  introduces: []
+  uses: [binary-classification, vectorization]
+  statement: |
+    Проверьте, что знакомые инструменты на месте.
+  quiz:
+    - q: Что такое скалярное произведение векторов a и b?
+      options:
+        - Сумма попарных произведений их элементов
+        - Произведение их длин
+        - Вектор из попарных произведений
+      answer: 0
+      explain: "a @ b = a₁b₁ + a₂b₂ + … — как взвешенная сумма в нейроне."
+    - q: Как получить вектор длины 1 с тем же направлением, что у v?
+      options:
+        - Разделить v на его длину √(v @ v)
+        - Вычесть из v его среднее
+        - Разделить v на число элементов
+      answer: 0
+      explain: Нормированные векторы удобно сравнивать — длина больше не мешает.
+    - q: Модель выдала вероятность класса 1, равную 0,48. Что она предскажет при пороге 0,5?
+      options:
+        - Класс 0, причём неуверенно
+        - Класс 1, уверенно
+        - Класс 0, уверенно
+      answer: 0
+      explain: 0,48 < 0,5 — класс 0; вероятность близка к 0,5, значит, модель почти не уверена.
+  hints:
+    - Вспомните уроки 8.1 и 8.7.
+    - "Скалярное произведение — сумма произведений; нормировка — деление на длину; 0,48 — чуть ниже порога."
+    - "Ответы: первый вариант во всех трёх вопросах."

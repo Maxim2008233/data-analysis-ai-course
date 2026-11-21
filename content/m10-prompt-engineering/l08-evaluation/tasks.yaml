@@ -1,0 +1,420 @@
+- id: m10-l8-t1
+  title: Простые ориентиры
+  difficulty: warmup
+  introduces: [llm-evaluation]
+  uses: []
+  statement: |
+    `qa` — размеченные вопросы, в столбце `n` — число вариантов, в `ответ` — номер правильного. Получите ориентиры, с которыми сравнивают любое LLM-решение:
+
+    - `random_acc` — ожидаемая доля верных при ответе наугад: у вопроса с `n` вариантами это `1 / n`, а по всем вопросам — среднее;
+    - `share` — доля вопросов с каждым правильным номером (`value_counts(normalize=True)`);
+    - `best_answer` — номер, который чаще всего бывает правильным, и `best_const` — доля верных, если всегда отвечать им.
+  prelude: |
+    import ast
+    import json
+    import warnings
+    import pandas as pd
+
+    def parse_options(s):
+        s = s.strip().rstrip(',').strip()
+        try:
+            return json.loads(s)
+        except json.JSONDecodeError:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', SyntaxWarning)
+                return ast.literal_eval(s)
+
+    qa = pd.read_csv('qa_train.csv')
+    qa['n'] = qa['варианты'].apply(parse_options).str.len()
+  starter: |
+    random_acc = ...
+    share = qa['ответ'].value_counts(normalize=True)
+    best_answer = ...
+    best_const = ...
+    print(round(random_acc, 3), best_answer, round(best_const, 3))
+  solution: |
+    random_acc = (1 / qa['n']).mean()
+    share = qa['ответ'].value_counts(normalize=True)
+    best_answer = share.idxmax()
+    best_const = share.max()
+    print(round(random_acc, 3), best_answer, round(best_const, 3))
+  explanation: |
+    - Наугад получается 23,7 %, а не 25 %: у части вопросов десять или семь вариантов, и угадать там труднее.
+    - Лучший постоянный ответ — «1», 36,8 %. Правильные номера в данных распределены неравномерно, и это даёт бесплатную прибавку любому решению, которое чаще выбирает 1.
+    - LLM-решение с 73,6 % вдвое лучше лучшего постоянного ответа. Без такого ориентира не понять, много это или мало.
+  hints:
+    - "Вероятность угадать в каждом вопросе — `1 / qa['n']`; ожидаемая доля верных — её среднее."
+    - "Номер с наибольшей долей — `share.idxmax()`."
+    - "Доля верных при постоянном ответе — это его доля среди правильных: `share.max()`."
+  tests: |
+    ra = var('random_acc', 'number', 'числом')
+    if abs(ra - 0.25) < 1e-9:
+        fail('У вопросов разное число вариантов: усредните `1 / qa[\'n\']`, а не берите 1/4.')
+    close(ra, ref('random_acc'), 'Ожидаемая доля верных наугад — {expected}, а у вас {actual}.')
+    equal(int(var('best_answer', 'number', 'числом')), int(ref('best_answer')), 'Чаще всего правильный номер — {expected}, а у вас {actual}.')
+    close(var('best_const', 'number', 'числом'), ref('best_const'), 'Доля верных при постоянном ответе — {expected}, а у вас {actual}.')
+    close(alt('random_acc'), alt_ref('random_acc'), HARDCODE_MSG)
+  files: [qa_train.csv]
+  wrong:
+    - code: |
+        random_acc = 0.25
+        share = qa['ответ'].value_counts(normalize=True)
+        best_answer = share.idxmax()
+        best_const = share.max()
+      expect: не берите 1/4
+    - code: |
+        random_acc = (1 / qa['n']).mean()
+        share = qa['ответ'].value_counts(normalize=True)
+        best_answer = share.sort_index().index[0]
+        best_const = share.sort_index().iloc[0]
+      expect: Чаще всего правильный номер
+
+- id: m10-l8-t2
+  title: Интервал для доли верных
+  difficulty: main
+  introduces: []
+  uses: [llm-evaluation]
+  statement: |
+    Напишите функцию `acc_interval(k, n)`: `k` верных ответов из `n`. Она возвращает кортеж `(p, low, high)` — долю верных и границы 95-процентного доверительного интервала:
+
+    $$
+    p \pm 1{,}96 \cdot \sqrt{\frac{p(1 - p)}{n}}
+    $$
+
+    Получите:
+
+    - `train_ci` — интервал для 64 верных из 87 и `test_ci` — для 517 из 786;
+    - `test_inside` — попадает ли доля теста внутрь интервала обучающих вопросов (`True` / `False`);
+    - `n_needed` — сколько вопросов нужно, чтобы при доле 0.7 половина интервала (то, что после ±) была не больше 0.03. Найдите наименьшее такое `n` перебором.
+  prelude: |
+    import math
+  starter: |
+    def acc_interval(k, n):
+        p = k / n
+        half = ...
+        return p, p - half, p + half
+
+    train_ci = acc_interval(64, 87)
+    test_ci = ...
+    test_inside = ...
+    n_needed = 1
+    while 1.96 * math.sqrt(0.7 * 0.3 / n_needed) > ...:
+        n_needed += 1
+    print([round(x, 3) for x in train_ci], [round(x, 3) for x in test_ci], test_inside, n_needed)
+  solution: |
+    def acc_interval(k, n):
+        p = k / n
+        half = 1.96 * math.sqrt(p * (1 - p) / n)
+        return p, p - half, p + half
+
+    train_ci = acc_interval(64, 87)
+    test_ci = acc_interval(517, 786)
+    test_inside = train_ci[1] <= test_ci[0] <= train_ci[2]
+    n_needed = 1
+    while 1.96 * math.sqrt(0.7 * 0.3 / n_needed) > 0.03:
+        n_needed += 1
+    print([round(x, 3) for x in train_ci], [round(x, 3) for x in test_ci], test_inside, n_needed)
+  explanation: |
+    - На 87 вопросах интервал — от 64,3 % до 82,8 %, на 786 — от 62,5 % до 69,1 %. Доля теста попадает в интервал обучающих вопросов: разница может быть случайной.
+    - Ширина интервала падает как 1/√n: вопросов в 9 раз больше — интервал втрое уже.
+    - Чтобы мерить долю верных с точностью ±3 пункта, нужно 897 вопросов — больше, чем во всём тесте соревнования. Разницу между промптами в 1–2 пункта на таких наборах не увидеть.
+  hints:
+    - "Половина интервала — `1.96 * math.sqrt(p * (1 - p) / n)`."
+    - "Доля теста — `test_ci[0]`; внутри интервала, если `train_ci[1] <= test_ci[0] <= train_ci[2]`."
+    - "Перебор идёт, пока половина интервала больше 0.03: условие цикла `... > 0.03`."
+  tests: |
+    import math
+    f = var('acc_interval')
+    ensure(callable(f), '`acc_interval` должна быть функцией.')
+    got = f(30, 50)
+    ensure(isinstance(got, tuple) and len(got) == 3, '`acc_interval` должна вернуть кортеж (p, low, high).')
+    p, lo, hi = got
+    close(p, 0.6, 'Для 30 верных из 50 доля — {expected}, а у вас {actual}.')
+    half = 1.96 * math.sqrt(0.6 * 0.4 / 50)
+    if abs((hi - lo) / 2 - 1.96 * 0.6 * 0.4 / 50) < 1e-9 or abs((hi - lo) / 2 - 1.96 * math.sqrt(0.6 * 0.4)) < 1e-9:
+        fail('Половина интервала — 1,96 × квадратный корень из p(1 − p)/n: и деление на n, и корень — над всей дробью.')
+    close(lo, 0.6 - half, 'Нижняя граница для 30 из 50 — {expected}, а у вас {actual}.')
+    close(hi, 0.6 + half, 'Верхняя граница для 30 из 50 — {expected}, а у вас {actual}.')
+    for name in ['train_ci', 'test_ci']:
+        v = var(name, tuple, 'кортежем')
+        same_array(list(v), list(ref(name)), '`{0}` — (доля, нижняя граница, верхняя граница).'.format(name))
+    equal(bool(var('test_inside')), ref('test_inside'), '`test_inside` — {expected}: доля теста 0,658 и интервал обучающих вопросов от 0,643 до 0,828.')
+    equal(int(var('n_needed', 'number', 'числом')), ref('n_needed'), 'Нужно {expected} вопросов, а у вас {actual}.')
+  wrong:
+    - code: |
+        def acc_interval(k, n):
+            p = k / n
+            half = 1.96 * p * (1 - p) / n
+            return p, p - half, p + half
+        train_ci = acc_interval(64, 87)
+        test_ci = acc_interval(517, 786)
+        test_inside = train_ci[1] <= test_ci[0] <= train_ci[2]
+        n_needed = 1
+        while 1.96 * math.sqrt(0.7 * 0.3 / n_needed) > 0.03:
+            n_needed += 1
+      expect: квадратный корень
+    - code: |
+        def acc_interval(k, n):
+            p = k / n
+            half = 1.96 * math.sqrt(p * (1 - p) / n)
+            return p, p - half, p + half
+        train_ci = acc_interval(64, 87)
+        test_ci = acc_interval(517, 786)
+        test_inside = train_ci[1] <= test_ci[0] <= train_ci[2]
+        n_needed = 1
+        while 1.96 * math.sqrt(0.7 * 0.3 / n_needed) > 0.06:
+            n_needed += 1
+      expect: Нужно
+
+- id: m10-l8-t3
+  title: Бутстреп для простого ориентира
+  difficulty: main
+  introduces: []
+  uses: [llm-evaluation]
+  statement: |
+    Насколько точно известна доля верных у ответа «всегда 1»? Посчитайте интервал бутстрепом, ровно как в уроке:
+
+    1. `correct` — массив из 0 и 1: верен ли ответ «1» для каждого вопроса `qa`;
+    2. `rng = np.random.default_rng(0)`, затем `idx = rng.integers(0, n, size=(2000, n))`, где `n` — число вопросов;
+    3. `shares = correct[idx].mean(axis=1)` — доля верных в каждой из 2000 выборок;
+    4. `boot_low`, `boot_high` — 2,5-й и 97,5-й перцентили `shares`.
+
+    Получите ещё `acc_always1` — долю верных у ответа «1» на всех вопросах.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    qa = pd.read_csv('qa_train.csv')
+  starter: |
+    correct = (qa['ответ'] == 1).to_numpy().astype(int)
+    n = len(correct)
+    acc_always1 = ...
+    rng = np.random.default_rng(0)
+    idx = ...
+    shares = ...
+    boot_low, boot_high = np.percentile(shares, [2.5, 97.5])
+    print(round(acc_always1, 3), round(boot_low, 3), round(boot_high, 3))
+  solution: |
+    correct = (qa['ответ'] == 1).to_numpy().astype(int)
+    n = len(correct)
+    acc_always1 = correct.mean()
+    rng = np.random.default_rng(0)
+    idx = rng.integers(0, n, size=(2000, n))
+    shares = correct[idx].mean(axis=1)
+    boot_low, boot_high = np.percentile(shares, [2.5, 97.5])
+    print(round(acc_always1, 3), round(boot_low, 3), round(boot_high, 3))
+  explanation: |
+    - `idx` — 2000 строк по 87 случайных номеров вопросов с повторениями. `correct[idx]` подставляет вместо номеров нули и единицы, а среднее по строке — долю верных в выборке.
+    - У ответа «1» интервал — примерно от 26 % до 47 %. Даже простой ориентир на 87 вопросах известен с точностью ±10 пунктов.
+    - Интервалы LLM-решения (от 64 % до 83 %) и ответа «1» не пересекаются: модель лучше ориентира не случайно.
+  hints:
+    - "Доля верных — `correct.mean()`."
+    - "`idx = rng.integers(0, n, size=(2000, n))` — 2000 выборок по `n` номеров."
+    - "`shares = correct[idx].mean(axis=1)` — среднее по каждой строке."
+  tests: |
+    import numpy as np
+    close(var('acc_always1', 'number', 'числом'), ref('acc_always1'), 'Доля верных у ответа «1» — {expected}, а у вас {actual}.')
+    sh = np.asarray(var('shares'), dtype=float)
+    ensure(sh.shape == (2000,), '`shares` — 2000 долей, по одной на выборку, а у вас форма {0}. Усредняйте по строкам: `axis=1`.'.format(sh.shape))
+    close(var('boot_low', 'number', 'числом'), ref('boot_low'), 'Нижняя граница — {expected}, а у вас {actual}. Проверьте, что выборки получены ровно как в условии.')
+    close(var('boot_high', 'number', 'числом'), ref('boot_high'), 'Верхняя граница — {expected}, а у вас {actual}.')
+    close(alt('boot_low'), alt_ref('boot_low'), HARDCODE_MSG)
+  files: [qa_train.csv]
+  wrong:
+    - code: |
+        correct = (qa['ответ'] == 1).to_numpy().astype(int)
+        n = len(correct)
+        acc_always1 = correct.mean()
+        rng = np.random.default_rng(0)
+        idx = rng.integers(0, n, size=(2000, n))
+        shares = correct[idx].mean(axis=0)
+        boot_low, boot_high = np.percentile(shares, [2.5, 97.5])
+      expect: axis=1
+    - code: |
+        correct = (qa['ответ'] == 1).to_numpy().astype(int)
+        n = len(correct)
+        acc_always1 = correct.mean()
+        rng = np.random.default_rng(0)
+        idx = rng.integers(0, n, size=(2000, n))
+        shares = correct[idx].mean(axis=1)
+        boot_low, boot_high = np.percentile(shares, [5, 95])
+      expect: Нижняя граница
+
+- id: m10-l8-t4
+  title: Что дал бы запасной ответ
+  difficulty: main
+  introduces: []
+  uses: [llm-evaluation, structured-output]
+  statement: |
+    На тесте базовое решение дало `CORRECT = 517` верных ответов из `N_TEST = 786`. `df` — вопросы теста с прогнозами и числом вариантов `n`. Получите:
+
+    - `n_valid` — сколько прогнозов допустимы (от 0 до `n - 1`);
+    - `acc_valid` — доля верных среди допустимых прогнозов: недопустимые заведомо неверны, поэтому все 517 верных — среди допустимых;
+    - `p1` — доля вопросов с правильным ответом 1 в обучающих вопросах `qa`;
+    - `gain` — сколько верных ответов в среднем добавилось бы, если вместо каждого недопустимого прогноза ставить «1» (число недопустимых × `p1`);
+    - `acc_fallback` — ожидаемая доля верных на всём тесте с таким запасным ответом.
+  prelude: |
+    import ast
+    import json
+    import warnings
+    import pandas as pd
+
+    def parse_options(s):
+        s = s.strip().rstrip(',').strip()
+        try:
+            return json.loads(s)
+        except json.JSONDecodeError:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', SyntaxWarning)
+                try:
+                    return ast.literal_eval(s)
+                except (ValueError, SyntaxError):
+                    return None
+
+    qa = pd.read_csv('qa_train.csv')
+    test = pd.read_csv('qa_test.csv')
+    test['n'] = test['варианты'].apply(parse_options).apply(lambda o: len(o) if o is not None else 0)
+    df = test.merge(pd.read_csv('qa_gigachat_baseline.csv'), on='id')
+    CORRECT, N_TEST = 517, 786
+  starter: |
+    valid = (df['prediction'] >= 0) & (df['prediction'] < df['n'])
+    n_valid = ...
+    acc_valid = ...
+    p1 = ...
+    gain = ...
+    acc_fallback = ...
+    print(n_valid, round(acc_valid, 3), round(p1, 3), round(gain, 1), round(acc_fallback, 3))
+  solution: |
+    valid = (df['prediction'] >= 0) & (df['prediction'] < df['n'])
+    n_valid = int(valid.sum())
+    acc_valid = CORRECT / n_valid
+    p1 = (qa['ответ'] == 1).mean()
+    gain = (len(df) - n_valid) * p1
+    acc_fallback = (CORRECT + gain) / N_TEST
+    print(n_valid, round(acc_valid, 3), round(p1, 3), round(gain, 1), round(acc_fallback, 3))
+  explanation: |
+    - Среди 690 допустимых прогнозов верных 74,9 % — почти как на обучающих вопросах. Итог 65,8 % тянут вниз 96 прогнозов не по формату.
+    - Запасной ответ «1» угадывает примерно в 36,8 % случаев, поэтому из 96 недопустимых ожидаемо стало бы верными около 35 — итог 70,3 %.
+    - Это оценка: она предполагает, что на тесте «1» верна так же часто, как на обучающих вопросах. Проверить её можно только на настоящих ответах. Но порядок ясен: исправить формат дешевле, чем улучшать знания модели.
+  hints:
+    - "`n_valid = int(valid.sum())`; доля верных среди допустимых — `CORRECT / n_valid`."
+    - "`p1 = (qa['ответ'] == 1).mean()`; недопустимых — `len(df) - n_valid`."
+    - "`acc_fallback = (CORRECT + gain) / N_TEST`."
+  tests: |
+    equal(int(var('n_valid', 'number', 'числом')), ref('n_valid'), 'Допустимых прогнозов — {expected}, а у вас {actual}.')
+    av = var('acc_valid', 'number', 'числом')
+    if abs(av - ref('CORRECT') / ref('N_TEST')) < 1e-9:
+        fail('`acc_valid` — доля верных среди допустимых прогнозов: делите 517 на их число, а не на весь тест.')
+    close(av, ref('acc_valid'), 'Доля верных среди допустимых — {expected}, а у вас {actual}.')
+    close(var('p1', 'number', 'числом'), ref('p1'), 'Доля ответа 1 в обучающих вопросах — {expected}, а у вас {actual}.')
+    close(var('gain', 'number', 'числом'), ref('gain'), 'Ожидаемая прибавка — {expected} верных, а у вас {actual}.')
+    close(var('acc_fallback', 'number', 'числом'), ref('acc_fallback'), 'Ожидаемая доля верных с запасным ответом — {expected}, а у вас {actual}.')
+    close(alt('gain'), alt_ref('gain'), HARDCODE_MSG)
+  files: [qa_train.csv, qa_test.csv, qa_gigachat_baseline.csv]
+  wrong:
+    - code: |
+        valid = (df['prediction'] >= 0) & (df['prediction'] < df['n'])
+        n_valid = int(valid.sum())
+        acc_valid = CORRECT / N_TEST
+        p1 = (qa['ответ'] == 1).mean()
+        gain = (len(df) - n_valid) * p1
+        acc_fallback = (CORRECT + gain) / N_TEST
+      expect: не на весь тест
+    - code: |
+        valid = (df['prediction'] >= 0) & (df['prediction'] < df['n'])
+        n_valid = int(valid.sum())
+        acc_valid = CORRECT / n_valid
+        p1 = (qa['ответ'] == 1).mean()
+        gain = len(df) - n_valid
+        acc_fallback = (CORRECT + gain) / N_TEST
+      expect: Ожидаемая прибавка
+
+- id: m10-l8-t5
+  title: Парное сравнение двух решений
+  difficulty: star
+  introduces: []
+  uses: [llm-evaluation, few-shot]
+  statement: |
+    Сравним два решения на одних и тех же вопросах `qa`:
+
+    - **A** — всегда отвечать «1»;
+    - **B** — отвечать так же, как в первом примере для вопроса: `qa.loc[candidates(qa, i)[0], 'ответ']` (кандидаты — как в уроке 10.4, сам вопрос не берётся).
+
+    Важны только вопросы, где решения расходятся: на остальных они одинаково правы или одинаково ошибаются. Если решения равны по качеству, каждый такой вопрос с вероятностью 1/2 «за A» и 1/2 «за B». **Критерий знаков** считает, насколько неожиданно наблюдаемое разделение: p-значение — удвоенная вероятность получить не больше `min(only_a, only_b)` «успехов» из `only_a + only_b` бросков монеты (но не больше 1):
+
+    $$
+    p = \min\left(1,\; 2 \sum_{j=0}^{m} \binom{d}{j} \frac{1}{2^d}\right), \quad d = \text{only\_a} + \text{only\_b},\; m = \min(\text{only\_a}, \text{only\_b})
+    $$
+
+    Получите `acc_a`, `acc_b` — доли верных, `only_a` — сколько вопросов верны только у A, `only_b` — только у B, и `p_value`.
+  prelude: |
+    import math
+    import pandas as pd
+    qa = pd.read_csv('qa_train.csv')
+
+    def candidates(df, i):
+        others = df.drop(index=i)
+        cat = df.loc[i, 'категория']
+        same = list(others.index[others['категория'] == cat]) if cat != '-' else []
+        return same + [j for j in others.index if j not in same]
+  starter: |
+    right_a = qa['ответ'] == 1
+    pred_b = pd.Series([qa.loc[candidates(qa, i)[0], 'ответ'] for i in qa.index], index=qa.index)
+    right_b = ...
+    acc_a, acc_b = right_a.mean(), right_b.mean()
+    only_a = int((right_a & ~right_b).sum())
+    only_b = ...
+    d, m = only_a + only_b, min(only_a, only_b)
+    p_value = ...
+    print(round(acc_a, 3), round(acc_b, 3), only_a, only_b, round(p_value, 3))
+  solution: |
+    right_a = qa['ответ'] == 1
+    pred_b = pd.Series([qa.loc[candidates(qa, i)[0], 'ответ'] for i in qa.index], index=qa.index)
+    right_b = pred_b == qa['ответ']
+    acc_a, acc_b = right_a.mean(), right_b.mean()
+    only_a = int((right_a & ~right_b).sum())
+    only_b = int((~right_a & right_b).sum())
+    d, m = only_a + only_b, min(only_a, only_b)
+    p_value = min(1.0, 2 * sum(math.comb(d, j) for j in range(m + 1)) / 2 ** d)
+    print(round(acc_a, 3), round(acc_b, 3), only_a, only_b, round(p_value, 3))
+  explanation: |
+    - A верно отвечает на 36,8 % вопросов, B — на 34,5 %: разница в два вопроса. Расходятся они на 50 вопросах — 26 «за A» и 24 «за B».
+    - p-значение около 0,89: такое разделение обычно для равных решений. Говорить, что A лучше B, по этим данным нельзя.
+    - Так же сравнивают два промпта: прогоняют оба на одних вопросах и считают расхождения. Это точнее, чем сравнивать два общих процента: вопросы, на которых оба правы или оба ошибаются, ничего не говорят о разнице.
+  hints:
+    - "Верные у B — `pred_b == qa['ответ']`; только у B — `~right_a & right_b`."
+    - "Число сочетаний — `math.comb(d, j)`; сумма по `j` от 0 до `m` включительно — `range(m + 1)`."
+    - "`p_value = min(1.0, 2 * sum(math.comb(d, j) for j in range(m + 1)) / 2 ** d)`."
+  tests: |
+    close(var('acc_a', 'number', 'числом'), ref('acc_a'), 'Доля верных у A — {expected}, а у вас {actual}.')
+    close(var('acc_b', 'number', 'числом'), ref('acc_b'), 'Доля верных у B — {expected}, а у вас {actual}.')
+    oa, ob = int(var('only_a', 'number', 'числом')), int(var('only_b', 'number', 'числом'))
+    equal((oa, ob), (ref('only_a'), ref('only_b')), 'Верных только у A и только у B — {expected}, а у вас {actual}.')
+    pv = var('p_value', 'number', 'числом')
+    d, m = ref('only_a') + ref('only_b'), min(ref('only_a'), ref('only_b'))
+    one_side = sum(__import__('math').comb(d, j) for j in range(m + 1)) / 2 ** d
+    if abs(pv - one_side) < 1e-9:
+        fail('Критерий двусторонний: вероятность нужно удвоить (и ограничить единицей).')
+    close(pv, ref('p_value'), 'p-значение — {expected}, а у вас {actual}.')
+    close(alt('p_value'), alt_ref('p_value'), HARDCODE_MSG)
+  files: [qa_train.csv]
+  wrong:
+    - code: |
+        right_a = qa['ответ'] == 1
+        pred_b = pd.Series([qa.loc[candidates(qa, i)[0], 'ответ'] for i in qa.index], index=qa.index)
+        right_b = pred_b == qa['ответ']
+        acc_a, acc_b = right_a.mean(), right_b.mean()
+        only_a = int((right_a & ~right_b).sum())
+        only_b = int((~right_a & right_b).sum())
+        d, m = only_a + only_b, min(only_a, only_b)
+        p_value = sum(math.comb(d, j) for j in range(m + 1)) / 2 ** d
+      expect: двусторонний
+    - code: |
+        right_a = qa['ответ'] == 1
+        pred_b = pd.Series([qa.loc[candidates(qa, i)[0], 'ответ'] for i in qa.index], index=qa.index)
+        right_b = pred_b == qa['ответ']
+        acc_a, acc_b = right_a.mean(), right_b.mean()
+        only_a = int(right_a.sum())
+        only_b = int(right_b.sum())
+        d, m = only_a + only_b, min(only_a, only_b)
+        p_value = min(1.0, 2 * sum(math.comb(d, j) for j in range(m + 1)) / 2 ** d)
+      expect: только у A и только у B

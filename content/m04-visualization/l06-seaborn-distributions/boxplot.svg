@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 236" font-family="Inter, Arial, sans-serif" font-size="12" role="img" aria-label="Устройство боксплота на примере года выпуска: ящик от Q1 = 2004 до Q3 = 2014, линия медианы 2009, усы до самых дальних значений в пределах Q1 − 1,5·IQR = 1989 и Q3 + 1,5·IQR = 2029, то есть до 1989 и 2021 года; точки за усами — редкие значения для проверки">
+  <line x1="36" y1="150" x2="724" y2="150" stroke="currentColor" stroke-opacity="0.5"/>
+  <g stroke="currentColor" stroke-opacity="0.5">
+    <line x1="115" y1="146" x2="115" y2="154"/><line x1="209" y1="146" x2="209" y2="154"/><line x1="303" y1="146" x2="303" y2="154"/>
+    <line x1="397" y1="146" x2="397" y2="154"/><line x1="491" y1="146" x2="491" y2="154"/><line x1="585" y1="146" x2="585" y2="154"/><line x1="679" y1="146" x2="679" y2="154"/>
+  </g>
+  <g fill="currentColor" font-size="10.5" text-anchor="middle" fill-opacity="0.75">
+    <text x="115" y="168">1960</text><text x="209" y="168">1970</text><text x="303" y="168">1980</text><text x="397" y="168">1990</text>
+    <text x="491" y="168">2000</text><text x="585" y="168">2010</text><text x="679" y="168">2020</text>
+  </g>
+  <text x="724" y="186" fill="currentColor" font-size="10.5" fill-opacity="0.75" text-anchor="end">год выпуска →</text>
+  <g fill="#c2410c" fill-opacity="0.75">
+    <circle cx="49" cy="104" r="3.4"/><circle cx="162" cy="104" r="3.4"/><circle cx="256" cy="104" r="3.4"/><circle cx="303" cy="104" r="3.4"/>
+    <circle cx="331" cy="104" r="3.4"/><circle cx="350" cy="104" r="3.4"/><circle cx="360" cy="104" r="3.4"/><circle cx="369" cy="104" r="3.4"/><circle cx="378" cy="104" r="3.4"/>
+  </g>
+  <line x1="388" y1="104" x2="529" y2="104" stroke="currentColor" stroke-width="1.6"/>
+  <line x1="388" y1="92" x2="388" y2="116" stroke="currentColor" stroke-width="1.6"/>
+  <line x1="623" y1="104" x2="689" y2="104" stroke="currentColor" stroke-width="1.6"/>
+  <line x1="689" y1="92" x2="689" y2="116" stroke="currentColor" stroke-width="1.6"/>
+  <rect x="529" y="82" width="94" height="44" fill="#3d5bd9" fill-opacity="0.15" stroke="#3d5bd9" stroke-width="1.6"/>
+  <line x1="576" y1="82" x2="576" y2="126" stroke="#3d5bd9" stroke-width="2.6"/>
+  <g fill="currentColor" font-size="11.5">
+    <text x="522" y="72" text-anchor="end">Q1 = 2004</text>
+    <text x="630" y="72">Q3 = 2014</text>
+    <text x="576" y="40" text-anchor="middle" font-weight="700" fill="#3d5bd9">медиана 2009</text>
+    <path d="M576 45 L576 78" stroke="#3d5bd9" stroke-opacity="0.7"/>
+    <text x="388" y="80" text-anchor="middle">ус до 1989</text>
+    <text x="689" y="134" text-anchor="middle" font-size="11">ус до 2021</text>
+    <text x="210" y="88" text-anchor="middle" fill="#c2410c">точки за усом: машины старше 1989 года</text>
+  </g>
+  <g fill="currentColor" font-size="11.5">
+    <text x="36" y="210"><tspan font-weight="700">Ящик</tspan> — центральные 50 % записей (IQR = Q3 − Q1 = 10 лет). <tspan font-weight="700">Усы</tspan> — до самых дальних значений</text>
+    <text x="36" y="228">в пределах [Q1 − 1,5·IQR; Q3 + 1,5·IQR] = [1989; 2029]. Точки снаружи — редкие значения: их проверяют, а не удаляют сразу.</text>
+  </g>
+</svg>

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 220" font-family="Inter, Arial, sans-serif" font-size="13" role="img" aria-label="Сравнение групп: до 2015 года 32 153 объявления, медиана 5290, Q1–Q3 от 2900 до 8490; с 2015 года 8854 объявления, медиана 15000, Q1–Q3 от 11500 до 22474">
+  <!-- шкала 0..25000 € → 140..660 px (0.0208 px/€) -->
+  <line x1="140" y1="180" x2="660" y2="180" stroke="currentColor" stroke-opacity="0.5"/>
+  <g font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" fill-opacity="0.7">
+    <text x="136" y="198">0</text><text x="234" y="198">5000</text><text x="338" y="198">10000</text><text x="442" y="198">15000</text><text x="546" y="198">20000</text><text x="648" y="198">25000 €</text>
+  </g>
+  <g stroke="currentColor" stroke-opacity="0.35">
+    <line x1="140" y1="176" x2="140" y2="184"/><line x1="244" y1="176" x2="244" y2="184"/><line x1="348" y1="176" x2="348" y2="184"/><line x1="452" y1="176" x2="452" y2="184"/><line x1="556" y1="176" x2="556" y2="184"/><line x1="660" y1="176" x2="660" y2="184"/>
+  </g>
+  <!-- до 2015 -->
+  <text x="20" y="62" fill="currentColor" font-weight="700">до 2015</text>
+  <text x="20" y="80" fill="currentColor" fill-opacity="0.7" font-size="12">n = 32 153</text>
+  <rect x="200.3" y="46" width="116.3" height="34" rx="4" fill="#3d5bd9" fill-opacity="0.15" stroke="#3d5bd9" stroke-width="1.6"/>
+  <line x1="250" y1="42" x2="250" y2="84" stroke="#c0362c" stroke-width="2.4"/>
+  <text x="226" y="36" fill="#c0362c" font-size="12">5290</text>
+  <!-- с 2015 -->
+  <text x="20" y="132" fill="currentColor" font-weight="700">с 2015</text>
+  <text x="20" y="150" fill="currentColor" fill-opacity="0.7" font-size="12">n = 8 854</text>
+  <rect x="379.2" y="116" width="228.3" height="34" rx="4" fill="#c2611b" fill-opacity="0.15" stroke="#c2611b" stroke-width="1.6"/>
+  <line x1="452" y1="112" x2="452" y2="154" stroke="#c0362c" stroke-width="2.4"/>
+  <text x="430" y="106" fill="#c0362c" font-size="12">15 000</text>
+  <text x="360" y="64" fill="currentColor" fill-opacity="0.75" font-size="12">ящик — от Q1 до Q3, черта — медиана</text>
+</svg>

@@ -1,0 +1,371 @@
+- id: m5-l8-t1
+  title: RMSE и MAE руками
+  difficulty: warmup
+  introduces: [regression-metrics]
+  uses: [metric-mae-mape, loss-mse]
+  statement: |
+    Для четырёх машин даны цены `y_true` и прогнозы `y_pred`. Получите `mae`, `rmse` и `ratio` = `rmse / mae`.
+  prelude: |
+    import numpy as np
+    y_true = np.array([5000.0, 8000.0, 12000.0, 3000.0])
+    y_pred = np.array([6000.0, 7000.0, 15000.0, 3000.0])
+  starter: |
+    mae = ...
+    rmse = ...
+    ratio = ...
+    print(mae, round(rmse, 1), round(ratio, 2))
+  solution: |
+    mae = np.abs(y_pred - y_true).mean()
+    rmse = np.sqrt(((y_pred - y_true) ** 2).mean())
+    ratio = rmse / mae
+    print(mae, round(rmse, 1), round(ratio, 2))
+  explanation: |
+    - Ошибки: 1 000, −1 000, 3 000, 0. MAE — среднее модулей: 1 250.
+    - RMSE — корень из среднего квадратов: √(2 750 000) ≈ 1 658. Ошибка 3 000 даёт квадрат 9 000 000 и сильно поднимает RMSE.
+    - RMSE всегда не меньше MAE; чем больше разница, тем неравномернее ошибки.
+  hints:
+    - MAE — среднее модулей ошибок, RMSE — корень из среднего квадратов.
+    - "`rmse = np.sqrt(((y_pred - y_true) ** 2).mean())`."
+    - "`ratio = rmse / mae`."
+  tests: |
+    close(var('mae', 'number', 'числом'), ref('mae'), 'MAE — {expected}, а у вас {actual}.')
+    r = var('rmse', 'number', 'числом')
+    if abs(r - ((ref('y_pred') - ref('y_true')) ** 2).mean()) < 1e-6:
+        fail('Это MSE. RMSE — корень из неё: `np.sqrt(...)`.')
+    close(r, ref('rmse'), 'RMSE — {expected}, а у вас {actual}.')
+    close(var('ratio', 'number', 'числом'), ref('ratio'), 'Отношение RMSE / MAE — {expected}, а у вас {actual}.')
+  wrong:
+    - code: |
+        mae = np.abs(y_pred - y_true).mean()
+        rmse = ((y_pred - y_true) ** 2).mean()
+        ratio = rmse / mae
+      expect: Это MSE
+    - code: |
+        mae = (y_pred - y_true).mean()
+        rmse = np.sqrt(((y_pred - y_true) ** 2).mean())
+        ratio = rmse / mae
+      expect: MAE —
+
+- id: m5-l8-t2
+  title: R² руками и функцией
+  difficulty: main
+  introduces: [regression-metrics]
+  uses: [loss-mse, sk-fit-predict]
+  statement: |
+    Для модели по четырём признакам (прогнозы `pred` на валидации) посчитайте `r2_hand` по формуле R² = 1 − Σ(y − ŷ)² / Σ(y − ȳ)² (ȳ — среднее `y_valid`) и `r2_sk` — функцией `r2_score`. Затем `r2_const` — R² прогноза, который всем машинам ставит среднее `y_valid`.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import r2_score
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    pred = LinearRegression().fit(scaler.transform(X_train), y_train).predict(scaler.transform(X_valid))
+  starter: |
+    r2_hand = ...
+    r2_sk = ...
+    const_pred = np.full(len(y_valid), y_valid.mean())
+    r2_const = ...
+    print(round(r2_hand, 4), round(r2_sk, 4), round(r2_const, 4))
+  solution: |
+    r2_hand = 1 - ((y_valid - pred) ** 2).sum() / ((y_valid - y_valid.mean()) ** 2).sum()
+    r2_sk = r2_score(y_valid, pred)
+    const_pred = np.full(len(y_valid), y_valid.mean())
+    r2_const = r2_score(y_valid, const_pred)
+    print(round(r2_hand, 4), round(r2_sk, 4), round(r2_const, 4))
+  explanation: |
+    - Числитель — сумма квадратов ошибок модели, знаменатель — сумма квадратов ошибок прогноза средним.
+    - У константы-среднего числитель равен знаменателю — R² = 0. Это «нулевая точка» шкалы R².
+    - `r2_score(настоящие, прогнозы)` — порядок аргументов важен: у R² он меняет результат.
+  hints:
+    - "Две суммы квадратов: ошибок модели и отклонений от среднего; R² = 1 − первая / вторая."
+    - "`r2_hand = 1 - ((y_valid - pred) ** 2).sum() / ((y_valid - y_valid.mean()) ** 2).sum()`."
+    - "`r2_const = r2_score(y_valid, const_pred)`."
+  tests: |
+    from sklearn.metrics import r2_score
+    h = var('r2_hand', 'number', 'числом')
+    close(h, ref('r2_sk'), 'R² по формуле должен совпасть с `r2_score` — {expected}, а у вас {actual}.')
+    s = var('r2_sk', 'number', 'числом')
+    if abs(s - r2_score(ref('pred'), ref('y_valid'))) < 1e-9 and abs(s - ref('r2_sk')) > 1e-6:
+        fail('Аргументы `r2_score` перепутаны: сначала настоящие ответы, потом прогнозы.')
+    close(s, ref('r2_sk'), 'R² функцией — {expected}, а у вас {actual}.')
+    close(var('r2_const', 'number', 'числом'), ref('r2_const'), 'R² прогноза средним — {expected}, а у вас {actual}.', atol=1e-9)
+    close(alt('r2_sk'), alt_ref('r2_sk'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        r2_hand = 1 - ((y_valid - pred) ** 2).sum() / ((y_valid - y_valid.mean()) ** 2).sum()
+        r2_sk = r2_score(pred, y_valid)
+        const_pred = np.full(len(y_valid), y_valid.mean())
+        r2_const = r2_score(y_valid, const_pred)
+      expect: перепутаны
+    - code: |
+        r2_hand = ((y_valid - pred) ** 2).sum() / ((y_valid - y_valid.mean()) ** 2).sum()
+        r2_sk = r2_score(y_valid, pred)
+        const_pred = np.full(len(y_valid), y_valid.mean())
+        r2_const = r2_score(y_valid, const_pred)
+      expect: по формуле
+
+- id: m5-l8-t3
+  title: Четыре метрики одной модели
+  difficulty: main
+  introduces: [regression-metrics]
+  uses: [metric-mae-mape, sk-fit-predict]
+  statement: |
+    Для модели по четырём признакам получите на валидации `mae`, `rmse`, `r2` и `mape_pct` — MAPE **в процентах** (функция sklearn возвращает долю).
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score, mean_absolute_percentage_error
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    pred = LinearRegression().fit(scaler.transform(X_train), y_train).predict(scaler.transform(X_valid))
+  starter: |
+    mae = ...
+    rmse = ...
+    r2 = ...
+    mape_pct = ...
+    print(round(mae), round(rmse), round(r2, 3), round(mape_pct, 1))
+  solution: |
+    mae = mean_absolute_error(y_valid, pred)
+    rmse = root_mean_squared_error(y_valid, pred)
+    r2 = r2_score(y_valid, pred)
+    mape_pct = 100 * mean_absolute_percentage_error(y_valid, pred)
+    print(round(mae), round(rmse), round(r2, 3), round(mape_pct, 1))
+  explanation: |
+    - Все функции принимают сначала настоящие ответы, потом прогнозы.
+    - RMSE (≈ 7 580) намного больше MAE (≈ 4 270) — есть редкие большие промахи; R² ≈ 0,46 — объяснено меньше половины разброса.
+    - MAPE ≈ 92 % раздута дешёвыми машинами: ошибка в несколько тысяч для машины за 1 000 евро — сотни процентов.
+  hints:
+    - "Четыре функции из `sklearn.metrics`; MAPE умножьте на 100."
+    - "`rmse = root_mean_squared_error(y_valid, pred)`; `r2 = r2_score(y_valid, pred)`."
+    - "`mape_pct = 100 * mean_absolute_percentage_error(y_valid, pred)`."
+  tests: |
+    close(var('mae', 'number', 'числом'), ref('mae'), 'MAE — {expected}, а у вас {actual}.')
+    close(var('rmse', 'number', 'числом'), ref('rmse'), 'RMSE — {expected}, а у вас {actual}.')
+    close(var('r2', 'number', 'числом'), ref('r2'), 'R² — {expected}, а у вас {actual}.')
+    m = var('mape_pct', 'number', 'числом')
+    if abs(m - ref('mape_pct') / 100) < 1e-6:
+        fail('MAPE — доля; переведите в проценты: умножьте на 100.')
+    close(m, ref('mape_pct'), 'MAPE — {expected} %, а у вас {actual}.')
+    close(alt('rmse'), alt_ref('rmse'), HARDCODE_MSG)
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        mae = mean_absolute_error(y_valid, pred)
+        rmse = root_mean_squared_error(y_valid, pred)
+        r2 = r2_score(y_valid, pred)
+        mape_pct = mean_absolute_percentage_error(y_valid, pred)
+      expect: умножьте на 100
+    - code: |
+        mae = mean_absolute_error(y_valid, pred)
+        rmse = mean_absolute_error(y_valid, pred) ** 0.5
+        r2 = r2_score(y_valid, pred)
+        mape_pct = 100 * mean_absolute_percentage_error(y_valid, pred)
+      expect: RMSE —
+
+- id: m5-l8-t4
+  kind: quiz
+  title: Какую метрику выбрать
+  difficulty: main
+  introduces: [regression-metrics, business-metric]
+  uses: []
+  statement: |
+    Подберите метрику под задачу.
+  quiz:
+    - q: Для сервиса особенно опасны редкие огромные промахи — продавец дорогой машины потеряет доверие.
+      options:
+        - RMSE — сильно штрафует большие ошибки
+        - MAE
+        - MAPE
+      answer: 0
+      explain: Квадрат ошибки делает большие промахи особенно заметными.
+    - q: Нужно объяснить руководителю, на сколько процентов в среднем ошибается оценка, а дешёвых машин в данных мало.
+      options:
+        - MAPE
+        - R²
+        - MSE
+      answer: 0
+      explain: MAPE понятна без единиц; её главный недостаток — раздувание на маленьких значениях — здесь неопасен.
+    - q: Что из этого — онлайн-метрика сервиса?
+      options:
+        - MAE на тестовой выборке
+        - Доля продавцов, которые оставили цену, предложенную сервисом
+        - R² на валидации
+      answer: 1
+      explain: Онлайн-метрики измеряют поведение пользователей работающего сервиса.
+  hints:
+    - Сопоставьте каждую ситуацию с тем, что метрика усиливает или в чём измеряется.
+    - "Большие промахи — RMSE; проценты — MAPE; поведение пользователей — онлайн-метрика."
+    - "Ответы: RMSE; MAPE; доля продавцов, оставивших цену."
+
+- id: m5-l8-t5
+  title: Таблица сравнения моделей
+  difficulty: main
+  introduces: [regression-metrics]
+  uses: [baseline-model, linear-regression, metric-mae-mape]
+  statement: |
+    В словаре `predictions` — прогнозы трёх моделей на валидации. Постройте `table` — DataFrame: строки — названия моделей (в порядке словаря), колонки `MAE`, `RMSE`, `R2`. Затем `best_by_mae` и `best_by_r2` — названия лучших моделей по каждой метрике.
+  prelude: |
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    year_median = y_train.groupby(X_train['Year']).median()
+    predictions = {
+        'медиана года': X_valid['Year'].map(year_median).fillna(y_train.median()).to_numpy(),
+        'линейная: год': LinearRegression().fit(X_train[['Year']], y_train).predict(X_valid[['Year']]),
+        'линейная: 4 признака': LinearRegression().fit(scaler.transform(X_train), y_train).predict(scaler.transform(X_valid)),
+    }
+  starter: |
+    rows = {}
+    for name, p in predictions.items():
+        rows[name] = {'MAE': ..., 'RMSE': ..., 'R2': ...}
+    table = pd.DataFrame(rows).T
+    best_by_mae = ...
+    best_by_r2 = ...
+    print(table.round(3))
+    print(best_by_mae, '|', best_by_r2)
+  solution: |
+    rows = {}
+    for name, p in predictions.items():
+        rows[name] = {'MAE': mean_absolute_error(y_valid, p),
+                      'RMSE': root_mean_squared_error(y_valid, p),
+                      'R2': r2_score(y_valid, p)}
+    table = pd.DataFrame(rows).T
+    best_by_mae = table['MAE'].idxmin()
+    best_by_r2 = table['R2'].idxmax()
+    print(table.round(3))
+    print(best_by_mae, '|', best_by_r2)
+  explanation: |
+    - Словарь словарей → `pd.DataFrame(rows)` даёт модели в колонках; `.T` транспонирует: модели — строки, метрики — колонки.
+    - У MAE лучшая — наименьшая (`idxmin`), у R² — наибольшая (`idxmax`).
+    - Победители разные: «медиана года» точнее для типичных машин, линейная модель на четырёх признаках меньше промахивается на дорогих. Поэтому метрику выбирают до сравнения.
+  hints:
+    - "Для каждой модели — словарь из трёх метрик; таблица — `pd.DataFrame(rows).T`."
+    - "`'RMSE': root_mean_squared_error(y_valid, p)`, `'R2': r2_score(y_valid, p)`."
+    - "`best_by_mae = table['MAE'].idxmin()`; `best_by_r2 = table['R2'].idxmax()`."
+  tests: |
+    import pandas as pd
+    t = var('table', pd.DataFrame, 'таблицей DataFrame')
+    ensure(list(t.columns) == ['MAE', 'RMSE', 'R2'], 'Колонки таблицы — MAE, RMSE, R2; модели — строки (не забудьте `.T`).')
+    same_frame(t.astype(float), ref('table').astype(float), 'Значения метрик не совпадают.')
+    equal(var('best_by_mae', str, 'строкой'), ref('best_by_mae'), 'Лучшая по MAE — «{expected}», а у вас «{actual}».')
+    b = var('best_by_r2', str, 'строкой')
+    if b == ref('table')['R2'].astype(float).idxmin():
+        fail('Для R² лучшая модель — с наибольшим значением: `idxmax`.')
+    equal(b, ref('best_by_r2'), 'Лучшая по R² — «{expected}», а у вас «{actual}».')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        rows = {}
+        for name, p in predictions.items():
+            rows[name] = {'MAE': mean_absolute_error(y_valid, p), 'RMSE': root_mean_squared_error(y_valid, p), 'R2': r2_score(y_valid, p)}
+        table = pd.DataFrame(rows)
+        best_by_mae = table.loc['MAE'].idxmin()
+        best_by_r2 = table.loc['R2'].idxmax()
+      expect: "`.T`"
+    - code: |
+        rows = {}
+        for name, p in predictions.items():
+            rows[name] = {'MAE': mean_absolute_error(y_valid, p), 'RMSE': root_mean_squared_error(y_valid, p), 'R2': r2_score(y_valid, p)}
+        table = pd.DataFrame(rows).T
+        best_by_mae = table['MAE'].idxmin()
+        best_by_r2 = table['R2'].idxmin()
+      expect: наибольшим
+
+- id: m5-l8-t6
+  title: "Метрика ближе к бизнесу: доля оценок в пределах ±20 %"
+  difficulty: star
+  introduces: [business-metric]
+  uses: [regression-metrics, py-functions]
+  statement: |
+    Продавцу важно, чтобы оценка была правдоподобной **для его машины**. Напишите функцию `share_within(y_true, y_pred, tol=0.2)` — долю машин, у которых |прогноз − цена| / цена не больше `tol`. Посчитайте её для двух моделей из словаря `predictions` (`within` — словарь «модель → доля» при tol = 0,2), а затем `within_10` — для линейной модели на 4 признаках при tol = 0,1.
+  prelude: |
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LinearRegression
+    df = pd.read_csv('cars_processed.csv')
+    X, y = df[['Year', 'Distance', 'Engine', 'km_year']], df['Price']
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    year_median = y_train.groupby(X_train['Year']).median()
+    predictions = {
+        'медиана года': X_valid['Year'].map(year_median).fillna(y_train.median()).to_numpy(),
+        'линейная: 4 признака': LinearRegression().fit(scaler.transform(X_train), y_train).predict(scaler.transform(X_valid)),
+    }
+  starter: |
+    def share_within(y_true, y_pred, tol=0.2):
+        ...
+
+    within = {name: ... for name, p in predictions.items()}
+    within_10 = ...
+    print({k: round(v, 3) for k, v in within.items()}, round(within_10, 3))
+  solution: |
+    def share_within(y_true, y_pred, tol=0.2):
+        y_true = np.asarray(y_true, dtype=float)
+        y_pred = np.asarray(y_pred, dtype=float)
+        return (np.abs(y_pred - y_true) / y_true <= tol).mean()
+
+    within = {name: share_within(y_valid, p) for name, p in predictions.items()}
+    within_10 = share_within(y_valid, predictions['линейная: 4 признака'], tol=0.1)
+    print({k: round(v, 3) for k, v in within.items()}, round(within_10, 3))
+  explanation: |
+    - Относительная ошибка каждой машины, маска «не больше tol», среднее маски — доля (уроки 1.5 и 5.0).
+    - `np.asarray` делает функцию одинаковой для Series и массивов — без сюрпризов с метками индекса.
+    - Только около 30 % оценок попадают в ±20 % — для подсказки продавцу этого мало. Такая метрика честнее показывает, готова ли модель к запуску, чем MAE в евро.
+  hints:
+    - "Относительная ошибка — |прогноз − цена| / цена; доля — среднее маски «не больше tol»."
+    - "`return (np.abs(y_pred - y_true) / y_true <= tol).mean()` — после `np.asarray`."
+    - "`within = {name: share_within(y_valid, p) for name, p in predictions.items()}`; `within_10 = share_within(y_valid, predictions['линейная: 4 признака'], tol=0.1)`."
+  tests: |
+    import numpy as np
+    f = var('share_within')
+    ensure(callable(f), '`share_within` должна быть функцией.')
+    yt = np.array([100.0, 200.0, 300.0, 400.0])
+    yp = np.array([110.0, 260.0, 300.0, 330.0])
+    equal(round(float(f(yt, yp)), 6), 0.75, 'share_within([100, 200, 300, 400], [110, 260, 300, 330]) должна быть {expected} (ошибки относительно цены: 10 %, 30 %, 0 %, 17,5 %), а у вас {actual}.')
+    equal(round(float(f(yt, yp, tol=0.3)), 6), 1.0, 'При tol = 0,3 доля должна быть {expected} — граница включается (≤), а у вас {actual}.')
+    w = var('within', dict, 'словарём')
+    for k in ref('within'):
+        close(w[k], ref('within')[k], 'Доля в пределах ±20 % для «{0}» — {{expected}}, а у вас {{actual}}.'.format(k))
+    close(var('within_10', 'number', 'числом'), ref('within_10'), 'Доля в пределах ±10 % — {expected}, а у вас {actual}.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        def share_within(y_true, y_pred, tol=0.2):
+            y_true = np.asarray(y_true, dtype=float)
+            y_pred = np.asarray(y_pred, dtype=float)
+            return (np.abs(y_pred - y_true) / y_pred <= tol).mean()
+
+        within = {name: share_within(y_valid, p) for name, p in predictions.items()}
+        within_10 = share_within(y_valid, predictions['линейная: 4 признака'], tol=0.1)
+      expect: "share_within([100"
+    - code: |
+        def share_within(y_true, y_pred, tol=0.2):
+            y_true = np.asarray(y_true, dtype=float)
+            y_pred = np.asarray(y_pred, dtype=float)
+            return (np.abs(y_pred - y_true) / y_true < tol).mean()
+
+        within = {name: share_within(y_valid, p) for name, p in predictions.items()}
+        within_10 = share_within(y_valid, predictions['линейная: 4 признака'], tol=0.1)
+      expect: граница включается

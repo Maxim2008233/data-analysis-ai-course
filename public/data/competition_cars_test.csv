@@ -1,0 +1,1857 @@
+Make,Model,Year,Style,Fuel,Engine,Distance,Cylinders,Transmission,Drive,Wheel,Color,ID
+HYUNDAI,Sonata,2016,Sedan,Petrol,2.4,58000 km,4.0,Tiptronic,Front,Left wheel,Blue,1
+BMW,328 DIZEL,2013,Sedan,Diesel,2.0 Turbo,160000 km,4.0,Tiptronic,Rear,Left wheel,Grey,2
+HONDA,FIT,2017,Universal,Hybrid,1.5,29220 km,4.0,Automatic,Front,Left wheel,Black,3
+NISSAN,Juke,2013,Jeep,Petrol,1.6 Turbo,106000 km,4.0,Automatic,Front,Left wheel,Blue,4
+VOLKSWAGEN,Passat,2002,Sedan,Petrol,2.8,256000 km,6.0,Tiptronic,Front,Left wheel,Grey,5
+TOYOTA,Camry,2009,Sedan,Petrol,2.5,60250 km,4.0,Tiptronic,Front,Left wheel,Red,6
+BMW,X6,2012,Jeep,Diesel,3.0 Turbo,224000 km,6.0,Tiptronic,4x4,Left wheel,Black,7
+BMW,330,2011,Sedan,Petrol,3,70000 km,6.0,Tiptronic,Rear,Left wheel,White,8
+HYUNDAI,Sonata,2016,Sedan,Petrol,2.4,189104 km,4.0,Automatic,Front,Left wheel,Silver,9
+FORD,Fusion,2014,Sedan,Plug-in Hybrid,2,68700 km,4.0,Variator,Front,Left wheel,Grey,10
+MERCEDES-BENZ,S 320,2001,Sedan,Petrol,3.2,270000 km,6.0,Tiptronic,Rear,Left wheel,Black,11
+BMW,535,2012,Sedan,Petrol,3.0 Turbo,87000 km,6.0,Tiptronic,4x4,Left wheel,Black,12
+CHEVROLET,Impala,2016,Sedan,Petrol,2.5,63000 km,4.0,Automatic,Front,Left wheel,White,13
+TOYOTA,Prius,2010,Hatchback,Hybrid,1.5,137000 km,4.0,Automatic,Front,Left wheel,White,14
+KIA,Optima,2012,Sedan,Petrol,2.4,92000 km,4.0,Tiptronic,Front,Left wheel,White,15
+SSANGYONG,Actyon,2010,Sedan,Diesel,2,201000 km,4.0,Automatic,Front,Left wheel,Silver,16
+SSANGYONG,Actyon,2016,Jeep,Petrol,1.6,36000 km,4.0,Automatic,Front,Left wheel,Blue,17
+HYUNDAI,Genesis,2011,Coupe,Petrol,2,134000 km,4.0,Automatic,Front,Left wheel,Black,18
+TOYOTA,Camry,2011,Sedan,Hybrid,2.4,115739 km,4.0,Automatic,Front,Left wheel,White,19
+HYUNDAI,Elantra,2009,Sedan,Diesel,1.6,179740 km,4.0,Automatic,Front,Left wheel,Silver,20
+BMW,320,2012,Sedan,Petrol,2.0 Turbo,190000 km,4.0,Tiptronic,Rear,Left wheel,Sky blue,21
+BMW,X5 restilling,2010,Jeep,Petrol,3.0 Turbo,165000 km,6.0,Tiptronic,4x4,Left wheel,Golden,22
+MAZDA,Atenza,2003,Hatchback,Petrol,2.3,150000 km,,Tiptronic,Front,Right-hand drive,White,23
+CHEVROLET,Cruze,2011,Sedan,Petrol,1.8,0 km,4.0,Automatic,Front,Left wheel,Silver,24
+TOYOTA,Camry,2017,Sedan,Petrol,2.5,48000 km,4.0,Tiptronic,Front,Left wheel,Black,25
+VOLKSWAGEN,Golf,1996,Sedan,Petrol,2,0 km,4.0,Manual,Front,Left wheel,Silver,26
+TOYOTA,Camry Se,2013,Sedan,Petrol,2.5,124000 km,4.0,Tiptronic,Front,Left wheel,Black,27
+HONDA,Elysion,2011,Minivan,Petrol,2,153000 km,4.0,Automatic,Front,Left wheel,Grey,28
+AUDI,A4,2013,Sedan,Petrol,2,151469 km,4.0,Automatic,4x4,Left wheel,White,29
+TOYOTA,Prius,2011,Sedan,Hybrid,1.8,188800 km,4.0,Automatic,Front,Left wheel,Silver,30
+KIA,Sorento,2007,Jeep,Diesel,2.5,72872 km,4.0,Automatic,Front,Left wheel,Black,31
+HYUNDAI,Tucson,2014,Jeep,Diesel,2,191980 km,4.0,Automatic,Front,Left wheel,White,32
+LEXUS,GX 470,2015,Jeep,Petrol,4.6,106918 km,8.0,Automatic,4x4,Left wheel,Black,33
+VOLKSWAGEN,Passat SE,2015,Sedan,Petrol,1.8,91103 km,4.0,Automatic,Front,Left wheel,Black,34
+LEXUS,CT 200h,2013,Hatchback,Hybrid,1.8,125000 km,4.0,Automatic,Front,Left wheel,Carnelian red,35
+CHEVROLET,Orlando,2015,Jeep,Petrol,2,31892 km,4.0,Automatic,Front,Left wheel,Black,36
+HYUNDAI,Santa FE,2016,Jeep,Diesel,2,185011 km,4.0,Automatic,Front,Left wheel,White,37
+MERCEDES-BENZ,C 230,2002,Coupe,Petrol,1.8,334000 km,4.0,Manual,Rear,Left wheel,Silver,38
+TOYOTA,Prius,2019,Sedan,Hybrid,1.8,7518 km,4.0,Automatic,4x4,Left wheel,White,39
+MERCEDES-BENZ,S 550,2007,Sedan,Petrol,5.5,225000 km,8.0,Tiptronic,Rear,Left wheel,Black,40
+HYUNDAI,Elantra,2013,Hatchback,Petrol,1.8,106000 km,4.0,Automatic,Front,Left wheel,Black,41
+HYUNDAI,H1,2012,Minivan,Diesel,2.5,61272 km,4.0,Automatic,Front,Left wheel,Silver,42
+SUZUKI,SX4,2008,Jeep,Petrol,2,89000 km,4.0,Automatic,4x4,Left wheel,Black,43
+FORD,Escape,2001,Jeep,Petrol,3,175430 km,6.0,Automatic,Front,Left wheel,Black,44
+LEXUS,NX 200,2016,Jeep,Petrol,2.0 Turbo,37514 km,,Automatic,Front,Left wheel,Silver,45
+BMW,535,2011,Sedan,Petrol,3.0 Turbo,137600 km,6.0,Tiptronic,Rear,Left wheel,Black,46
+HYUNDAI,Sonata,2014,Sedan,LPG,2,665558 km,4.0,Automatic,Front,Left wheel,White,47
+TOYOTA,Prius,2010,Hatchback,Hybrid,1.8,192000 km,4.0,Automatic,Front,Left wheel,Black,48
+HONDA,Civic,2014,Sedan,Petrol,1.8,127669 km,4.0,Automatic,Front,Left wheel,Grey,49
+TOYOTA,Camry,2013,Sedan,Petrol,2.5,308694 km,4.0,Automatic,Front,Left wheel,Grey,50
+MERCEDES-BENZ,GL 350,2014,Jeep,Diesel,3,86541 km,6.0,Automatic,4x4,Left wheel,Blue,51
+HYUNDAI,Tucson,2016,Jeep,Diesel,2,90000 km,4.0,Automatic,Front,Left wheel,White,52
+MERCEDES-BENZ,ML 350,2012,Jeep,,3,179520 km,6.0,Automatic,4x4,Left wheel,Blue,53
+HYUNDAI,Santa FE,2016,Jeep,Diesel,2,116770 km,4.0,Automatic,Front,Left wheel,Black,54
+NISSAN,Juke,2013,Jeep,Petrol,1.6 Turbo,87000 km,4.0,Tiptronic,4x4,Left wheel,Silver,55
+BMW,X6,2011,Jeep,Petrol,3.0 Turbo,104000 km,6.0,Tiptronic,4x4,Left wheel,Black,56
+MERCEDES-BENZ,Sprinter,2008,Microbus,Diesel,2.2 Turbo,190000 km,4.0,Tiptronic,Rear,Left wheel,Silver,57
+VOLKSWAGEN,Jetta TDI,2012,Sedan,Diesel,1.9 Turbo,8100 km,4.0,Tiptronic,Front,Left wheel,Silver,58
+VOLKSWAGEN,Passat,2013,Sedan,Petrol,2.5,138355 km,5.0,Automatic,Front,Left wheel,Grey,59
+HYUNDAI,Santa FE,2013,Jeep,Diesel,2,36458 km,4.0,Automatic,Front,Left wheel,White,60
+LEXUS,RX 350,2010,Jeep,Petrol,3.5,82021 km,4.0,Automatic,Front,Left wheel,Grey,61
+HYUNDAI,Santa FE,2010,Jeep,Diesel,2.2,161642 km,4.0,Automatic,Front,Left wheel,Silver,62
+MAZDA,Mazda 5,2009,Minivan,Petrol,2.3,138720 km,4.0,Tiptronic,Front,Left wheel,Blue,63
+HYUNDAI,Genesis,2008,Sedan,Petrol,3.8,136192 km,4.0,Automatic,Front,Left wheel,Black,64
+HYUNDAI,Elantra,2016,Sedan,LPG,1.6,27477 km,4.0,Automatic,Front,Left wheel,Grey,65
+HYUNDAI,Tucson,2010,Jeep,Diesel,2,160114 km,4.0,Automatic,Front,Left wheel,Grey,66
+TOYOTA,Vitz RS,2008,Hatchback,Petrol,1.5,95000 km,4.0,Variator,Front,Right-hand drive,White,67
+HYUNDAI,Elantra,2014,Sedan,Petrol,1.8,107155 km,4.0,Automatic,Front,Left wheel,Black,68
+FORD,Fiesta,2010,Sedan,Petrol,1.6,11111 km,2.0,Automatic,Front,Left wheel,White,69
+HYUNDAI,Elantra,2014,Sedan,Petrol,1.8,112000 km,4.0,Tiptronic,Front,Left wheel,White,70
+MERCEDES-BENZ,Sprinter,2004,Microbus,Diesel,2.2 Turbo,169000 km,6.0,Manual,Rear,Left wheel,White,71
+FORD,Escape,2016,Jeep,Petrol,1.5 Turbo,108295 km,4.0,Automatic,Front,Left wheel,Black,72
+KIA,Sportage,2007,Jeep,Diesel,2,82944 km,4.0,Automatic,Front,Left wheel,Silver,73
+OPEL,Astra,2005,Goods wagon,Petrol,1.8,1111 km,4.0,Automatic,Front,Left wheel,Black,74
+VOLKSWAGEN,Passat,2014,Sedan,Petrol,1.8 Turbo,108000 km,4.0,Tiptronic,Front,Left wheel,Black,75
+TOYOTA,Prius,2011,Hatchback,Hybrid,1.8,288000 km,4.0,Automatic,Front,Left wheel,White,76
+HONDA,FIT,2004,Hatchback,Petrol,1.3,150000 km,4.0,Variator,Front,Right-hand drive,Silver,77
+HYUNDAI,Elantra,2013,Sedan,Petrol,1.8,156800 km,4.0,Automatic,Front,Left wheel,Blue,78
+HYUNDAI,Tucson,2015,Jeep,Diesel,2,100492 km,4.0,Automatic,Front,Left wheel,White,79
+HYUNDAI,Sonata Sport,2014,Sedan,Petrol,2.0 Turbo,86400 km,4.0,Tiptronic,Front,Left wheel,Orange,80
+JEEP,Compass,2013,Jeep,Petrol,2.4,135000 km,4.0,Automatic,Front,Left wheel,White,81
+BMW,528,2009,Sedan,Petrol,3,275000 km,6.0,Tiptronic,Rear,Left wheel,Black,82
+HYUNDAI,Sonata,2015,Sedan,LPG,2,271695 km,4.0,Automatic,Front,Left wheel,Orange,83
+CHEVROLET,Volt,2014,Hatchback,Hybrid,1.4,138491 km,4.0,Automatic,Front,Left wheel,Black,84
+KIA,Optima X,2012,Sedan,Petrol,2.0 Turbo,155000 km,12.0,Tiptronic,Front,Left wheel,Carnelian red,85
+HYUNDAI,H1,2017,Universal,Diesel,2.5,137000 km,4.0,Automatic,Front,Left wheel,White,86
+LEXUS,RX 450,2010,Jeep,Hybrid,3.5,315270 km,6.0,Automatic,4x4,Left wheel,Grey,87
+TOYOTA,Fortuner,2017,Jeep,Petrol,2.7,17000 km,4.0,Automatic,Rear,Left wheel,Black,88
+BMW,X5,2012,Jeep,Diesel,3,274098 km,6.0,Automatic,4x4,Left wheel,White,89
+JEEP,Renegade,2018,Sedan,Petrol,2.4,80285 km,4.0,Automatic,Front,Left wheel,Blue,90
+TOYOTA,Prius V,2012,Universal,Hybrid,1.8,197000 km,4.0,Variator,Front,Left wheel,Beige,91
+JEEP,Compass,2013,Jeep,Petrol,2.4,101709 km,4.0,Automatic,Front,Left wheel,Grey,92
+MERCEDES-BENZ,Sprinter 316 CDI,2013,Microbus,Diesel,2.2 Turbo,220000 km,4.0,Manual,Rear,Left wheel,White,93
+TOYOTA,Prius,2008,Hatchback,Hybrid,1.5,183000 km,4.0,Automatic,Front,Left wheel,White,94
+HYUNDAI,Elantra,2016,Sedan,Petrol,2,33000 km,4.0,Automatic,Front,Left wheel,Grey,95
+CHEVROLET,Volt,2012,Sedan,Plug-in Hybrid,1.4,110213 km,4.0,Variator,Front,Left wheel,Black,96
+SSANGYONG,REXTON,2011,Jeep,Diesel,2,200241 km,4.0,Automatic,Front,Left wheel,Black,97
+DAIHATSU,Mira,2012,Hatchback,Petrol,0.7,103000 km,3.0,Variator,Front,Right-hand drive,Black,98
+MITSUBISHI,Pajero IO,1998,Jeep,Petrol,1.8,125000 km,4.0,Automatic,4x4,Left wheel,Green,99
+TOYOTA,4Runner,2014,Jeep,Petrol,4,135000 km,6.0,Automatic,4x4,Left wheel,Grey,100
+BMW,328,2009,Sedan,Petrol,3,162000 km,6.0,Tiptronic,Rear,Left wheel,Silver,101
+TOYOTA,Highlander sport,2012,Jeep,Petrol,3.5,134114 km,6.0,Automatic,4x4,Left wheel,White,102
+SSANGYONG,REXTON,2011,Jeep,Diesel,2,326612 km,4.0,Automatic,Front,Left wheel,White,103
+FORD,Transit,2008,Microbus,Diesel,2.4 Turbo,280000 km,4.0,Manual,Rear,Left wheel,White,104
+TOYOTA,Camry,2012,Sedan,Petrol,2.5,94000 km,4.0,Tiptronic,Front,Left wheel,White,105
+RENAULT,Megane,2008,Goods wagon,Diesel,1.5 Turbo,17400 km,4.0,Manual,Front,Left wheel,Grey,106
+TOYOTA,Camry,2012,Sedan,Petrol,2.5,148000 km,4.0,Tiptronic,Front,Left wheel,Grey,107
+HYUNDAI,i20,2010,Sedan,Diesel,1.4 Turbo,193000 km,4.0,Manual,Front,Left wheel,Blue,108
+HYUNDAI,Elantra,2012,Sedan,Petrol,1.8,100000 km,4.0,Tiptronic,Front,Left wheel,Black,109
+AUDI,A6,1998,Sedan,Petrol,2.4,0 km,6.0,Manual,Front,Left wheel,Blue,110
+VOLKSWAGEN,Passat,2013,Sedan,Petrol,2.5,124800 km,5.0,Tiptronic,Front,Left wheel,Black,111
+MERCEDES-BENZ,GL 450,2013,Jeep,Petrol,4.6,230397 km,8.0,Automatic,4x4,Left wheel,Black,112
+HYUNDAI,H1,2012,Minivan,Diesel,2.5,54595 km,4.0,Automatic,Front,Left wheel,Grey,113
+HYUNDAI,H1,2016,Minivan,Diesel,2.5,135884 km,4.0,Automatic,Front,Left wheel,Silver,114
+TOYOTA,Prius,2012,Sedan,Hybrid,1.8,95992 km,4.0,Variator,Front,Left wheel,White,115
+FORD,Transit,2010,Microbus,Diesel,2.4 Turbo,123000 km,4.0,Manual,Rear,Left wheel,White,116
+TOYOTA,Camry,2012,Sedan,Petrol,2.5,90000 km,4.0,Automatic,Front,Left wheel,Silver,117
+HYUNDAI,Sonata,2011,Sedan,Petrol,2.4,331680 km,4.0,Automatic,Front,Left wheel,Black,118
+MERCEDES-BENZ,GL 550,2013,Jeep,Petrol,4.6,214763 km,8.0,Automatic,4x4,Left wheel,Black,119
+DAEWOO,Lacetti,2010,Sedan,,1.6,130000 km,4.0,Automatic,Front,Left wheel,Grey,120
+HYUNDAI,Sonata,2011,Sedan,Hybrid,2.4,167000 km,4.0,Tiptronic,Front,Left wheel,Carnelian red,121
+TOYOTA,Prius,2015,Hatchback,Hybrid,1.8,26000 km,4.0,Automatic,Front,Left wheel,Grey,122
+TOYOTA,Camry se,2013,Sedan,Petrol,2.5,115123 km,4.0,Tiptronic,Front,Left wheel,Black,123
+FIAT,500,2012,Sedan,Petrol,1.4,101547 km,4.0,Automatic,Front,Left wheel,Black,124
+MERCEDES-BENZ,GLA 200,2017,Jeep,Petrol,2,9000 km,,Automatic,4x4,Left wheel,White,125
+HYUNDAI,Sonata,2016,Sedan,LPG,2,235261 km,4.0,Automatic,Front,Left wheel,Silver,126
+HONDA,Insight,2011,Hatchback,Hybrid,1.3,150000 km,4.0,Automatic,Front,Left wheel,Carnelian red,127
+MERCEDES-BENZ,E 350,2013,Coupe,Petrol,3.5,110000 km,6.0,Tiptronic,Rear,Left wheel,Black,128
+TOYOTA,Prius,2012,Sedan,Hybrid,1.8,193000 km,4.0,Automatic,Front,Left wheel,Grey,129
+FORD,Fusion,2013,Sedan,Hybrid,2,320554 km,4.0,Automatic,Front,Left wheel,White,130
+MERCEDES-BENZ,S 430 4.3,1999,Sedan,Petrol,5,10000 km,8.0,Automatic,Rear,Left wheel,Green,131
+TOYOTA,Aqua,2014,Hatchback,Petrol,1.5,35000 km,4.0,Automatic,Front,Left wheel,Orange,132
+CHEVROLET,Captiva,2013,Jeep,Diesel,2.2,86359 km,4.0,Automatic,Front,Left wheel,Grey,133
+MERCEDES-BENZ,C 300,2015,Sedan,Petrol,2.0 Turbo,20000 km,4.0,Tiptronic,Rear,Left wheel,Black,134
+HYUNDAI,Santa FE,2012,Jeep,Diesel,2,196764 km,4.0,Automatic,Front,Left wheel,Black,135
+SSANGYONG,Actyon,2011,Sedan,Diesel,2,157300 km,4.0,Automatic,Front,Left wheel,Black,136
+HYUNDAI,Tucson,2010,Jeep,Diesel,2,130339 km,4.0,Automatic,Front,Left wheel,Silver,137
+HONDA,FIT,2017,Universal,Hybrid,1.5,3474 km,4.0,Automatic,Front,Left wheel,Blue,138
+MERCEDES-BENZ,S 320,2007,Sedan,Diesel,3.0 Turbo,220000 km,,Tiptronic,Rear,Left wheel,Black,139
+TOYOTA,Prius,2010,Hatchback,Hybrid,1.8,179200 km,4.0,Variator,Rear,Left wheel,Black,140
+HYUNDAI,Elantra,2011,Sedan,Petrol,1.6,123593 km,4.0,Automatic,Front,Left wheel,Silver,141
+HYUNDAI,Sonata,2016,Sedan,Petrol,2,33555 km,4.0,Automatic,Front,Left wheel,Grey,142
+HONDA,Elysion,2011,Minivan,Petrol,2.4,132000 km,4.0,Automatic,Front,Right-hand drive,White,143
+HYUNDAI,Tucson,2016,Jeep,Diesel,1.7,99881 km,4.0,Automatic,Front,Left wheel,Black,144
+HYUNDAI,Santa FE,2017,Jeep,Diesel,2,113195 km,4.0,Automatic,Front,Left wheel,Blue,145
+MERCEDES-BENZ,C 180,1997,Sedan,,1.8,445908 km,4.0,Automatic,Rear,Left wheel,Black,146
+LEXUS,CT 200h,2011,Hatchback,Hybrid,1.8,80000 km,6.0,Automatic,Front,Left wheel,Grey,147
+HONDA,Cr-v,2019,Sedan,Petrol,2.4,0 km,4.0,Variator,4x4,Left wheel,Silver,148
+JEEP,Patriot,2010,Jeep,Diesel,2.0 Turbo,39000 km,4.0,Manual,4x4,Left wheel,White,149
+HYUNDAI,H1,2017,Universal,Diesel,2.5,100900 km,4.0,Automatic,Front,Left wheel,Silver,150
+HYUNDAI,Sonata,2015,Sedan,LPG,2,306922 km,4.0,Automatic,Front,Left wheel,Silver,151
+HYUNDAI,H1,2014,Minivan,Diesel,2.5,136711 km,4.0,Automatic,Front,Left wheel,Silver,152
+BMW,740,1996,Sedan,CNG,4,14000 km,8.0,Tiptronic,Rear,Left wheel,Blue,153
+HYUNDAI,Elantra,2011,Sedan,Petrol,1.6,132749 km,4.0,Automatic,Front,Left wheel,Silver,154
+MERCEDES-BENZ,E 350,2008,Sedan,Diesel,3.5,494317 km,6.0,Automatic,4x4,Left wheel,Black,155
+SSANGYONG,REXTON,2016,Jeep,Diesel,2.2,82907 km,4.0,Automatic,Front,Left wheel,Black,156
+FORD,C-MAX PREMIUM,2013,Hatchback,Hybrid,2,72857 km,4.0,Automatic,Front,Left wheel,Red,157
+NISSAN,Teana,2006,Sedan,Petrol,2.3,155000 km,4.0,Automatic,Front,Left wheel,Black,158
+KIA,RIO,2016,Hatchback,Petrol,1.2,170000 km,4.0,Manual,Front,Left wheel,Silver,159
+NISSAN,X-Trail,2004,Jeep,CNG,2,125000 km,4.0,Automatic,Front,Left wheel,Silver,160
+TOYOTA,Prius,2008,Sedan,Hybrid,1.5,184000 km,4.0,Variator,Front,Left wheel,White,161
+HYUNDAI,Sonata HYBRID,2011,Sedan,Hybrid,2.4,88400 km,4.0,Tiptronic,Front,Left wheel,Grey,162
+TOYOTA,Corolla,2006,Sedan,Diesel,1.4 Turbo,162000 km,4.0,Automatic,Front,Left wheel,Grey,163
+BMW,525,2002,Sedan,LPG,2.5,166818 km,6.0,Tiptronic,Rear,Left wheel,Pink,164
+MERCEDES-BENZ,ML 250,2015,Jeep,Diesel,2.1,197338 km,4.0,Automatic,4x4,Left wheel,White,165
+DAIHATSU,Move,2012,Hatchback,Petrol,0.7,71000 km,3.0,Automatic,Front,Right-hand drive,Purple,166
+HYUNDAI,Elantra,2011,Sedan,Petrol,1.6,128147 km,4.0,Automatic,Front,Left wheel,White,167
+HYUNDAI,Elantra,2016,Sedan,LPG,1.6,28332 km,4.0,Automatic,Front,Left wheel,Silver,168
+CHEVROLET,Cruze,2009,Sedan,Petrol,1.6,145060 km,4.0,Automatic,Front,Left wheel,Silver,169
+HYUNDAI,Elantra,2014,Sedan,Petrol,2,104085 km,,Automatic,Front,Left wheel,Silver,170
+HYUNDAI,H1,2014,Minivan,Diesel,2.5,184700 km,4.0,Automatic,Front,Left wheel,Silver,171
+HONDA,FIT,2003,Sedan,Petrol,1.3,155000 km,4.0,Automatic,Front,Right-hand drive,Blue,172
+VOLKSWAGEN,Touareg,2004,Jeep,Petrol,4.2,250000 km,8.0,Automatic,4x4,Left wheel,Beige,173
+MERCEDES-BENZ,ML 350,2004,Jeep,CNG,3.7,136000 km,6.0,Tiptronic,4x4,Left wheel,White,174
+MITSUBISHI,Pajero,2008,Jeep,Petrol,3,278000 km,4.0,Automatic,4x4,Left wheel,Silver,175
+MERCEDES-BENZ,Vito,2004,Minivan,Diesel,2.2 Turbo,250000 km,4.0,Manual,Rear,Left wheel,Black,176
+MERCEDES-BENZ,C 180,2001,Coupe,Petrol,2,260000 km,4.0,Manual,Rear,Left wheel,Blue,177
+VOLKSWAGEN,Tiguan SE,2015,Jeep,Petrol,2,108187 km,4.0,Automatic,4x4,Left wheel,White,178
+HYUNDAI,Elantra,2007,Sedan,Petrol,1.6,117771 km,4.0,Automatic,Front,Left wheel,Silver,179
+HONDA,Insight,2012,Hatchback,Petrol,1.3,172800 km,4.0,Variator,Front,Left wheel,Black,180
+MERCEDES-BENZ,S 500,2010,Sedan,Petrol,5,125000 km,8.0,Tiptronic,Rear,Left wheel,Black,181
+VOLKSWAGEN,Passat,2004,Sedan,Petrol,4,59439 km,8.0,Tiptronic,4x4,Left wheel,Silver,182
+BMW,320,2013,Sedan,Petrol,2.0 Turbo,150000 km,4.0,Tiptronic,Rear,Left wheel,Black,183
+OPEL,Combo,2000,Goods wagon,Diesel,1.7,250000 km,4.0,Manual,Front,Left wheel,Black,184
+MERCEDES-BENZ,E 500,2005,Sedan,Petrol,5,125000 km,8.0,Tiptronic,Rear,Left wheel,Silver,185
+MERCEDES-BENZ,ML 350,2004,Jeep,CNG,3.7,195000 km,6.0,Tiptronic,4x4,Left wheel,Silver,186
+TOYOTA,Prius C,2014,Hatchback,Hybrid,1.5,69000 km,5.0,Automatic,Front,Right-hand drive,White,187
+HYUNDAI,H1,2017,Universal,Diesel,2.5,184189 km,4.0,Automatic,Front,Left wheel,Silver,188
+HYUNDAI,Getz,2008,Hatchback,Petrol,1.4,0 km,4.0,Manual,Front,Left wheel,Blue,189
+HYUNDAI,H1,2016,Minivan,Diesel,2.5,110189 km,4.0,Automatic,Front,Left wheel,Silver,190
+TOYOTA,Prius,2010,Hatchback,Hybrid,1.8,396350 km,4.0,Automatic,Front,Left wheel,Black,191
+HYUNDAI,H1,2012,Universal,Diesel,2.5,216000 km,4.0,Automatic,Front,Left wheel,Silver,192
+OPEL,Astra G,1999,Sedan,Petrol,1.6,200000 km,4.0,Manual,Front,Left wheel,Silver,193
+TOYOTA,Camry,2013,Sedan,Petrol,2.5,0 km,4.0,Automatic,Front,Left wheel,Silver,194
+HYUNDAI,Elantra,2018,Sedan,Petrol,2,21090 km,4.0,Automatic,Front,Left wheel,Red,195
+SSANGYONG,REXTON,2011,Jeep,Diesel,2,124718 km,4.0,Automatic,Front,Left wheel,White,196
+SSANGYONG,Actyon,2011,Jeep,Diesel,2,114000 km,4.0,Automatic,Front,Left wheel,Silver,197
+BMW,528,2000,Sedan,LPG,2.8 Turbo,0 km,6.0,Tiptronic,Rear,Left wheel,Black,198
+CHEVROLET,Spark,2012,Sedan,Petrol,1,32387 km,4.0,Automatic,Front,Left wheel,Black,199
+VOLKSWAGEN,Crafter,2007,Microbus,Diesel,2.5 Turbo,200000 km,5.0,Manual,Rear,Left wheel,White,200
+FORD,Fusion,2015,Sedan,Hybrid,2,107166 km,4.0,Automatic,Front,Left wheel,White,201
+BMW,535,2011,Sedan,Petrol,3.0 Turbo,118000 km,6.0,Manual,Rear,Left wheel,Black,202
+HYUNDAI,H1,2014,Minivan,Diesel,2.5,174485 km,4.0,Automatic,Front,Left wheel,Silver,203
+MERCEDES-BENZ,E 320,2004,Sedan,Petrol,3.2,214000 km,6.0,Tiptronic,Rear,Left wheel,Grey,204
+NISSAN,Tiida,2006,Hatchback,Petrol,1.5,143000 km,4.0,Automatic,Front,Right-hand drive,Black,205
+HYUNDAI,Accent,2012,Sedan,Petrol,1.4,141000 km,4.0,Automatic,Front,Left wheel,White,206
+SSANGYONG,REXTON,2013,Jeep,Diesel,2,95430 km,4.0,Automatic,Front,Left wheel,Silver,207
+LEXUS,IS 200,2016,Sedan,Petrol,2,64341 km,4.0,Automatic,Rear,Left wheel,White,208
+MERCEDES-BENZ,E 320,2001,Sedan,Petrol,3.2,218000 km,6.0,Tiptronic,Rear,Left wheel,Black,209
+TOYOTA,Aqua,2012,Hatchback,Petrol,1.5,63000 km,4.0,Automatic,Front,Left wheel,Black,210
+MERCEDES-BENZ,B 200,2007,Hatchback,Diesel,2.0 Turbo,218000 km,4.0,Automatic,Front,Left wheel,Silver,211
+TOYOTA,Prius,2013,Hatchback,Hybrid,1.8,243200 km,4.0,Automatic,Front,Left wheel,Silver,212
+MERCEDES-BENZ,C 300,2018,Sedan,Petrol,2.0 Turbo,10000 km,4.0,Tiptronic,Rear,Left wheel,White,213
+FORD,Transit ford,2010,Goods wagon,Diesel,2.2,210000 km,4.0,Manual,Front,Left wheel,White,214
+MITSUBISHI,L 200,1998,Pickup,Diesel,2.5 Turbo,0 km,4.0,Manual,4x4,Left wheel,Blue,215
+TOYOTA,Aqua,2012,Hatchback,Hybrid,1.5,111111 km,4.0,Automatic,Front,Right-hand drive,Green,216
+TOYOTA,Camry,2012,Sedan,Hybrid,2.5,78560 km,4.0,Automatic,Front,Left wheel,White,217
+NISSAN,Juke,2014,Jeep,Petrol,1.6,77000 km,4.0,Tiptronic,Front,Left wheel,White,218
+HYUNDAI,Tucson,2008,Jeep,Petrol,2,194286 km,2.0,Manual,4x4,Left wheel,Grey,219
+CHEVROLET,Malibu,2013,Sedan,Petrol,2.5,200338 km,4.0,Automatic,Front,Left wheel,Grey,220
+HYUNDAI,H1,2009,Minivan,Diesel,2.5,114985 km,4.0,Automatic,Front,Left wheel,Yellow,221
+JEEP,Wrangler,2011,Jeep,Petrol,3.8,120000 km,6.0,Manual,4x4,Left wheel,White,222
+MERCEDES-BENZ,CLA 45 AMG,2014,Sedan,Petrol,2.0 Turbo,66000 km,4.0,Tiptronic,4x4,Left wheel,Black,223
+FORD,Focus,2012,Hatchback,Petrol,2,139200 km,4.0,Automatic,Front,Left wheel,Grey,224
+AUDI,A4,2002,Sedan,Petrol,1.8 Turbo,324000 km,4.0,Tiptronic,4x4,Left wheel,Silver,225
+HONDA,Insight,2009,Hatchback,Hybrid,1.3,278400 km,4.0,Variator,Front,Left wheel,Black,226
+TOYOTA,Tacoma,2020,Sedan,Petrol,3.5,1669 km,6.0,Automatic,4x4,Left wheel,Black,227
+TOYOTA,Prius,2010,Sedan,Petrol,1.8,10100 km,4.0,Variator,Front,Left wheel,White,228
+TOYOTA,Camry,2012,Sedan,Petrol,2.4,113000 km,4.0,Tiptronic,Front,Left wheel,Silver,229
+NISSAN,Juke,2011,Jeep,Petrol,1.6 Turbo,126117 km,4.0,Tiptronic,Front,Left wheel,Brown,230
+HYUNDAI,Elantra SE,2016,Sedan,Petrol,2,44000 km,4.0,Automatic,Front,Left wheel,Red,231
+HONDA,Odyssey,2008,Minivan,LPG,2.4,20000 km,4.0,Variator,Front,Right-hand drive,Grey,232
+HYUNDAI,Santa FE,2016,Jeep,Diesel,2,122497 km,4.0,Automatic,Front,Left wheel,Blue,233
+FORD,Transit,1999,Microbus,Diesel,2.5,123000 km,4.0,Manual,Rear,Left wheel,White,234
+GAZ,21 3.0,2001,Sedan,Petrol,3.0 Turbo,135000 km,6.0,Tiptronic,Front,Left wheel,White,235
+VOLKSWAGEN,UP,2013,Hatchback,Petrol,1,52000 km,3.0,Tiptronic,Front,Left wheel,Blue,236
+HYUNDAI,Elantra,2011,Sedan,Petrol,1.6,76462 km,4.0,Automatic,Front,Left wheel,Grey,237
+HYUNDAI,Santa FE,2013,Jeep,Diesel,2,296391 km,4.0,Automatic,Front,Left wheel,Silver,238
+BMW,528,2012,Sedan,Petrol,2.0 Turbo,144000 km,4.0,Automatic,Rear,Left wheel,White,239
+NISSAN,Versa,2012,Hatchback,Petrol,1.8,165758 km,4.0,Automatic,Front,Left wheel,Black,240
+SUBARU,Outback,2003,Goods wagon,Petrol,2.5,1000 km,6.0,Tiptronic,4x4,Right-hand drive,Blue,241
+HYUNDAI,Azera,2012,Sedan,Petrol,3,122000 km,6.0,Automatic,Front,Left wheel,White,242
+TOYOTA,Prius,2013,Hatchback,Hybrid,1.8,130000 km,4.0,Automatic,Front,Left wheel,White,243
+NISSAN,March,2004,Hatchback,Petrol,1.2,175000 km,4.0,Automatic,Front,Right-hand drive,Carnelian red,244
+HYUNDAI,I30,2008,Hatchback,Petrol,1.6,62337 km,4.0,Automatic,Front,Left wheel,Black,245
+TOYOTA,Avalon,2015,Sedan,Petrol,3.5,122418 km,6.0,Automatic,Front,Left wheel,Blue,246
+TOYOTA,Prius,2015,Jeep,Hybrid,1.8,104795 km,4.0,Automatic,Front,Left wheel,White,247
+HYUNDAI,H1,2010,Universal,Diesel,2.5,328034 km,4.0,Automatic,Front,Left wheel,Blue,248
+JEEP,Cherokee,1992,Jeep,Petrol,4,4512 km,8.0,Manual,4x4,Left wheel,Black,249
+CHEVROLET,Equinox,2018,Jeep,Petrol,1.5 Turbo,9000 km,4.0,Tiptronic,4x4,Left wheel,Black,250
+HYUNDAI,Santa FE,2010,Jeep,Diesel,2,188044 km,4.0,Automatic,Front,Left wheel,Silver,251
+MERCEDES-BENZ,ML 500,2005,Jeep,LPG,5,168520 km,8.0,Tiptronic,4x4,Left wheel,Brown,252
+HONDA,Accord,2015,Coupe,Petrol,2.4,78475 km,4.0,Automatic,Front,Left wheel,Blue,253
+MERCEDES-BENZ,C 220,2001,Sedan,Diesel,2.2 Turbo,320000 km,5.0,Automatic,Rear,Left wheel,Silver,254
+MERCEDES-BENZ,C 180,1994,Sedan,Petrol,1.8,0 km,4.0,Automatic,Rear,Left wheel,Black,255
+MERCEDES-BENZ,E 220 CDI,2001,Sedan,Diesel,2.2,0 km,4.0,Automatic,Rear,Right-hand drive,Blue,256
+TOYOTA,Corolla,2009,Sedan,LPG,1.8,127000 km,4.0,Automatic,Front,Left wheel,White,257
+HYUNDAI,H1,2016,Universal,Diesel,2.5,182541 km,4.0,Automatic,Front,Left wheel,Silver,258
+MAZDA,Mazda 2,2014,Hatchback,Petrol,1.5,62967 km,4.0,Automatic,Front,Left wheel,Blue,259
+TOYOTA,Hilux,2012,Pickup,Diesel,3,104000 km,6.0,Manual,4x4,Left wheel,White,260
+JAGUAR,XF,2013,Sedan,Petrol,5,107837 km,8.0,Automatic,Rear,Left wheel,Black,261
+FIAT,500,2012,Sedan,Petrol,1.4,157317 km,4.0,Automatic,Front,Left wheel,Red,262
+DODGE,Caliber,2009,Jeep,LPG,2,134500 km,4.0,Variator,Front,Left wheel,Orange,263
+CHEVROLET,Captiva,2007,Jeep,Diesel,2,56327 km,4.0,Automatic,Front,Left wheel,White,264
+CHEVROLET,Cruze,2011,Sedan,Petrol,1.4,131200 km,4.0,Automatic,Front,Left wheel,Red,265
+LEXUS,GS 300,2002,Sedan,CNG,3.5,190000 km,6.0,Automatic,Front,Left wheel,Silver,266
+LEXUS,ES 350,2015,Sedan,Hybrid,2.5,40386 km,4.0,Automatic,Front,Left wheel,White,267
+HONDA,FIT,2011,Hatchback,Hybrid,1.3,120000 km,4.0,Automatic,Front,Right-hand drive,Red,268
+BMW,320 i,2013,Sedan,Petrol,2.0 Turbo,161000 km,4.0,Tiptronic,Rear,Left wheel,Black,269
+NISSAN,Tiida,2005,Hatchback,Petrol,1.5,0 km,4.0,Automatic,Front,Left wheel,Silver,270
+TOYOTA,Aqua,2014,Hatchback,Petrol,1.5,133000 km,4.0,Automatic,Front,Left wheel,White,271
+HYUNDAI,Sonata,2010,Sedan,Petrol,2,63655 km,4.0,Automatic,Front,Left wheel,Black,272
+TOYOTA,Prius C,2013,Sedan,Petrol,1.5,65000 km,4.0,Variator,Front,Left wheel,Sky blue,273
+CHEVROLET,Malibu,2015,Sedan,Diesel,2,111365 km,4.0,Automatic,Front,Left wheel,Grey,274
+VOLKSWAGEN,Passat,2012,Sedan,Petrol,2.5,85000 km,4.0,Tiptronic,Front,Left wheel,White,275
+HYUNDAI,H1,2012,Universal,Diesel,2.5,230000 km,4.0,Automatic,Front,Left wheel,Yellow,276
+MERCEDES-BENZ,E 220,2001,Sedan,Diesel,2.2 Turbo,255000 km,4.0,Manual,Rear,Left wheel,Blue,277
+MERCEDES-BENZ,E 350,2007,Sedan,Petrol,3.5,200000 km,6.0,Tiptronic,Rear,Left wheel,Silver,278
+FORD,Transit,2004,Goods wagon,Diesel,2.0 Turbo,245452 km,4.0,Manual,Front,Left wheel,Red,279
+SSANGYONG,Actyon,2016,Jeep,Petrol,1.6,49799 km,4.0,Automatic,Front,Left wheel,Blue,280
+OPEL,Corsa,2000,Hatchback,Petrol,1.2,0 km,4.0,Manual,Front,Left wheel,Black,281
+FORD,Transit,1996,Microbus,Diesel,2.5,270000 km,4.0,Manual,Rear,Left wheel,Sky blue,282
+PEUGEOT,307,2007,Hatchback,Petrol,1.6,93000 km,4.0,Tiptronic,Front,Left wheel,Blue,283
+HYUNDAI,Elantra,2016,Sedan,Petrol,2,67000 km,4.0,Tiptronic,Front,Left wheel,Black,284
+TOYOTA,Camry,2015,Sedan,Hybrid,2.5,163000 km,6.0,Automatic,Front,Left wheel,White,285
+HONDA,FIT,2006,Hatchback,Petrol,1.5,140000 km,4.0,Variator,Front,Right-hand drive,Black,286
+SSANGYONG,Actyon,2016,Jeep,Petrol,1.6,49145 km,4.0,Automatic,Front,Left wheel,White,287
+OPEL,Zafira,2009,Minivan,Diesel,1.7,187000 km,4.0,Manual,Front,Left wheel,Silver,288
+LINCOLN,Navigator,2006,Jeep,Petrol,5.4 Turbo,6000 km,8.0,Tiptronic,4x4,Left wheel,White,289
+OPEL,Astra,1994,Sedan,Petrol,,250000 km,4.0,Manual,Front,Left wheel,Green,290
+HYUNDAI,Sonata,2016,Sedan,LPG,2,478704 km,4.0,Automatic,Front,Left wheel,Orange,291
+HYUNDAI,Elantra,2012,Sedan,Petrol,1.6,101682 km,4.0,Automatic,Front,Left wheel,Silver,292
+TOYOTA,Prius,2008,Hatchback,Hybrid,1.5,91000 km,4.0,Variator,Front,Left wheel,Blue,293
+VOLKSWAGEN,Jetta სპორტ,2015,Sedan,Petrol,1.8 Turbo,76800 km,4.0,Tiptronic,Front,Left wheel,Grey,294
+TOYOTA,Camry,2012,Sedan,Petrol,2.5,75000 km,4.0,Tiptronic,Front,Left wheel,White,295
+HYUNDAI,Sonata,2011,Sedan,Petrol,2.4,182645 km,4.0,Automatic,Front,Left wheel,White,296
+VOLKSWAGEN,"Crafter 2,5TDI",2009,Microbus,Diesel,2.5,240000 km,4.0,Manual,Rear,Left wheel,White,297
+FORD,Transit,1990,Microbus,Diesel,2.5,100000 km,4.0,Manual,Rear,Left wheel,Red,298
+TOYOTA,Prius,2015,Sedan,Hybrid,1.8,100000 km,4.0,Tiptronic,Front,Left wheel,Sky blue,299
+HYUNDAI,Sonata,2014,Sedan,LPG,2,264872 km,4.0,Automatic,Front,Left wheel,Silver,300
+MITSUBISHI,Outlander,2011,Jeep,Petrol,2,142400 km,4.0,Tiptronic,Front,Left wheel,White,301
+OPEL,Vectra,1998,Sedan,CNG,1.8,250000 km,4.0,Manual,Front,Left wheel,White,302
+TOYOTA,Prius,2005,Sedan,Petrol,1.5,0 km,4.0,Automatic,Front,Left wheel,White,303
+OPEL,Corsa,1996,Hatchback,Petrol,1.6,211375 km,4.0,Manual,Front,Left wheel,Black,304
+LINCOLN,Town Car,2005,Limousine,Petrol,4.6 Turbo,72000 km,,Automatic,Rear,Left wheel,White,305
+TOYOTA,Aqua,2013,Hatchback,Hybrid,1.5,152517 km,4.0,Automatic,Front,Left wheel,Black,306
+VOLKSWAGEN,Passat pasat,1999,Sedan,Petrol,2.3,4444 km,5.0,Manual,Front,Left wheel,Sky blue,307
+MITSUBISHI,Outlander,2011,Jeep,Petrol,2,112000 km,4.0,Tiptronic,Front,Left wheel,Grey,308
+VOLKSWAGEN,Jetta,2014,Sedan,Petrol,2,185000 km,4.0,Tiptronic,Front,Left wheel,Grey,309
+VOLKSWAGEN,Jetta,2014,Sedan,Petrol,1.8 Turbo,112000 km,4.0,Manual,Front,Left wheel,Black,310
+HYUNDAI,H1,2017,Universal,Diesel,2.5,111643 km,4.0,Automatic,Front,Left wheel,Grey,311
+TOYOTA,Prius,2011,Hatchback,Hybrid,1.8,125000 km,4.0,Variator,Front,Left wheel,Black,312
+HYUNDAI,H1,2015,Minivan,Diesel,2.5,35463 km,4.0,Automatic,Front,Left wheel,Silver,313
+TOYOTA,Camry,2014,Sedan,Hybrid,2.4,152000 km,6.0,Variator,Front,Left wheel,Grey,314
+TOYOTA,Corolla,2014,Sedan,Petrol,1.6,112000 km,4.0,Tiptronic,Front,Left wheel,White,315
+FORD,Transit,2014,Microbus,Diesel,2.2 Turbo,168000 km,4.0,Manual,Front,Left wheel,White,316
+HYUNDAI,Santa FE,2015,Jeep,Diesel,2,170000 km,4.0,Automatic,Front,Left wheel,Grey,317
+MERCEDES-BENZ,ML 350,2005,Jeep,Petrol,3.5,171531 km,6.0,Tiptronic,4x4,Left wheel,White,318
+HYUNDAI,Elantra,2012,Sedan,Petrol,1.8,213600 km,4.0,Tiptronic,Front,Left wheel,Blue,319
+TOYOTA,Wish,2005,Minivan,Petrol,2,98000 km,4.0,Automatic,Front,Right-hand drive,White,320
+AUDI,Allroad,2013,Universal,Petrol,2.0 Turbo,117000 km,4.0,Tiptronic,4x4,Left wheel,Black,321
+HYUNDAI,Tucson,2016,Jeep,Diesel,1.7,99217 km,4.0,Automatic,Front,Left wheel,White,322
+CHEVROLET,Cruze,2010,Sedan,Petrol,1.8,120000 km,4.0,Tiptronic,Front,Left wheel,Black,323
+BMW,X5,2011,Jeep,Diesel,3.5,105000 km,6.0,Tiptronic,4x4,Left wheel,Black,324
+HONDA,FIT,2012,Sedan,Petrol,1.3,114000 km,4.0,Automatic,Front,Right-hand drive,White,325
+HYUNDAI,Elantra,2014,Sedan,Petrol,,105000 km,4.0,Automatic,Front,Left wheel,Blue,326
+NISSAN,Note,2005,Sedan,Petrol,1.5,16023 km,3.0,Automatic,Front,Right-hand drive,White,327
+TOYOTA,Camry,2013,Sedan,Hybrid,,16960 km,4.0,Automatic,Front,Left wheel,Golden,328
+CHEVROLET,Malibu LT,2016,Sedan,Petrol,1.5 Turbo,112000 km,4.0,Tiptronic,Front,Left wheel,White,329
+KIA,Optima,2014,Sedan,Hybrid,2.4,81000 km,4.0,Tiptronic,Front,Left wheel,Black,330
+TOYOTA,Aqua,2012,Hatchback,Petrol,1.5,85000 km,4.0,Automatic,Front,Left wheel,White,331
+TOYOTA,Land Cruiser Prado,2014,Jeep,Diesel,3.0 Turbo,137000 km,6.0,Tiptronic,4x4,Left wheel,Black,332
+CHEVROLET,Cruze,2010,Sedan,Petrol,1.6,91500 km,4.0,Automatic,Front,Left wheel,White,333
+HONDA,Civic,2016,Coupe,Petrol,2,53938 km,4.0,Automatic,Front,Left wheel,Blue,334
+DAEWOO,Lacetti,2009,Sedan,Petrol,1.6,94650 km,4.0,Automatic,Front,Left wheel,Black,335
+BMW,X6,2008,Jeep,Petrol,3.0 Turbo,19200 km,6.0,Tiptronic,4x4,Left wheel,White,336
+BMW,435,2015,Coupe,Petrol,3,73362 km,,Automatic,4x4,Left wheel,Black,337
+MERCEDES-BENZ,CLK 200,2000,Coupe,Petrol,2,267583 km,4.0,Manual,Rear,Left wheel,Silver,338
+BMW,328,2010,Sedan,Petrol,3,105000 km,6.0,Tiptronic,Rear,Left wheel,Grey,339
+HYUNDAI,Genesis,2011,Coupe,Petrol,2,112387 km,4.0,Automatic,Front,Left wheel,Grey,340
+BMW,X5 E70,2013,Jeep,Petrol,3.0 Turbo,119700 km,6.0,Tiptronic,4x4,Left wheel,Grey,341
+HYUNDAI,Sonata SPORT,2015,Sedan,Petrol,2.4,70296 km,4.0,Tiptronic,Front,Left wheel,White,342
+TOYOTA,Highlander,2009,Jeep,Hybrid,3.3,318358 km,6.0,Automatic,4x4,Left wheel,Black,343
+VOLKSWAGEN,Passat,2013,Sedan,Petrol,1.8 Turbo,149145 km,4.0,Tiptronic,Front,Left wheel,White,344
+HONDA,Cr-v,2002,Jeep,CNG,2,150000 km,4.0,Automatic,4x4,Right-hand drive,Silver,345
+HYUNDAI,Tucson,2011,Jeep,Diesel,2,142000 km,4.0,Automatic,Front,Left wheel,White,346
+HONDA,FIT GP-6,2014,Hatchback,Hybrid,1.5,128000 km,4.0,Automatic,4x4,Right-hand drive,Silver,347
+HYUNDAI,Tucson,2018,Jeep,Diesel,1.7,38945 km,4.0,Automatic,Front,Left wheel,Silver,348
+MERCEDES-BENZ,S 550,2010,Sedan,Petrol,5.5,149434 km,8.0,Automatic,4x4,Left wheel,Black,349
+HYUNDAI,Sonata,2017,Jeep,LPG,2,342961 km,4.0,Automatic,Front,Left wheel,Orange,350
+OPEL,Astra,2000,Goods wagon,Diesel,2.0 Turbo,0 km,4.0,Manual,Front,Left wheel,Silver,351
+OPEL,Astra,1998,Hatchback,Petrol,1.6,211000 km,4.0,Manual,Front,Left wheel,Blue,352
+KIA,Optima,2014,Sedan,Hybrid,2.4,114000 km,4.0,Automatic,Front,Left wheel,Blue,353
+BMW,M3,2010,Coupe,Petrol,4,160000 km,8.0,Manual,Rear,Left wheel,Red,354
+HYUNDAI,Elantra i30,2013,Hatchback,Diesel,1.6 Turbo,122000 km,4.0,Tiptronic,Front,Left wheel,White,355
+FORD,Focus,2014,Hatchback,Petrol,2,160000 km,4.0,Automatic,Front,Left wheel,Blue,356
+TOYOTA,Camry,2013,Sedan,Petrol,2.5,185699 km,4.0,Automatic,Front,Left wheel,White,357
+TOYOTA,Vitz,2000,Hatchback,Petrol,1,0 km,4.0,Automatic,Front,Right-hand drive,Silver,358
+HYUNDAI,Tucson,2010,Jeep,Diesel,2,138196 km,4.0,Automatic,Front,Left wheel,Silver,359
+HONDA,FIT,2016,Hatchback,Petrol,1.5,0 km,4.0,Automatic,Front,Left wheel,Grey,360
+MERCEDES-BENZ,CL 55 AMG KOMPRESSOR,2003,Coupe,Petrol,5.5 Turbo,240000 km,8.0,Tiptronic,Rear,Left wheel,Black,361
+BMW,528,2013,Sedan,Petrol,,156800 km,4.0,Tiptronic,Rear,Left wheel,Black,362
+TOYOTA,Prius,2007,Sedan,Hybrid,1.5,453000 km,4.0,Variator,Front,Left wheel,White,363
+KIA,Optima,2014,Sedan,Petrol,2,39265 km,4.0,Automatic,Front,Left wheel,Black,364
+CHEVROLET,Orlando,2017,Jeep,Diesel,1.6,67668 km,4.0,Automatic,Front,Left wheel,White,365
+MERCEDES-BENZ,E 430,2002,Sedan,LPG,4.3,245000 km,8.0,Tiptronic,Rear,Left wheel,Silver,366
+HYUNDAI,Elantra,2011,Sedan,Petrol,1.6,94479 km,4.0,Automatic,Front,Left wheel,Red,367
+HYUNDAI,Sonata,2016,Sedan,LPG,2,295970 km,4.0,Automatic,Front,Left wheel,Silver,368
+TOYOTA,Prius,2011,Sedan,Hybrid,1.8,281600 km,6.0,Automatic,Front,Left wheel,Grey,369
+TOYOTA,Prius C,2016,Hatchback,Hybrid,1.5,250000 km,4.0,Variator,Front,Left wheel,Silver,370
+MERCEDES-BENZ,Vito,2008,Minivan,Diesel,2.2 Turbo,200000 km,6.0,Tiptronic,Rear,Left wheel,Golden,371
+HYUNDAI,Elantra,2016,Sedan,LPG,1.6,31151 km,4.0,Automatic,Front,Left wheel,Silver,372
+SSANGYONG,REXTON,2009,Jeep,Diesel,2.7,56629 km,4.0,Automatic,Front,Left wheel,Silver,373
+OPEL,Astra td,1998,Universal,Diesel,1.7 Turbo,0 km,4.0,Manual,Front,Left wheel,Black,374
+BUICK,Encore,2016,Jeep,Petrol,1.4,24000 km,4.0,Automatic,Front,Left wheel,White,375
+AUDI,Q5,2014,Sedan,Diesel,3,66661 km,6.0,Automatic,4x4,Left wheel,Grey,376
+CHEVROLET,Cruze,2014,Sedan,Diesel,2,167691 km,4.0,Automatic,Front,Left wheel,Silver,377
+MITSUBISHI,Outlander sport,2018,Jeep,Petrol,2.0 Turbo,36534 km,5.0,Automatic,Front,Left wheel,Red,378
+BMW,650,2015,Coupe,Petrol,4.4,92213 km,8.0,Automatic,Rear,Left wheel,White,379
+MERCEDES-BENZ,C 300,2010,Sedan,Petrol,3,108517 km,6.0,Automatic,4x4,Left wheel,White,380
+MERCEDES-BENZ,C 200,1994,Sedan,Petrol,2.2,270000 km,4.0,Automatic,Rear,Left wheel,Red,381
+TOYOTA,Camry XLE,2012,Sedan,Hybrid,2.5,98298 km,4.0,Automatic,Front,Left wheel,Grey,382
+LEXUS,CT 200h,2011,Hatchback,Hybrid,1.8,119000 km,4.0,Variator,Front,Left wheel,White,383
+HYUNDAI,Santa FE,2007,Jeep,Diesel,2.2 Turbo,69500 km,4.0,Tiptronic,Front,Left wheel,Black,384
+MITSUBISHI,Galant,1997,Sedan,CNG,2,11111 km,4.0,Manual,Front,Left wheel,Green,385
+FORD,Focus,2015,Sedan,Petrol,2,116923 km,4.0,Tiptronic,Front,Left wheel,White,386
+TOYOTA,Highlander,2015,Jeep,Petrol,3.5,91899 km,6.0,Automatic,4x4,Left wheel,Black,387
+TOYOTA,Aqua,2018,Universal,Hybrid,1.5,35039 km,4.0,Automatic,Front,Left wheel,Blue,388
+OPEL,Astra,1998,Goods wagon,CNG,1.8,240000 km,4.0,Manual,Front,Left wheel,Blue,389
+HONDA,Civic,2015,Sedan,Petrol,1.8,100658 km,4.0,Automatic,Front,Left wheel,Silver,390
+HYUNDAI,Tucson,2011,Jeep,Diesel,2,131900 km,4.0,Automatic,Front,Left wheel,White,391
+SUZUKI,Grand Vitara,2005,Jeep,Petrol,2.7,180000 km,6.0,Automatic,4x4,Right-hand drive,White,392
+CHEVROLET,Cruze,2012,Sedan,Petrol,1.8,156779 km,4.0,Automatic,Front,Left wheel,Black,393
+RENAULT,Kangoo Waggon,2009,Goods wagon,Diesel,1.5 Turbo,160000 km,4.0,Manual,Front,Left wheel,White,394
+HYUNDAI,Santa FE,2010,Jeep,Diesel,2,142427 km,4.0,Automatic,Front,Left wheel,Silver,395
+HYUNDAI,Sonata,2010,Sedan,Petrol,2.4,87000 km,4.0,Tiptronic,Front,Left wheel,White,396
+TOYOTA,Prius,2013,Sedan,Hybrid,1.8,140607 km,4.0,Automatic,Front,Left wheel,Grey,397
+HYUNDAI,Sonata,2016,Sedan,LPG,2,267209 km,4.0,Automatic,Front,Left wheel,Silver,398
+LEXUS,RX 350,2008,Jeep,Petrol,3.5,163000 km,6.0,Tiptronic,4x4,Left wheel,Silver,399
+HYUNDAI,Tucson,2016,Jeep,Diesel,1.7,106553 km,4.0,Automatic,Front,Left wheel,White,400
+HYUNDAI,Sonata,2013,Sedan,Petrol,2,52668 km,4.0,Automatic,Front,Left wheel,Black,401
+MERCEDES-BENZ,E 270,2000,Sedan,Diesel,2.7 Turbo,320000 km,5.0,Tiptronic,Rear,Left wheel,Silver,402
+MERCEDES-BENZ,ML 350,2010,Jeep,Diesel,3.0 Turbo,230400 km,6.0,Tiptronic,4x4,Left wheel,Black,403
+FORD,Focus,2017,Hatchback,Petrol,2,75200 km,4.0,Tiptronic,Front,Left wheel,Silver,404
+TOYOTA,Ist,2010,Hatchback,Petrol,1.8,203000 km,4.0,Automatic,Front,Left wheel,White,405
+OPEL,Astra BERTONE,2001,Coupe,,2.2,127000 km,4.0,Manual,Front,Left wheel,Black,406
+NISSAN,Juke,2015,Jeep,Petrol,1.6 Turbo,29120 km,4.0,Tiptronic,4x4,Left wheel,Silver,407
+HONDA,Cr-v,2002,Jeep,CNG,2,177000 km,4.0,Manual,4x4,Right-hand drive,Silver,408
+TOYOTA,Prius 1.5I,2009,Sedan,Hybrid,1.5,127300 km,4.0,Automatic,Front,Left wheel,Silver,409
+TOYOTA,Hilux,2018,Pickup,Petrol,3.5,12000 km,6.0,Tiptronic,4x4,Left wheel,Grey,410
+MERCEDES-BENZ,CLA 250,2016,Sedan,Petrol,2,56795 km,4.0,Automatic,Front,Left wheel,Red,411
+CHEVROLET,Cruze LT,2017,Hatchback,Petrol,1.4,62971 km,4.0,Automatic,Front,Left wheel,Black,412
+FORD,Fusion,2012,Sedan,LPG,2.5,137103 km,4.0,Tiptronic,Front,Left wheel,Silver,413
+TOYOTA,Camry,2012,Sedan,Hybrid,2.5,90600 km,4.0,Variator,Front,Left wheel,Silver,414
+NISSAN,Tiida,2011,Hatchback,Petrol,1.5,98000 km,4.0,Automatic,Front,Right-hand drive,Black,415
+MERCEDES-BENZ,Sprinter,1997,Microbus,Diesel,2.4,130000 km,4.0,Manual,Rear,Left wheel,White,416
+JEEP,Compass,2019,Sedan,Petrol,2.4,29278 km,4.0,Automatic,Front,Left wheel,Black,417
+HYUNDAI,Sonata,2014,Sedan,LPG,2,268046 km,4.0,Automatic,Front,Left wheel,Silver,418
+HYUNDAI,Tucson,2015,Jeep,Diesel,2,111589 km,4.0,Automatic,Front,Left wheel,Silver,419
+SSANGYONG,Actyon,2016,Jeep,Diesel,1.6,48910 km,4.0,Automatic,Front,Left wheel,White,420
+HYUNDAI,Santa FE,2018,Sedan,Petrol,2.4,44240 km,4.0,Automatic,4x4,Left wheel,White,421
+FORD,Fusion,2016,Sedan,Petrol,2.5,70344 km,4.0,Automatic,Front,Left wheel,White,422
+TOYOTA,Prius,2005,Sedan,Hybrid,1.5,111111 km,4.0,Automatic,Front,Left wheel,Silver,423
+HONDA,Civic,2008,Sedan,Hybrid,1.3,248126 km,4.0,Automatic,Front,Left wheel,Black,424
+MITSUBISHI,Outlander SPORT,2016,Jeep,Petrol,2,73542 km,4.0,Automatic,Front,Left wheel,Black,425
+MERCEDES-BENZ,A 160,2002,Hatchback,Petrol,1.6,0 km,4.0,Automatic,Front,Left wheel,White,426
+TOYOTA,Aqua,2015,Hatchback,Hybrid,1.5,81200 km,4.0,Automatic,Front,Left wheel,Silver,427
+RENAULT,Megane 5,2001,Sedan,Petrol,1.4,212000 km,4.0,Manual,Front,Left wheel,Silver,428
+BMW,520,1999,Sedan,Petrol,2.5,0 km,6.0,Tiptronic,Rear,Right-hand drive,Silver,429
+TOYOTA,Land Cruiser Prado,2001,Jeep,CNG,2.7,247000 km,4.0,Automatic,4x4,Left wheel,Black,430
+BMW,325,2001,Coupe,Petrol,2.5,160000 km,6.0,Tiptronic,Rear,Left wheel,Silver,431
+HONDA,FIT,2014,Hatchback,Petrol,1.5,28300 km,4.0,Automatic,Front,Left wheel,Silver,432
+FORD,Fusion,2017,Sedan,Hybrid,2,79578 km,4.0,Automatic,Front,Left wheel,Black,433
+FORD,Fusion,2011,Sedan,Hybrid,2.5,224000 km,4.0,Tiptronic,Front,Left wheel,Grey,434
+HYUNDAI,H1,2016,Minivan,Diesel,2.5,61000 km,4.0,Automatic,Front,Left wheel,Grey,435
+LEXUS,GS 350,2013,Sedan,Petrol,3.5,56000 km,6.0,Tiptronic,Rear,Left wheel,Black,436
+BMW,325,2001,Sedan,Petrol,2.5,1000 km,6.0,Manual,Rear,Right-hand drive,Black,437
+MERCEDES-BENZ,ML 500,2005,Jeep,Petrol,5,200000 km,8.0,Tiptronic,4x4,Left wheel,Silver,438
+MITSUBISHI,Outlander,2005,Jeep,Petrol,2.4,160000 km,4.0,Manual,4x4,Left wheel,Silver,439
+HONDA,Civic,2015,Sedan,Petrol,1.8,62137 km,4.0,Automatic,Front,Left wheel,Silver,440
+LEXUS,RX 450,2014,Jeep,Hybrid,3.5,43000 km,4.0,Tiptronic,4x4,Left wheel,White,441
+MERCEDES-BENZ,C 180,1994,Sedan,Petrol,1.8,980087 km,4.0,Manual,Rear,Left wheel,Black,442
+DODGE,Avenger,2013,Sedan,Petrol,3.6,204934 km,6.0,Automatic,Front,Left wheel,Grey,443
+FORD,Fusion,2015,Sedan,Hybrid,2,148709 km,4.0,Automatic,Front,Left wheel,Red,444
+HYUNDAI,Tucson,2011,Jeep,Diesel,2,134312 km,4.0,Automatic,Front,Left wheel,Black,445
+SSANGYONG,REXTON,2013,Jeep,Diesel,2,111307 km,4.0,Automatic,Front,Left wheel,White,446
+HONDA,Cr-v,2016,Jeep,Petrol,2.4,88968 km,4.0,Automatic,4x4,Left wheel,Black,447
+SUZUKI,Grand Vitara,2005,Jeep,Petrol,2.7,180000 km,6.0,Automatic,4x4,Left wheel,Carnelian red,448
+TOYOTA,ISIS,2007,Minivan,CNG,2,0 km,4.0,Tiptronic,Front,Right-hand drive,Black,449
+HYUNDAI,Tucson,2012,Jeep,Diesel,2,132976 km,4.0,Automatic,Front,Left wheel,Silver,450
+OPEL,Astra G,2000,Sedan,CNG,1.6,185777 km,4.0,Automatic,Front,Left wheel,Blue,451
+SSANGYONG,REXTON,2013,Jeep,Diesel,2,110190 km,4.0,Automatic,Front,Left wheel,White,452
+CHEVROLET,Orlando,2017,Jeep,Diesel,1.6,65124 km,4.0,Automatic,Front,Left wheel,Grey,453
+CHEVROLET,Lacetti,2010,Sedan,Petrol,1.8,114588 km,4.0,Automatic,Front,Left wheel,Grey,454
+HYUNDAI,Sonata,2013,Sedan,LPG,2,91475 km,4.0,Automatic,Front,Left wheel,White,455
+JAGUAR,XJ,1999,Sedan,Petrol,4,1000 km,8.0,Tiptronic,4x4,Left wheel,Green,456
+TOYOTA,Land Cruiser 80,1993,Jeep,Petrol,4.5,223000 km,6.0,Automatic,4x4,Left wheel,Green,457
+HYUNDAI,Elantra,2011,Sedan,Petrol,1.6,158787 km,4.0,Automatic,Front,Left wheel,Silver,458
+CHEVROLET,Cruze Premier,2016,Sedan,Petrol,1.5 Turbo,112879 km,4.0,Automatic,Front,Left wheel,Black,459
+BMW,550,2008,Sedan,Petrol,4.8,227000 km,8.0,Tiptronic,Rear,Left wheel,Black,460
+TOYOTA,Aqua,2014,Hatchback,Petrol,1.5,38161 km,,Automatic,Front,Left wheel,Black,461
+HYUNDAI,Sonata,2015,Sedan,LPG,2,695562 km,4.0,Automatic,Front,Left wheel,Orange,462
+CHEVROLET,Cruze,2012,Sedan,Diesel,2,101275 km,4.0,Automatic,Front,Left wheel,White,463
+HYUNDAI,Sonata,2017,Sedan,Petrol,2.4,0 km,4.0,Automatic,Front,Left wheel,Grey,464
+TOYOTA,Prius,2014,Hatchback,Hybrid,1.8,145000 km,4.0,Automatic,Front,Left wheel,Grey,465
+DAEWOO,Gentra,2009,Sedan,Petrol,1.2,171138 km,4.0,Automatic,Front,Left wheel,Blue,466
+HONDA,Cr-v,2011,Jeep,Petrol,2.4,200960 km,4.0,Automatic,Front,Left wheel,Blue,467
+DAEWOO,Lacetti,2009,Sedan,Petrol,1.6,50549 km,4.0,Automatic,Front,Left wheel,Silver,468
+HYUNDAI,Elantra,2011,Sedan,Petrol,1.6,106616 km,4.0,Automatic,Front,Left wheel,Black,469
+VOLKSWAGEN,Jetta,2016,Sedan,Petrol,1.8 Turbo,52000 km,4.0,Tiptronic,Front,Left wheel,Black,470
+HONDA,FIT,2014,Hatchback,Hybrid,1.5,97512 km,4.0,Automatic,Front,Left wheel,Blue,471
+HYUNDAI,Tucson,2010,Jeep,Diesel,2,167512 km,4.0,Automatic,Front,Left wheel,Grey,472
+JEEP,Compass,2018,Jeep,Petrol,2.4,16500 km,4.0,Automatic,4x4,Left wheel,Black,473
+BMW,335,2009,Cabriolet,Petrol,3.0 Turbo,59700 km,6.0,Tiptronic,Rear,Left wheel,Black,474
+HYUNDAI,H1,2009,Minivan,Diesel,2.5,50653 km,4.0,Automatic,Front,Left wheel,Silver,475
+TOYOTA,Prius,2007,Sedan,Hybrid,1.5,120000 km,4.0,Automatic,Front,Left wheel,Grey,476
+CHEVROLET,Cruze,2011,Sedan,Petrol,1.8,28000 km,4.0,Manual,Front,Left wheel,Silver,477
+HYUNDAI,Sonata,2016,Sedan,LPG,2,475406 km,4.0,Automatic,Front,Left wheel,Orange,478
+MOSKVICH,400,1953,Hatchback,Petrol,1,250000 km,4.0,Manual,Rear,Left wheel,Beige,479
+TOYOTA,Prius,2010,Hatchback,Hybrid,1.8,141000 km,4.0,Automatic,Front,Left wheel,Grey,480
+BMW,740,2012,Sedan,Petrol,3,199536 km,6.0,Automatic,Rear,Left wheel,Silver,481
+HYUNDAI,Sonata,2012,Sedan,LPG,2,742997 km,4.0,Automatic,Front,Left wheel,Silver,482
+TOYOTA,Prius,2012,Hatchback,LPG,1.8,24000 km,4.0,Variator,Front,Left wheel,White,483
+FORD,Fusion,2013,Sedan,Petrol,2,87579 km,4.0,Automatic,Front,Left wheel,Black,484
+SCION,iA isti,2006,Hatchback,Petrol,1.5,118000 km,4.0,Automatic,Front,Left wheel,Silver,485
+LAND ROVER,Discovery,2015,Jeep,Diesel,3.0 Turbo,88000 km,6.0,Tiptronic,4x4,Left wheel,Black,486
+FORD,Fusion Hybrid,2013,Sedan,Hybrid,2,97000 km,4.0,Variator,Front,Left wheel,Brown,487
+HONDA,Civic,2000,Coupe,Petrol,1.6,2530 km,4.0,Manual,Front,Left wheel,White,488
+SSANGYONG,REXTON,2014,Jeep,Diesel,2,37546 km,4.0,Automatic,Front,Left wheel,White,489
+FORD,Escape,2008,Jeep,Hybrid,2.3,175000 km,4.0,Automatic,Front,Left wheel,Sky blue,490
+FORD,Focus,2015,Sedan,Petrol,1.0 Turbo,54935 km,3.0,Manual,Front,Left wheel,Black,491
+HYUNDAI,Sonata,2016,Sedan,LPG,2,263886 km,4.0,Automatic,Front,Left wheel,Silver,492
+VOLKSWAGEN,Caddy cadi,2003,Goods wagon,LPG,1.4,220000 km,4.0,Manual,Front,Left wheel,Blue,493
+TOYOTA,Prius C,2012,Hatchback,Hybrid,1.5,99000 km,4.0,Automatic,Front,Left wheel,White,494
+HYUNDAI,Accent GS,2015,Hatchback,Petrol,1.6,74204 km,4.0,Automatic,Front,Left wheel,White,495
+MAZDA,Mazda 6 Grand touring,2013,Sedan,Petrol,2.5,125000 km,4.0,Tiptronic,Front,Left wheel,Grey,496
+BMW,535,2015,Sedan,Petrol,3.0 Turbo,7800 km,6.0,Tiptronic,Rear,Left wheel,White,497
+HYUNDAI,Tucson,2016,Jeep,Diesel,2,79000 km,,Automatic,Front,Left wheel,Silver,498
+JEEP,Liberty,2004,Jeep,CNG,3.7,200000 km,6.0,Automatic,4x4,Left wheel,Blue,499
+BMW,530,2004,Sedan,Petrol,3,201000 km,6.0,Tiptronic,Rear,Left wheel,Black,500
+HYUNDAI,Tucson,2012,Jeep,Diesel,2,160000 km,4.0,Automatic,Front,Left wheel,Grey,501
+TOYOTA,Camry,2015,Sedan,Petrol,2.5,115858 km,4.0,Automatic,Front,Left wheel,Black,502
+SSANGYONG,REXTON,2009,Jeep,Diesel,2.7,60227 km,4.0,Automatic,Front,Left wheel,Silver,503
+SSANGYONG,Korando,2013,Jeep,Petrol,2,90000 km,4.0,Automatic,Front,Left wheel,Black,504
+MITSUBISHI,Pajero IO,2000,Jeep,Petrol,2,15000 km,5.0,Automatic,4x4,Left wheel,White,505
+JAGUAR,XF,2010,Sedan,Diesel,3,163024 km,4.0,Automatic,Front,Left wheel,White,506
+SSANGYONG,REXTON SUPER,2010,Jeep,Diesel,2.7,66000 km,6.0,Automatic,4x4,Left wheel,Black,507
+TOYOTA,Venza,2010,Jeep,Petrol,2.7,176437 km,4.0,Automatic,4x4,Left wheel,White,508
+HYUNDAI,Accent,2016,Hatchback,Petrol,1.6,57736 km,4.0,Tiptronic,Front,Left wheel,White,509
+MERCEDES-BENZ,C 180,1997,Universal,CNG,1.8,196090 km,4.0,Variator,Rear,Left wheel,Black,510
+KIA,Sportage,2007,Jeep,Petrol,2,51264 km,4.0,Automatic,Front,Left wheel,Silver,511
+TOYOTA,Camry,2012,Sedan,Petrol,2.5,160800 km,6.0,Tiptronic,Front,Left wheel,Black,512
+HYUNDAI,Genesis,2014,Coupe,Petrol,2,65840 km,4.0,Automatic,Front,Left wheel,White,513
+MERCEDES-BENZ,C 280,1997,Sedan,Petrol,2.8,100000 km,6.0,Automatic,Rear,Left wheel,Black,514
+TOYOTA,Avalon LIMITED,2013,Sedan,Hybrid,2.5,97852 km,5.0,Tiptronic,Front,Left wheel,Carnelian red,515
+CHEVROLET,Captiva,2013,Jeep,Petrol,2.4,132429 km,4.0,Automatic,Front,Left wheel,Silver,516
+PEUGEOT,406,2001,Sedan,Petrol,2,0 km,4.0,Manual,Front,Left wheel,White,517
+HONDA,Civic,2016,Sedan,Petrol,2,44914 km,4.0,Automatic,Front,Left wheel,Silver,518
+HYUNDAI,Tucson,2011,Jeep,Diesel,2,171340 km,4.0,Automatic,Front,Left wheel,Grey,519
+OPEL,Astra,1998,Hatchback,Petrol,1.6,271050 km,4.0,Manual,Front,Left wheel,Green,520
+HYUNDAI,Sonata,2013,Sedan,Petrol,2.4,104557 km,4.0,Automatic,Front,Left wheel,Grey,521
+HYUNDAI,Sonata,2015,Sedan,LPG,2,411260 km,4.0,Automatic,Front,Left wheel,Orange,522
+OPEL,Combo,2001,Goods wagon,Diesel,1.7,200000 km,4.0,Manual,Rear,Left wheel,White,523
+TOYOTA,Camry,2011,Sedan,Petrol,2.5,216000 km,4.0,Tiptronic,Front,Left wheel,Red,524
+HYUNDAI,Santa FE,2016,Jeep,Diesel,2,106084 km,4.0,Automatic,Front,Left wheel,Grey,525
+TOYOTA,Aqua,2013,Hatchback,Hybrid,1.5,111000 km,4.0,Variator,Front,Right-hand drive,Silver,526
+MERCEDES-BENZ,E 230,1997,Sedan,Petrol,2.3,105000 km,4.0,Automatic,Rear,Left wheel,Silver,527
+CHEVROLET,Captiva,2014,Jeep,Diesel,2,143414 km,4.0,Automatic,Front,Left wheel,White,528
+TOYOTA,Sienna,2010,Minivan,Petrol,3.5,227200 km,6.0,Tiptronic,Front,Left wheel,White,529
+TOYOTA,Sienna,2012,Minivan,Petrol,2.7,105800 km,4.0,Tiptronic,Front,Left wheel,Brown,530
+TOYOTA,Aqua,2013,Universal,Hybrid,1.5,208533 km,4.0,Automatic,Front,Left wheel,Silver,531
+HYUNDAI,Sonata,2016,Sedan,LPG,2,279787 km,4.0,Automatic,Front,Left wheel,Silver,532
+HYUNDAI,Accent,2015,Hatchback,Diesel,1.6,36871 km,4.0,Automatic,Front,Left wheel,Grey,533
+BMW,X5,2011,Jeep,Diesel,3,143134 km,6.0,Automatic,4x4,Left wheel,Brown,534
+HONDA,Cr-v,2011,Jeep,Petrol,2.4,272542 km,4.0,Automatic,4x4,Left wheel,Grey,535
+CHEVROLET,Cruze,2018,Sedan,Petrol,1.4,95219 km,4.0,Automatic,Front,Left wheel,Black,536
+TOYOTA,Prius,2007,Hatchback,Hybrid,1.5,144000 km,4.0,Variator,Front,Right-hand drive,Silver,537
+BMW,116,2008,Hatchback,Petrol,1.6,11111 km,2.0,Automatic,Rear,Right-hand drive,Red,538
+KIA,Optima,2011,Sedan,Petrol,2.4,103000 km,4.0,Automatic,Front,Left wheel,Black,539
+FORD,Transit,2008,Microbus,Diesel,2.4 Turbo,214000 km,4.0,Manual,Rear,Left wheel,Orange,540
+NISSAN,Navara,2011,Pickup,Diesel,2.5,240000 km,4.0,Manual,4x4,Left wheel,White,541
+BMW,X5,2002,Jeep,CNG,4.4,222222 km,8.0,Tiptronic,4x4,Left wheel,Black,542
+BMW,X5,2002,Sedan,Petrol,3.0 Turbo,321430 km,6.0,Automatic,4x4,Left wheel,Grey,543
+TOYOTA,Tundra,2013,Jeep,Petrol,5.7,357933 km,8.0,Automatic,4x4,Left wheel,Grey,544
+TOYOTA,Prius,2015,Sedan,Hybrid,1.8,104795 km,4.0,Automatic,Front,Left wheel,White,545
+TOYOTA,RAV 4,2006,Jeep,Petrol,2.4,304000 km,4.0,Automatic,4x4,Left wheel,Green,546
+HYUNDAI,Santa FE,2020,Jeep,Diesel,2,9146 km,4.0,Automatic,Front,Left wheel,White,547
+TOYOTA,Highlander,2013,Jeep,Petrol,3.5,62102 km,6.0,Tiptronic,4x4,Left wheel,Pink,548
+TOYOTA,Camry,2009,Sedan,Hybrid,2.4,320000 km,4.0,Automatic,Front,Left wheel,Silver,549
+SSANGYONG,Actyon,2016,Jeep,Diesel,1.6,61000 km,4.0,Automatic,Front,Left wheel,White,550
+TOYOTA,Camry,2013,Sedan,Petrol,2.5,289600 km,6.0,Tiptronic,Front,Left wheel,White,551
+MERCEDES-BENZ,ML 350 BLUETEC,2010,Jeep,Diesel,3.0 Turbo,69000 km,6.0,Tiptronic,4x4,Left wheel,Black,552
+CHEVROLET,Orlando,2012,Jeep,Diesel,2,153561 km,4.0,Automatic,Front,Left wheel,Grey,553
+BMW,528,2012,Sedan,Petrol,2.0 Turbo,96966 km,4.0,Tiptronic,Rear,Left wheel,Black,554
+CHEVROLET,Malibu,2013,Sedan,Petrol,2,38194 km,4.0,Automatic,Front,Left wheel,Black,555
+AUDI,A6 C7,2012,Sedan,Petrol,3.0 Turbo,154000 km,6.0,Tiptronic,4x4,Left wheel,Beige,556
+HYUNDAI,Santa FE,2016,Jeep,Petrol,2.4,113771 km,4.0,Automatic,4x4,Left wheel,Orange,557
+BMW,X5 4.8is,2005,Jeep,Petrol,4.8,147200 km,8.0,Tiptronic,4x4,Left wheel,Silver,558
+SSANGYONG,Korando,2012,Jeep,Diesel,2,132356 km,4.0,Automatic,Front,Left wheel,Black,559
+HYUNDAI,Tucson,2017,Jeep,Diesel,1.7,50380 km,4.0,Automatic,Front,Left wheel,White,560
+HONDA,FIT,2002,Sedan,Petrol,1.3,260000 km,4.0,Automatic,Front,Right-hand drive,Red,561
+FORD,C-MAX,2013,Sedan,Hybrid,2,144000 km,4.0,Automatic,Front,Left wheel,Blue,562
+MITSUBISHI,Colt,2011,Hatchback,Petrol,1.3,74000 km,4.0,Automatic,Front,Right-hand drive,White,563
+TOYOTA,Camry,2012,Sedan,Hybrid,2.5,165472 km,4.0,Automatic,Front,Left wheel,Grey,564
+HYUNDAI,Santa FE,2015,Jeep,Diesel,2,48484 km,4.0,Automatic,Front,Left wheel,Silver,565
+HYUNDAI,H1,2016,Universal,Diesel,2.5,97640 km,4.0,Automatic,Front,Left wheel,Silver,566
+FORD,Transit,1998,Goods wagon,Diesel,2.5,228000 km,4.0,Manual,Rear,Left wheel,White,567
+MERCEDES-BENZ,E 350,2014,Sedan,Petrol,3.5,146395 km,6.0,Automatic,Rear,Left wheel,Grey,568
+CHEVROLET,Camaro,2010,Coupe,Petrol,6.2,217786 km,8.0,Automatic,Rear,Left wheel,Blue,569
+SUBARU,XV,2013,Jeep,Petrol,2.0 Turbo,128000 km,4.0,Manual,4x4,Left wheel,White,570
+CHEVROLET,Cruze,2012,Sedan,Petrol,1.4 Turbo,122488 km,4.0,Tiptronic,Front,Left wheel,Golden,571
+BMW,535 i,2007,Sedan,Petrol,3,247000 km,6.0,Tiptronic,Rear,Left wheel,Grey,572
+BMW,X5,2000,Jeep,Petrol,4.4,195634 km,8.0,Tiptronic,4x4,Left wheel,Grey,573
+VOLKSWAGEN,Jetta,2013,Sedan,Petrol,2.5,105800 km,5.0,Tiptronic,Front,Left wheel,White,574
+HYUNDAI,Elantra,2013,Sedan,Petrol,1.8,50545 km,4.0,Tiptronic,Front,Left wheel,Grey,575
+NISSAN,Pathfinder,2006,Jeep,Diesel,2.5 Turbo,21000 km,4.0,Manual,4x4,Left wheel,Black,576
+HYUNDAI,Sonata,2016,Sedan,LPG,2,88900 km,4.0,Automatic,Front,Left wheel,White,577
+HYUNDAI,Tucson,2015,Jeep,Diesel,2,143278 km,4.0,Automatic,Front,Left wheel,Grey,578
+TOYOTA,Hilux,2012,Pickup,Diesel,3,163000 km,4.0,Manual,4x4,Left wheel,Silver,579
+HYUNDAI,Sonata,2011,Sedan,Petrol,2.4,120000 km,4.0,Tiptronic,Front,Left wheel,Blue,580
+LEXUS,RX 450,2010,Jeep,Hybrid,3.5,0 km,6.0,Automatic,4x4,Left wheel,Silver,581
+HYUNDAI,Santa FE,2011,Jeep,Diesel,2.2,166226 km,4.0,Automatic,Front,Left wheel,Silver,582
+CHEVROLET,1500,2018,Coupe,Petrol,1.4,29763 km,4.0,Automatic,4x4,Left wheel,Silver,583
+MERCEDES-BENZ,C 180,1998,Sedan,CNG,1.8,111111 km,4.0,Manual,Rear,Left wheel,White,584
+HONDA,Civic,2015,Sedan,Petrol,1.8,60651 km,4.0,Automatic,Front,Left wheel,Grey,585
+TOYOTA,Camry,2014,Sedan,Hybrid,2.5,51000 km,4.0,Automatic,Front,Left wheel,Grey,586
+TOYOTA,Prius C,2014,Hatchback,Hybrid,1.5,252442 km,4.0,Automatic,Front,Left wheel,Grey,587
+TOYOTA,Camry,2018,Sedan,Petrol,2.5,54786 km,4.0,Automatic,Front,Left wheel,Black,588
+TOYOTA,Prius,2009,Hatchback,Hybrid,1.5,124839 km,4.0,Automatic,Front,Left wheel,Blue,589
+TOYOTA,Prius C,2014,Hatchback,Hybrid,1.5,96000 km,4.0,Automatic,Front,Left wheel,Silver,590
+BMW,X5,2013,Jeep,Diesel,3,137802 km,6.0,Automatic,4x4,Left wheel,Black,591
+AUDI,A6,2011,Sedan,Petrol,3.2,138000 km,6.0,Automatic,Front,Left wheel,Black,592
+HONDA,FIT,2016,Hatchback,Petrol,1.3,70000 km,4.0,Automatic,Front,Left wheel,Silver,593
+SSANGYONG,Actyon,2017,Jeep,Petrol,1.6,51671 km,4.0,Automatic,Front,Left wheel,White,594
+TOYOTA,Camry,2018,Sedan,Petrol,2.5,40000 km,4.0,Tiptronic,Front,Left wheel,Black,595
+PORSCHE,Cayenne,2015,Jeep,Diesel,3.0 Turbo,120000 km,6.0,Tiptronic,4x4,Left wheel,White,596
+FORD,Transit Connect,2011,Goods wagon,Diesel,1.8 Turbo,219123 km,4.0,Manual,Front,Left wheel,Silver,597
+HYUNDAI,Accent,2014,Sedan,Diesel,1.6,150743 km,4.0,Automatic,Front,Left wheel,Silver,598
+HYUNDAI,Genesis,2011,Coupe,Petrol,2,107005 km,4.0,Automatic,Front,Left wheel,Grey,599
+TOYOTA,Prius C hybrid,2014,Hatchback,Hybrid,1.5,152000 km,4.0,Variator,Front,Left wheel,Silver,600
+JEEP,Compass,2012,Jeep,Petrol,2.4,88000 km,4.0,Automatic,Front,Left wheel,Grey,601
+SSANGYONG,Korando,2011,Jeep,Diesel,2,139924 km,4.0,Automatic,Front,Left wheel,White,602
+TOYOTA,Aqua,2012,Hatchback,Petrol,1.5,99949 km,4.0,Automatic,Front,Left wheel,Blue,603
+HYUNDAI,H1,2011,Minivan,Diesel,2.5,120805 km,4.0,Automatic,Front,Left wheel,Black,604
+MERCEDES-BENZ,ML 320,2001,Jeep,Petrol,3.2,215947 km,6.0,Tiptronic,4x4,Left wheel,Golden,605
+BMW,X5,2014,Jeep,Diesel,3.0 Turbo,103000 km,6.0,Tiptronic,4x4,Left wheel,White,606
+LEXUS,CT 200h,2014,Hatchback,Hybrid,1.8,66000 km,4.0,Automatic,Front,Left wheel,White,607
+VOLKSWAGEN,Passat,2007,Sedan,Petrol,2.0 Turbo,290000 km,6.0,Automatic,Front,Left wheel,Grey,608
+HYUNDAI,Tucson,2017,Jeep,Diesel,1.7,69088 km,4.0,Automatic,Front,Left wheel,Black,609
+CHEVROLET,Volt,2017,Hatchback,Hybrid,1.5,52062 km,4.0,Automatic,Front,Left wheel,Blue,610
+CHEVROLET,Captiva,2007,Jeep,,2,52699 km,4.0,Automatic,Front,Left wheel,Silver,611
+TOYOTA,Aqua,2012,Hatchback,Hybrid,1.5,92000 km,4.0,Automatic,Front,Right-hand drive,Sky blue,612
+LEXUS,IS 250,2008,Sedan,Petrol,2.5,162300 km,6.0,Tiptronic,Rear,Left wheel,Grey,613
+TOYOTA,Tacoma,2018,Sedan,Petrol,3.5,27358 km,6.0,Automatic,Front,Left wheel,Grey,614
+MERCEDES-BENZ,S 550,2014,Sedan,Petrol,4.6,98466 km,8.0,Automatic,Rear,Left wheel,Blue,615
+BMW,645,2005,Cabriolet,Petrol,4.4,222222 km,6.0,Tiptronic,Rear,Left wheel,Golden,616
+TOYOTA,Prius,2010,Sedan,Petrol,1.8 Turbo,225600 km,4.0,Automatic,Front,Left wheel,Grey,617
+PORSCHE,Cayenne,2013,Jeep,Diesel,3.0 Turbo,89161 km,6.0,Tiptronic,4x4,Left wheel,Black,618
+NISSAN,Note,2006,Hatchback,CNG,1.5,1000 km,4.0,Variator,Front,Left wheel,Silver,619
+HONDA,Civic,2008,Sedan,Hybrid,1.3,116000 km,4.0,Variator,Front,Left wheel,Blue,620
+MERCEDES-BENZ,E 220,1999,Sedan,Diesel,2.2 Turbo,3000 km,4.0,Automatic,Rear,Left wheel,Silver,621
+HYUNDAI,Grandeur,2011,Sedan,LPG,3,77538 km,4.0,Automatic,Front,Left wheel,Silver,622
+HYUNDAI,Elantra,2018,Sedan,Petrol,1.6,36470 km,4.0,Automatic,Front,Left wheel,Grey,623
+BMW,320,2004,Sedan,Petrol,2.2,13700 km,6.0,Manual,Rear,Left wheel,Beige,624
+MERCEDES-BENZ,C 200,1999,Sedan,Petrol,2,150000 km,4.0,Tiptronic,Rear,Left wheel,Silver,625
+MASERATI,Quattroporte,2009,Sedan,Petrol,4,0 km,8.0,Tiptronic,4x4,Left wheel,Black,626
+OPEL,Astra,2001,Goods wagon,Diesel,1.7 Turbo,11111 km,4.0,Manual,Front,Left wheel,White,627
+GMC,TERRAIN,2019,Sedan,Petrol,2,35898 km,4.0,Automatic,Front,Left wheel,Black,628
+HYUNDAI,Elantra,2011,Sedan,Petrol,1.6,141799 km,4.0,Automatic,Front,Left wheel,White,629
+HYUNDAI,Tucson,2015,Jeep,Diesel,1.7,279276 km,4.0,Automatic,Front,Left wheel,Blue,630
+NISSAN,Note,2008,Hatchback,CNG,1.5,999999999 km,4.0,Automatic,4x4,Right-hand drive,Black,631
+CHEVROLET,Spark,2015,Hatchback,Petrol,1,127771 km,4.0,Automatic,Front,Left wheel,Silver,632
+TOYOTA,Prius,2010,Hatchback,Hybrid,1.8,109356 km,4.0,Automatic,Front,Left wheel,Brown,633
+VOLKSWAGEN,Tiguan,2011,Jeep,Petrol,2.0 Turbo,268800 km,4.0,Manual,Front,Left wheel,Silver,634
+HYUNDAI,Elantra,2011,Sedan,Petrol,1.6,125047 km,4.0,Automatic,Front,Left wheel,White,635
+LEXUS,RX 450,2010,Jeep,Hybrid,3.5,166000 km,6.0,Variator,4x4,Left wheel,Silver,636
+MINI,One,2001,Hatchback,Petrol,1.6,11111 km,2.0,Automatic,Rear,Right-hand drive,Green,637
+LEXUS,HS 250h,2010,Sedan,Hybrid,2.4,156000 km,4.0,Tiptronic,Front,Left wheel,Black,638
+MERCEDES-BENZ,G 300,1988,Jeep,Diesel,2.9 Turbo,138000 km,4.0,Manual,4x4,Left wheel,Black,639
+MERCEDES-BENZ,C 180,2000,Sedan,Petrol,1.8,65865 km,4.0,Manual,Rear,Left wheel,Grey,640
+MERCEDES-BENZ,ML 350,2014,Jeep,Diesel,3.5 Turbo,207568 km,6.0,Tiptronic,4x4,Left wheel,Grey,641
+MERCEDES-BENZ,C 350,2013,Sedan,Petrol,3.5,107200 km,6.0,Tiptronic,4x4,Left wheel,Grey,642
+TOYOTA,Highlander,2011,Sedan,Hybrid,3.5,368064 km,6.0,Automatic,4x4,Left wheel,Grey,643
+LINCOLN,MKZ,2016,Sedan,Hybrid,2,234592 km,4.0,Automatic,Front,Left wheel,Black,644
+SUBARU,Forester,2001,Universal,Petrol,2,141000 km,4.0,Automatic,4x4,Right-hand drive,Grey,645
+LEXUS,GX 460,2010,Jeep,Petrol,4.6,260771 km,8.0,Automatic,4x4,Left wheel,Black,646
+SSANGYONG,REXTON,2007,Jeep,Diesel,2.7,76224 km,4.0,Automatic,Front,Left wheel,Black,647
+FORD,Fiesta SE,2014,Hatchback,Petrol,1.6,144000 km,4.0,Automatic,Front,Left wheel,Red,648
+OPEL,Astra,1995,Goods wagon,Petrol,1.4,1111111 km,4.0,Manual,Front,Left wheel,Green,649
+AUDI,A3,2016,Hatchback,Hybrid,1.4,104805 km,4.0,Automatic,Front,Left wheel,White,650
+MERCEDES-BENZ,E 270,2002,Sedan,Diesel,2.7 Turbo,111111111 km,6.0,Tiptronic,Rear,Left wheel,Silver,651
+HYUNDAI,Sonata,2015,Sedan,LPG,2,461965 km,4.0,Automatic,Front,Left wheel,Black,652
+MERCEDES-BENZ,ML 350,2011,Jeep,Diesel,,186542 km,6.0,Automatic,4x4,Left wheel,White,653
+OPEL,Omega,1995,Sedan,CNG,2,150000 km,4.0,Manual,Rear,Left wheel,Pink,654
+HYUNDAI,Elantra,2012,Sedan,Petrol,1.6,88288 km,4.0,Automatic,Front,Left wheel,White,655
+HYUNDAI,Santa FE,2016,Jeep,Diesel,2,121639 km,4.0,Automatic,Front,Left wheel,Silver,656
+HYUNDAI,Sonata,2014,Sedan,Petrol,2.0 Turbo,78000 km,4.0,Automatic,Front,Left wheel,Red,657
+FORD,Fiesta,2017,Hatchback,Petrol,1.6,61803 km,4.0,Automatic,Front,Left wheel,Black,658
+FORD,F150,2012,Sedan,Petrol,3.5,142930 km,4.0,Automatic,Front,Left wheel,Grey,659
+FORD,Transit,2005,Microbus,Diesel,2.4 Turbo,350000 km,4.0,Manual,Rear,Left wheel,White,660
+CHEVROLET,Captiva,2015,Jeep,Diesel,2.2,60000 km,4.0,Automatic,Front,Left wheel,Silver,661
+VOLKSWAGEN,Tiguan,2014,Jeep,Petrol,2.0 Turbo,59200 km,4.0,Tiptronic,4x4,Left wheel,Silver,662
+HYUNDAI,Sonata,2013,Sedan,Petrol,2,232982 km,4.0,Automatic,Front,Left wheel,Grey,663
+CHEVROLET,Captiva,2015,Jeep,Diesel,2,101537 km,4.0,Automatic,Front,Left wheel,Black,664
+HYUNDAI,Sonata,2015,Sedan,LPG,2,409910 km,,Automatic,Front,Left wheel,Silver,665
+BMW,528,2012,Sedan,Petrol,2.0 Turbo,184000 km,4.0,Tiptronic,Rear,Left wheel,Blue,666
+CHEVROLET,Cruze,2009,Sedan,Petrol,,119484 km,4.0,Automatic,Front,Left wheel,Black,667
+TOYOTA,Prius C,2012,Hatchback,Hybrid,1.5,177120 km,4.0,Automatic,Front,Left wheel,Red,668
+MERCEDES-BENZ,E 270 CDI,2001,Sedan,Diesel,2.7 Turbo,245000 km,5.0,Tiptronic,Rear,Left wheel,Black,669
+VOLKSWAGEN,Passat,2006,Sedan,Petrol,2.0 Turbo,200000 km,4.0,Tiptronic,Front,Left wheel,Black,670
+HYUNDAI,Sonata,2017,Sedan,LPG,2,263823 km,4.0,Automatic,Front,Left wheel,Silver,671
+SUZUKI,CERVO,2010,Universal,Petrol,0.6,101000 km,4.0,Manual,4x4,Right-hand drive,White,672
+BMW,528,2016,Sedan,Petrol,2.0 Turbo,32000 km,4.0,Tiptronic,Rear,Left wheel,Black,673
+HYUNDAI,Sonata,2010,Sedan,Petrol,2,148769 km,4.0,Automatic,Front,Left wheel,Silver,674
+HYUNDAI,Elantra,2015,Sedan,Petrol,1.6,11261 km,4.0,Automatic,Front,Left wheel,White,675
+TOYOTA,Yaris,2019,Sedan,Petrol,1.5,27656 km,4.0,Automatic,Front,Left wheel,White,676
+TOYOTA,Camry,2012,Sedan,Hybrid,2.5,90000 km,4.0,Tiptronic,Front,Left wheel,Black,677
+TOYOTA,Prius,2008,Hatchback,Hybrid,1.5,193000 km,4.0,Automatic,Front,Left wheel,Silver,678
+HONDA,FIT,2013,Hatchback,Hybrid,1.5,92300 km,4.0,Automatic,Front,Left wheel,White,679
+SSANGYONG,Actyon,2016,Jeep,Diesel,1.6,75300 km,4.0,Automatic,Front,Left wheel,Black,680
+MINI,Cooper F-56,2014,Coupe,Petrol,1.5 Turbo,86234 km,3.0,Manual,Front,Left wheel,Black,681
+MITSUBISHI,Grandis,2006,Minivan,Petrol,2.4,131000 km,4.0,Tiptronic,4x4,Right-hand drive,White,682
+BMW,X5,2010,Jeep,Diesel,3.0 Turbo,180000 km,6.0,Tiptronic,4x4,Left wheel,Black,683
+HYUNDAI,Tucson,2013,Jeep,Diesel,2,166762 km,4.0,Automatic,Front,Left wheel,White,684
+TOYOTA,Land Cruiser,2004,Jeep,Diesel,4.2,525000 km,6.0,Manual,4x4,Left wheel,Black,685
+MERCEDES-BENZ,E 350,2012,Sedan,Petrol,3.5,130000 km,4.0,Automatic,4x4,Left wheel,Black,686
+OPEL,Combo,2003,Goods wagon,Diesel,1.3 Turbo,225000 km,4.0,Manual,Front,Left wheel,Red,687
+FIAT,500 Lounge,2013,Coupe,Petrol,1.4,81064 km,4.0,Tiptronic,Front,Left wheel,Green,688
+NISSAN,Skyline,2003,Sedan,Petrol,3,500 km,6.0,Tiptronic,Rear,Right-hand drive,Black,689
+TOYOTA,Prius C,2012,Hatchback,Petrol,1.5,162000 km,4.0,Automatic,Front,Left wheel,Silver,690
+HYUNDAI,Tucson,2012,Jeep,Diesel,2,151995 km,4.0,Automatic,Front,Left wheel,Grey,691
+TOYOTA,Prius C,2014,Sedan,Hybrid,1.8,112000 km,4.0,Tiptronic,Front,Left wheel,Orange,692
+SSANGYONG,Actyon,2010,Jeep,Diesel,2,144879 km,4.0,Automatic,Front,Left wheel,Black,693
+OPEL,Astra,1998,Sedan,Petrol,1.6,224000 km,,Manual,Front,Left wheel,Green,694
+RENAULT,Scenic,2007,Minivan,Diesel,1.5 Turbo,240000 km,4.0,Manual,Front,Left wheel,Black,695
+KIA,Optima,2016,Sedan,Petrol,2,31460 km,4.0,Automatic,Front,Left wheel,Black,696
+HYUNDAI,Elantra,2010,Sedan,Petrol,1.6,101387 km,4.0,Automatic,Front,Left wheel,Silver,697
+VAZ,2121 (Niva),1984,Jeep,Petrol,1.6,200000 km,4.0,Manual,4x4,Left wheel,White,698
+VOLKSWAGEN,Passat,2012,Sedan,Petrol,3.6,188408 km,6.0,Tiptronic,Front,Left wheel,Grey,699
+NISSAN,March,2002,Sedan,Petrol,1.2,0 km,4.0,Automatic,Front,Right-hand drive,Yellow,700
+TOYOTA,Avalon,2018,Sedan,Hybrid,3,80000 km,8.0,Variator,Front,Left wheel,Grey,701
+MERCEDES-BENZ,200,1998,Sedan,Petrol,1.8,0 km,4.0,Manual,Rear,Left wheel,Black,702
+NISSAN,Juke,2012,Jeep,Petrol,1.6 Turbo,76053 km,4.0,Tiptronic,Front,Left wheel,Silver,703
+HYUNDAI,Tucson,2011,Jeep,Diesel,2,129000 km,4.0,Automatic,Front,Left wheel,Grey,704
+GMC,TERRAIN,2013,Jeep,Petrol,2.4,138958 km,4.0,Automatic,Front,Left wheel,Black,705
+CHRYSLER,PT Cruiser,2003,Sedan,LPG,2,110000 km,4.0,Tiptronic,Front,Left wheel,Beige,706
+BMW,X5,2006,Jeep,,3,260000 km,6.0,Tiptronic,4x4,Left wheel,Grey,707
+VOLKSWAGEN,Jetta,2014,Sedan,Petrol,1.8 Turbo,120000 km,4.0,Tiptronic,Front,Left wheel,White,708
+BMW,M5,2004,Coupe,Petrol,2.5,111111 km,6.0,Manual,Rear,Left wheel,White,709
+DAEWOO,Lacetti,2009,Sedan,Petrol,2,19999 km,4.0,Automatic,Front,Left wheel,Grey,710
+LEXUS,CT 200h F sport,2014,Hatchback,Hybrid,1.8,96000 km,4.0,Automatic,Front,Left wheel,Grey,711
+BMW,X5,2005,Jeep,Diesel,3.0 Turbo,248000 km,6.0,Tiptronic,4x4,Left wheel,Black,712
+FORD,Transit,2011,Goods wagon,Diesel,2.2 Turbo,165852 km,4.0,Manual,Front,Left wheel,White,713
+HYUNDAI,Tucson,2011,Jeep,Diesel,2,119194 km,4.0,Automatic,Front,Left wheel,Grey,714
+MERCEDES-BENZ,Sprinter,1998,Microbus,Diesel,3.5,7563145 km,4.0,Manual,Rear,Left wheel,Yellow,715
+HYUNDAI,Sonata,2015,Sedan,LPG,2,280622 km,4.0,Automatic,Front,Left wheel,Silver,716
+HYUNDAI,Santa FE,2012,Jeep,Diesel,2,68359 km,4.0,Automatic,Front,Left wheel,Silver,717
+HYUNDAI,Elantra,2012,Sedan,Petrol,1.8,83000 km,4.0,Tiptronic,Front,Left wheel,Blue,718
+CHEVROLET,Cruze,2016,Sedan,Diesel,,32986 km,4.0,Automatic,Front,Left wheel,Silver,719
+TOYOTA,Camry XLE,2012,Sedan,Hybrid,2.5,95000 km,4.0,Tiptronic,Front,Left wheel,Grey,720
+NISSAN,Note,2005,Hatchback,Petrol,1.5,158000 km,4.0,Automatic,Front,Right-hand drive,Black,721
+HYUNDAI,Santa FE,2014,Jeep,Diesel,2,106806 km,4.0,Automatic,Front,Left wheel,Grey,722
+HYUNDAI,Genesis,2010,Coupe,Petrol,2,108981 km,4.0,Automatic,Front,Left wheel,Yellow,723
+KIA,Optima,2015,Sedan,Hybrid,2.4,0 km,4.0,Automatic,Front,Left wheel,White,724
+MERCEDES-BENZ,C 250,2014,Sedan,Petrol,1.8,105909 km,4.0,Automatic,Rear,Left wheel,White,725
+TOYOTA,Fun Cargo,2000,Hatchback,CNG,1.5,215000 km,4.0,Automatic,Front,Right-hand drive,Black,726
+HYUNDAI,Sonata,2013,Sedan,Petrol,,66690 km,4.0,Automatic,Front,Left wheel,White,727
+MERCEDES-BENZ,S 550,2006,Sedan,,5.5 Turbo,128000 km,8.0,Tiptronic,Rear,Left wheel,Black,728
+CHEVROLET,Cruze,2013,Sedan,,1.4 Turbo,16800 km,4.0,Tiptronic,Front,Left wheel,Blue,729
+KIA,Optima,2015,Hatchback,Hybrid,2.4,89248 km,4.0,Automatic,Front,Left wheel,Black,730
+HYUNDAI,Sonata,2016,Sedan,LPG,2,253373 km,4.0,Automatic,Front,Left wheel,Silver,731
+CHEVROLET,Malibu,2012,Sedan,Petrol,2,135965 km,4.0,Automatic,Front,Left wheel,Black,732
+NISSAN,Altima,2011,Sedan,Petrol,2.5,266819 km,4.0,Automatic,Front,Left wheel,Black,733
+CHRYSLER,300 LIMITED,2011,Sedan,Petrol,3.6,130000 km,6.0,Tiptronic,Rear,Left wheel,Black,734
+JEEP,Grand Cherokee,2011,Jeep,Diesel,3,132255 km,4.0,Automatic,Front,Left wheel,Silver,735
+MERCEDES-BENZ,CLS 55 AMG,2012,Sedan,Petrol,4.7 Turbo,177394 km,8.0,Tiptronic,Rear,Left wheel,Grey,736
+TOYOTA,Prius,2014,Hatchback,Hybrid,1.8,75621 km,4.0,Automatic,Front,Left wheel,Blue,737
+MERCEDES-BENZ,E 350,2010,Sedan,Petrol,3.5,205968 km,6.0,Automatic,4x4,Left wheel,White,738
+OPEL,Zafira,2009,Minivan,Diesel,1.7 Turbo,248000 km,4.0,Manual,Front,Left wheel,Black,739
+CHEVROLET,Equinox,2012,Jeep,Petrol,3,343283 km,6.0,Automatic,4x4,Left wheel,Brown,740
+HYUNDAI,Elantra,2019,Sedan,Petrol,2,27368 km,4.0,Automatic,Front,Left wheel,Silver,741
+BMW,X5,2012,Jeep,Diesel,3,70994 km,6.0,Automatic,4x4,Left wheel,Black,742
+HYUNDAI,Sonata SE LIMITED,2012,Sedan,Hybrid,2.4,147000 km,4.0,Tiptronic,Front,Left wheel,Blue,743
+NISSAN,Maxima,1997,Sedan,CNG,3,2150 km,6.0,Manual,Front,Left wheel,White,744
+HONDA,Insight,2010,Hatchback,Hybrid,1.3,210758 km,4.0,Automatic,Front,Left wheel,Silver,745
+NISSAN,Tiida,2005,Sedan,CNG,1.5,154214 km,4.0,Automatic,Front,Right-hand drive,Silver,746
+HYUNDAI,Elantra,2015,Sedan,Diesel,1.6,80377 km,4.0,Automatic,Front,Left wheel,Grey,747
+HYUNDAI,Sonata,2016,Sedan,LPG,2,257102 km,4.0,Automatic,Front,Left wheel,Silver,748
+HYUNDAI,Sonata,2015,Sedan,LPG,2,510853 km,4.0,Automatic,Front,Left wheel,Orange,749
+VOLKSWAGEN,Jetta,2019,Sedan,Petrol,1.4 Turbo,6950 km,4.0,Automatic,Front,Left wheel,White,750
+HYUNDAI,Elantra,2012,Sedan,Petrol,1.6,123000 km,4.0,Automatic,Front,Left wheel,Silver,751
+SUBARU,Forester,2015,Jeep,Petrol,2.5,37000 km,4.0,Variator,4x4,Left wheel,Brown,752
+MERCEDES-BENZ,B 170 B Class,2006,Sedan,Petrol,1.7,98000 km,4.0,Tiptronic,Front,Left wheel,White,753
+TOYOTA,Yaris,2007,Hatchback,Petrol,1.5,230400 km,4.0,Automatic,Front,Left wheel,Grey,754
+MERCEDES-BENZ,A 160,2001,Sedan,Petrol,1.6,0 km,4.0,Automatic,Front,Right-hand drive,Black,755
+TOYOTA,Camry XLE,2010,Sedan,Hybrid,2.4,204800 km,4.0,Automatic,Front,Left wheel,Sky blue,756
+VOLKSWAGEN,Jetta,2015,Sedan,Petrol,1.8 Turbo,102780 km,4.0,Tiptronic,Front,Left wheel,Grey,757
+BMW,X5,2018,Jeep,Diesel,2.5 Turbo,59364 km,6.0,Tiptronic,4x4,Left wheel,Blue,758
+KIA,Sportage,2007,Jeep,Diesel,2,93568 km,4.0,Automatic,Front,Left wheel,Black,759
+OPEL,Vectra ბ,2001,Hatchback,Petrol,2.6,219200 km,6.0,Automatic,Front,Right-hand drive,Black,760
+HYUNDAI,Elantra,2014,Sedan,Petrol,1.8,60000 km,4.0,Tiptronic,Front,Left wheel,Grey,761
+HYUNDAI,H1,2011,Universal,Diesel,2.5,232078 km,4.0,Automatic,Front,Left wheel,Silver,762
+OPEL,Astra,2006,Hatchback,Petrol,1.4 Turbo,138000 km,4.0,Manual,Front,Left wheel,Sky blue,763
+HYUNDAI,Santa FE,2015,Jeep,Diesel,2,214420 km,4.0,Automatic,Front,Left wheel,White,764
+TOYOTA,Prius,2008,Hatchback,Petrol,1.6,155000 km,4.0,Automatic,Front,Left wheel,White,765
+NISSAN,Pathfinder,2010,Jeep,Petrol,4,203466 km,6.0,Automatic,Front,Left wheel,Black,766
+MERCEDES-BENZ,C 180,1998,Goods wagon,Petrol,1.8,0 km,6.0,Manual,Rear,Left wheel,Silver,767
+VOLKSWAGEN,Jetta სპორტ,2016,Sedan,Petrol,1.8 Turbo,45707 km,4.0,Manual,Front,Left wheel,Grey,768
+KIA,Cadenza,2012,Sedan,Petrol,2.4,40103 km,4.0,Automatic,Front,Left wheel,Black,769
+MERCEDES-BENZ,C 200 7G-TRONIC,2014,Sedan,Petrol,2.0 Turbo,66500 km,4.0,Tiptronic,Rear,Left wheel,White,770
+MERCEDES-BENZ,GL 450,2012,Jeep,Petrol,4.7 Turbo,96000 km,8.0,Tiptronic,4x4,Left wheel,Black,771
+MITSUBISHI,Pajero IO,1998,Jeep,Petrol,1.8,200000 km,4.0,Automatic,4x4,Left wheel,Silver,772
+CHEVROLET,Cruze,2010,Sedan,Diesel,2,47221 km,4.0,Automatic,Front,Left wheel,Black,773
+FORD,Fiesta,2016,Sedan,Petrol,1.6,64163 km,4.0,Manual,Front,Left wheel,White,774
+BMW,328,1998,Sedan,Petrol,2.8,123000 km,6.0,Manual,Rear,Left wheel,Blue,775
+VOLKSWAGEN,Tiguan,2014,Jeep,Petrol,2,58899 km,4.0,Automatic,4x4,Left wheel,Red,776
+HONDA,FIT,2012,Hatchback,Hybrid,1.3,64000 km,4.0,Variator,Front,Right-hand drive,Black,777
+MITSUBISHI,Carisma,2001,Sedan,Petrol,1.6,258000 km,4.0,Manual,Rear,Left wheel,Blue,778
+MERCEDES-BENZ,E 350,2009,Coupe,Petrol,3.5,87985 km,6.0,Tiptronic,Rear,Left wheel,White,779
+HYUNDAI,Elantra,2014,Sedan,Petrol,1.6,90823 km,4.0,Automatic,Front,Left wheel,White,780
+HYUNDAI,Tucson,2015,Jeep,Diesel,2,80687 km,4.0,Automatic,Front,Left wheel,White,781
+HYUNDAI,Sonata,2012,Sedan,Petrol,2.0 Turbo,110000 km,4.0,Tiptronic,Front,Left wheel,Black,782
+MERCEDES-BENZ,C 200,2001,Sedan,CNG,2,140000 km,4.0,Manual,Rear,Left wheel,Black,783
+FORD,Taurus,2013,Sedan,Petrol,3.5,110439 km,4.0,Automatic,Front,Left wheel,Red,784
+SSANGYONG,Actyon,2017,Jeep,Diesel,1.6,27067 km,4.0,Automatic,Front,Left wheel,White,785
+AUDI,RS6,2017,Sedan,Petrol,4,34483 km,8.0,Automatic,4x4,Left wheel,Grey,786
+SUZUKI,Swift,2009,Sedan,Petrol,1.3,150000 km,4.0,Automatic,Front,Right-hand drive,Black,787
+TOYOTA,Corolla,2017,Sedan,Petrol,1.8,22989 km,4.0,Automatic,Front,Left wheel,Silver,788
+BMW,528,2009,Sedan,LPG,2.8,240000 km,6.0,Tiptronic,Rear,Left wheel,Black,789
+HYUNDAI,Santa FE,2016,Jeep,Diesel,2,175089 km,4.0,Automatic,Front,Left wheel,White,790
+HYUNDAI,Santa FE,2014,Jeep,Diesel,2.2,51905 km,4.0,Automatic,Front,Left wheel,White,791
+MITSUBISHI,L 200,2010,Pickup,Diesel,2.5 Turbo,280000 km,4.0,Manual,4x4,Left wheel,Green,792
+MERCEDES-BENZ,S 350 CDI 320,2011,Sedan,Diesel,3.2 Turbo,240000 km,6.0,Tiptronic,Rear,Left wheel,Black,793
+MERCEDES-BENZ,GLE 350,2017,Jeep,Petrol,3.5,95541 km,6.0,Automatic,Rear,Left wheel,Black,794
+HYUNDAI,Sonata,2014,Sedan,LPG,2,374141 km,4.0,Automatic,Front,Left wheel,Silver,795
+TOYOTA,Camry,2017,Sedan,Petrol,2.5,72000 km,6.0,Tiptronic,Front,Left wheel,Black,796
+HYUNDAI,Veloster,2015,Sedan,Petrol,1.6 Turbo,59000 km,4.0,Tiptronic,Front,Left wheel,Silver,797
+LEXUS,IS 200,2016,Sedan,Petrol,2,58328 km,4.0,Automatic,Rear,Left wheel,White,798
+TOYOTA,CHR,2019,Jeep,Petrol,2,29541 km,4.0,Automatic,Front,Left wheel,Blue,799
+MITSUBISHI,Colt,2004,Hatchback,Petrol,1.2,180000 km,4.0,Variator,Front,Right-hand drive,Silver,800
+NISSAN,Note,2008,Hatchback,Petrol,1.5,170000 km,4.0,Automatic,Front,Right-hand drive,Black,801
+NISSAN,Skyline,2003,Sedan,CNG,2.5,197000 km,6.0,Tiptronic,Rear,Right-hand drive,Silver,802
+BMW,X5,2006,Jeep,Diesel,3.0 Turbo,235000 km,6.0,Tiptronic,4x4,Left wheel,Black,803
+CHEVROLET,Aveo,2017,Sedan,Petrol,1.6,67122 km,,Automatic,Front,Left wheel,Black,804
+SSANGYONG,Actyon,2016,Jeep,,1.6,23767 km,4.0,Automatic,Front,Left wheel,Black,805
+CHEVROLET,Volt,2014,Hatchback,Hybrid,1.4,192122 km,4.0,Automatic,Front,Left wheel,White,806
+HONDA,Civic,2018,Sedan,Petrol,2,17741 km,4.0,Automatic,Front,Left wheel,Black,807
+FORD,Explorer,2011,Jeep,Petrol,3.5,129177 km,4.0,Automatic,Front,Left wheel,White,808
+TOYOTA,RAV 4,2016,Jeep,Petrol,2.5,95762 km,4.0,Automatic,4x4,Left wheel,Black,809
+FORD,Mustang,2012,Coupe,Petrol,3.7,92000 km,6.0,Manual,Rear,Left wheel,Blue,810
+HYUNDAI,Sonata,2018,Sedan,Petrol,2,75938 km,4.0,Automatic,Front,Left wheel,White,811
+TOYOTA,Prius,2011,Sedan,Hybrid,2.4,104000 km,4.0,Tiptronic,Front,Left wheel,Black,812
+TOYOTA,Camry,2013,Sedan,Hybrid,2.5,131400 km,4.0,Automatic,Front,Left wheel,Blue,813
+FORD,Explorer,2013,Jeep,Petrol,3.5,46616 km,4.0,Automatic,Front,Left wheel,White,814
+BMW,535,2011,Sedan,Petrol,3.5 Turbo,200000 km,6.0,Tiptronic,Rear,Left wheel,White,815
+HYUNDAI,Tucson,2019,Jeep,Diesel,2,66500 km,4.0,Automatic,Front,Left wheel,Grey,816
+NISSAN,Note,2013,Hatchback,Petrol,1.2,58000 km,3.0,Automatic,Front,Right-hand drive,Carnelian red,817
+MERCEDES-BENZ,C 250,2013,Sedan,Petrol,1.8 Turbo,125000 km,4.0,Tiptronic,Rear,Left wheel,Black,818
+LEXUS,LS 460,2009,Sedan,Petrol,4.6,132022 km,4.0,Automatic,Front,Left wheel,Silver,819
+FORD,Transit Connect,2009,Goods wagon,Diesel,1.8 Turbo,215000 km,4.0,Manual,Front,Left wheel,Orange,820
+LEXUS,RX 350,2012,Jeep,Petrol,3.5,62000 km,6.0,Tiptronic,Front,Left wheel,Black,821
+HONDA,FIT,2006,Sedan,Petrol,1.3,280900 km,4.0,Tiptronic,Front,Right-hand drive,Black,822
+HYUNDAI,Genesis,2009,Coupe,Petrol,2,137851 km,4.0,Automatic,Front,Left wheel,Black,823
+TOYOTA,CHR,2018,Jeep,Petrol,1.8,12987 km,5.0,Tiptronic,Front,Left wheel,Blue,824
+VOLKSWAGEN,Jetta,2015,Sedan,Petrol,1.4 Turbo,70000 km,4.0,Tiptronic,Front,Left wheel,Black,825
+NISSAN,Skyline,2007,Sedan,Petrol,2.5,1200 km,6.0,Tiptronic,4x4,Right-hand drive,Silver,826
+FORD,Fiesta,2014,Sedan,Petrol,1.6 Turbo,152000 km,4.0,Manual,Front,Left wheel,Black,827
+CHEVROLET,Captiva,2016,Jeep,Diesel,2,149361 km,4.0,Automatic,Front,Left wheel,Silver,828
+SSANGYONG,REXTON,2011,Jeep,Diesel,2,190000 km,4.0,Automatic,Front,Left wheel,Black,829
+HYUNDAI,H1,2010,Universal,Diesel,2.5,213696 km,4.0,Automatic,Front,Left wheel,Grey,830
+HYUNDAI,Elantra,2012,Sedan,Petrol,1.6,134000 km,4.0,Automatic,Front,Left wheel,White,831
+HONDA,FIT,2013,Hatchback,Petrol,1.5,113000 km,4.0,Automatic,Front,Left wheel,White,832
+FORD,Tourneo Connect,2012,Goods wagon,Diesel,1.8 Turbo,145000 km,4.0,Manual,Front,Left wheel,White,833
+HYUNDAI,Sonata,2016,Sedan,Petrol,2.4,0 km,4.0,Automatic,Front,Left wheel,Beige,834
+OPEL,Combo,2001,Goods wagon,Diesel,1.7 Turbo,242701 km,16.0,Manual,Front,Left wheel,Blue,835
+FORD,Transit,2005,Microbus,Diesel,2.9 Turbo,231000 km,4.0,Manual,Rear,Left wheel,White,836
+LEXUS,RX 350,2011,Jeep,Petrol,3.5,253174 km,6.0,Automatic,4x4,Left wheel,Silver,837
+HYUNDAI,Elantra,2012,Sedan,Petrol,1.6,79911 km,4.0,Automatic,Front,Left wheel,Grey,838
+MERCEDES-BENZ,ML 350,2011,Jeep,Petrol,3.5,186542 km,6.0,Automatic,4x4,Left wheel,White,839
+TOYOTA,Vitz,2006,Hatchback,Petrol,1.3,111000 km,4.0,Automatic,Front,Right-hand drive,Blue,840
+OPEL,Astra,2001,Sedan,Diesel,2.0 Turbo,40000 km,4.0,Manual,Front,Left wheel,White,841
+TOYOTA,Camry,2015,Sedan,Hybrid,2.5,123198 km,4.0,Tiptronic,Front,Left wheel,Blue,842
+TOYOTA,Tundra,2019,Pickup,Petrol,5.7,34059 km,8.0,Automatic,Rear,Left wheel,Silver,843
+HYUNDAI,Elantra,2011,Sedan,Petrol,1.6,94910 km,4.0,Automatic,Front,Left wheel,Silver,844
+VOLKSWAGEN,Jetta,2013,Sedan,Petrol,2,94400 km,4.0,Tiptronic,Front,Left wheel,Black,845
+INFINITI,FX45,2004,Jeep,Petrol,4.5,300000 km,6.0,Tiptronic,Rear,Left wheel,Grey,846
+TOYOTA,Prius,2012,Sedan,Plug-in Hybrid,1.8,187000 km,4.0,Automatic,Front,Left wheel,White,847
+TOYOTA,Camry,2013,Sedan,Petrol,2.5,47000 km,4.0,Automatic,Front,Left wheel,White,848
+BMW,328,1997,Coupe,Petrol,2.8,180000 km,6.0,Manual,Rear,Left wheel,Black,849
+HONDA,FIT,2004,Hatchback,Petrol,1.3,175000 km,4.0,Variator,Front,Right-hand drive,Silver,850
+AUDI,Q5,2017,Jeep,Petrol,2,0 km,4.0,Automatic,4x4,Left wheel,White,851
+HYUNDAI,Sonata,2015,Sedan,LPG,2,53341 km,4.0,Automatic,Front,Left wheel,Silver,852
+OPEL,Vectra b,1997,Sedan,CNG,1.6,0 km,4.0,Manual,Front,Left wheel,Green,853
+HYUNDAI,Sonata,2017,Sedan,LPG,2,269689 km,4.0,Automatic,Front,Left wheel,Orange,854
+LEXUS,RX 450 H,2010,Jeep,Hybrid,3.5,180800 km,8.0,Automatic,Front,Left wheel,Silver,855
+BMW,318,1998,Sedan,Petrol,1.9,1000 km,4.0,Manual,Rear,Left wheel,Black,856
+OPEL,Astra,1999,Goods wagon,Petrol,1.6,1650 km,4.0,Manual,Front,Left wheel,Red,857
+HYUNDAI,Santa FE,2017,Jeep,Diesel,2,88000 km,4.0,Automatic,Front,Left wheel,Grey,858
+TOYOTA,RAV 4,2013,Jeep,Petrol,2.5,83200 km,4.0,Automatic,4x4,Left wheel,Silver,859
+MITSUBISHI,Outlander SE,2017,Jeep,Petrol,2,41681 km,4.0,Automatic,Front,Left wheel,Blue,860
+HYUNDAI,Sonata,2013,Sedan,Petrol,2,126655 km,4.0,Automatic,Front,Left wheel,Grey,861
+HYUNDAI,Santa FE,2016,Jeep,Diesel,2,126465 km,4.0,Automatic,Front,Left wheel,Grey,862
+CHEVROLET,Captiva,2014,Jeep,Diesel,2.2,93576 km,4.0,Automatic,Front,Left wheel,Silver,863
+FORD,Fusion,2015,Sedan,Petrol,2.5,150091 km,4.0,Automatic,Front,Left wheel,Silver,864
+FORD,Transit,1999,Microbus,Diesel,2.5,11600 km,4.0,Manual,Rear,Left wheel,White,865
+BMW,750,2005,Sedan,Petrol,5,177000 km,8.0,Tiptronic,Rear,Left wheel,Black,866
+HYUNDAI,Tucson,2011,Jeep,Diesel,2,40973 km,4.0,Automatic,Front,Left wheel,White,867
+SSANGYONG,Actyon,2016,Jeep,Petrol,1.6,18498 km,4.0,Automatic,Front,Left wheel,Blue,868
+VOLKSWAGEN,Golf 3,1996,Goods wagon,Diesel,1.7 Turbo,0 km,4.0,Manual,Front,Left wheel,White,869
+SUZUKI,Swift,2011,Hatchback,Petrol,1.2,98000 km,4.0,Automatic,Front,Right-hand drive,Black,870
+KIA,Cerato,2013,Sedan,Petrol,1.6,116644 km,4.0,Automatic,Front,Left wheel,Silver,871
+TOYOTA,Belta,2007,Sedan,Petrol,1.3,145000 km,4.0,Automatic,Front,Left wheel,Silver,872
+BMW,3.25E+48,2003,Sedan,Petrol,2.5,182000 km,6.0,Tiptronic,Rear,Left wheel,Grey,873
+HYUNDAI,Elantra,2010,Sedan,Petrol,1.6,124900 km,4.0,Automatic,Front,Left wheel,Black,874
+TOYOTA,Aqua sport,2012,Hatchback,Hybrid,1.5,134000 km,4.0,Automatic,Front,Right-hand drive,Silver,875
+FORD,Edge,2012,Jeep,Petrol,3.5,115485 km,6.0,Automatic,Front,Left wheel,Blue,876
+HYUNDAI,Santa FE,2014,Jeep,Petrol,2.4,127200 km,4.0,Automatic,4x4,Left wheel,Black,877
+VAZ,2111,1980,Sedan,Petrol,1.1,0 km,4.0,Manual,Rear,Left wheel,White,878
+FORD,Fiesta,2014,Sedan,Petrol,1.6,113000 km,4.0,Tiptronic,Front,Left wheel,Black,879
+HYUNDAI,Elantra,2012,Sedan,Petrol,1.8,130000 km,4.0,Automatic,Front,Left wheel,Black,880
+TOYOTA,Aqua,2012,Hatchback,Hybrid,1.5,121430 km,4.0,Automatic,Front,Left wheel,Black,881
+CHEVROLET,Cruze,2012,Sedan,Petrol,1.4,148000 km,4.0,Tiptronic,Front,Left wheel,Grey,882
+CHEVROLET,Captiva,2009,Jeep,Diesel,2,72538 km,4.0,Automatic,Front,Left wheel,Black,883
+HYUNDAI,Elantra,2013,Sedan,Petrol,1.8,89000 km,4.0,Tiptronic,Front,Left wheel,Silver,884
+CHEVROLET,Aveo,2014,Hatchback,Petrol,1.4,35830 km,4.0,Automatic,Front,Left wheel,Orange,885
+NISSAN,Tiida,2006,Hatchback,Petrol,1.8,1810 km,4.0,Variator,Front,Right-hand drive,Black,886
+MERCEDES-BENZ,A 140,2004,Hatchback,Petrol,1.4,167000 km,4.0,Automatic,Front,Left wheel,Sky blue,887
+HYUNDAI,Elantra,2012,Sedan,Petrol,1.6,70196 km,4.0,Automatic,Front,Left wheel,Silver,888
+SSANGYONG,Actyon,2010,Sedan,Diesel,2,201935 km,4.0,Automatic,Front,Left wheel,White,889
+TOYOTA,Aqua,2012,Hatchback,Petrol,1.5,116453 km,4.0,Automatic,Front,Left wheel,Yellow,890
+HYUNDAI,Sonata,2016,Sedan,LPG,2,256355 km,4.0,Automatic,Front,Left wheel,Silver,891
+HYUNDAI,Elantra,2010,Sedan,Petrol,1.6,138425 km,4.0,Automatic,Front,Left wheel,White,892
+HYUNDAI,Santa FE,2016,Jeep,Diesel,2,153000 km,4.0,Automatic,Front,Left wheel,Black,893
+KIA,Optima,2013,Sedan,Petrol,2.0 Turbo,74000 km,4.0,Tiptronic,Front,Left wheel,White,894
+MERCEDES-BENZ,C 230,2002,Coupe,Petrol,2.3,157000 km,4.0,Tiptronic,Rear,Left wheel,Silver,895
+TOYOTA,Camry,2009,Sedan,Hybrid,2.4,127000 km,4.0,Automatic,Front,Left wheel,Silver,896
+HYUNDAI,Sonata,2013,Sedan,Petrol,2.4,56000 km,4.0,Tiptronic,Front,Left wheel,Grey,897
+HYUNDAI,Sonata,2014,Sedan,LPG,2,346470 km,4.0,Automatic,Front,Left wheel,Silver,898
+HYUNDAI,H1,2017,Universal,Diesel,2.5,100856 km,4.0,Automatic,Front,Left wheel,Silver,899
+HONDA,Civic,1997,Hatchback,Petrol,1.4,0 km,4.0,Manual,Front,Left wheel,Blue,900
+BMW,325,2004,Coupe,Petrol,2.5,142000 km,6.0,Manual,Rear,Left wheel,Black,901
+SSANGYONG,Korando,2011,Jeep,Diesel,2,99895 km,4.0,Automatic,Front,Left wheel,Silver,902
+TOYOTA,Camry,2017,Sedan,Petrol,2.5,127955 km,4.0,Automatic,Front,Left wheel,Blue,903
+HYUNDAI,Elantra,2010,Sedan,Petrol,1.6,180093 km,4.0,Automatic,Front,Left wheel,Black,904
+HONDA,FIT,2013,Hatchback,Petrol,1.5,20100 km,4.0,Automatic,Front,Left wheel,Blue,905
+HYUNDAI,H1,2017,Universal,Diesel,2.5,39071 km,4.0,Automatic,Front,Left wheel,Silver,906
+CHEVROLET,Cruze,2014,Sedan,Petrol,1.4,83000 km,4.0,Automatic,Front,Left wheel,White,907
+CHEVROLET,Orlando,2016,Jeep,Diesel,1.6,118365 km,4.0,Automatic,Front,Left wheel,White,908
+FORD,Transit,2004,Microbus,Diesel,2,180000 km,4.0,Manual,Rear,Left wheel,Silver,909
+MERCEDES-BENZ,Sprinter,2011,Microbus,Diesel,2.5 Turbo,1000 km,4.0,Manual,Rear,Left wheel,White,910
+HYUNDAI,H1,2016,Minivan,Diesel,2.5,109629 km,4.0,Automatic,Front,Left wheel,Silver,911
+KIA,Sorento,2013,Jeep,Petrol,2.4,208077 km,4.0,Automatic,Front,Left wheel,Silver,912
+HYUNDAI,Elantra,2013,Sedan,Petrol,1.8,160000 km,4.0,Tiptronic,Front,Left wheel,Silver,913
+MERCEDES-BENZ,C 180,1995,Sedan,CNG,1.8,0 km,4.0,Manual,Rear,Left wheel,Purple,914
+TOYOTA,Aqua,2014,Hatchback,Petrol,1.5,116350 km,4.0,Automatic,Front,Left wheel,White,915
+SSANGYONG,REXTON,2014,Jeep,Diesel,2,52576 km,4.0,Automatic,Front,Left wheel,Black,916
+BMW,335,2010,Sedan,Petrol,3.5 Turbo,94000 km,6.0,Tiptronic,Rear,Left wheel,White,917
+BMW,X5,2011,Jeep,Petrol,3.0 Turbo,145000 km,6.0,Tiptronic,4x4,Left wheel,Black,918
+SSANGYONG,REXTON,2013,Jeep,Diesel,2,153641 km,4.0,Automatic,Front,Left wheel,Silver,919
+TOYOTA,Camry,2012,Sedan,Petrol,2.5,277906 km,4.0,Automatic,Front,Left wheel,Grey,920
+FORD,Escape,2013,Jeep,Petrol,2,131272 km,4.0,Automatic,Front,Left wheel,Blue,921
+TOYOTA,Aqua,2013,Hatchback,Hybrid,1.5,69500 km,4.0,Automatic,Front,Left wheel,Silver,922
+BMW,328,2011,Sedan,Petrol,3,56990 km,4.0,Automatic,Rear,Left wheel,Grey,923
+HYUNDAI,H1,2015,Minivan,Diesel,2.5,52351 km,4.0,Automatic,Front,Left wheel,Yellow,924
+FORD,Fusion,2018,Jeep,Hybrid,2,53013 km,4.0,Automatic,Front,Left wheel,Grey,925
+HYUNDAI,Santa FE,2016,Jeep,Diesel,2,119240 km,4.0,Automatic,Front,Left wheel,Blue,926
+HONDA,Civic,2004,Sedan,CNG,1.7,135000 km,4.0,Variator,Front,Right-hand drive,White,927
+MITSUBISHI,L 200,2008,Pickup,Diesel,2.5,175977 km,1.0,Manual,4x4,Left wheel,Silver,928
+LEXUS,ES 300,2014,Sedan,Hybrid,2.5,113002 km,4.0,Automatic,Front,Left wheel,Black,929
+TOYOTA,Vitz,2012,Hatchback,Petrol,1.3,92000 km,4.0,Variator,4x4,Right-hand drive,White,930
+HONDA,FIT,2011,Hatchback,Petrol,1.3,50000 km,4.0,Automatic,Front,Right-hand drive,Silver,931
+MERCEDES-BENZ,Vito,2002,Minivan,Diesel,2.2 Turbo,280000 km,4.0,Tiptronic,Front,Left wheel,Black,932
+SUBARU,Forester,2011,Jeep,Petrol,2.5,118500 km,4.0,Tiptronic,4x4,Left wheel,Grey,933
+HYUNDAI,Elantra,2011,Jeep,Petrol,1.8,308501 km,4.0,Automatic,Front,Left wheel,Blue,934
+CHEVROLET,Orlando,2012,Jeep,Diesel,2,160000 km,4.0,Automatic,Front,Left wheel,Grey,935
+HYUNDAI,Elantra,2015,Sedan,LPG,1.6,35607 km,4.0,Automatic,Front,Left wheel,White,936
+FIAT,500 sport panorama,2015,Coupe,Petrol,1.4,70000 km,4.0,Automatic,Front,Left wheel,Grey,937
+TOYOTA,Land Cruiser Prado,2018,Jeep,Petrol,2.7,177000 km,4.0,Automatic,4x4,Left wheel,Black,938
+HYUNDAI,Veloster,2016,Hatchback,Petrol,1.6 Turbo,31000 km,4.0,Tiptronic,Front,Left wheel,Silver,939
+VOLKSWAGEN,Jetta,2007,Sedan,Petrol,2.5,198245 km,5.0,Automatic,Front,Left wheel,Black,940
+CHEVROLET,Volt,2014,Sedan,Plug-in Hybrid,1.4,121000 km,4.0,Tiptronic,Front,Left wheel,White,941
+HYUNDAI,Sonata hybrid,2012,Sedan,Hybrid,2.4,157000 km,4.0,Tiptronic,Front,Left wheel,Grey,942
+HYUNDAI,Elantra,2015,Sedan,Petrol,1.8,75000 km,4.0,Automatic,Front,Left wheel,Red,943
+SSANGYONG,Actyon,2016,Jeep,Petrol,1.6,64071 km,4.0,Automatic,Front,Left wheel,Blue,944
+HYUNDAI,H1,2009,Minivan,Diesel,2.5 Turbo,150000 km,6.0,Automatic,Rear,Left wheel,Silver,945
+JEEP,Liberty,2002,Jeep,,3.7,208000 km,6.0,Automatic,4x4,Left wheel,Silver,946
+CHEVROLET,Orlando,2015,Jeep,LPG,2,33333 km,4.0,Automatic,Front,Left wheel,Grey,947
+FORD,Focus,2013,Sedan,Petrol,2,1000 km,4.0,Tiptronic,Front,Left wheel,White,948
+LEXUS,RX 300,2000,Jeep,CNG,3,145000 km,6.0,Automatic,4x4,Left wheel,Silver,949
+VOLKSWAGEN,Tiguan,2013,Jeep,Petrol,2.0 Turbo,95000 km,4.0,Tiptronic,Front,Left wheel,Silver,950
+TOYOTA,Aqua,2012,Hatchback,Hybrid,1.5,65000 km,4.0,Variator,Front,Right-hand drive,Grey,951
+SSANGYONG,REXTON,2007,Jeep,Diesel,2.7,76364 km,4.0,Automatic,Front,Left wheel,Black,952
+HYUNDAI,H1,2014,Minivan,Diesel,2.5,196654 km,4.0,Automatic,Front,Left wheel,White,953
+OPEL,Astra,1998,Sedan,Petrol,1.6,30000 km,4.0,Manual,Front,Left wheel,Carnelian red,954
+MERCEDES-BENZ,GLE 350,2017,Jeep,Petrol,3.5,59331 km,6.0,Automatic,Rear,Left wheel,Black,955
+CHEVROLET,Captiva,2007,Jeep,Diesel,2,75152 km,4.0,Automatic,Front,Left wheel,Black,956
+TOYOTA,Prius,2010,Sedan,Hybrid,1.8,153150 km,4.0,Automatic,Front,Left wheel,Silver,957
+HONDA,Insight,2013,Hatchback,Hybrid,1.3,138000 km,4.0,Variator,Front,Right-hand drive,Silver,958
+HONDA,FIT,2008,Sedan,Petrol,1.5,156000 km,4.0,Automatic,Front,Left wheel,White,959
+OPEL,Combo,2007,Goods wagon,Petrol,1.4,260000 km,4.0,Manual,Front,Left wheel,White,960
+TOYOTA,Camry SE,2015,Sedan,Petrol,2.5,47128 km,4.0,Automatic,Front,Left wheel,Black,961
+HYUNDAI,H1,2014,Minivan,Diesel,2.5,173490 km,4.0,Automatic,Front,Left wheel,Black,962
+HYUNDAI,Santa FE,2013,Jeep,Diesel,2,149038 km,4.0,Automatic,Front,Left wheel,White,963
+TOYOTA,RAV 4,2012,Jeep,Petrol,2.5,98000 km,4.0,Tiptronic,Front,Left wheel,Black,964
+HYUNDAI,H1,2016,Universal,Diesel,2.5,203073 km,4.0,Automatic,Front,Left wheel,Grey,965
+HYUNDAI,H1,2012,Minivan,Diesel,2.5,75437 km,4.0,Automatic,Front,Left wheel,Grey,966
+MERCEDES-BENZ,C 180,1998,Sedan,Petrol,1.8,0 km,4.0,Automatic,Rear,Left wheel,Black,967
+HONDA,Cr-v,2014,Jeep,Petrol,2.4,49000 km,4.0,Automatic,4x4,Left wheel,Silver,968
+HONDA,Hr-v EX,2015,Jeep,Petrol,1.8,33330 km,4.0,Automatic,4x4,Left wheel,Grey,969
+SSANGYONG,REXTON,2013,Jeep,Diesel,2,166016 km,4.0,Automatic,Front,Left wheel,Grey,970
+FORD,Transit,2000,Microbus,Diesel,2.4 Turbo,250000 km,4.0,Manual,Rear,Left wheel,White,971
+HYUNDAI,Santa FE,2016,Jeep,Diesel,2,120337 km,4.0,Automatic,Front,Left wheel,Black,972
+NISSAN,Frontier,2017,Sedan,Petrol,2.5,33899 km,4.0,Automatic,Rear,Left wheel,Grey,973
+OPEL,Vectra,1995,Sedan,Petrol,1.8,0 km,4.0,Automatic,Front,Left wheel,Green,974
+BMW,528,2013,Sedan,Petrol,2.0 Turbo,110909 km,4.0,Automatic,4x4,Left wheel,White,975
+AUDI,A7,2014,Hatchback,Petrol,3,401128 km,6.0,Automatic,4x4,Left wheel,Grey,976
+HONDA,FIT,2013,Hatchback,Hybrid,1.3,117058 km,4.0,Automatic,Front,Left wheel,Black,977
+MERCEDES-BENZ,GLE 43 AMG,2017,Coupe,Petrol,3.0 Turbo,14914 km,6.0,Automatic,4x4,Left wheel,White,978
+HYUNDAI,Genesis,2009,Coupe,Petrol,2,79482 km,4.0,Automatic,Front,Left wheel,Black,979
+MITSUBISHI,Colt,2010,Sedan,Petrol,1.3,89617 km,4.0,Variator,Front,Right-hand drive,Beige,980
+HYUNDAI,Elantra,2018,Sedan,Petrol,2,30333 km,4.0,Automatic,Front,Left wheel,Grey,981
+DODGE,Caliber,2009,Hatchback,Petrol,2,256000 km,4.0,Variator,Front,Left wheel,Silver,982
+HYUNDAI,Sonata,2016,Sedan,LPG,2,596900 km,4.0,Automatic,Front,Left wheel,Orange,983
+HYUNDAI,H1,2017,Universal,Diesel,2.5,171690 km,4.0,Automatic,Front,Left wheel,Silver,984
+BMW,528,2011,Sedan,Petrol,2.0 Turbo,200000 km,4.0,Tiptronic,4x4,Left wheel,Grey,985
+HONDA,FIT,2011,Hatchback,Hybrid,1.3,123000 km,4.0,Automatic,Front,Right-hand drive,Blue,986
+MITSUBISHI,Pajero IO,1998,Jeep,Petrol,1.8,250000 km,4.0,Automatic,4x4,Right-hand drive,Silver,987
+HYUNDAI,Tucson,2010,Jeep,Diesel,2,118514 km,4.0,Automatic,Front,Left wheel,Grey,988
+LEXUS,RX 400,2008,Jeep,Hybrid,3.3,209000 km,6.0,Variator,4x4,Left wheel,Black,989
+FORD,Taurus,2014,Sedan,LPG,3.8,338000 km,6.0,Automatic,4x4,Left wheel,Grey,990
+HYUNDAI,Santa FE,2016,Jeep,Diesel,2,134413 km,4.0,Automatic,Front,Left wheel,Silver,991
+CHEVROLET,Cruze,2010,Sedan,Petrol,1.6,47829 km,4.0,Automatic,Front,Left wheel,Black,992
+SUBARU,Forester,2005,Jeep,Petrol,2,2147483647 km,4.0,Tiptronic,4x4,Right-hand drive,White,993
+AUDI,A4,2011,Sedan,Petrol,2.0 Turbo,190000 km,4.0,Tiptronic,4x4,Left wheel,Grey,994
+HYUNDAI,Tucson,2006,Jeep,Petrol,2.7,160000 km,6.0,Tiptronic,4x4,Left wheel,Black,995
+MITSUBISHI,ColtPlus,2007,Hatchback,Petrol,1.5,180000 km,4.0,Automatic,Front,Right-hand drive,Silver,996
+MERCEDES-BENZ,E 220,2010,Sedan,Diesel,2.2 Turbo,1000 km,4.0,Tiptronic,Rear,Left wheel,Black,997
+SUZUKI,Grand Vitara,2002,Jeep,Petrol,2,336000 km,4.0,Automatic,Rear,Left wheel,Black,998
+HYUNDAI,Elantra,2013,Coupe,Petrol,1.8,89962 km,4.0,Automatic,Front,Left wheel,Blue,999
+ROVER,216,1997,Sedan,Petrol,1.6,162000 km,4.0,Manual,Front,Left wheel,Carnelian red,1000
+MERCEDES-BENZ,C 300,2010,Sedan,Petrol,3,12200 km,6.0,Tiptronic,Rear,Left wheel,White,1001
+HYUNDAI,Elantra,2011,Sedan,Petrol,1.6,141881 km,4.0,Automatic,Front,Left wheel,White,1002
+KIA,Optima,2013,Sedan,Petrol,2,0 km,4.0,Tiptronic,Front,Left wheel,Black,1003
+HYUNDAI,Santa FE,2018,Jeep,Diesel,2,17245 km,4.0,Automatic,Front,Left wheel,White,1004
+TOYOTA,Camry,2014,Sedan,Petrol,2.5,147845 km,4.0,Automatic,Front,Left wheel,Grey,1005
+MERCEDES-BENZ,GL 450,2009,Jeep,Petrol,4.4,160000 km,6.0,Automatic,4x4,Left wheel,Black,1006
+CHEVROLET,Malibu,2012,Sedan,Petrol,2.4,146367 km,4.0,Automatic,Front,Left wheel,Grey,1007
+HYUNDAI,Elantra,2016,Sedan,Petrol,2,54590 km,4.0,Manual,Front,Left wheel,Black,1008
+HYUNDAI,Sonata,2015,Sedan,LPG,2,290431 km,4.0,Automatic,Front,Left wheel,Silver,1009
+MERCEDES-BENZ,E 350,2007,Sedan,Petrol,3.5,150000 km,6.0,Tiptronic,Rear,Left wheel,Black,1010
+FORD,Transit,1998,Microbus,Diesel,2.5,325812 km,4.0,Manual,Front,Left wheel,White,1011
+HYUNDAI,Genesis,2010,Coupe,Petrol,2,81384 km,4.0,Automatic,Front,Left wheel,White,1012
+HONDA,Elysion 3.0,2004,Minivan,Petrol,3,219000 km,6.0,Automatic,Front,Right-hand drive,Black,1013
+FORD,Fusion,2011,Sedan,Petrol,2.5,109729 km,4.0,Automatic,Front,Left wheel,Silver,1014
+MERCEDES-BENZ,ML 350,2011,Jeep,Diesel,3,0 km,6.0,Automatic,4x4,Left wheel,Black,1015
+FORD,Transit,1996,Microbus,Diesel,2.5,123000 km,4.0,Manual,Rear,Left wheel,White,1016
+HYUNDAI,Sonata,2015,Sedan,LPG,2,603446 km,4.0,Automatic,Front,Left wheel,Orange,1017
+FORD,Escape,2009,Jeep,Petrol,3,154000 km,6.0,Automatic,4x4,Left wheel,Black,1018
+HONDA,Civic,1997,Coupe,Petrol,1.4,200000 km,4.0,Manual,Front,Left wheel,Red,1019
+TOYOTA,Camry,2014,Sedan,Petrol,2.5,74000 km,4.0,Tiptronic,Front,Left wheel,Grey,1020
+HYUNDAI,Sonata,2015,Sedan,LPG,2,314523 km,4.0,Automatic,Front,Left wheel,Silver,1021
+LEXUS,RC F,2015,Coupe,Petrol,3.5,86000 km,,Tiptronic,4x4,Left wheel,Grey,1022
+HYUNDAI,Genesis,2010,Coupe,Petrol,2,170000 km,4.0,Automatic,Front,Left wheel,Black,1023
+FORD,F150,2019,Sedan,Petrol,5,7224 km,8.0,Automatic,Front,Left wheel,Black,1024
+HYUNDAI,Tucson,2011,Jeep,Diesel,2,140477 km,4.0,Automatic,Front,Left wheel,White,1025
+MERCEDES-BENZ,E 270,2003,Sedan,Diesel,2.7,245000 km,6.0,Automatic,Rear,Left wheel,Silver,1026
+HONDA,Fred,2012,Minivan,,1.5,90000 km,4.0,Automatic,Front,Right-hand drive,Silver,1027
+OPEL,Combo 1700,2006,Goods wagon,Diesel,1.7 Turbo,250000 km,4.0,Manual,Front,Left wheel,Silver,1028
+TOYOTA,Prius C,2012,Universal,Hybrid,1.5,104643 km,4.0,Automatic,Front,Left wheel,Grey,1029
+MAZDA,Verisa,2007,Hatchback,Petrol,1.5,141000 km,4.0,Automatic,Front,Right-hand drive,Blue,1030
+KIA,Optima,2013,Sedan,Petrol,2,53217 km,4.0,Automatic,Front,Left wheel,Silver,1031
+TOYOTA,Aqua,2012,Sedan,Hybrid,1.5,134000 km,4.0,Variator,Front,Right-hand drive,Blue,1032
+BMW,X5,2013,Jeep,Diesel,3,88829 km,6.0,Automatic,4x4,Left wheel,Black,1033
+HYUNDAI,Sonata,2019,Sedan,Hybrid,2,17768 km,4.0,Automatic,Front,Left wheel,White,1034
+MERCEDES-BENZ,GL 350 BLUTEC,2010,Jeep,Diesel,3,130000 km,6.0,Tiptronic,4x4,Left wheel,Black,1035
+HYUNDAI,H1,2010,Minivan,Diesel,2.5,45780 km,4.0,Automatic,Front,Left wheel,Black,1036
+FORD,Explorer,2016,Minivan,Petrol,3.5,97000 km,4.0,Automatic,Front,Left wheel,Grey,1037
+SSANGYONG,REXTON,2015,Jeep,Diesel,,59077 km,4.0,Automatic,Front,Left wheel,Black,1038
+BMW,535 M PAKET,2012,Sedan,Petrol,3,58450 km,6.0,Tiptronic,Rear,Left wheel,Grey,1039
+CHEVROLET,Volt,2014,Sedan,Plug-in Hybrid,1.4,93000 km,4.0,Automatic,Front,Left wheel,White,1040
+FORD,Fusion,2012,Sedan,Hybrid,2,272000 km,4.0,Variator,Front,Left wheel,White,1041
+GMC,Acadia,2007,Sedan,Petrol,5.3,640171 km,8.0,Automatic,Front,Left wheel,Black,1042
+MINI,Countryman,2014,Jeep,Petrol,1.6 Turbo,51700 km,4.0,Tiptronic,Front,Left wheel,Red,1043
+TOYOTA,Corolla,2019,Sedan,Petrol,1.8,6032 km,4.0,Automatic,Front,Left wheel,Blue,1044
+HYUNDAI,Santa FE,2016,Jeep,Diesel,2,122184 km,4.0,Automatic,Front,Left wheel,Black,1045
+FORD,Fiesta,2010,Hatchback,Petrol,1.6,153600 km,4.0,Automatic,Front,Left wheel,Carnelian red,1046
+FORD,Transit,2002,Goods wagon,Diesel,2.0 Turbo,135000 km,4.0,Manual,Front,Left wheel,White,1047
+AUDI,A6 QUATTRO,2011,Sedan,Petrol,2.8,79000 km,6.0,Tiptronic,4x4,Left wheel,Black,1048
+SUBARU,BRZ,2015,Coupe,Petrol,2,59731 km,4.0,Automatic,Rear,Left wheel,Grey,1049
+AUDI,Q7,2010,Jeep,Diesel,4.2 Turbo,178000 km,8.0,Tiptronic,4x4,Left wheel,Black,1050
+FIAT,500,2016,Coupe,Petrol,1.6,43000 km,4.0,Automatic,Front,Left wheel,Black,1051
+HYUNDAI,Elantra,2014,Sedan,Petrol,1.8,114000 km,4.0,Tiptronic,Front,Left wheel,Carnelian red,1052
+HONDA,Insight,2009,Sedan,Hybrid,1.3,156000 km,4.0,Variator,Front,Left wheel,Black,1053
+BMW,X4,2015,Jeep,Petrol,2,96360 km,4.0,Automatic,4x4,Left wheel,White,1054
+HYUNDAI,Elantra,2011,Sedan,Hybrid,1.6,60000 km,4.0,Variator,Front,Left wheel,White,1055
+TOYOTA,RAV 4,2012,Jeep,Petrol,2.5,159901 km,4.0,Automatic,Front,Left wheel,Brown,1056
+CHEVROLET,Cruze,2012,Sedan,Petrol,1.8,163063 km,4.0,Automatic,Front,Left wheel,White,1057
+TOYOTA,Aqua,2012,Sedan,Hybrid,1.5,147431 km,3.0,Tiptronic,Front,Right-hand drive,White,1058
+TOYOTA,Prius,2013,Sedan,Hybrid,1.8,199373 km,,Automatic,Front,Left wheel,Silver,1059
+MERCEDES-BENZ,C 250,2013,Sedan,Petrol,1.8 Turbo,95000 km,4.0,Automatic,Rear,Left wheel,White,1060
+HYUNDAI,Sonata,2012,Sedan,LPG,2,71318 km,4.0,Automatic,Front,Left wheel,White,1061
+HYUNDAI,H1,2016,Minivan,Diesel,2.5,91804 km,4.0,Automatic,Front,Left wheel,Silver,1062
+MAZDA,Mazda 3,2011,Sedan,Petrol,2,142161 km,4.0,Tiptronic,Front,Left wheel,Grey,1063
+TOYOTA,RAV 4,2012,Jeep,Petrol,,159901 km,4.0,Automatic,Front,Left wheel,Brown,1064
+HYUNDAI,Sonata,2015,Sedan,LPG,2,309174 km,4.0,Automatic,Front,Left wheel,Silver,1065
+MERCEDES-BENZ,CLS 550,2012,Sedan,Petrol,4.7,114000 km,,Tiptronic,Rear,Left wheel,Black,1066
+HYUNDAI,H1,2014,Minivan,Diesel,2.5,126970 km,4.0,Automatic,Front,Left wheel,Silver,1067
+TOYOTA,Highlander,2008,Sedan,Hybrid,3.3,334414 km,6.0,Automatic,4x4,Left wheel,White,1068
+VOLKSWAGEN,CC,2008,Sedan,Petrol,2.0 Turbo,13522 km,4.0,Manual,Front,Left wheel,Silver,1069
+SSANGYONG,REXTON,2014,Jeep,Diesel,2,97700 km,4.0,Automatic,Front,Left wheel,Brown,1070
+LEXUS,ES 300,2014,Sedan,Hybrid,2.5,131000 km,4.0,Automatic,Front,Left wheel,Black,1071
+NISSAN,Fuga,2008,Sedan,Petrol,3.5,165000 km,6.0,Tiptronic,Rear,Right-hand drive,Green,1072
+LEXUS,IS 250,2014,Sedan,Petrol,2.5,87462 km,6.0,Automatic,Rear,Left wheel,Black,1073
+LEXUS,RX 450,2010,Jeep,Hybrid,3.5,167222 km,6.0,Automatic,4x4,Left wheel,Black,1074
+GAZ,21,1964,Sedan,Petrol,2.4,0 km,4.0,Manual,Rear,Left wheel,Sky blue,1075
+HYUNDAI,Sonata,2011,Sedan,Petrol,2,163374 km,4.0,Automatic,Front,Left wheel,Grey,1076
+OPEL,Astra,1996,Goods wagon,Petrol,1.6,0 km,4.0,Manual,Front,Left wheel,Blue,1077
+FORD,Transit Connect,2011,Goods wagon,Petrol,2,160000 km,4.0,Automatic,Front,Left wheel,Grey,1078
+DAEWOO,Lacetti,2011,Sedan,Petrol,1.6,160622 km,4.0,Automatic,Front,Left wheel,White,1079
+MERCEDES-BENZ,E 200,1999,Sedan,CNG,2,165000 km,4.0,Manual,Rear,Left wheel,White,1080
+LAND ROVER,Land Rover Sport,2006,Jeep,Petrol,4.4,195000 km,6.0,Tiptronic,4x4,Left wheel,Blue,1081
+MERCEDES-BENZ,Vito 115,2009,Minivan,Diesel,2.2 Turbo,151245 km,4.0,Tiptronic,Rear,Left wheel,Silver,1082
+TOYOTA,Yaris iA,2015,Sedan,Petrol,1.5,78400 km,4.0,Tiptronic,Front,Left wheel,Black,1083
+HONDA,FIT,2019,Hatchback,Petrol,1.5,1500 km,4.0,Automatic,Front,Left wheel,Yellow,1084
+MERCEDES-BENZ,ML 320,2000,Jeep,LPG,3.2,165500 km,6.0,Tiptronic,4x4,Left wheel,Black,1085
+SSANGYONG,Actyon,2018,Jeep,Petrol,1.6,52349 km,4.0,Automatic,Front,Left wheel,White,1086
+HYUNDAI,H1,2016,Universal,Diesel,2.5,121000 km,4.0,Automatic,Front,Left wheel,White,1087
+MERCEDES-BENZ,ML 350,2006,Jeep,Petrol,3.5,180000 km,6.0,Tiptronic,4x4,Left wheel,Black,1088
+VOLKSWAGEN,Jetta,2000,Sedan,Petrol,,0 km,6.0,Manual,Front,Left wheel,Black,1089
+TOYOTA,Ipsum S,2004,Minivan,LPG,2.4,177000 km,4.0,Automatic,Front,Right-hand drive,Silver,1090
+TOYOTA,Prius C,2014,Hatchback,Hybrid,1.5,63000 km,4.0,Variator,Front,Left wheel,Orange,1091
+TOYOTA,Camry,2018,Sedan,Hybrid,2.5,18200 km,4.0,Variator,Front,Left wheel,Black,1092
+BMW,528,2015,Sedan,Petrol,2,115750 km,4.0,Automatic,4x4,Left wheel,Silver,1093
+VOLVO,C70,2001,Coupe,Petrol,2.4 Turbo,205000 km,5.0,Manual,Front,Right-hand drive,Grey,1094
+FORD,Transit,2003,Microbus,Diesel,2.4 Turbo,13000 km,4.0,Manual,Rear,Left wheel,Black,1095
+TOYOTA,Aqua,2015,Hatchback,Hybrid,1.5,126000 km,4.0,Automatic,Front,Left wheel,Silver,1096
+TOYOTA,Prius,2012,Sedan,Hybrid,1.8,128000 km,4.0,Automatic,Front,Left wheel,Red,1097
+VOLKSWAGEN,Jetta,2014,Sedan,Diesel,2,168637 km,4.0,Automatic,Front,Left wheel,Brown,1098
+SUBARU,Forester cross sport,2004,Sedan,,2,138000 km,4.0,Automatic,4x4,Right-hand drive,Silver,1099
+HONDA,Crosstour,2010,Jeep,Petrol,3.5,176000 km,6.0,Automatic,4x4,Left wheel,Black,1100
+BMW,X5,2002,Jeep,Petrol,4.4,180000 km,8.0,Tiptronic,4x4,Left wheel,Black,1101
+HYUNDAI,H1,2014,Minivan,Diesel,2.5,164805 km,4.0,Automatic,Front,Left wheel,White,1102
+HYUNDAI,Tucson,2011,Jeep,Diesel,2,181149 km,4.0,Automatic,Front,Left wheel,Silver,1103
+DAEWOO,Lacetti,2010,Sedan,Diesel,2,164372 km,4.0,Automatic,Front,Left wheel,Grey,1104
+TOYOTA,Prius,2012,Sedan,Hybrid,1.8,430278 km,4.0,Automatic,Front,Left wheel,Black,1105
+AUDI,A7,2013,Hatchback,Petrol,3,301707 km,6.0,Automatic,4x4,Left wheel,Grey,1106
+LEXUS,LS 460,2017,Sedan,Petrol,4.6,15358 km,8.0,Automatic,Rear,Left wheel,Black,1107
+CHEVROLET,Malibu,2012,Sedan,Petrol,2,91654 km,4.0,Automatic,Front,Left wheel,Red,1108
+VOLKSWAGEN,Passat,2014,Sedan,Petrol,1.8 Turbo,144000 km,4.0,Tiptronic,Front,Left wheel,White,1109
+HYUNDAI,Santa FE,2010,Jeep,Diesel,2,229757 km,4.0,Automatic,Front,Left wheel,White,1110
+NISSAN,X-Terra,2005,Jeep,Petrol,4,118498 km,6.0,Automatic,4x4,Left wheel,Black,1111
+HYUNDAI,Genesis,2013,Coupe,Petrol,2,95605 km,4.0,Automatic,Front,Left wheel,Black,1112
+MERCEDES-BENZ,ML 320,1999,Jeep,LPG,3.2,184000 km,6.0,Automatic,4x4,Left wheel,Silver,1113
+HONDA,FIT,2012,Hatchback,Petrol,1.3,108000 km,4.0,Automatic,Front,Right-hand drive,Blue,1114
+FORD,Transit,1991,Microbus,Diesel,2.5,4911 km,4.0,Manual,Rear,Left wheel,Orange,1115
+LEXUS,GX 470,2010,Jeep,Petrol,,357246 km,8.0,Automatic,4x4,Left wheel,Grey,1116
+SSANGYONG,Korando,2013,Jeep,Diesel,2,85704 km,4.0,Automatic,Front,Left wheel,Silver,1117
+MERCEDES-BENZ,C 180,1999,Sedan,Petrol,1.8,214500 km,4.0,Manual,Rear,Left wheel,Black,1118
+HYUNDAI,Sonata,2015,Sedan,Petrol,2.4,114885 km,4.0,Automatic,Front,Left wheel,Black,1119
+HYUNDAI,Sonata,2012,Sedan,LPG,2,67017 km,4.0,Automatic,Front,Left wheel,Silver,1120
+BMW,528,1998,Sedan,Petrol,2.8,250130 km,6.0,Tiptronic,Rear,Left wheel,Blue,1121
+TOYOTA,Camry,2014,Sedan,Petrol,2.5,66000 km,4.0,Tiptronic,Front,Left wheel,Black,1122
+TOYOTA,RAV 4,2013,Jeep,Petrol,2.4,92800 km,4.0,Automatic,4x4,Left wheel,Brown,1123
+HYUNDAI,Veloster,2013,Hatchback,Petrol,1.6,105600 km,4.0,Tiptronic,Front,Left wheel,White,1124
+TOYOTA,RAV 4,1996,Jeep,Petrol,2,0 km,,Automatic,4x4,Right-hand drive,Blue,1125
+TOYOTA,Prius,2015,Hatchback,Hybrid,1.8,236898 km,4.0,Automatic,Front,Left wheel,White,1126
+HYUNDAI,Elantra,2009,Sedan,Petrol,1.6,186434 km,4.0,Automatic,Front,Left wheel,Silver,1127
+MERCEDES-BENZ,C 200 Kompressor,2000,Sedan,Petrol,2,199000 km,4.0,Automatic,Rear,Left wheel,Black,1128
+BMW,X5,2010,Jeep,Petrol,3,17000 km,6.0,Tiptronic,4x4,Left wheel,Black,1129
+HONDA,Elysion,2006,Minivan,Petrol,2.4,120500 km,4.0,Automatic,Front,Right-hand drive,White,1130
+FORD,Fusion,2011,Sedan,Hybrid,2.5,49669 km,4.0,Automatic,Front,Left wheel,Silver,1131
+LEXUS,CT 200h,2012,Hatchback,Hybrid,1.5,158000 km,4.0,Automatic,Front,Left wheel,White,1132
+HONDA,FIT,2002,Hatchback,Petrol,1.3,115500 km,4.0,Variator,Front,Right-hand drive,Blue,1133
+OPEL,Astra,2007,Sedan,Petrol,1.4,185000 km,4.0,Manual,Front,Left wheel,Black,1134
+TOYOTA,RAV 4,2015,Jeep,Petrol,,58285 km,4.0,Automatic,4x4,Left wheel,Blue,1135
+FORD,Mustang,2018,Sedan,Petrol,2.3,26642 km,4.0,Automatic,Rear,Left wheel,Red,1136
+TOYOTA,Prius C,2012,Hatchback,Hybrid,1.5,132462 km,4.0,Variator,Front,Left wheel,White,1137
+HONDA,Civic,2013,Sedan,Hybrid,1.5,144872 km,4.0,Automatic,Front,Left wheel,White,1138
+SSANGYONG,Korando,2012,Jeep,Diesel,2,114853 km,,Automatic,Front,Left wheel,Black,1139
+MITSUBISHI,Outlander,2015,Jeep,Petrol,2.4,64467 km,4.0,Automatic,4x4,Left wheel,White,1140
+HYUNDAI,Sonata,2013,Sedan,Petrol,2.4,130000 km,4.0,Tiptronic,Front,Left wheel,Black,1141
+VOLKSWAGEN,Golf 4,2000,Hatchback,Petrol,,195000 km,4.0,Manual,Front,Left wheel,Black,1142
+TOYOTA,Prius,2012,Hatchback,Plug-in Hybrid,1.8,134400 km,4.0,Variator,Front,Left wheel,Silver,1143
+HONDA,Accord,2016,Sedan,Petrol,2.4,90043 km,4.0,Automatic,Front,Left wheel,White,1144
+CHEVROLET,Volt,2014,Hatchback,,1.4,138491 km,4.0,Automatic,Front,Left wheel,Black,1145
+MITSUBISHI,Pajero IO,1999,Jeep,Petrol,1.8,225000 km,4.0,Automatic,4x4,Left wheel,Blue,1146
+OPEL,Vectra,1999,Goods wagon,Petrol,1.6,22000 km,4.0,Manual,Front,Left wheel,Silver,1147
+LEXUS,RX 400 RESTAILING,2008,Jeep,Hybrid,3.3,235200 km,6.0,Automatic,4x4,Left wheel,Silver,1148
+LINCOLN,MKZ,2014,Sedan,Petrol,2.0 Turbo,43000 km,4.0,Automatic,Front,Left wheel,Black,1149
+TOYOTA,RAV 4,2012,Jeep,,2.2 Turbo,285000 km,4.0,Manual,Front,Left wheel,White,1150
+HYUNDAI,Sonata,2016,Sedan,LPG,2,451634 km,4.0,Automatic,Front,Left wheel,Orange,1151
+HYUNDAI,Elantra,2016,Sedan,LPG,1.6,29864 km,4.0,Automatic,Front,Left wheel,Silver,1152
+TOYOTA,Prius,2010,Hatchback,Hybrid,1.8,159382 km,4.0,Automatic,Front,Left wheel,White,1153
+HONDA,Elysion,2004,Minivan,LPG,3,165358 km,6.0,Automatic,Front,Right-hand drive,White,1154
+HYUNDAI,H1,2010,Minivan,Diesel,2.5,45252 km,4.0,Automatic,Front,Left wheel,White,1155
+MERCURY,Mariner Hybrid,2009,Jeep,Hybrid,2.5,155798 km,4.0,Automatic,Front,Left wheel,Black,1156
+MERCEDES-BENZ,GLA 250,2016,Jeep,Petrol,2,109555 km,4.0,Automatic,Front,Left wheel,White,1157
+HONDA,Insight,2009,Sedan,Hybrid,1.3,125000 km,4.0,Automatic,Front,Left wheel,White,1158
+HYUNDAI,Elantra,2010,Sedan,Petrol,1.6,100403 km,4.0,Automatic,Front,Left wheel,White,1159
+VOLKSWAGEN,Passat,2017,Sedan,Petrol,1.8,48579 km,4.0,Automatic,Front,Left wheel,Red,1160
+FORD,Fusion,2013,Sedan,Hybrid,2,155000 km,4.0,Automatic,Front,Left wheel,White,1161
+HYUNDAI,Elantra,2007,Sedan,Petrol,1.6,39079 km,4.0,Automatic,Front,Left wheel,Silver,1162
+HONDA,Civic,2016,Sedan,Petrol,2,22601 km,4.0,Automatic,Front,Left wheel,Grey,1163
+MITSUBISHI,Pajero,1997,Jeep,Petrol,2.4,142000 km,4.0,Automatic,4x4,Left wheel,Blue,1164
+MERCEDES-BENZ,E 220,2001,Sedan,Diesel,2.2 Turbo,10000 km,4.0,Automatic,Rear,Left wheel,Silver,1165
+MERCEDES-BENZ,C 63 AMG,2012,Coupe,Petrol,6.2,92483 km,8.0,Automatic,Rear,Left wheel,Grey,1166
+CHEVROLET,Captiva,2007,Jeep,Diesel,2,57438 km,4.0,Automatic,Front,Left wheel,Silver,1167
+AUDI,A7,2014,Hatchback,Petrol,3,191373 km,6.0,Automatic,4x4,Left wheel,Grey,1168
+TOYOTA,Highlander,2017,Sedan,Petrol,3.5,34082 km,6.0,Automatic,Front,Left wheel,Blue,1169
+OPEL,Zafira,2003,Minivan,CNG,1.6,197500 km,4.0,Manual,Front,Left wheel,Grey,1170
+NISSAN,Tiida,2008,Hatchback,Petrol,1.8,156620 km,4.0,Automatic,Front,Right-hand drive,Silver,1171
+RENAULT,Megane,2009,Hatchback,Diesel,1.5,240000 km,4.0,Manual,Front,Left wheel,Silver,1172
+HYUNDAI,Genesis,2010,Coupe,Petrol,2,125126 km,4.0,Automatic,Front,Left wheel,Black,1173
+DAEWOO,Lacetti,2009,Sedan,Petrol,1.6,60563 km,4.0,Automatic,Front,Left wheel,Black,1174
+TOYOTA,Prius,2012,Hatchback,Hybrid,1.8,57000 km,4.0,Variator,Front,Left wheel,Black,1175
+LEXUS,ES 300 hybrid,2014,Sedan,Hybrid,2.5,133000 km,4.0,Automatic,Front,Left wheel,Black,1176
+TOYOTA,Camry,2014,Sedan,Petrol,2.5,59000 km,4.0,Tiptronic,Front,Left wheel,Black,1177
+NISSAN,X-Terra,2004,Jeep,CNG,,200000 km,6.0,Automatic,4x4,Left wheel,Grey,1178
+LEXUS,RX 300,2000,Jeep,Petrol,3,230000 km,6.0,Automatic,4x4,Left wheel,Green,1179
+MERCEDES-BENZ,Sprinter,2001,Microbus,Diesel,2.2 Turbo,269962 km,4.0,Manual,Rear,Left wheel,White,1180
+FORD,Transit,2003,Microbus,Diesel,2.0 Turbo,195000 km,6.0,Manual,Front,Left wheel,Yellow,1181
+MERCEDES-BENZ,GLA 250,2015,Jeep,Petrol,2,37786 km,4.0,Automatic,4x4,Left wheel,White,1182
+TOYOTA,Prius,2007,Hatchback,Hybrid,1.5,194098 km,4.0,Automatic,Front,Left wheel,Blue,1183
+TOYOTA,Aqua,2015,Hatchback,Hybrid,1.5,138513 km,4.0,Automatic,Front,Left wheel,White,1184
+HYUNDAI,Sonata,2015,Sedan,LPG,2,539937 km,4.0,Automatic,Front,Left wheel,Orange,1185
+HONDA,Civic,2016,Sedan,Petrol,1.5,54631 km,4.0,Automatic,Front,Left wheel,Black,1186
+HYUNDAI,Elantra gt,2014,Hatchback,Petrol,2,104000 km,4.0,Automatic,Front,Left wheel,Red,1187
+HYUNDAI,Tucson,2016,Jeep,Diesel,1.7,90924 km,4.0,Automatic,Front,Left wheel,White,1188
+TOYOTA,Prius C,2013,Hatchback,Hybrid,1.5,51200 km,4.0,Automatic,Front,Left wheel,Silver,1189
+TOYOTA,RAV 4 XLE Sport,2013,Jeep,Petrol,2.5,120000 km,4.0,Tiptronic,Front,Left wheel,White,1190
+HYUNDAI,Tucson,2010,Jeep,Diesel,2,127105 km,4.0,Automatic,Front,Left wheel,Silver,1191
+CHEVROLET,Cruze LT,2018,Sedan,Petrol,1.4 Turbo,33548 km,4.0,Automatic,Front,Left wheel,Silver,1192
+MITSUBISHI,Outlander,2003,Jeep,Petrol,2.4,156000 km,4.0,Tiptronic,4x4,Left wheel,Silver,1193
+KIA,Optima,2013,Sedan,Petrol,2,42563 km,4.0,Automatic,Front,Left wheel,Black,1194
+FORD,Fusion,2013,Sedan,Petrol,1.6 Turbo,46000 km,4.0,Tiptronic,Front,Left wheel,White,1195
+HYUNDAI,Elantra,2016,Sedan,Diesel,1.6,37405 km,4.0,Automatic,Front,Left wheel,White,1196
+MERCEDES-BENZ,C 300 6.3 AMG Package,2015,Sedan,Petrol,2.0 Turbo,75000 km,4.0,Automatic,Rear,Left wheel,Black,1197
+TOYOTA,Tacoma,2013,Sedan,Petrol,4,57554 km,6.0,Automatic,4x4,Left wheel,Silver,1198
+HYUNDAI,Tucson,2017,Jeep,Diesel,2,98273 km,4.0,Automatic,Front,Left wheel,Grey,1199
+MERCEDES-BENZ,E 270,1999,Sedan,Diesel,2.7 Turbo,370000 km,5.0,Tiptronic,Rear,Left wheel,Silver,1200
+AUDI,A4,2013,Sedan,Petrol,2.0 Turbo,144000 km,4.0,Automatic,Front,Left wheel,White,1201
+LEXUS,RX 350,2013,Jeep,Petrol,3.5,64248 km,6.0,Tiptronic,4x4,Left wheel,Grey,1202
+VAZ,2121 (Niva),2007,Jeep,Petrol,1.7,13000 km,4.0,Manual,4x4,Left wheel,White,1203
+BMW,328,2011,Coupe,Petrol,3,164000 km,6.0,Automatic,4x4,Left wheel,Blue,1204
+FORD,C-MAX,2012,Sedan,Hybrid,2.0 Turbo,140000 km,5.0,Automatic,Front,Left wheel,Sky blue,1205
+TOYOTA,Aqua,2015,Hatchback,Petrol,1.5,16033 km,4.0,Automatic,Front,Left wheel,Blue,1206
+HYUNDAI,Sonata,2013,Sedan,Petrol,2.4,104046 km,4.0,Automatic,Front,Left wheel,Silver,1207
+HYUNDAI,Sonata,2016,Sedan,LPG,2,246040 km,4.0,Automatic,Front,Left wheel,Silver,1208
+KIA,Optima,2011,Sedan,Petrol,2,41283 km,4.0,Automatic,Front,Left wheel,Black,1209
+HYUNDAI,Tucson,2015,Jeep,Diesel,2,70745 km,4.0,Automatic,Front,Left wheel,White,1210
+HYUNDAI,Sonata,2014,Sedan,Hybrid,2.4,152000 km,4.0,Automatic,Front,Left wheel,Black,1211
+TOYOTA,Highlander,2010,Jeep,Hybrid,3.3,264877 km,6.0,Automatic,4x4,Left wheel,White,1212
+BMW,535,2012,Sedan,Petrol,3.0 Turbo,152000 km,6.0,Tiptronic,Rear,Left wheel,Black,1213
+DAEWOO,Lacetti,2009,Sedan,Petrol,1.6,68111 km,4.0,Automatic,Front,Left wheel,Blue,1214
+HYUNDAI,Santa FE,2013,Jeep,Diesel,2,80758 km,4.0,Automatic,Front,Left wheel,Silver,1215
+SUBARU,R2,2003,Sedan,Petrol,0.7,50000 km,3.0,Automatic,Front,Right-hand drive,Black,1216
+SSANGYONG,Korando,2013,Jeep,Diesel,2,173698 km,4.0,Automatic,Front,Left wheel,White,1217
+CHEVROLET,Aveo,2012,Sedan,Petrol,1.6,83244 km,4.0,Automatic,Front,Left wheel,Black,1218
+HYUNDAI,Santa FE,2013,Jeep,Petrol,2.4,88000 km,4.0,Tiptronic,4x4,Left wheel,Grey,1219
+CHEVROLET,Aveo,2011,Sedan,Petrol,1.6,193425 km,4.0,Automatic,Front,Left wheel,White,1220
+TOYOTA,ISIS,2005,Minivan,Petrol,2,198555 km,4.0,Automatic,4x4,Right-hand drive,Silver,1221
+HYUNDAI,Tucson,2014,Jeep,Diesel,2,152064 km,4.0,Automatic,Front,Left wheel,Silver,1222
+CHEVROLET,Avalanche,2011,Sedan,Petrol,5.3,246976 km,8.0,Automatic,Front,Left wheel,Black,1223
+TOYOTA,Aqua,2012,Hatchback,Hybrid,1.5,122000 km,4.0,Variator,Front,Right-hand drive,Red,1224
+KIA,Optima,2012,Sedan,Petrol,2.4,102000 km,4.0,Automatic,Front,Left wheel,Grey,1225
+TOYOTA,Prius,2008,Hatchback,Hybrid,1.5,64000 km,4.0,Variator,Front,Left wheel,Carnelian red,1226
+OPEL,Astra H,2009,Goods wagon,Diesel,,160000 km,6.0,Tiptronic,Front,Left wheel,Silver,1227
+TOYOTA,Ist,2002,Hatchback,Petrol,1.3,115000 km,4.0,Automatic,Front,Right-hand drive,Silver,1228
+BMW,M5,2006,Sedan,Petrol,5,70000 km,10.0,Tiptronic,Rear,Left wheel,Black,1229
+SUBARU,Impreza,1998,Hatchback,Petrol,1.6,280000 km,4.0,Manual,4x4,Left wheel,Green,1230
+BMW,X3,2004,Jeep,CNG,2.5,380000 km,6.0,Tiptronic,4x4,Left wheel,Silver,1231
+TOYOTA,Camry,2011,Sedan,Hybrid,2.4,248178 km,4.0,Tiptronic,Front,Left wheel,White,1232
+BMW,535,2011,Sedan,Petrol,3,151099 km,6.0,Automatic,4x4,Left wheel,Brown,1233
+HYUNDAI,Santa FE,2013,Jeep,Diesel,2,224077 km,4.0,Automatic,Front,Left wheel,White,1234
+FORD,Fusion,2016,Sedan,Plug-in Hybrid,2,59200 km,,Tiptronic,Front,Left wheel,White,1235
+MITSUBISHI,Airtrek turbo,2002,Jeep,CNG,2.0 Turbo,165000 km,4.0,Tiptronic,4x4,Right-hand drive,Grey,1236
+HYUNDAI,Sonata,2014,Sedan,Petrol,2.4,89000 km,4.0,Tiptronic,Front,Left wheel,White,1237
+HYUNDAI,H1,2016,Minivan,Diesel,2.5,127675 km,4.0,Automatic,Front,Left wheel,Silver,1238
+HYUNDAI,Sonata,2015,Sedan,LPG,2,571115 km,4.0,Automatic,Front,Left wheel,Orange,1239
+JEEP,Liberty,2010,Jeep,Petrol,3.7,228800 km,6.0,Automatic,4x4,Left wheel,Black,1240
+TOYOTA,RAV 4,2006,Jeep,Petrol,2.4,190000 km,4.0,Automatic,4x4,Left wheel,Silver,1241
+HYUNDAI,Veloster,2014,Sedan,Petrol,1.6,153600 km,4.0,Automatic,Front,Left wheel,Carnelian red,1242
+HYUNDAI,Genesis,2009,Coupe,Petrol,2,158642 km,4.0,Automatic,Front,Left wheel,Grey,1243
+MERCEDES-BENZ,ML 250,2015,Jeep,Diesel,2.1,110000 km,4.0,Tiptronic,4x4,Left wheel,White,1244
+MAZDA,Demio,2002,Hatchback,LPG,1.5,165000 km,4.0,Tiptronic,Front,Right-hand drive,White,1245
+HYUNDAI,Santa FE,2014,Jeep,Diesel,2,20900 km,4.0,Automatic,Front,Left wheel,Black,1246
+FORD,Focus se,2018,Sedan,Petrol,1.0 Turbo,12459 km,3.0,Automatic,Front,Left wheel,Black,1247
+CHEVROLET,Malibu,2016,Sedan,Petrol,1.5,86000 km,4.0,Tiptronic,Front,Left wheel,Silver,1248
+HYUNDAI,Accent,2012,Hatchback,Diesel,1.6,60480 km,4.0,Automatic,Front,Left wheel,White,1249
+SSANGYONG,Actyon,2016,Jeep,Diesel,1.6,59272 km,4.0,Automatic,Front,Left wheel,White,1250
+HYUNDAI,Elantra,2018,Sedan,Petrol,1.6,53000 km,4.0,Automatic,Front,Left wheel,White,1251
+HONDA,Step Wagon,2011,Minivan,Petrol,2,96000 km,4.0,Automatic,4x4,Right-hand drive,Black,1252
+TOYOTA,Prius,2012,Hatchback,Hybrid,1.8,215810 km,4.0,Automatic,Front,Left wheel,Silver,1253
+LAND ROVER,Land Rover Sport,2014,Jeep,Diesel,3.0 Turbo,126000 km,6.0,Automatic,4x4,Left wheel,White,1254
+TOYOTA,Camry,2016,Sedan,Hybrid,2.5,60000 km,5.0,Automatic,Front,Left wheel,White,1255
+KIA,Cerato,2015,Sedan,Petrol,1.6,89106 km,4.0,Automatic,Front,Left wheel,Black,1256
+MERCEDES-BENZ,E 350,2008,Sedan,Diesel,3.5,290922 km,6.0,Automatic,Rear,Left wheel,Silver,1257
+HYUNDAI,H1,2015,Universal,LPG,2.5,132320 km,4.0,Automatic,Front,Left wheel,Silver,1258
+TOYOTA,Prius,2012,Hatchback,Hybrid,1.8,205248 km,4.0,Automatic,Front,Left wheel,Black,1259
+HYUNDAI,Elantra,2015,Sedan,Petrol,1.8,64723 km,4.0,Automatic,Front,Left wheel,Red,1260
+HYUNDAI,Elantra,2011,Sedan,Petrol,1.8,820000 km,4.0,Tiptronic,Front,Left wheel,Silver,1261
+FORD,C-MAX,2013,Hatchback,Plug-in Hybrid,2,133000 km,4.0,Automatic,Front,Left wheel,Silver,1262
+HYUNDAI,Elantra,2016,Sedan,LPG,1.6,74909 km,4.0,Automatic,Front,Left wheel,Silver,1263
+BMW,X6,2014,Jeep,Petrol,4.4,62192 km,8.0,Automatic,4x4,Left wheel,Black,1264
+BUICK,Century,2015,Jeep,Petrol,1.4,107358 km,4.0,Automatic,Front,Left wheel,Black,1265
+OPEL,Zafira,2002,Universal,Petrol,1.6,216000 km,4.0,Manual,Front,Left wheel,Grey,1266
+DAEWOO,Lacetti,2009,Sedan,Petrol,1.6,45258 km,4.0,Automatic,Front,Left wheel,Silver,1267
+SSANGYONG,Actyon,2011,Sedan,Diesel,2,194314 km,4.0,Automatic,Front,Left wheel,Silver,1268
+JEEP,Compass,2009,Jeep,Petrol,2.4,167510 km,4.0,Automatic,Front,Left wheel,Red,1269
+HYUNDAI,Azera,2013,Sedan,Petrol,3.3,93000 km,6.0,Tiptronic,Front,Left wheel,Black,1270
+TOYOTA,Camry,2011,Sedan,Petrol,2.5,153410 km,4.0,Automatic,Front,Left wheel,White,1271
+TOYOTA,VOXY,2004,Minivan,Petrol,2,186000 km,4.0,Automatic,Front,Right-hand drive,White,1272
+BMW,328,2012,Sedan,Petrol,2,237933 km,4.0,Automatic,Rear,Left wheel,Blue,1273
+TOYOTA,Prius,2010,Hatchback,Hybrid,1.8,119000 km,4.0,Automatic,Front,Left wheel,Red,1274
+FORD,Transit,1995,Microbus,Diesel,2.5,500000 km,4.0,Manual,Rear,Left wheel,Red,1275
+VOLKSWAGEN,Passat,1999,Sedan,Petrol,1.8 Turbo,3000 km,4.0,Manual,Front,Left wheel,Black,1276
+CHEVROLET,Orlando,2012,Jeep,Diesel,2,110297 km,4.0,Automatic,Front,Left wheel,Grey,1277
+HYUNDAI,Tucson,2012,Jeep,Diesel,2,146526 km,4.0,Automatic,Front,Left wheel,White,1278
+CHEVROLET,Cruze,2018,Sedan,Petrol,1.4,43658 km,4.0,Automatic,Front,Left wheel,Grey,1279
+VAZ,2109,1990,Hatchback,Petrol,1.6,350000 km,4.0,Manual,Front,Left wheel,Grey,1280
+SKODA,Octavia,2009,Sedan,Petrol,2,75000 km,4.0,Manual,Front,Left wheel,White,1281
+MERCEDES-BENZ,GLA 250,2016,Jeep,Petrol,2.0 Turbo,87091 km,4.0,Tiptronic,Front,Left wheel,Grey,1282
+BMW,318,1995,Coupe,Petrol,1.8,61000 km,4.0,Manual,Rear,Left wheel,Black,1283
+PORSCHE,Panamera 4,2014,Sedan,Petrol,3.6,57000 km,6.0,Tiptronic,4x4,Left wheel,Grey,1284
+HYUNDAI,Veloster,2011,Hatchback,Petrol,1.6,115200 km,4.0,Tiptronic,Front,Left wheel,Orange,1285
+JEEP,Cherokee,2015,Jeep,Petrol,3.2,79200 km,6.0,Automatic,Front,Left wheel,Black,1286
+HYUNDAI,Elantra,2015,Sedan,LPG,1.6,31891 km,4.0,Automatic,Front,Left wheel,Grey,1287
+TOYOTA,Aqua,2012,Sedan,Hybrid,1.5,174000 km,4.0,Automatic,Front,Right-hand drive,Silver,1288
+KIA,Avella,2012,Sedan,Petrol,2,225307 km,4.0,Automatic,Front,Left wheel,Grey,1289
+BMW,328,2016,Sedan,Petrol,2,51930 km,4.0,Automatic,Rear,Left wheel,Black,1290
+CHEVROLET,Captiva,2016,Jeep,Diesel,2,54472 km,4.0,Automatic,Front,Left wheel,Silver,1291
+HYUNDAI,Sonata,2014,Sedan,Hybrid,2.4,104000 km,4.0,Tiptronic,Front,Left wheel,Silver,1292
+HYUNDAI,H1,2016,Universal,Diesel,2.5,119552 km,4.0,Automatic,Front,Left wheel,Silver,1293
+HYUNDAI,Sonata,2015,Sedan,LPG,2,732232 km,4.0,Automatic,Front,Left wheel,Orange,1294
+CHEVROLET,Captiva,2007,Jeep,Diesel,2,55790 km,4.0,Automatic,Front,Left wheel,Black,1295
+HYUNDAI,Sonata,2018,Sedan,Petrol,2.4,45494 km,4.0,Automatic,Front,Left wheel,White,1296
+SSANGYONG,Actyon,2017,Jeep,Diesel,1.6,60720 km,4.0,Automatic,Front,Left wheel,White,1297
+FORD,Fusion,2014,Sedan,Hybrid,2,137328 km,4.0,Automatic,Front,Left wheel,Silver,1298
+BMW,i3,2014,Hatchback,Hybrid,0.7,107926 km,2.0,Automatic,Rear,Left wheel,Silver,1299
+NISSAN,Teana,2004,Sedan,Petrol,2.3,230000 km,6.0,Automatic,Front,Left wheel,White,1300
+CHEVROLET,Lacetti,2009,Sedan,Diesel,2,186836 km,4.0,Automatic,Front,Left wheel,Grey,1301
+FORD,Transit Connect,2012,Goods wagon,Diesel,1.8 Turbo,143560 km,4.0,Manual,Front,Right-hand drive,White,1302
+CHEVROLET,Impala,2016,Sedan,Petrol,3.6,34030 km,4.0,Automatic,Front,Left wheel,White,1303
+MERCEDES-BENZ,S 350,2005,Sedan,Petrol,3.5,263000 km,4.0,Automatic,Rear,Left wheel,Black,1304
+TOYOTA,Prius,2007,Hatchback,Hybrid,1.5,140000 km,4.0,Automatic,Front,Left wheel,Beige,1305
+TOYOTA,Prius S,2010,Hatchback,Hybrid,1.8,164000 km,4.0,Automatic,Front,Left wheel,Golden,1306
+NISSAN,Altima,2019,Sedan,Petrol,2.5,30296 km,4.0,Automatic,Front,Left wheel,Grey,1307
+LEXUS,CT 200h,2014,Hatchback,Hybrid,1.8,132563 km,4.0,Automatic,Front,Left wheel,Red,1308
+NISSAN,Rasheen,2000,Hatchback,Petrol,1.5,186000 km,4.0,Automatic,4x4,Right-hand drive,White,1309
+HYUNDAI,Tucson,2017,Jeep,Diesel,1.7,69527 km,4.0,Automatic,Front,Left wheel,Black,1310
+VOLKSWAGEN,Golf,1996,Hatchback,Petrol,,220000 km,4.0,Manual,Front,Left wheel,Black,1311
+HYUNDAI,Elantra,2017,Sedan,Diesel,1.6,40177 km,4.0,Automatic,Front,Left wheel,White,1312
+HYUNDAI,Sonata,2015,Sedan,LPG,2,278223 km,4.0,Automatic,Front,Left wheel,Silver,1313
+HYUNDAI,H1,2014,Minivan,Diesel,2.5,152469 km,4.0,Automatic,Front,Left wheel,Black,1314
+NISSAN,Altima,2009,Sedan,Hybrid,2.5,254400 km,,Automatic,Front,Left wheel,Black,1315
+OPEL,Astra,2001,Hatchback,Petrol,1.8,1000 km,4.0,Manual,Front,Right-hand drive,Silver,1316
+VOLKSWAGEN,Jetta se,2014,Sedan,Petrol,1.8 Turbo,60000 km,4.0,Automatic,Front,Left wheel,Silver,1317
+LEXUS,LX 570,2018,Jeep,Petrol,5.7 Turbo,17700 km,8.0,Tiptronic,4x4,Left wheel,Black,1318
+SSANGYONG,Actyon,2017,Jeep,Diesel,1.6,60660 km,4.0,Automatic,Front,Left wheel,White,1319
+HYUNDAI,I30,2015,Hatchback,Diesel,1.6,170000 km,4.0,Automatic,Front,Left wheel,White,1320
+SSANGYONG,Actyon,2018,Jeep,Diesel,1.6,45494 km,4.0,Automatic,Front,Left wheel,White,1321
+NISSAN,Note,2016,Hatchback,Petrol,1.2,58000 km,3.0,Variator,Front,Right-hand drive,Blue,1322
+MITSUBISHI,Colt,2003,Sedan,Petrol,1.5,175000 km,4.0,Variator,Front,Right-hand drive,Black,1323
+HYUNDAI,H1,2010,Minivan,Diesel,2.5,58958 km,4.0,Automatic,Front,Left wheel,Black,1324
+JEEP,Compass,2017,Jeep,Petrol,2.4,38000 km,4.0,Tiptronic,4x4,Left wheel,Sky blue,1325
+MERCEDES-BENZ,CLS 350,2004,Sedan,Petrol,3.5,211288 km,6.0,Tiptronic,Rear,Left wheel,Black,1326
+HYUNDAI,Sonata,2011,Sedan,Hybrid,2.4,51600 km,4.0,Tiptronic,Front,Left wheel,Red,1327
+FORD,Transit,2016,Microbus,Diesel,2.2 Turbo,56000 km,4.0,Manual,Rear,Left wheel,White,1328
+MAZDA,Demio,2011,Hatchback,Petrol,1.3,72000 km,4.0,Automatic,Front,Right-hand drive,Black,1329
+FORD,Fusion,2017,Sedan,Petrol,1.5,77368 km,4.0,Automatic,Front,Left wheel,Golden,1330
+TOYOTA,Camry,2014,Sedan,Petrol,2.5,219150 km,4.0,Automatic,Front,Left wheel,White,1331
+TOYOTA,Prius,2013,Hatchback,Hybrid,1.8,137265 km,4.0,Automatic,Front,Left wheel,Blue,1332
+AUDI,A3,2012,Sedan,Diesel,2,174966 km,4.0,Automatic,Front,Left wheel,Black,1333
+TOYOTA,Prius,2008,Hatchback,Hybrid,1.5,92000 km,4.0,Variator,Front,Left wheel,Grey,1334
+INFINITI,FX35,2003,Jeep,Petrol,3.5,140000 km,4.0,Tiptronic,4x4,Left wheel,Silver,1335
+BMW,X5 XDRIVE 35D,2012,Jeep,Diesel,3.5 Turbo,243087 km,6.0,Automatic,4x4,Left wheel,Black,1336
+CHEVROLET,Aveo,2015,Hatchback,Petrol,1.4,58052 km,4.0,Automatic,Front,Left wheel,White,1337
+HONDA,Civic,2017,Coupe,Petrol,1.5,32692 km,4.0,Automatic,Front,Left wheel,Black,1338
+MERCEDES-BENZ,C 250,2014,Sedan,Petrol,1.8 Turbo,85000 km,4.0,Automatic,Rear,Left wheel,Silver,1339
+CHEVROLET,Cruze,2014,Sedan,Petrol,1.4 Turbo,152000 km,4.0,Tiptronic,Front,Left wheel,White,1340
+TOYOTA,Prius,2014,Hatchback,Hybrid,1.8,0 km,4.0,Variator,Front,Left wheel,White,1341
+TOYOTA,Prius,2010,Sedan,Petrol,1.8,174000 km,8.0,Automatic,Front,Left wheel,White,1342
+NISSAN,Altima,2009,Sedan,Hybrid,2.5,24800 km,4.0,Automatic,Front,Left wheel,Blue,1343
+TOYOTA,Highlander,2005,Jeep,Petrol,3.3,244283 km,6.0,Automatic,Front,Left wheel,Black,1344
+BMW,330,2003,Sedan,Petrol,3,150300 km,6.0,Manual,Rear,Left wheel,White,1345
+VOLKSWAGEN,Passat,2013,Sedan,Petrol,2.5,92000 km,6.0,Tiptronic,Front,Left wheel,White,1346
+NISSAN,Juke,2013,Jeep,Petrol,1.5,99000 km,4.0,Automatic,Front,Right-hand drive,Black,1347
+HYUNDAI,H1,2017,Universal,Diesel,2.5,96117 km,4.0,Automatic,Front,Left wheel,Silver,1348
+PORSCHE,Cayenne,2018,Sedan,Petrol,3.6,28968 km,6.0,Automatic,4x4,Left wheel,White,1349
+SUBARU,Forester,2004,Jeep,LPG,,235200 km,4.0,Automatic,4x4,Left wheel,Grey,1350
+TOYOTA,Aqua,2015,Hatchback,Hybrid,1.5,160841 km,4.0,Automatic,Front,Left wheel,White,1351
+TOYOTA,Prius,2010,Hatchback,Hybrid,1.8,88265 km,4.0,Automatic,Front,Left wheel,White,1352
+TOYOTA,Sienna,2011,Sedan,Petrol,3.5,210538 km,6.0,Automatic,Front,Left wheel,White,1353
+FORD,F150,2012,Pickup,Petrol,5,150000 km,8.0,Tiptronic,4x4,Left wheel,Black,1354
+OPEL,Vectra,1997,Sedan,CNG,1.6,777777777 km,4.0,Automatic,Front,Left wheel,Beige,1355
+TOYOTA,Camry,2014,Sedan,Petrol,2.5,147000 km,4.0,Tiptronic,Front,Left wheel,Black,1356
+VOLKSWAGEN,Jetta GLI,2012,Sedan,Petrol,,139555 km,4.0,Manual,Front,Left wheel,Black,1357
+HONDA,Elysion,2004,Minivan,Petrol,3,0 km,4.0,Automatic,4x4,Left wheel,Black,1358
+SSANGYONG,Kyron,2008,Jeep,Diesel,2,76800 km,4.0,Automatic,Front,Left wheel,Silver,1359
+HYUNDAI,Elantra,2011,Sedan,Petrol,1.6,75586 km,4.0,Automatic,Front,Left wheel,Silver,1360
+TOYOTA,Camry,2013,Sedan,Hybrid,2.5,234218 km,4.0,Automatic,Front,Left wheel,White,1361
+FORD,Fusion,2013,Sedan,Hybrid,2,0 km,4.0,Automatic,Front,Left wheel,Golden,1362
+CHEVROLET,Cruze,2017,Sedan,Petrol,1.4 Turbo,37474 km,4.0,Manual,Front,Left wheel,Silver,1363
+FORD,Explorer,2017,Jeep,Petrol,3.5,20000 km,4.0,Automatic,Front,Left wheel,White,1364
+HYUNDAI,Elantra,2014,Sedan,Petrol,1.8,110000 km,4.0,Tiptronic,Front,Left wheel,Grey,1365
+MERCEDES-BENZ,E 320,1997,Sedan,CNG,3.2,180000 km,6.0,Automatic,Rear,Left wheel,Blue,1366
+BMW,328,2014,Sedan,Petrol,2.0 Turbo,23302 km,4.0,Tiptronic,Rear,Left wheel,White,1367
+HONDA,FIT,2015,Hatchback,Petrol,1.5,111649 km,4.0,Automatic,Front,Left wheel,Black,1368
+FORD,Escape,2010,Jeep,Hybrid,2.5,220000 km,6.0,Automatic,4x4,Left wheel,White,1369
+TOYOTA,Prius C,2012,Hatchback,Hybrid,1.5,131200 km,4.0,Variator,Front,Left wheel,Red,1370
+HONDA,Civic,2017,Coupe,Petrol,1.5,19217 km,4.0,Automatic,Front,Left wheel,Blue,1371
+TOYOTA,Camry,2012,Sedan,Petrol,2.5,89000 km,4.0,Tiptronic,Front,Left wheel,White,1372
+VOLKSWAGEN,Jetta,2011,Sedan,Petrol,2.5,140000 km,4.0,Automatic,Front,Left wheel,Black,1373
+LAND ROVER,Land Rover Sport,2016,Jeep,Petrol,3,51000 km,6.0,Tiptronic,4x4,Left wheel,White,1374
+SUZUKI,Samurai,1982,Jeep,Petrol,0.8,29500 km,3.0,Manual,4x4,Left wheel,Blue,1375
+TOYOTA,Aqua,2013,Hatchback,Petrol,1.5,63000 km,4.0,Automatic,Front,Left wheel,Blue,1376
+TOYOTA,Prius,2012,Hatchback,Hybrid,1.8,323733 km,4.0,Automatic,Front,Left wheel,Grey,1377
+FORD,Fusion,2015,Sedan,Hybrid,2,88795 km,4.0,Automatic,Front,Left wheel,Black,1378
+HYUNDAI,Santa FE,2013,Jeep,Diesel,2,146740 km,4.0,Automatic,Front,Left wheel,Grey,1379
+KIA,Optima,2012,Sedan,Petrol,2,71172 km,4.0,Automatic,Front,Left wheel,White,1380
+MERCEDES-BENZ,GLA 250,2017,Jeep,Petrol,2,44477 km,4.0,Automatic,Front,Left wheel,Blue,1381
+HYUNDAI,I30,2012,Hatchback,Diesel,1.6,78807 km,4.0,Automatic,Front,Left wheel,Silver,1382
+OPEL,Astra,1996,Sedan,CNG,1.6,1111 km,4.0,Manual,Front,Left wheel,Black,1383
+OPEL,Astra,2003,Hatchback,Petrol,1.2,234221 km,4.0,Manual,Front,Left wheel,Silver,1384
+HYUNDAI,Sonata,2015,Sedan,LPG,2,603970 km,,Automatic,Front,Left wheel,Orange,1385
+KIA,Sorento,2010,Jeep,Diesel,2.2,77400 km,4.0,Automatic,Front,Left wheel,Grey,1386
+TOYOTA,Prius,2013,Hatchback,Hybrid,1.5,197854 km,4.0,Automatic,Front,Left wheel,Black,1387
+MERCEDES-BENZ,E 36 AMG,2001,Sedan,Petrol,2.0 Turbo,230000 km,4.0,Manual,Rear,Left wheel,Black,1388
+MERCEDES-BENZ,C 230 2.5,2006,Sedan,Petrol,2.5,216000 km,6.0,Manual,Rear,Left wheel,Black,1389
+NISSAN,X-Trail,2003,Jeep,LPG,2,142000 km,4.0,Manual,4x4,Right-hand drive,Blue,1390
+BMW,X5,2005,Jeep,LPG,3,71000 km,6.0,Tiptronic,4x4,Right-hand drive,Silver,1391
+HONDA,Civic,2014,Sedan,Hybrid,1.4,16000 km,8.0,Automatic,4x4,Right-hand drive,White,1392
+BMW,X6,2016,Jeep,Petrol,3,74674 km,6.0,Automatic,4x4,Left wheel,White,1393
+CHEVROLET,Impala,2016,Sedan,Petrol,2.5,136469 km,4.0,Automatic,Front,Left wheel,Silver,1394
+AUDI,A3,2005,Sedan,Diesel,2.0 Turbo,22200 km,4.0,Tiptronic,Front,Left wheel,Beige,1395
+HYUNDAI,Sonata,2016,Sedan,LPG,2,503800 km,4.0,Automatic,Front,Left wheel,Orange,1396
+HYUNDAI,Genesis,2008,Sedan,Petrol,3.3,140100 km,4.0,Automatic,Front,Left wheel,Black,1397
+HYUNDAI,Accent,2012,Sedan,Diesel,1.6,169486 km,4.0,Automatic,Front,Left wheel,Grey,1398
+CHEVROLET,Cruze,2011,Sedan,Petrol,1.6,167776 km,4.0,Automatic,Front,Left wheel,Silver,1399
+OPEL,Zafira,2001,Minivan,Diesel,2.0 Turbo,300000 km,4.0,Manual,Front,Left wheel,Black,1400
+OPEL,Corsa,2004,Hatchback,Diesel,1.3 Turbo,108000 km,4.0,Tiptronic,Front,Left wheel,Silver,1401
+TOYOTA,CHR,2019,Jeep,Petrol,2,19968 km,4.0,Automatic,Front,Left wheel,White,1402
+SSANGYONG,Actyon,2010,Sedan,Diesel,2,120682 km,4.0,Automatic,Front,Left wheel,Silver,1403
+FORD,Transit,2008,Microbus,Diesel,2.4 Turbo,160000 km,4.0,Manual,Rear,Left wheel,White,1404
+HONDA,FIT,2013,Hatchback,Hybrid,1.5,87000 km,4.0,Automatic,Front,Left wheel,White,1405
+BMW,X1 X-Drive,2011,Jeep,Diesel,1.8 Turbo,70000 km,4.0,Tiptronic,4x4,Left wheel,White,1406
+LEXUS,RX 350,2016,Jeep,Petrol,3.5,59858 km,6.0,Automatic,Front,Left wheel,Silver,1407
+VOLKSWAGEN,Vento,1997,Sedan,CNG,1.8,174000 km,4.0,Manual,Front,Left wheel,Silver,1408
+BMW,528,1998,Sedan,CNG,2.8,243987 km,6.0,Automatic,Rear,Left wheel,Black,1409
+HYUNDAI,Elantra,2013,Sedan,Petrol,1.6,84800 km,4.0,Tiptronic,Front,Left wheel,Silver,1410
+MERCEDES-BENZ,S 430,2003,Sedan,Petrol,4.3,240000 km,8.0,Tiptronic,4x4,Left wheel,Carnelian red,1411
+NISSAN,Tiida AXIS,2006,Hatchback,Petrol,1.5,139000 km,4.0,Variator,Front,Right-hand drive,Black,1412
+NISSAN,Sentra,2016,Sedan,Petrol,1.8,56000 km,4.0,Automatic,Front,Left wheel,White,1413
+HYUNDAI,Santa FE,2015,Jeep,Diesel,2,83535 km,4.0,Automatic,Front,Left wheel,Blue,1414
+HYUNDAI,Santa FE,2011,Jeep,Diesel,2,58548 km,4.0,Automatic,Front,Left wheel,White,1415
+HYUNDAI,Sonata,2010,Sedan,Petrol,2,144500 km,4.0,Automatic,Front,Left wheel,White,1416
+LEXUS,CT 200h,2013,Hatchback,Hybrid,1.8,0 km,4.0,Automatic,Front,Left wheel,Red,1417
+CHEVROLET,Cruze,2015,Sedan,Petrol,1.4 Turbo,60800 km,4.0,Tiptronic,Rear,Left wheel,Silver,1418
+LEXUS,LS 460,2010,Sedan,Petrol,4.6,191310 km,8.0,Automatic,4x4,Left wheel,Black,1419
+BMW,X6 Limited,2012,Jeep,Petrol,3.0 Turbo,95000 km,6.0,Tiptronic,4x4,Left wheel,Black,1420
+TOYOTA,Vitz,2005,Hatchback,Petrol,1,141000 km,3.0,Variator,Front,Right-hand drive,Silver,1421
+HYUNDAI,Sonata,2014,Sedan,LPG,2,389854 km,4.0,Automatic,Front,Left wheel,Silver,1422
+KIA,Cadenza,2011,Sedan,Petrol,,42496 km,4.0,Automatic,Front,Left wheel,Black,1423
+HONDA,Insight,2010,Hatchback,Hybrid,1.3,111867 km,4.0,Automatic,Front,Left wheel,Silver,1424
+MITSUBISHI,Pajero IO,1999,Jeep,Petrol,1.8,135000 km,4.0,Automatic,4x4,Left wheel,Blue,1425
+TOYOTA,Aqua,2013,Sedan,Hybrid,1.5,92000 km,4.0,Automatic,Front,Right-hand drive,Silver,1426
+HYUNDAI,Sonata,2013,Sedan,LPG,2,48595 km,4.0,Automatic,Front,Left wheel,Silver,1427
+HYUNDAI,Santa FE,2010,Jeep,Diesel,2.2,112483 km,4.0,Automatic,Front,Left wheel,Silver,1428
+CHEVROLET,Malibu,2013,Sedan,Petrol,2.5,0 km,4.0,Automatic,Front,Left wheel,Silver,1429
+DAEWOO,Lacetti,2009,Sedan,Petrol,1.6,138719 km,4.0,Automatic,Front,Left wheel,Silver,1430
+TOYOTA,Prius,2009,Hatchback,Hybrid,1.8,140000 km,4.0,Automatic,Front,Left wheel,Grey,1431
+BMW,328,2011,Sedan,Petrol,3,107000 km,6.0,Tiptronic,4x4,Left wheel,Grey,1432
+TOYOTA,Prius,2009,Sedan,Hybrid,1.8,0 km,4.0,Automatic,Front,Left wheel,White,1433
+NISSAN,Juke,2012,Jeep,Petrol,1.6,0 km,4.0,Automatic,Front,Left wheel,Black,1434
+OPEL,Astra,2008,Hatchback,Petrol,1.4,157000 km,4.0,Manual,Front,Left wheel,Silver,1435
+SSANGYONG,REXTON,2011,Jeep,Diesel,2,101708 km,4.0,Automatic,Front,Left wheel,White,1436
+MERCEDES-BENZ,E 350,2013,Sedan,Petrol,3.5 Turbo,140800 km,6.0,Automatic,4x4,Left wheel,Black,1437
+MITSUBISHI,Outlander,2006,Jeep,CNG,2.4,110500 km,4.0,Automatic,4x4,Right-hand drive,Grey,1438
+KIA,Sportage,2007,Jeep,Diesel,2,91232 km,4.0,Automatic,Front,Left wheel,White,1439
+BMW,528,2011,Sedan,Petrol,2.0 Turbo,192000 km,6.0,Automatic,4x4,Left wheel,White,1440
+FORD,Transit,2000,Microbus,Diesel,2.5 Turbo,193000 km,4.0,Manual,Rear,Left wheel,Carnelian red,1441
+HYUNDAI,Sonata,2015,Sedan,LPG,2,51865 km,4.0,Automatic,Front,Left wheel,Silver,1442
+NISSAN,Tiida,2005,Hatchback,Petrol,1.5,140000 km,4.0,Automatic,4x4,Right-hand drive,Black,1443
+FORD,Fiesta,2014,Sedan,Petrol,1.6,66888 km,4.0,Automatic,Front,Left wheel,Grey,1444
+FORD,F150,2014,Sedan,Petrol,3.5,91193 km,4.0,Automatic,Front,Left wheel,White,1445
+LEXUS,ES 350,2017,Sedan,Hybrid,2.5,88336 km,4.0,Automatic,Front,Left wheel,White,1446
+BMW,X5 rest,2004,Jeep,Petrol,4.4,185000 km,8.0,Tiptronic,4x4,Left wheel,Black,1447
+HYUNDAI,Santa FE,2013,Jeep,Diesel,2,130180 km,4.0,Automatic,Front,Left wheel,Silver,1448
+VOLKSWAGEN,Jetta,2011,Sedan,Petrol,2.5,188800 km,5.0,Tiptronic,Front,Left wheel,Blue,1449
+HYUNDAI,Sonata,2018,Sedan,Petrol,2.4,57555 km,4.0,Automatic,Front,Left wheel,White,1450
+HYUNDAI,Sonata,2015,Sedan,LPG,2,338110 km,4.0,Automatic,Front,Left wheel,Silver,1451
+MERCEDES-BENZ,E 350,2011,Sedan,Diesel,3.0 Turbo,160000 km,6.0,Tiptronic,Rear,Left wheel,White,1452
+SSANGYONG,REXTON,2013,Jeep,Diesel,2,376356 km,4.0,Automatic,Front,Left wheel,Silver,1453
+MERCEDES-BENZ,CLK 320,2000,Sedan,Petrol,3.2,253640 km,6.0,Tiptronic,Rear,Left wheel,Black,1454
+HYUNDAI,Sonata,2014,Sedan,LPG,2,401021 km,4.0,Automatic,Front,Left wheel,Silver,1455
+TOYOTA,Alphard,2006,Minivan,LPG,3,149000 km,6.0,Automatic,4x4,Left wheel,Silver,1456
+TOYOTA,Prius,2009,Hatchback,Petrol,1.5,147000 km,4.0,Variator,Front,Left wheel,White,1457
+MERCEDES-BENZ,320,2009,Sedan,Diesel,3.0 Turbo,223000 km,6.0,Tiptronic,4x4,Left wheel,Black,1458
+KIA,Carnival,2006,Minivan,Diesel,2.9 Turbo,171000 km,4.0,Manual,Front,Left wheel,Black,1459
+OPEL,Combo,2003,Goods wagon,Diesel,1.7 Turbo,253033 km,4.0,Manual,Front,Left wheel,Black,1460
+HYUNDAI,Sonata,2013,Sedan,Petrol,2.4,130000 km,4.0,Tiptronic,Front,Left wheel,Grey,1461
+TOYOTA,Prius,2007,Sedan,Hybrid,1.5,230000 km,8.0,Automatic,Front,Left wheel,White,1462
+FORD,Explorer,2016,Jeep,Petrol,3.5,66246 km,4.0,Automatic,Front,Left wheel,White,1463
+HONDA,FIT,2012,Hatchback,Hybrid,1.3,13000 km,4.0,Automatic,Front,Right-hand drive,Brown,1464
+SKODA,Octavia,2004,Sedan,Diesel,2.0 Turbo,300000 km,4.0,Manual,Front,Left wheel,Black,1465
+TOYOTA,Prius,2016,Hatchback,Petrol,1.8,31000 km,4.0,Automatic,Front,Left wheel,Grey,1466
+TOYOTA,Aqua,2014,Hatchback,Hybrid,1.5,66000 km,,Variator,Front,Right-hand drive,Silver,1467
+HYUNDAI,Santa FE,2016,Jeep,Diesel,2,194067 km,4.0,Automatic,Front,Left wheel,Black,1468
+ACURA,MDX,2012,Jeep,Petrol,3.7,124978 km,6.0,Automatic,4x4,Left wheel,Black,1469
+HYUNDAI,Elantra,2012,Sedan,Petrol,1.6,133770 km,4.0,Automatic,Front,Left wheel,Grey,1470
+CHEVROLET,Cruze RS,2016,Sedan,Petrol,1.4 Turbo,32000 km,4.0,Tiptronic,Front,Left wheel,Grey,1471
+HYUNDAI,Tucson,2011,Jeep,Diesel,2,114000 km,4.0,Automatic,Front,Left wheel,Grey,1472
+HONDA,FIT,2005,Sedan,Petrol,1.3,230000 km,4.0,Variator,Front,Right-hand drive,White,1473
+HYUNDAI,Sonata,2012,Sedan,Petrol,2.4,180067 km,4.0,Automatic,Front,Left wheel,Blue,1474
+LEXUS,LS 460,2009,Sedan,Petrol,4.6,217614 km,4.0,Automatic,Front,Left wheel,Silver,1475
+HONDA,Edix FR-v,2006,Universal,Diesel,2.2 Turbo,300000 km,4.0,Manual,Front,Left wheel,Silver,1476
+JEEP,Wrangler ARB,2012,Jeep,Petrol,3.6,110000 km,8.0,Manual,4x4,Left wheel,White,1477
+TOYOTA,Camry,2014,Sedan,Petrol,2.5 Turbo,105600 km,4.0,Tiptronic,Front,Left wheel,Grey,1478
+VOLKSWAGEN,Golf,1994,Sedan,CNG,1.6,30000 km,4.0,Manual,Front,Left wheel,Purple,1479
+TOYOTA,Aqua,2014,Universal,Hybrid,1.5,66212 km,4.0,Automatic,Front,Left wheel,Black,1480
+MERCEDES-BENZ,GL 450,2014,Jeep,Petrol,4.6,201634 km,8.0,Automatic,4x4,Left wheel,Silver,1481
+TOYOTA,Prius,2010,Hatchback,Hybrid,1.8,197000 km,4.0,Automatic,Front,Left wheel,Blue,1482
+TOYOTA,Prius,2012,Hatchback,Hybrid,1.8,110000 km,4.0,Automatic,Front,Left wheel,Black,1483
+CITROEN,C8,2012,Jeep,Petrol,2,192840 km,4.0,Automatic,4x4,Left wheel,Red,1484
+TOYOTA,Camry,2019,Sedan,Hybrid,2.5,9626 km,4.0,Automatic,Front,Left wheel,Black,1485
+MITSUBISHI,Colt,2007,Hatchback,Petrol,1.3,164500 km,4.0,Manual,Front,Left wheel,Sky blue,1486
+CHRYSLER,Town and Country,2015,Sedan,Petrol,3.6,0 km,6.0,Automatic,Front,Left wheel,Grey,1487
+MITSUBISHI,Outlander,2012,Jeep,Petrol,2.4 Turbo,128000 km,4.0,Automatic,4x4,Left wheel,Silver,1488
+MITSUBISHI,Outlander,2011,Jeep,Petrol,2,86000 km,4.0,Tiptronic,4x4,Left wheel,White,1489
+HYUNDAI,H1,2010,Minivan,Diesel,2.5,82111 km,4.0,Automatic,Front,Left wheel,White,1490
+GAZ,31105,2005,Pickup,Diesel,2.5,200000 km,4.0,Manual,4x4,Left wheel,White,1491
+HYUNDAI,Elantra,2013,Sedan,Petrol,1.6,196448 km,4.0,Automatic,Front,Left wheel,Black,1492
+CHEVROLET,Captiva,2015,Jeep,Diesel,2.2,50555 km,4.0,Automatic,Front,Left wheel,Silver,1493
+BMW,330,2001,Sedan,Petrol,3,168000 km,6.0,Manual,Rear,Left wheel,Blue,1494
+NISSAN,Altima,2014,Sedan,Petrol,2.5,176632 km,4.0,Automatic,Front,Left wheel,Grey,1495
+MITSUBISHI,Colt,2005,Hatchback,Petrol,1.5 Turbo,157000 km,4.0,Tiptronic,Front,Right-hand drive,Silver,1496
+TOYOTA,Camry sporti,2014,Sedan,Petrol,2.5,72000 km,4.0,Tiptronic,Front,Left wheel,Black,1497
+LEXUS,CT 200h,2012,Hatchback,Hybrid,1.8,76427 km,4.0,Automatic,Front,Left wheel,Silver,1498
+MERCEDES-BENZ,S 550,2007,Sedan,LPG,5.5,167000 km,8.0,Tiptronic,Rear,Left wheel,Silver,1499
+MITSUBISHI,Lancer,2007,Sedan,Petrol,2,249600 km,4.0,Tiptronic,Front,Left wheel,Grey,1500
+HYUNDAI,Tucson,2013,Jeep,Petrol,2.4,53717 km,4.0,Automatic,4x4,Left wheel,Silver,1501
+HYUNDAI,Veloster,2013,Coupe,Petrol,1.6,113000 km,4.0,Automatic,Front,Left wheel,Black,1502
+HONDA,Civic,2012,Sedan,Hybrid,1.5,180000 km,,Variator,Front,Left wheel,Sky blue,1503
+JEEP,Liberty,2001,Jeep,Petrol,3.7,150000 km,6.0,Automatic,4x4,Left wheel,Red,1504
+FORD,Mustang,2015,Cabriolet,Petrol,2.3,70313 km,4.0,Automatic,Front,Left wheel,Black,1505
+MERCEDES-BENZ,Vito,2005,Goods wagon,Diesel,2.2 Turbo,282000 km,4.0,Manual,Rear,Left wheel,White,1506
+LEXUS,CT 200h,2011,Hatchback,Hybrid,1.8,190000 km,4.0,Automatic,Front,Left wheel,Golden,1507
+HONDA,Civic EX,2015,Coupe,Petrol,1.8,58190 km,4.0,Automatic,Front,Left wheel,Black,1508
+MERCEDES-BENZ,E 350,2014,Sedan,Diesel,3.5,200179 km,6.0,Automatic,4x4,Left wheel,Black,1509
+NISSAN,Note,2007,Sedan,Petrol,1.5,160000 km,4.0,Variator,Front,Right-hand drive,Silver,1510
+VOLKSWAGEN,Jetta,2015,Sedan,Petrol,1.8,67000 km,4.0,Tiptronic,Front,Right-hand drive,Black,1511
+HYUNDAI,Elantra,2017,Sedan,Petrol,2,115974 km,4.0,Automatic,Front,Left wheel,White,1512
+HYUNDAI,Tucson,2011,Jeep,Diesel,2,155000 km,4.0,Automatic,Front,Left wheel,White,1513
+HYUNDAI,H1,2005,Minivan,Petrol,2.4,240000 km,4.0,Manual,Rear,Left wheel,White,1514
+HYUNDAI,Santa FE,2010,Jeep,Diesel,2,41124 km,4.0,Automatic,Front,Left wheel,White,1515
+HONDA,Cr-v,1998,Jeep,Petrol,,282099 km,4.0,Automatic,Front,Left wheel,Black,1516
+VOLKSWAGEN,Jetta,2012,Sedan,Petrol,2.5,76000 km,5.0,Tiptronic,Front,Left wheel,White,1517
+VOLKSWAGEN,Jetta,2014,Sedan,Diesel,2,119926 km,4.0,Automatic,Front,Left wheel,White,1518
+OPEL,Astra,1998,Universal,Petrol,1.6,100000 km,4.0,Manual,Front,Left wheel,Grey,1519
+TOYOTA,Prius,2011,Hatchback,Hybrid,1.8,175000 km,4.0,Variator,Front,Left wheel,Red,1520
+BENTLEY,Continental GT,2012,Coupe,Petrol,4.0 Turbo,55500 km,8.0,Tiptronic,4x4,Left wheel,Black,1521
+FIAT,500 Abarth,2013,Coupe,Petrol,1.4 Turbo,98000 km,4.0,Manual,Front,Left wheel,Black,1522
+TOYOTA,Aqua,2012,Hatchback,Petrol,1.5,147562 km,4.0,Automatic,Front,Left wheel,Silver,1523
+SUBARU,Impreza,2013,Sedan,Petrol,2.5,114350 km,4.0,Automatic,4x4,Left wheel,Black,1524
+MITSUBISHI,Eclipse,2003,Coupe,Petrol,3,0 km,6.0,Manual,Front,Left wheel,Grey,1525
+MERCEDES-BENZ,Sprinter,2004,Microbus,Diesel,2.2 Turbo,300000 km,4.0,Manual,Rear,Left wheel,White,1526
+VOLKSWAGEN,Passat,2012,Sedan,Diesel,2.0 Turbo,97070 km,4.0,Tiptronic,Front,Left wheel,Grey,1527
+CHEVROLET,Cruze,2010,Sedan,Petrol,1.4,119000 km,6.0,Tiptronic,Front,Left wheel,White,1528
+BMW,528,2012,Sedan,Petrol,2.0 Turbo,196800 km,4.0,Tiptronic,4x4,Left wheel,Silver,1529
+HONDA,FIT,2013,Hatchback,Hybrid,1.5,118507 km,4.0,Automatic,Front,Right-hand drive,White,1530
+MITSUBISHI,Pajero,1992,Jeep,Diesel,2.5,280000 km,6.0,Automatic,4x4,Right-hand drive,Black,1531
+HYUNDAI,Sonata,2015,Sedan,LPG,2,48000 km,4.0,Automatic,Front,Left wheel,Silver,1532
+HONDA,Cr-v,2011,Jeep,Petrol,2.4,244067 km,4.0,Automatic,Front,Left wheel,Silver,1533
+TOYOTA,VOXY,2003,Minivan,CNG,2,154295 km,4.0,Automatic,Front,Right-hand drive,Silver,1534
+DODGE,Durango,2004,Jeep,LPG,4.7,241600 km,8.0,Automatic,4x4,Left wheel,White,1535
+TOYOTA,Camry,2014,Sedan,Hybrid,2.5,128739 km,4.0,Automatic,Front,Left wheel,Green,1536
+MERCEDES-BENZ,E 350,2012,Sedan,Diesel,3.0 Turbo,222222 km,6.0,Tiptronic,Rear,Left wheel,Grey,1537
+JEEP,Cherokee,2015,Jeep,Diesel,2,164698 km,4.0,Automatic,Front,Left wheel,Beige,1538
+TOYOTA,Prius,2008,Hatchback,Hybrid,1.5,188000 km,4.0,Variator,Front,Left wheel,Golden,1539
+TOYOTA,Aqua,2012,Hatchback,Petrol,1.5,112000 km,4.0,Automatic,Front,Left wheel,Red,1540
+MERCEDES-BENZ,E 350,2011,Coupe,Diesel,3.5,226251 km,6.0,Automatic,Rear,Left wheel,Black,1541
+VOLKSWAGEN,Golf,1997,Sedan,Petrol,1.8,111111 km,4.0,Manual,Front,Left wheel,Blue,1542
+TOYOTA,Camry,2012,Sedan,Hybrid,2.5,302400 km,4.0,Tiptronic,Front,Left wheel,Black,1543
+TOYOTA,Prius,2007,Sedan,Petrol,1.5,288166 km,4.0,Automatic,Front,Left wheel,White,1544
+HYUNDAI,H1,2016,Minivan,Diesel,,92078 km,4.0,Automatic,Front,Left wheel,Black,1545
+TOYOTA,Prius C,2014,Hatchback,Hybrid,1.5,64000 km,4.0,Variator,Front,Left wheel,White,1546
+MERCEDES-BENZ,A 200,2005,Hatchback,Petrol,2,123456 km,4.0,Tiptronic,Front,Left wheel,Silver,1547
+HONDA,FIT,2003,Hatchback,Petrol,1.3,230000 km,4.0,Variator,Front,Right-hand drive,Silver,1548
+TOYOTA,Camry,2012,Sedan,Petrol,2.4,72000 km,4.0,Tiptronic,Front,Left wheel,Golden,1549
+BMW,X5,2009,Jeep,Petrol,3.5,1000 km,6.0,Tiptronic,4x4,Left wheel,Silver,1550
+MITSUBISHI,Montero Sport,2004,Jeep,CNG,3,250000 km,6.0,Automatic,4x4,Left wheel,Carnelian red,1551
+AUDI,A6,2006,Sedan,Petrol,3.2,260000 km,12.0,Tiptronic,Front,Left wheel,Silver,1552
+TOYOTA,RAV 4,2005,Jeep,Petrol,2,125000 km,4.0,Automatic,4x4,Right-hand drive,White,1553
+HYUNDAI,Elantra,2013,Sedan,Petrol,1.8,96584 km,4.0,Automatic,Front,Left wheel,Grey,1554
+BMW,X5,2014,Jeep,,3,0 km,6.0,Automatic,4x4,Left wheel,Black,1555
+CHEVROLET,Orlando,2014,Jeep,Diesel,2,78083 km,4.0,Automatic,Front,Left wheel,White,1556
+CHEVROLET,Orlando,2012,Jeep,Diesel,2,137433 km,4.0,Automatic,Front,Left wheel,White,1557
+TOYOTA,Prius,2017,Hatchback,Hybrid,1.8,45488 km,4.0,Automatic,Front,Left wheel,White,1558
+HYUNDAI,Elantra,2014,Sedan,Diesel,1.6,32844 km,4.0,Automatic,Front,Left wheel,White,1559
+TOYOTA,Aqua,2013,Hatchback,Petrol,1.5,103017 km,4.0,Automatic,Front,Left wheel,Orange,1560
+TOYOTA,Camry,2013,Sedan,Hybrid,,190549 km,4.0,Automatic,Front,Left wheel,Black,1561
+HYUNDAI,Elantra,2011,Sedan,Petrol,1.6,120581 km,4.0,Automatic,Front,Left wheel,Silver,1562
+HYUNDAI,Sonata,2015,Sedan,LPG,2,669145 km,4.0,Automatic,Front,Left wheel,White,1563
+LEXUS,IS 350,2011,Sedan,Petrol,3.5,259066 km,6.0,Automatic,4x4,Left wheel,Silver,1564
+TOYOTA,Aqua,2014,Hatchback,Hybrid,1.5,139000 km,4.0,Variator,Front,Right-hand drive,White,1565
+HYUNDAI,Elantra Gt,2013,Hatchback,Petrol,1.8,118400 km,4.0,Tiptronic,Rear,Left wheel,White,1566
+CHEVROLET,Orlando,2014,Jeep,Diesel,2,73650 km,4.0,Automatic,Front,Left wheel,Silver,1567
+HYUNDAI,Santa FE,2020,Jeep,Diesel,2,4654 km,4.0,Automatic,Front,Left wheel,Silver,1568
+TOYOTA,Prius,2007,Hatchback,Petrol,1.5,127000 km,4.0,Variator,Front,Left wheel,Black,1569
+VOLKSWAGEN,Vento,2000,Sedan,Petrol,1.6,197346 km,4.0,Manual,Front,Left wheel,White,1570
+CHEVROLET,Captiva,2007,Jeep,Diesel,2,63558 km,4.0,Automatic,Front,Left wheel,White,1571
+CHEVROLET,Cruze,2015,Sedan,Petrol,1.8,37000 km,4.0,Automatic,Front,Left wheel,Silver,1572
+HYUNDAI,Elantra,2007,Sedan,Diesel,1.6,54279 km,4.0,Automatic,Front,Left wheel,Silver,1573
+MERCEDES-BENZ,ML 350,2012,Jeep,Diesel,3,180251 km,6.0,Automatic,4x4,Left wheel,White,1574
+KIA,Optima,2012,Sedan,Hybrid,2.4,148000 km,4.0,Tiptronic,Front,Left wheel,Black,1575
+HYUNDAI,Elantra,2012,Sedan,Petrol,1.6,165000 km,4.0,Automatic,Front,Left wheel,White,1576
+MERCEDES-BENZ,ML 350 3.7,2003,Jeep,CNG,3.7,170000 km,6.0,Tiptronic,4x4,Left wheel,Black,1577
+LAND ROVER,Range Rover,2016,Jeep,Diesel,3,190330 km,6.0,Automatic,4x4,Left wheel,Black,1578
+SUBARU,Impreza,2011,Hatchback,,2,128000 km,4.0,Tiptronic,4x4,Left wheel,Silver,1579
+HYUNDAI,Accent,2016,Sedan,Diesel,1.6,107393 km,4.0,Automatic,Front,Left wheel,White,1580
+VOLVO,S40,2001,Sedan,Petrol,2,133502 km,4.0,Automatic,Front,Right-hand drive,Green,1581
+TOYOTA,Camry,2019,Sedan,Petrol,2.5,25000 km,4.0,Tiptronic,Front,Left wheel,White,1582
+CHEVROLET,Cruze,2014,Sedan,Diesel,2,135804 km,4.0,Automatic,Front,Left wheel,Grey,1583
+HONDA,Cr-v,2018,Sedan,Petrol,1.5,56261 km,4.0,Automatic,4x4,Left wheel,Blue,1584
+MERCEDES-BENZ,E 230,1998,Sedan,CNG,2.3,200000 km,4.0,Automatic,Rear,Left wheel,Green,1585
+PORSCHE,911,2002,Coupe,Petrol,3.6,74000 km,6.0,Manual,Rear,Left wheel,White,1586
+AUDI,A4 B6,2004,Sedan,Petrol,1.8 Turbo,224000 km,4.0,Manual,4x4,Left wheel,Black,1587
+FORD,Transit,2007,Microbus,Diesel,2.2 Turbo,170000 km,4.0,Manual,Front,Left wheel,Black,1588
+LEXUS,RX 450,2010,Jeep,Hybrid,3.5,249112 km,6.0,Automatic,4x4,Left wheel,Grey,1589
+HYUNDAI,Sonata,2014,Sedan,LPG,2,509460 km,4.0,Automatic,Front,Left wheel,Silver,1590
+TOYOTA,Camry,2015,Sedan,Petrol,2.5,173101 km,4.0,Automatic,Front,Left wheel,Silver,1591
+TOYOTA,Camry,2007,Sedan,Hybrid,2.4,369600 km,4.0,Tiptronic,Rear,Left wheel,Silver,1592
+BMW,X1,2013,Jeep,Petrol,2,0 km,,Tiptronic,Front,Left wheel,White,1593
+LAND ROVER,Range Rover VOGUE,2008,Jeep,Petrol,4.2,170000 km,8.0,Tiptronic,4x4,Left wheel,Black,1594
+TOYOTA,Aqua,2012,Sedan,Petrol,1.5,102000 km,4.0,Automatic,Front,Right-hand drive,Silver,1595
+TOYOTA,RAV 4,2013,Jeep,Petrol,2.5,52000 km,4.0,Automatic,4x4,Left wheel,Black,1596
+HYUNDAI,H1,2012,Universal,Diesel,2.5,205425 km,4.0,Automatic,Front,Left wheel,Yellow,1597
+HONDA,Civic,2017,Sedan,Petrol,1.5,7176 km,4.0,Automatic,Front,Left wheel,Blue,1598
+MERCEDES-BENZ,S 500,2001,Sedan,Petrol,5,160000 km,8.0,Tiptronic,Rear,Left wheel,Black,1599
+KIA,Optima,2016,Sedan,Petrol,2,31117 km,4.0,Automatic,Front,Left wheel,White,1600
+BMW,330,2003,Sedan,Petrol,3,0 km,6.0,Manual,Rear,Left wheel,Black,1601
+LEXUS,CT 200h,2012,Hatchback,Hybrid,1.8 Turbo,136194 km,4.0,Tiptronic,Front,Left wheel,Silver,1602
+HYUNDAI,Sonata,2015,Sedan,Petrol,2,52878 km,4.0,Automatic,Front,Left wheel,Black,1603
+HYUNDAI,Elantra,2012,Sedan,Petrol,1.6,36239 km,4.0,Automatic,Front,Left wheel,Grey,1604
+HYUNDAI,Elantra,2015,Sedan,Petrol,1.6,118997 km,4.0,Automatic,Front,Left wheel,White,1605
+VOLKSWAGEN,Passat Se,2012,Sedan,Petrol,2.5,154000 km,5.0,Tiptronic,Front,Left wheel,Blue,1606
+KIA,Optima,2012,Sedan,Petrol,2,166400 km,6.0,Automatic,Front,Left wheel,White,1607
+BMW,318,1997,Sedan,Petrol,1.8,0 km,4.0,Manual,Rear,Left wheel,Silver,1608
+SSANGYONG,Actyon,2016,Jeep,Diesel,1.6,89298 km,4.0,Automatic,Front,Left wheel,White,1609
+VOLKSWAGEN,Jetta,2015,Sedan,Diesel,1.8,63792 km,4.0,Automatic,Front,Left wheel,Black,1610
+VOLKSWAGEN,Crafter,2007,Goods wagon,Diesel,2.5 Turbo,228000 km,4.0,Manual,Rear,Left wheel,White,1611
+TOYOTA,Camry,2015,Sedan,Petrol,2.5,75000 km,6.0,Tiptronic,Front,Left wheel,Black,1612
+KIA,Niro,2019,Jeep,Hybrid,1.6,429 km,4.0,Automatic,Front,Left wheel,Silver,1613
+HYUNDAI,Elantra,2017,Sedan,Petrol,1.6,107220 km,4.0,Automatic,Front,Left wheel,White,1614
+CHEVROLET,Volt,2014,Hatchback,Hybrid,1.4,133195 km,4.0,Automatic,Front,Left wheel,Black,1615
+HYUNDAI,Veloster,2013,Hatchback,Petrol,1.6,80000 km,4.0,Tiptronic,Front,Left wheel,White,1616
+HONDA,FIT,2011,Hatchback,Petrol,1.5,80000 km,4.0,Automatic,Front,Left wheel,White,1617
+CHEVROLET,Captiva,2008,Jeep,Diesel,2,71486 km,4.0,Automatic,Front,Left wheel,Black,1618
+LEXUS,GX 460,2012,Jeep,Petrol,4.6,255406 km,8.0,Automatic,4x4,Left wheel,Black,1619
+HYUNDAI,H1,2009,Universal,Diesel,2.5,162332 km,4.0,Automatic,Front,Left wheel,Yellow,1620
+DAEWOO,Lacetti,2009,Sedan,Petrol,1.6,159634 km,4.0,Automatic,Front,Left wheel,Silver,1621
+TOYOTA,Aqua,2012,Hatchback,Petrol,1.5,41620 km,4.0,Automatic,Front,Left wheel,Yellow,1622
+AUDI,A4,2008,Sedan,Petrol,2.0 Turbo,190400 km,6.0,Variator,Front,Left wheel,Black,1623
+MERCEDES-BENZ,A 140 140,1997,Microbus,Diesel,2.9,111000 km,1.0,Manual,Rear,Left wheel,Carnelian red,1624
+BMW,320,2000,Sedan,Petrol,2.5,207000 km,6.0,Tiptronic,Rear,Left wheel,Blue,1625
+HYUNDAI,Santa FE,2017,Jeep,Diesel,2,84315 km,4.0,Automatic,Front,Left wheel,Silver,1626
+TOYOTA,Prius,2011,Coupe,Hybrid,1.8,229461 km,4.0,Automatic,Front,Left wheel,Black,1627
+MERCEDES-BENZ,Vito,2001,Goods wagon,Diesel,2.2 Turbo,380000 km,4.0,Manual,Rear,Left wheel,Red,1628
+TOYOTA,Camry,2012,Sedan,Petrol,2.5,121318 km,,Automatic,Front,Left wheel,Grey,1629
+VOLKSWAGEN,Golf,2013,Hatchback,Petrol,2.5,103000 km,4.0,Tiptronic,Front,Left wheel,Black,1630
+SSANGYONG,REXTON,2011,Jeep,Diesel,2,113368 km,4.0,Automatic,Front,Left wheel,White,1631
+NISSAN,Micra,1997,Sedan,Petrol,1,111111 km,4.0,Manual,Front,Left wheel,Blue,1632
+TOYOTA,Prius,2006,Sedan,Hybrid,1.5,300000 km,4.0,Automatic,Front,Left wheel,Blue,1633
+MERCEDES-BENZ,ML 320,2000,Jeep,CNG,3.2,111111 km,6.0,Tiptronic,4x4,Left wheel,Grey,1634
+JAGUAR,E-pace,2018,Jeep,Petrol,2,10782 km,4.0,Automatic,4x4,Left wheel,White,1635
+MERCEDES-BENZ,ML 550,2014,Jeep,Petrol,4.6,229966 km,8.0,Automatic,4x4,Left wheel,Black,1636
+VOLKSWAGEN,Passat se,2015,Sedan,Petrol,1.8 Turbo,43000 km,4.0,Tiptronic,Front,Left wheel,White,1637
+SSANGYONG,REXTON,2013,Jeep,Diesel,2,105949 km,4.0,Automatic,Front,Left wheel,Black,1638
+OPEL,Astra,2000,Hatchback,Petrol,1.6,215000 km,4.0,Automatic,Front,Left wheel,Silver,1639
+HYUNDAI,Sonata,2015,Sedan,LPG,2,176247 km,4.0,Automatic,Front,Left wheel,Silver,1640
+HYUNDAI,Tucson,2017,Jeep,Diesel,2,104918 km,4.0,Automatic,Front,Left wheel,White,1641
+SKODA,Octavia SCOUT,2011,Universal,Petrol,1.8 Turbo,200000 km,4.0,Manual,4x4,Left wheel,Silver,1642
+MERCEDES-BENZ,Sprinter,2014,Microbus,Diesel,2.2,160000 km,5.0,Manual,Rear,Left wheel,White,1643
+NISSAN,Juke,2013,Jeep,Petrol,1.6 Turbo,91000 km,4.0,Automatic,4x4,Left wheel,Grey,1644
+KIA,Optima,2018,Sedan,Petrol,2.4,52710 km,4.0,Automatic,Front,Left wheel,Blue,1645
+TOYOTA,Tundra,2016,Jeep,Petrol,5.7,54875 km,8.0,Automatic,Rear,Left wheel,Grey,1646
+TOYOTA,Camry,2011,Sedan,Petrol,2.5,114000 km,4.0,Automatic,Front,Left wheel,Black,1647
+MERCEDES-BENZ,Sprinter MAX,2007,Microbus,Diesel,3.0 Turbo,0 km,6.0,Tiptronic,Rear,Left wheel,White,1648
+KIA,Picanto,2016,Hatchback,Petrol,1.2,107000 km,4.0,Manual,Front,Left wheel,Silver,1649
+JEEP,Compass,2010,Jeep,Petrol,2.4,81256 km,4.0,Automatic,Front,Left wheel,Green,1650
+HYUNDAI,Tucson,2018,Jeep,Diesel,1.7,52782 km,4.0,Automatic,Front,Left wheel,Silver,1651
+SSANGYONG,Korando,2011,Jeep,Diesel,2,248871 km,4.0,Automatic,Front,Left wheel,White,1652
+TOYOTA,Aqua,2013,Sedan,Hybrid,1.5,140000 km,4.0,Automatic,Front,Right-hand drive,White,1653
+FORD,Fusion,2015,Sedan,Petrol,1.5 Turbo,163711 km,4.0,Automatic,Front,Left wheel,Black,1654
+TOYOTA,Celica,2000,Coupe,Petrol,1.8,204000 km,4.0,Manual,Front,Right-hand drive,Silver,1655
+MAZDA,Eunos 500,2010,Hatchback,Petrol,2.3,191110 km,4.0,Automatic,Front,Left wheel,Black,1656
+MERCEDES-BENZ,E 240,1998,Sedan,Petrol,2.4,270000 km,6.0,Manual,Rear,Left wheel,Silver,1657
+KIA,Sorento,2004,Jeep,LPG,2.4,0 km,4.0,Manual,4x4,Left wheel,Black,1658
+OPEL,Meriva,2006,Minivan,Petrol,1.6,170000 km,4.0,Automatic,Front,Left wheel,Silver,1659
+SSANGYONG,Korando,2012,Jeep,Diesel,2,105661 km,4.0,Automatic,Front,Left wheel,White,1660
+LAND ROVER,Range Rover Vogue,2019,Jeep,Diesel,3.0 Turbo,4500 km,8.0,Tiptronic,4x4,Left wheel,Black,1661
+BMW,X6 M,2009,Sedan,Petrol,3.0 Turbo,170000 km,6.0,Tiptronic,4x4,Left wheel,Black,1662
+HYUNDAI,H1,2009,Minivan,Diesel,2.5,42852 km,4.0,Automatic,Front,Left wheel,White,1663
+FIAT,500,2011,Coupe,Petrol,1.4,152848 km,4.0,Manual,Front,Left wheel,Blue,1664
+HONDA,Insight,2013,Coupe,Hybrid,1.3,126000 km,4.0,Automatic,Front,Left wheel,Blue,1665
+HYUNDAI,Sonata,2014,Sedan,LPG,2,735970 km,4.0,Automatic,Front,Left wheel,Silver,1666
+MITSUBISHI,Pajero IO,1999,Jeep,Petrol,1.8,195000 km,4.0,Automatic,4x4,Left wheel,Silver,1667
+TOYOTA,Camry,2012,Sedan,Petrol,2.5,83200 km,4.0,Tiptronic,Front,Left wheel,Black,1668
+FORD,Escape,2009,Jeep,Hybrid,2.5,169000 km,4.0,Automatic,Rear,Left wheel,White,1669
+KIA,Picanto,2011,Sedan,Petrol,1,50131 km,4.0,Automatic,Front,Left wheel,Silver,1670
+TOYOTA,Camry,2014,Sedan,Petrol,2.5,108000 km,4.0,Tiptronic,Front,Left wheel,Black,1671
+MERCEDES-BENZ,E 550,2010,Coupe,Petrol,5.5 Turbo,67000 km,12.0,Tiptronic,Rear,Left wheel,White,1672
+CHEVROLET,Malibu,2016,Sedan,Petrol,1.5 Turbo,73450 km,4.0,Tiptronic,Front,Left wheel,White,1673
+HYUNDAI,Santa FE,2012,Jeep,Petrol,3.5,154782 km,6.0,Automatic,4x4,Left wheel,Grey,1674
+CHEVROLET,Malibu LT,2016,Sedan,Petrol,1.4 Turbo,17961 km,4.0,Automatic,Front,Left wheel,Black,1675
+SSANGYONG,Korando,2014,Jeep,Diesel,2,158423 km,,Automatic,Front,Left wheel,Red,1676
+TOYOTA,Camry,2012,Sedan,Hybrid,2.5,156518 km,4.0,Automatic,Front,Left wheel,White,1677
+BMW,328,2013,Sedan,Petrol,2,189259 km,4.0,Automatic,Rear,Left wheel,Black,1678
+HYUNDAI,Elantra,2014,Sedan,Petrol,1.6,179664 km,4.0,Automatic,Front,Left wheel,Silver,1679
+TOYOTA,Prius,2010,Jeep,Hybrid,1.8,256966 km,4.0,Automatic,Front,Left wheel,Blue,1680
+MERCEDES-BENZ,E 200,1994,Sedan,Petrol,2,368268 km,4.0,Manual,Rear,Left wheel,Grey,1681
+HYUNDAI,Santa FE,2015,Jeep,Diesel,2,68515 km,4.0,Automatic,Front,Left wheel,Grey,1682
+TOYOTA,RAV 4,2002,Jeep,CNG,2,200000 km,4.0,Automatic,4x4,Left wheel,White,1683
+SSANGYONG,Actyon,2016,Jeep,Diesel,1.6,153404 km,4.0,Automatic,Front,Left wheel,Silver,1684
+TOYOTA,Prius,2011,Hatchback,Hybrid,1.8,155000 km,4.0,Automatic,Rear,Left wheel,Grey,1685
+BMW,X5,2007,Jeep,Petrol,3,23000 km,6.0,Tiptronic,4x4,Left wheel,Grey,1686
+TOYOTA,RAV 4,2001,Jeep,Petrol,2,333333 km,4.0,Automatic,4x4,Left wheel,Golden,1687
+VOLKSWAGEN,Touareg,2004,Jeep,Diesel,2.5,1000 km,6.0,Tiptronic,4x4,Left wheel,Silver,1688
+TOYOTA,Prius C YARIS IA,2015,Sedan,Petrol,1.5,43000 km,4.0,Automatic,Front,Left wheel,Black,1689
+HYUNDAI,Sonata,2014,Sedan,LPG,2,63600 km,4.0,Automatic,Front,Left wheel,Silver,1690
+CHEVROLET,Malibu,2013,Sedan,Petrol,,201612 km,4.0,Automatic,Front,Left wheel,White,1691
+SSANGYONG,Korando,2011,Jeep,Diesel,2,115102 km,4.0,Automatic,Front,Left wheel,White,1692
+SSANGYONG,Actyon,2016,Jeep,Diesel,1.6,53873 km,4.0,Automatic,Front,Left wheel,Red,1693
+HYUNDAI,Elantra,2014,Sedan,Petrol,1.8,88000 km,4.0,Automatic,Front,Left wheel,Grey,1694
+JAGUAR,XF,2015,Sedan,Diesel,2.2,71309 km,4.0,Automatic,Front,Left wheel,White,1695
+FORD,Transit,1996,Microbus,Diesel,2.5,210000 km,4.0,Manual,Rear,Left wheel,White,1696
+TOYOTA,Camry,2013,Sedan,Hybrid,2.5,190549 km,4.0,Automatic,Front,Left wheel,Black,1697
+LINCOLN,Navigator,1998,Jeep,CNG,5.4,116800 km,8.0,Automatic,4x4,Left wheel,White,1698
+FORD,Taurus,2014,Sedan,LPG,3.7,290000 km,6.0,Automatic,4x4,Left wheel,Grey,1699
+TOYOTA,Prius,2010,Sedan,Petrol,1.8,185000 km,4.0,Variator,Front,Left wheel,Golden,1700
+LEXUS,HS 250h,2010,Sedan,Petrol,2.5,79000 km,4.0,Automatic,Front,Left wheel,Grey,1701
+HYUNDAI,Elantra,2015,Sedan,Petrol,1.8,126400 km,4.0,Automatic,Front,Left wheel,Blue,1702
+TOYOTA,Prius,2006,Hatchback,Hybrid,1.5,376000 km,4.0,Variator,Front,Left wheel,Silver,1703
+TOYOTA,Prius,2008,Sedan,Hybrid,1.5,244800 km,4.0,Automatic,Front,Left wheel,Green,1704
+HYUNDAI,Tucson,2012,Jeep,Petrol,2.4,128000 km,4.0,Tiptronic,4x4,Left wheel,Grey,1705
+HONDA,FIT Premiym,2011,Hatchback,Hybrid,1.3,100000 km,4.0,Tiptronic,Front,Right-hand drive,Yellow,1706
+KIA,Sportage,2015,Jeep,Petrol,2.4,60123 km,4.0,Automatic,4x4,Left wheel,White,1707
+HYUNDAI,Elantra,2014,Sedan,Diesel,1.6,138598 km,4.0,Automatic,Front,Left wheel,White,1708
+FORD,Transit Connect,2003,Goods wagon,Diesel,1.7,159000 km,4.0,Manual,Front,Left wheel,White,1709
+BMW,328,2008,Coupe,Petrol,3,150000 km,6.0,Automatic,Rear,Left wheel,White,1710
+HYUNDAI,Elantra,2011,Sedan,Petrol,1.6,154900 km,4.0,Automatic,Front,Left wheel,White,1711
+HYUNDAI,Sonata,2018,Sedan,Petrol,2,36304 km,4.0,Automatic,Front,Left wheel,Grey,1712
+DODGE,Challenger,2016,Coupe,Petrol,3.6,127245 km,6.0,Automatic,Rear,Left wheel,Red,1713
+FORD,Fusion,2017,Sedan,Hybrid,2,27000 km,4.0,Automatic,Front,Left wheel,Blue,1714
+AUDI,A4,2013,Sedan,Petrol,2,174941 km,4.0,Automatic,4x4,Left wheel,Black,1715
+OPEL,Vectra,2000,Hatchback,CNG,1.8,268000 km,4.0,Manual,Front,Left wheel,Silver,1716
+HYUNDAI,Elantra,2016,Sedan,Petrol,2,0 km,4.0,Automatic,Front,Left wheel,Silver,1717
+FORD,Fusion,2014,Sedan,Hybrid,2,135451 km,4.0,Automatic,Front,Left wheel,Grey,1718
+BMW,528,1998,Sedan,Petrol,2.8,124000 km,6.0,Manual,Rear,Left wheel,Black,1719
+HONDA,FIT RS,2008,Hatchback,Petrol,1.5,147290 km,4.0,Automatic,Front,Right-hand drive,Silver,1720
+SUBARU,Forester,2000,Goods wagon,Petrol,2,1000 km,4.0,Manual,4x4,Right-hand drive,Silver,1721
+KIA,Optima,2012,Sedan,Hybrid,2.4,126994 km,4.0,Tiptronic,Front,Left wheel,Grey,1722
+MERCEDES-BENZ,ML 350,2013,Jeep,Diesel,3,244800 km,6.0,Automatic,4x4,Left wheel,White,1723
+SSANGYONG,REXTON,2015,Jeep,Diesel,2,110000 km,4.0,Automatic,Front,Left wheel,Black,1724
+HYUNDAI,Genesis,2011,Coupe,Petrol,2,117492 km,4.0,Automatic,Front,Left wheel,Grey,1725
+TOYOTA,Prius,2015,Hatchback,Hybrid,1.5,127789 km,4.0,Automatic,Front,Left wheel,Grey,1726
+MERCEDES-BENZ,E 200,1995,Sedan,CNG,2,554 km,4.0,Manual,Rear,Left wheel,Blue,1727
+BMW,330,2003,Sedan,Petrol,3,280000 km,6.0,Tiptronic,Rear,Left wheel,Silver,1728
+HONDA,Step Wagon,2005,Minivan,Petrol,2.4,136800 km,4.0,Automatic,4x4,Right-hand drive,Black,1729
+HYUNDAI,Santa FE,2016,Jeep,Diesel,2,49454 km,4.0,Automatic,Front,Left wheel,White,1730
+KIA,Optima,2016,Sedan,Petrol,2.4,36500 km,4.0,Automatic,Front,Left wheel,White,1731
+HYUNDAI,Santa FE,2013,Jeep,Diesel,2.2,138742 km,4.0,Automatic,Front,Left wheel,Grey,1732
+HYUNDAI,Tucson,2012,Jeep,Diesel,2,168462 km,4.0,Automatic,Front,Left wheel,Black,1733
+LAND ROVER,Range Rover,2007,Jeep,Diesel,2.7 Turbo,197000 km,6.0,Tiptronic,4x4,Left wheel,Sky blue,1734
+CHEVROLET,Cruze LT,2017,Sedan,Petrol,1.4 Turbo,104000 km,6.0,Automatic,Front,Left wheel,Silver,1735
+MITSUBISHI,Colt,2003,Hatchback,Petrol,1.3,164000 km,4.0,Automatic,Front,Right-hand drive,Silver,1736
+FORD,Fusion,2013,Sedan,Hybrid,2,141000 km,4.0,Automatic,Front,Left wheel,Carnelian red,1737
+HYUNDAI,H1,2008,Minivan,Diesel,2.5,66558 km,4.0,Automatic,Front,Left wheel,Black,1738
+TOYOTA,Prius C,2013,Hatchback,Hybrid,1.5,130000 km,4.0,Automatic,Front,Left wheel,Red,1739
+SUBARU,Legacy,2002,Sedan,Petrol,2.0 Turbo,16700 km,4.0,Tiptronic,4x4,Right-hand drive,Silver,1740
+TOYOTA,Aqua,2012,Hatchback,Hybrid,1.3,80000 km,4.0,Variator,Front,Right-hand drive,Black,1741
+OPEL,Astra,1996,Hatchback,Petrol,1.6,111112 km,4.0,Manual,Front,Left wheel,Black,1742
+TOYOTA,Aqua,2013,Hatchback,Petrol,1.5,154000 km,4.0,Automatic,Front,Left wheel,Silver,1743
+TOYOTA,Camry,2012,Sedan,Petrol,2.5,99000 km,4.0,Tiptronic,Front,Left wheel,Black,1744
+NISSAN,Juke,2012,Jeep,Petrol,1.6,167405 km,4.0,Automatic,4x4,Left wheel,Black,1745
+VOLKSWAGEN,Scirocco,2015,Sedan,Petrol,0.2,111965 km,4.0,Automatic,Front,Left wheel,Black,1746
+HYUNDAI,Santa FE,2020,Jeep,Petrol,2,12334 km,4.0,Automatic,Front,Left wheel,Blue,1747
+VOLKSWAGEN,Golf TDI,2012,Sedan,Diesel,2.0 Turbo,142000 km,4.0,Automatic,Front,Left wheel,Grey,1748
+NISSAN,X-Terra,2002,Jeep,Petrol,3.3,94000 km,6.0,Manual,4x4,Left wheel,Silver,1749
+TOYOTA,Land Cruiser,2001,Jeep,LPG,4.7,250000 km,8.0,Automatic,4x4,Left wheel,White,1750
+HYUNDAI,Sonata,2010,Sedan,Petrol,2,125064 km,4.0,Automatic,Front,Left wheel,Silver,1751
+CHEVROLET,Nubira,2005,Goods wagon,Petrol,1.8,127000 km,4.0,Manual,Front,Left wheel,Blue,1752
+SSANGYONG,REXTON,2016,Jeep,Diesel,2.2,110170 km,4.0,Automatic,Front,Left wheel,Black,1753
+LAND ROVER,Range Rover Velar,2018,Jeep,Petrol,3.0 Turbo,22000 km,6.0,Tiptronic,4x4,Left wheel,White,1754
+BMW,528,2012,Sedan,Petrol,2.0 Turbo,90000 km,4.0,Tiptronic,Rear,Left wheel,Black,1755
+DAIHATSU,Terios,2008,Jeep,Petrol,0.7 Turbo,67000 km,4.0,Manual,4x4,Right-hand drive,Black,1756
+CHEVROLET,Cruze,2013,Sedan,Petrol,1.4 Turbo,80000 km,4.0,Automatic,Front,Left wheel,Silver,1757
+TOYOTA,Camry,2014,Sedan,Hybrid,2.5,52800 km,4.0,Automatic,Front,Left wheel,Golden,1758
+MERCEDES-BENZ,E 350,2011,Sedan,Diesel,,230696 km,6.0,Automatic,4x4,Left wheel,Black,1759
+TOYOTA,Prius,2009,Sedan,,1.8,138942 km,4.0,Automatic,Front,Left wheel,Red,1760
+INFINITI,QX80,2016,Jeep,Petrol,5.6,91648 km,8.0,Automatic,Rear,Left wheel,White,1761
+TOYOTA,Prius,2013,Sedan,Hybrid,1.8,6500 km,4.0,Tiptronic,Front,Left wheel,Grey,1762
+SSANGYONG,REXTON,2013,Jeep,Diesel,2,137267 km,4.0,Automatic,Front,Left wheel,Silver,1763
+HYUNDAI,Sonata,2013,Sedan,Hybrid,2.4,216208 km,4.0,Automatic,Front,Left wheel,Blue,1764
+TOYOTA,Prius,2007,Sedan,Hybrid,1.5,216000 km,4.0,Automatic,Front,Left wheel,Carnelian red,1765
+FORD,Fusion,2013,Sedan,Petrol,2.5,83718 km,4.0,Automatic,Front,Left wheel,White,1766
+TOYOTA,Vitz,2011,Hatchback,Petrol,1.3,150000 km,4.0,Automatic,Front,Right-hand drive,White,1767
+HYUNDAI,Elantra,2014,Sedan,Diesel,1.6,70561 km,4.0,Automatic,Front,Left wheel,White,1768
+TOYOTA,Prius,2011,Sedan,Hybrid,1.8,235000 km,4.0,Automatic,Front,Left wheel,Blue,1769
+FORD,Transit,2008,Microbus,Diesel,2.2,180000 km,4.0,Manual,Front,Left wheel,White,1770
+CHEVROLET,Cruze,2014,Sedan,Petrol,1.4 Turbo,71600 km,4.0,Tiptronic,Front,Left wheel,Black,1771
+TOYOTA,Camry,2018,Sedan,Hybrid,2.5,27000 km,4.0,Tiptronic,Front,Left wheel,Brown,1772
+HYUNDAI,Elantra,2014,Coupe,,2,50478 km,4.0,Automatic,Front,Left wheel,White,1773
+OPEL,Astra,1994,Sedan,CNG,1.6,0 km,4.0,Manual,Front,Left wheel,Green,1774
+HONDA,FIT,2005,Sedan,Petrol,1.5,223000 km,4.0,Tiptronic,Front,Right-hand drive,Grey,1775
+TOYOTA,Corolla LE,2012,Sedan,Petrol,1.8,124000 km,4.0,Automatic,Front,Left wheel,Black,1776
+HYUNDAI,H1,2016,Minivan,Diesel,2.5,137134 km,4.0,Automatic,Front,Left wheel,White,1777
+HYUNDAI,Elantra,2015,Jeep,Petrol,1.8,125386 km,4.0,Automatic,Front,Left wheel,White,1778
+HYUNDAI,H1,2014,Minivan,Diesel,2.5,152000 km,4.0,Automatic,Front,Left wheel,Black,1779
+FORD,Transit,1998,Goods wagon,Diesel,2.5,270000 km,,Manual,Rear,Left wheel,White,1780
+SSANGYONG,Actyon,2017,Jeep,Diesel,1.6,72924 km,4.0,Automatic,Front,Left wheel,Blue,1781
+MERCEDES-BENZ,ML 350,2009,Jeep,Diesel,3.5,274088 km,6.0,Automatic,4x4,Left wheel,Black,1782
+MITSUBISHI,Pajero,1995,Jeep,Diesel,2.5 Turbo,1958 km,4.0,Automatic,4x4,Left wheel,Blue,1783
+CHEVROLET,Cruze,2011,Sedan,Petrol,1.8,171960 km,4.0,Automatic,Front,Left wheel,White,1784
+JEEP,Liberty,2012,Jeep,Petrol,3.7,170000 km,6.0,Automatic,4x4,Left wheel,Grey,1785
+OPEL,Vectra,2007,Universal,Diesel,1.9,128000 km,4.0,Manual,Front,Left wheel,Grey,1786
+KIA,Sorento,2013,Jeep,Petrol,3.5,102000 km,6.0,Tiptronic,4x4,Left wheel,Black,1787
+BMW,328,2014,Sedan,Petrol,2.0 Turbo,47000 km,4.0,Automatic,Rear,Left wheel,Silver,1788
+NISSAN,Juke,2015,Jeep,Petrol,1.6,103498 km,4.0,Automatic,4x4,Left wheel,Black,1789
+MERCEDES-BENZ,CLA 250,2015,Sedan,Petrol,2,74939 km,4.0,Automatic,Front,Left wheel,Grey,1790
+HYUNDAI,Elantra,2012,Sedan,Petrol,1.8,186560 km,4.0,Tiptronic,Front,Left wheel,Grey,1791
+KIA,Optima,2013,Sedan,Petrol,2,61860 km,4.0,Automatic,Front,Left wheel,Silver,1792
+BMW,X5,2014,Jeep,Petrol,3.0 Turbo,72000 km,6.0,Tiptronic,4x4,Left wheel,Brown,1793
+TOYOTA,Camry,2014,Sedan,Hybrid,2.5,172480 km,4.0,Automatic,Front,Left wheel,White,1794
+CHEVROLET,Captiva,2015,Jeep,Diesel,2.2,61297 km,4.0,Automatic,Front,Left wheel,Silver,1795
+BMW,328,2010,Sedan,Petrol,3,190000 km,6.0,Tiptronic,Rear,Left wheel,Black,1796
+HONDA,FIT,2019,Hatchback,Petrol,1.3,6000 km,4.0,Automatic,Front,Right-hand drive,Black,1797
+TOYOTA,Camry,2014,Sedan,Petrol,2.5,372202 km,4.0,Automatic,Front,Left wheel,Blue,1798
+HYUNDAI,H1,2016,Universal,Diesel,2.5,182821 km,4.0,Automatic,Front,Left wheel,Silver,1799
+FORD,Fusion,2016,Sedan,Hybrid,2,120114 km,4.0,Automatic,Front,Left wheel,Black,1800
+TOYOTA,Prius,2005,Sedan,Hybrid,1.5,43200 km,4.0,Automatic,Front,Left wheel,White,1801
+HYUNDAI,Santa FE,2010,Jeep,Diesel,2,58776 km,4.0,Automatic,Front,Left wheel,White,1802
+HYUNDAI,Santa FE,2017,Jeep,Petrol,2.4,62400 km,4.0,Tiptronic,4x4,Left wheel,Silver,1803
+HYUNDAI,Sonata,2018,Sedan,Petrol,2,40808 km,4.0,Automatic,Front,Left wheel,Black,1804
+MERCEDES-BENZ,E 220,2003,Sedan,Diesel,2.2 Turbo,215000 km,4.0,Manual,Rear,Right-hand drive,Blue,1805
+CHEVROLET,Malibu,2017,Sedan,Hybrid,1.8,30000 km,4.0,Tiptronic,Front,Left wheel,Black,1806
+TOYOTA,Prius,2008,Sedan,Hybrid,1.5,170000 km,4.0,Automatic,Front,Left wheel,Black,1807
+HYUNDAI,Sonata,2011,Sedan,LPG,2,61208 km,4.0,Automatic,Front,Left wheel,White,1808
+HYUNDAI,Elantra,2012,Sedan,Petrol,1.6,146816 km,,Automatic,Front,Left wheel,White,1809
+VOLKSWAGEN,Jetta,2012,Sedan,Petrol,2.5,83658 km,4.0,Tiptronic,Front,Left wheel,Black,1810
+OPEL,Astra G,2003,Hatchback,Petrol,1.6,180000 km,4.0,Manual,Front,Left wheel,Silver,1811
+HYUNDAI,H1,2008,Minivan,Diesel,2.5,65625 km,4.0,Automatic,Front,Left wheel,Silver,1812
+HYUNDAI,Santa FE,2016,Jeep,Diesel,2,90727 km,4.0,Automatic,Front,Left wheel,Blue,1813
+CHEVROLET,Orlando,2015,Jeep,Diesel,1.6,138541 km,4.0,Automatic,Front,Left wheel,Silver,1814
+LAND ROVER,Land Rover Sport,2005,Jeep,Diesel,2.7 Turbo,220000 km,8.0,Tiptronic,4x4,Left wheel,Black,1815
+OPEL,Astra,2000,Goods wagon,CNG,1.6,274000 km,4.0,Manual,Front,Left wheel,Black,1816
+TOYOTA,Camry,2011,Sedan,Petrol,2.5,190698 km,4.0,Automatic,Front,Left wheel,Grey,1817
+TOYOTA,Prius,2006,Sedan,Hybrid,1.5,0 km,4.0,Automatic,Front,Left wheel,Silver,1818
+OPEL,Vectra,1996,Sedan,Petrol,2,0 km,4.0,Manual,Front,Left wheel,Green,1819
+NISSAN,March,2003,Hatchback,Petrol,1.2,136000 km,4.0,Automatic,Front,Right-hand drive,Sky blue,1820
+TOYOTA,Camry SPORT,2014,Sedan,Petrol,2.5,96000 km,4.0,Tiptronic,Front,Left wheel,Grey,1821
+KIA,Optima,2014,Sedan,Petrol,2.4,99000 km,4.0,Tiptronic,Front,Left wheel,Silver,1822
+MERCEDES-BENZ,B 170,2008,Hatchback,Petrol,1.7,120000 km,4.0,Tiptronic,Front,Left wheel,Black,1823
+SSANGYONG,REXTON,2009,Jeep,Diesel,2.7,77016 km,4.0,Automatic,Front,Left wheel,Silver,1824
+MERCEDES-BENZ,E 320,2003,Sedan,LPG,3.2,228000 km,6.0,Tiptronic,Rear,Left wheel,Black,1825
+NISSAN,Note,2005,Hatchback,Petrol,1.5,156000 km,4.0,Automatic,Front,Right-hand drive,Green,1826
+BMW,520,1989,Sedan,Petrol,2,199000 km,6.0,Manual,Rear,Left wheel,White,1827
+HYUNDAI,Elantra,2015,Sedan,Petrol,1.8,115507 km,4.0,Automatic,Front,Left wheel,Black,1828
+FORD,Transit,2004,Goods wagon,Diesel,2.0 Turbo,144000 km,4.0,Manual,Front,Left wheel,White,1829
+NISSAN,Juke,2012,Universal,Petrol,1.6 Turbo,84000 km,4.0,Automatic,Front,Left wheel,Grey,1830
+FIAT,500,2013,Jeep,Petrol,1.4,107054 km,4.0,Automatic,Front,Left wheel,Black,1831
+TOYOTA,Aqua,2013,Sedan,Hybrid,1.5,200000 km,4.0,Variator,Front,Right-hand drive,White,1832
+HYUNDAI,Santa FE,2013,Jeep,Diesel,2,144000 km,4.0,Automatic,Front,Left wheel,Silver,1833
+BMW,X1,2018,Jeep,Petrol,2.0 Turbo,68126 km,4.0,Automatic,4x4,Left wheel,White,1834
+HYUNDAI,Elantra,2015,Sedan,Petrol,1.6,68201 km,4.0,Automatic,Front,Left wheel,White,1835
+MITSUBISHI,Outlander,2018,Jeep,Hybrid,2,59674 km,4.0,Automatic,4x4,Left wheel,Black,1836
+HYUNDAI,Sonata,2017,Sedan,Petrol,2,43178 km,4.0,Automatic,Front,Left wheel,White,1837
+TOYOTA,Aqua,2012,Hatchback,Hybrid,1.5,128000 km,4.0,Automatic,Front,Right-hand drive,Black,1838
+FORD,Transit,2011,Microbus,Diesel,2.2 Turbo,167000 km,4.0,Manual,Front,Left wheel,White,1839
+HYUNDAI,Elantra,2017,Sedan,Petrol,2,20000 km,4.0,Tiptronic,Front,Left wheel,Black,1840
+AUDI,A6,2007,Sedan,Petrol,3.2,304000 km,6.0,Tiptronic,4x4,Left wheel,Grey,1841
+TOYOTA,Camry,2014,Sedan,Petrol,2.5,113600 km,4.0,Automatic,Front,Left wheel,Silver,1842
+TOYOTA,Corolla,2014,Sedan,Petrol,1.8,169141 km,4.0,Automatic,Front,Left wheel,Silver,1843
+HYUNDAI,Sonata,2015,Sedan,LPG,2,371964 km,4.0,Automatic,Front,Left wheel,Orange,1844
+BMW,530,2011,Sedan,Petrol,3,81000 km,4.0,Tiptronic,Rear,Left wheel,Silver,1845
+SSANGYONG,Actyon,2011,Jeep,Diesel,2,181727 km,4.0,Automatic,Front,Left wheel,White,1846
+TOYOTA,RAV 4,2018,Sedan,Hybrid,2.5,73646 km,4.0,Automatic,4x4,Left wheel,Grey,1847
+MERCEDES-BENZ,E 200,2000,Goods wagon,LPG,2.0 Turbo,0 km,4.0,Manual,Rear,Left wheel,Blue,1848
+CHEVROLET,Volt,2012,Hatchback,Hybrid,1.4,162190 km,4.0,Automatic,Front,Left wheel,Blue,1849
+BMW,X5,2012,Jeep,Diesel,3,103458 km,6.0,Automatic,4x4,Left wheel,White,1850
+SSANGYONG,Actyon,2017,Jeep,Petrol,1.6,53811 km,4.0,Automatic,Front,Left wheel,Grey,1851
+HONDA,FIT,2009,Hatchback,Petrol,1.3,185000 km,4.0,Automatic,Front,Right-hand drive,Grey,1852
+MERCEDES-BENZ,GLE 350,2017,Jeep,Petrol,3.5,75914 km,6.0,Automatic,4x4,Left wheel,Silver,1853
+AUDI,A7,2014,Hatchback,Petrol,3,0 km,6.0,Automatic,4x4,Left wheel,Black,1854
+TOYOTA,Prius,2012,Hatchback,Hybrid,1.8,180000 km,4.0,Automatic,Front,Left wheel,White,1855
+MERCEDES-BENZ,ML 500,2002,Jeep,CNG,5,0 km,8.0,Tiptronic,4x4,Left wheel,Black,1856

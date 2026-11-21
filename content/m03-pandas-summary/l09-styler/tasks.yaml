@@ -1,0 +1,322 @@
+- id: m3-l9-t1
+  title: Формат чисел и заголовок
+  difficulty: warmup
+  introduces: [pd-styler]
+  uses: [pd-agg]
+  statement: |
+    Оформите таблицу `summary`: числа — без знаков после запятой и с пробелом между разрядами, заголовок таблицы — любой непустой текст. Результат сохраните в `styled`. Саму таблицу `summary` не меняйте.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')   # результат модуля 2
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+    summary = (df.groupby('Make').agg(n=('Price', 'size'), median_price=('Price', 'median'))
+                 .nlargest(8, 'n')
+                 .rename(columns={'n': 'Записей', 'median_price': 'Медиана, евро'}))   # урок 3.2
+  starter: |
+    styled = summary.style.format(...).set_caption(...)
+    styled
+  solution: |
+    styled = summary.style.format(precision=0, thousands=' ').set_caption('Крупнейшие марки: число объявлений и медианная цена')
+    styled
+  explanation: |
+    - `format(precision=0, thousands=' ')` — без дробной части, разряды разделены пробелом: `3 403`.
+    - `set_caption` добавляет заголовок над таблицей. Оба метода возвращают Styler, поэтому их пишут цепочкой.
+    - Данные `summary` не меняются — меняется только отображение.
+  hints:
+    - У Styler есть метод для формата чисел и метод для заголовка.
+    - "`summary.style.format(precision=0, thousands=' ')`, затем `.set_caption('…')`."
+    - "`styled = summary.style.format(precision=0, thousands=' ').set_caption('Крупнейшие марки')`."
+  tests: |
+    s = var('styled')
+    ensure(type(s).__name__ == 'Styler', '`styled` должен быть объектом Styler — результатом `summary.style...`, а сейчас это {0}.'.format(type(s).__name__))
+    html = s.to_html()
+    first = int(ref('summary')['Записей'].iloc[0])
+    want = '{:,}'.format(first).replace(',', ' ')
+    ensure(want in html, 'Числа должны выводиться с пробелом между разрядами (например, {0}): `format(precision=0, thousands=\' \')`.'.format(want))
+    med = float(ref('summary')['Медиана, евро'].iloc[0])
+    ensure('{:,.0f}'.format(med).replace(',', ' ') in html and '{:.6f}'.format(med) not in html, 'Медианы должны выводиться без знаков после запятой: `precision=0`.')
+    ensure((s.caption or '').strip() != '', 'Добавьте заголовок таблицы: `.set_caption(\'…\')`.')
+    same_frame(var('summary'), ref('summary'), 'Таблица `summary` изменилась — Styler не должен менять данные.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        styled = summary.style.format(precision=0).set_caption('Крупнейшие марки')
+      expect: пробелом между разрядами
+    - code: |
+        styled = summary.style.format(precision=0, thousands=' ')
+      expect: заголовок
+    - code: |
+        styled = summary.round(0)
+      expect: Styler
+
+- id: m3-l9-t2
+  title: Цветовая шкала только для медианы
+  difficulty: main
+  introduces: [pd-styler]
+  uses: [pd-pivot-table]
+  statement: |
+    Оформите `summary`: формат чисел — как в предыдущем задании, цветовая шкала `background_gradient` с палитрой `'Blues'` — **только** для колонки `'Медиана, евро'`. Результат — `styled`.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+    summary = (df.groupby('Make').agg(n=('Price', 'size'), median_price=('Price', 'median'))
+                 .nlargest(8, 'n')
+                 .rename(columns={'n': 'Записей', 'median_price': 'Медиана, евро'}))
+  starter: |
+    styled = (summary.style
+                  .format(precision=0, thousands=' ')
+                  .background_gradient(...))
+    styled
+  solution: |
+    styled = (summary.style
+                  .format(precision=0, thousands=' ')
+                  .background_gradient(subset=['Медиана, евро'], cmap='Blues'))
+    styled
+  explanation: |
+    - `subset=['Медиана, евро']` ограничивает раскраску одной колонкой; без него раскрасились бы все числовые колонки.
+    - `cmap='Blues'` — палитра от светлого к тёмно-синему: темнее — больше медиана.
+  hints:
+    - Какой параметр ограничивает оформление выбранными колонками?
+    - "`background_gradient(subset=['Медиана, евро'], cmap='Blues')`."
+    - "`styled = summary.style.format(precision=0, thousands=' ').background_gradient(subset=['Медиана, евро'], cmap='Blues')`."
+  tests: |
+    s = var('styled')
+    ensure(type(s).__name__ == 'Styler', '`styled` должен быть объектом Styler.')
+    try:
+        s._compute()
+    except Exception as e:
+        fail('Оформление не удалось применить ({0}). Проверьте аргументы методов Styler — не осталось ли там `...`?'.format(type(e).__name__))
+    cols = sorted({j for (i, j), v in s.ctx.items() if any(p[0] == 'background-color' for p in v)})
+    names = list(ref('summary').columns)
+    col = names.index('Медиана, евро')
+    ensure(cols != [], 'Цветовой шкалы нет — добавьте `background_gradient(...)`.')
+    ensure(cols == [col], 'Раскрашены колонки {0}, а нужна только «Медиана, евро». Укажите `subset=[\'Медиана, евро\']`.'.format([names[j] for j in cols]))
+    ensure('3 403' in s.to_html() or '{:,}'.format(int(ref('summary')['Записей'].iloc[0])).replace(',', ' ') in s.to_html(), 'Сохраните формат чисел: `format(precision=0, thousands=\' \')`.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        styled = summary.style.format(precision=0, thousands=' ').background_gradient(cmap='Blues')
+      expect: только «Медиана, евро»
+    - code: |
+        styled = summary.style.format(precision=0, thousands=' ')
+      expect: Цветовой шкалы нет
+
+- id: m3-l9-t3
+  title: Полосы для размера группы и выделение максимума
+  difficulty: main
+  introduces: [pd-styler]
+  uses: [group-size-caution]
+  statement: |
+    Оформите `summary`: формат чисел — без дробей с пробелом между разрядами; полосы `bar` в колонке `'Записей'` (цвет `'#7aa6d8'`); выделите **максимальную** медиану в колонке `'Медиана, евро'` с `props=HIGHLIGHT`. Результат — `styled`.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+    summary = (df.groupby('Make').agg(n=('Price', 'size'), median_price=('Price', 'median'))
+                 .nlargest(8, 'n')
+                 .rename(columns={'n': 'Записей', 'median_price': 'Медиана, евро'}))
+    HIGHLIGHT = 'background-color: #fff3b0; color: #222'   # оформление выделения, читаемое и в тёмной теме
+  starter: |
+    styled = (summary.style
+                  .format(precision=0, thousands=' ')
+                  .bar(...)
+                  .highlight_max(...))
+    styled
+  solution: |
+    styled = (summary.style
+                  .format(precision=0, thousands=' ')
+                  .bar(subset=['Записей'], color='#7aa6d8')
+                  .highlight_max(subset=['Медиана, евро'], props=HIGHLIGHT))
+    styled
+  explanation: |
+    - `bar(subset=['Записей'])` рисует в ячейках полосы, пропорциональные числу объявлений, — размер группы виден сразу.
+    - `highlight_max(subset=['Медиана, евро'], props=...)` выделяет наибольшую медиану этой колонки.
+  hints:
+    - "Нужны два метода Styler: полосы и выделение максимума — каждый со своим `subset`."
+    - "`.bar(subset=['Записей'], color='#7aa6d8')` и `.highlight_max(subset=['Медиана, евро'], props=HIGHLIGHT)`."
+    - "Допишите в цепочку `.bar(subset=['Записей'], color='#7aa6d8').highlight_max(subset=['Медиана, евро'], props=HIGHLIGHT)`."
+  tests: |
+    s = var('styled')
+    ensure(type(s).__name__ == 'Styler', '`styled` должен быть объектом Styler.')
+    try:
+        s._compute()
+    except Exception as e:
+        fail('Оформление не удалось применить ({0}). Проверьте аргументы методов Styler — не осталось ли там `...`?'.format(type(e).__name__))
+    names = list(ref('summary').columns)
+    j_n, j_med = names.index('Записей'), names.index('Медиана, евро')
+    bar_cols = {j for (i, j), v in s.ctx.items() if any('linear-gradient' in str(p[1]) for p in v)}
+    ensure(bar_cols, 'Полос нет — добавьте `.bar(subset=[\'Записей\'], ...)`.')
+    ensure(bar_cols == {j_n}, 'Полосы должны быть только в колонке «Записей».')
+    i_max = list(ref('summary')['Медиана, евро']).index(ref('summary')['Медиана, евро'].max())
+    hl = {(i, j) for (i, j), v in s.ctx.items() if any(p[0] == 'background-color' and '#fff3b0' in str(p[1]) for p in v)}
+    ensure(hl, 'Максимум не выделен — добавьте `.highlight_max(subset=[\'Медиана, евро\'], props=HIGHLIGHT)`.')
+    ensure(hl == {(i_max, j_med)}, 'Выделена не та ячейка: нужна наибольшая медиана в колонке «Медиана, евро».')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        styled = summary.style.format(precision=0, thousands=' ').highlight_max(subset=['Медиана, евро'], props=HIGHLIGHT)
+      expect: Полос нет
+    - code: |
+        styled = summary.style.format(precision=0, thousands=' ').bar(subset=['Записей'], color='#7aa6d8').highlight_min(subset=['Медиана, евро'], props=HIGHLIGHT)
+      expect: не та ячейка
+
+- id: m3-l9-t4
+  title: Пропуски в сводной цен
+  difficulty: main
+  introduces: [pd-styler]
+  uses: [pd-pivot-table]
+  statement: |
+    Оформите сводную медианных цен `fuel_prices` (марки × топливо): числа без дробей, пропуски — прочерком `'—'`, пустые ячейки подсвечены через `highlight_null(props=HIGHLIGHT)`. Результат — `styled`. Также получите `n_empty` — сколько ячеек пусто.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+    top10 = df['Make'].value_counts().head(10).index
+    fuel_prices = df.pivot_table(index='Make', columns='Fuel_type', values='Price', aggfunc='median').reindex(top10)
+    HIGHLIGHT = 'background-color: #fff3b0; color: #222'
+  starter: |
+    n_empty = ...
+    styled = fuel_prices.style.format(...).highlight_null(...)
+    styled
+  solution: |
+    n_empty = fuel_prices.isna().sum().sum()
+    styled = fuel_prices.style.format(precision=0, na_rep='—').highlight_null(props=HIGHLIGHT)
+    styled
+  explanation: |
+    - `isna().sum().sum()` — число пустых ячеек сводной (урок 2.3).
+    - `na_rep='—'` показывает пропуск прочерком вместо `nan`; `highlight_null` подсвечивает такие ячейки.
+    - Пустая ячейка — «нет объявлений такого сочетания», а не нулевая цена.
+  hints:
+    - Пропуски считает `isna()`; как показывать пропуск при выводе, задаёт параметр `format`.
+    - "`fuel_prices.isna().sum().sum()`; `format(precision=0, na_rep='—')`; `highlight_null(props=HIGHLIGHT)`."
+    - "`styled = fuel_prices.style.format(precision=0, na_rep='—').highlight_null(props=HIGHLIGHT)`."
+  tests: |
+    close(var('n_empty', 'number', 'числом'), ref('n_empty'), 'Пустых ячеек — {expected}, а у вас {actual}.')
+    s = var('styled')
+    ensure(type(s).__name__ == 'Styler', '`styled` должен быть объектом Styler.')
+    ensure(s.data.isna().sum().sum() == ref('n_empty'), 'Пропуски в оформляемой таблице исчезли — не заполняйте их: оформление должно только показывать прочерк.')
+    try:
+        s._compute()
+    except Exception as e:
+        fail('Оформление не удалось применить ({0}). Проверьте аргументы методов Styler — не осталось ли там `...`?'.format(type(e).__name__))
+    html = s.to_html()
+    ensure('—' in html, 'Пропуски должны выводиться прочерком: `na_rep=\'—\'`.')
+    hl = [k for k, v in s.ctx.items() if any(p[0] == 'background-color' for p in v)]
+    ensure(len(hl) == int(ref('n_empty')), 'Подсвечено {0} ячеек, а пустых {1}. Используйте `highlight_null(props=HIGHLIGHT)`.'.format(len(hl), int(ref('n_empty'))))
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        n_empty = fuel_prices.isna().sum().sum()
+        styled = fuel_prices.style.format(precision=0).highlight_null(props=HIGHLIGHT)
+      expect: прочерком
+    - code: |
+        n_empty = fuel_prices.isna().sum().sum()
+        fuel_prices = fuel_prices.fillna(0)
+        styled = fuel_prices.style.format(precision=0, na_rep='—').highlight_null(props=HIGHLIGHT)
+      expect: не заполняйте
+
+- id: m3-l9-t5
+  kind: quiz
+  title: Что можно и чего нельзя со Styler
+  difficulty: main
+  introduces: [pd-styler]
+  uses: []
+  statement: |
+    Проверьте, как вы поняли роль оформления таблиц.
+  quiz:
+    - q: "После `t = table.style.format(precision=0)` нужно посчитать среднюю медиану. Как правильно?"
+      options:
+        - "`t.mean()`"
+        - "`table['Медиана, евро'].mean()` — считать по исходному DataFrame"
+        - Скопировать числа из оформленной таблицы
+      answer: 1
+      explain: Styler — только для показа; у него нет методов таблицы.
+    - q: "Ячейки с медианой раскрашены шкалой: тёмная у Lexus, светлая у Vaz. Что верно?"
+      options:
+        - Lexus выгоднее покупать
+        - У Lexus медианная цена выше; цвет показывает величину, а не качество
+        - У Vaz ошибки в данных
+      answer: 1
+      explain: Цветовая шкала кодирует значение. Выводы о выгоде из неё не следуют.
+    - q: "Зачем в `highlight_max(props='background-color: #fff3b0; color: #222')` задают цвет текста?"
+      options:
+        - Чтобы выделенная ячейка читалась и в тёмной теме, где текст светлый
+        - Без этого highlight_max не работает
+        - Чтобы изменить значение ячейки
+      answer: 0
+      explain: Светлый фон со светлым текстом нечитаем; явный цвет текста решает проблему.
+  hints:
+    - Вспомните, что Styler меняет только отображение, и что означает цвет шкалы.
+    - "Расчёты — по DataFrame; цвет — величина; тёмная тема — светлый текст."
+    - "Ответы: по исходному DataFrame; цена выше; читаемость в тёмной теме."
+
+- id: m3-l9-t6
+  title: Таблица для отчёта о кузовах
+  difficulty: star
+  introduces: [pd-styler]
+  uses: [pd-agg, pd-rename-drop]
+  statement: |
+    Подготовьте таблицу для отчёта. Получите `report` — для каждого кузова число объявлений и медианную цену с колонками `'Объявлений'` и `'Медиана, евро'`, отсортированную по числу объявлений по убыванию. Затем `styled` — её оформление:
+
+    - числа без дробей, с пробелом между разрядами;
+    - полосы `bar` в колонке `'Объявлений'`;
+    - цветовая шкала `'Blues'` в колонке `'Медиана, евро'`;
+    - заголовок таблицы.
+  prelude: |
+    import pandas as pd
+    df = pd.read_csv('cars_processed.csv')
+    df = df[['Year', 'Distance', 'Engine', 'Price', 'km_year', 'Make', 'Model', 'Style', 'Fuel_type', 'Transmission']].drop_duplicates()
+  starter: |
+    report = ...
+    styled = ...
+    styled
+  solution: |
+    report = (df.groupby('Style')
+                .agg(n=('Price', 'size'), median_price=('Price', 'median'))
+                .rename(columns={'n': 'Объявлений', 'median_price': 'Медиана, евро'})
+                .sort_values('Объявлений', ascending=False))
+    styled = (report.style
+                  .format(precision=0, thousands=' ')
+                  .bar(subset=['Объявлений'], color='#7aa6d8')
+                  .background_gradient(subset=['Медиана, евро'], cmap='Blues')
+                  .set_caption('Кузова: число объявлений и медианная цена'))
+    styled
+  explanation: |
+    - Сначала данные: группировка, понятные имена колонок (урок 2.8), сортировка.
+    - Потом оформление цепочкой: формат, полосы для размера группы, шкала для медианы, заголовок.
+    - Рядом с медианой видно, сколько объявлений за ней стоит: у родстеров всего 23.
+  hints:
+    - "Порядок: таблица (`groupby` → `agg` → `rename` → `sort_values`), затем `report.style` с четырьмя оформлениями."
+    - "`agg(n=('Price', 'size'), median_price=('Price', 'median'))`, `rename(columns={...})`; Styler: `format`, `bar`, `background_gradient`, `set_caption`."
+    - "`styled = report.style.format(precision=0, thousands=' ').bar(subset=['Объявлений'], color='#7aa6d8').background_gradient(subset=['Медиана, евро'], cmap='Blues').set_caption('…')`."
+  tests: |
+    import pandas as pd
+    r = var('report', pd.DataFrame, 'таблицей DataFrame')
+    ensure(list(r.columns) == ['Объявлений', 'Медиана, евро'], 'Колонки `report` должны называться «Объявлений» и «Медиана, евро», а у вас {0}.'.format(list(r.columns)))
+    ensure(r['Объявлений'].is_monotonic_decreasing, 'Отсортируйте `report` по числу объявлений по убыванию.')
+    same_frame(r, ref('report'), 'Таблица `report` не совпадает.', check_dtype=False)
+    s = var('styled')
+    ensure(type(s).__name__ == 'Styler', '`styled` должен быть объектом Styler.')
+    try:
+        s._compute()
+    except Exception as e:
+        fail('Оформление не удалось применить ({0}). Проверьте аргументы методов Styler — не осталось ли там `...`?'.format(type(e).__name__))
+    bar_cols = {j for (i, j), v in s.ctx.items() if any('linear-gradient' in str(p[1]) for p in v)}
+    grad_cols = {j for (i, j), v in s.ctx.items() if any(p[0] == 'background-color' for p in v)}
+    ensure(bar_cols == {0}, 'Полосы `bar` нужны только в колонке «Объявлений».')
+    ensure(grad_cols == {1}, 'Цветовая шкала нужна только в колонке «Медиана, евро».')
+    ensure((s.caption or '').strip() != '', 'Добавьте заголовок таблицы.')
+    ensure('{:,}'.format(int(ref('report')['Объявлений'].iloc[0])).replace(',', ' ') in s.to_html(), 'Числа — без дробей и с пробелом между разрядами.')
+  files: [cars_processed.csv]
+  wrong:
+    - code: |
+        report = df.groupby('Style').agg(n=('Price', 'size'), median_price=('Price', 'median')).sort_values('n', ascending=False)
+        styled = report.style.format(precision=0, thousands=' ').bar(subset=['n']).background_gradient(subset=['median_price'], cmap='Blues').set_caption('Кузова')
+      expect: должны называться
+    - code: |
+        report = (df.groupby('Style').agg(n=('Price', 'size'), median_price=('Price', 'median'))
+                    .rename(columns={'n': 'Объявлений', 'median_price': 'Медиана, евро'})
+                    .sort_values('Объявлений', ascending=False))
+        styled = report.style.format(precision=0, thousands=' ').background_gradient(cmap='Blues').set_caption('Кузова')
+      expect: Полосы
