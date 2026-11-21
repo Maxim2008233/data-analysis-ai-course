@@ -8,7 +8,8 @@ import { detectPlatform, pyMemoryLimitMb } from "@/lib/pwa/platform";
 import { extractImports, resolvePyodidePackages, type PyodideLock } from "@/lib/pwa/pyodide-lock";
 import { CACHES, pageKey } from "@/lib/pwa/caches";
 import { buildOfflineManifest } from "@/lib/pwa/offline-manifest";
-import { PY_MICROPIP_MODULES, PYODIDE_CORE_FILES, PYODIDE_INDEX_URL, PYODIDE_VERSION } from "@/lib/config";
+import { PY_MICROPIP_MODULES, PYODIDE_CORE_FILES, PYODIDE_INDEX_URL, PYODIDE_VERSION, THEME_COLOR_LIGHT } from "@/lib/config";
+import manifest from "@/app/manifest";
 
 const ROOT = process.cwd();
 const read = (rel: string) => fs.readFileSync(path.join(ROOT, rel), "utf8");
@@ -243,6 +244,15 @@ describe("service worker: что и как кэшируется", () => {
   it("ключ страницы — без query и якоря", () => {
     expect(sw.pageKey("https://site.test/learn/a/b?x=1#task-3")).toBe("https://site.test/learn/a/b");
     expect(pageKey("/learn/a/b?x=1#task-3", "https://site.test")).toBe("https://site.test/learn/a/b");
+  });
+});
+
+describe("манифест приложения", () => {
+  it("без theme_color: иначе Chrome на Android красит им нижнюю панель и в тёмной теме она светлая", () => {
+    const m = manifest();
+    expect(m.theme_color).toBeUndefined();
+    expect(m.background_color).toBe(THEME_COLOR_LIGHT); // фон заставки при запуске
+    expect(m).toMatchObject({ display: "standalone", start_url: "/course", scope: "/" });
   });
 });
 

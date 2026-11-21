@@ -33,6 +33,8 @@ function pngSize(buf: Buffer): [number, number] {
 test("30. Манифест, иконки и теги для iPhone; service worker без долгого кэша", async ({ request }) => {
   const manifest = await (await request.get("/manifest.webmanifest")).json();
   expect(manifest).toMatchObject({ display: "standalone", start_url: "/course", scope: "/", lang: "ru", short_name: "Лаб. данных" });
+  // без theme_color нижняя панель Android следует теме телефона (с ним в тёмной теме она была светлой)
+  expect(manifest.theme_color).toBeUndefined();
   const purposes = new Set<string>();
   for (const icon of manifest.icons as { src: string; sizes: string; purpose: string }[]) {
     const res = await request.get(icon.src);

@@ -9,8 +9,8 @@ import { PwaBanner } from "@/components/pwa/PwaBanner";
 import { PwaRegister } from "@/components/pwa/PwaRegister";
 import { installCaptureScript } from "@/lib/pwa/install-script";
 import { SiteFooter } from "@/components/SiteFooter";
-import { themeInitScript } from "@/components/ThemeToggle";
-import { APP_SHORT_NAME, SITE_DESCRIPTION, SITE_NAME } from "@/lib/config";
+import { ThemeColorSync, themeInitScript } from "@/components/ThemeToggle";
+import { APP_SHORT_NAME, SITE_DESCRIPTION, SITE_NAME, THEME_COLOR_DARK, THEME_COLOR_LIGHT } from "@/lib/config";
 import { buildCourseIndex, loadCourse } from "@/lib/content/load";
 
 const textFont = IBM_Plex_Sans({ variable: "--font-text", subsets: ["latin", "cyrillic"], weight: ["400", "500", "600", "700"], display: "swap" });
@@ -33,9 +33,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // по системной теме — до загрузки скриптов; дальше ThemeColorSync подстраивает цвет под тему, выбранную на сайте
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f4efe4" },
-    { media: "(prefers-color-scheme: dark)", color: "#0f1726" },
+    { media: "(prefers-color-scheme: light)", color: THEME_COLOR_LIGHT },
+    { media: "(prefers-color-scheme: dark)", color: THEME_COLOR_DARK },
   ],
 };
 
@@ -59,6 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="antialiased">
         <AuthProvider>
           <PwaRegister />
+          <ThemeColorSync />
           <div className="min-h-screen lg:grid lg:grid-cols-[17.5rem_minmax(0,1fr)]">
             <Sidebar modules={modules} />
             <div className="flex min-h-screen min-w-0 flex-col">

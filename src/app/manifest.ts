@@ -1,9 +1,13 @@
 import type { MetadataRoute } from "next";
-import { APP_SHORT_NAME, SITE_DESCRIPTION, SITE_NAME } from "@/lib/config";
+import { APP_SHORT_NAME, SITE_DESCRIPTION, SITE_NAME, THEME_COLOR_LIGHT } from "@/lib/config";
 
 // Манифест веб-приложения (PWA): название, иконки и вид при установке на телефон или компьютер.
 // Next.js отдаёт его по адресу /manifest.webmanifest и сам добавляет <link rel="manifest"> на все страницы.
-// Иконки рисует scripts/gen-icons.mjs. Цвета — светлой темы (фон заставки при запуске и цвет строки состояния).
+// Иконки рисует scripts/gen-icons.mjs. background_color — фон заставки при запуске установленного приложения.
+// theme_color нарочно НЕТ: Chrome на Android красит им нижнюю системную панель установленного приложения
+// (WebappIntentDataProvider в Chromium), а тёмного варианта из манифеста не читает — в тёмной теме панель была бы
+// светлой. Без theme_color панель следует светлой или тёмной теме телефона. Цвет строки состояния сверху задают
+// теги <meta name="theme-color"> (layout.tsx и ThemeColorSync — по теме сайта).
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
@@ -16,8 +20,7 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/course",
     scope: "/",
     display: "standalone",
-    background_color: "#f4efe4",
-    theme_color: "#f4efe4",
+    background_color: THEME_COLOR_LIGHT,
     categories: ["education"],
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },

@@ -100,3 +100,20 @@ async function checkNoKeysOnDesktop(page: Page) {
   await page.waitForTimeout(300);
   await expect(page.getByTestId("code-keys")).toHaveCount(0);
 }
+
+test("35. Цвет строки состояния телефона и панели браузера (theme-color) — по теме, выбранной на сайте, и после переходов", async ({ page }) => {
+  const colors = () => page.evaluate(() => [...document.querySelectorAll('meta[name="theme-color"]')].map((m) => m.getAttribute("content")));
+  const LIGHT = ["#f4efe4", "#f4efe4"];
+  const DARK = ["#0f1726", "#0f1726"];
+  await page.goto("/course");
+  await expect.poll(colors).toEqual(LIGHT); // системная тема светлая, на сайте тоже
+  await page.getByRole("button", { name: "Включить тёмную тему" }).first().click();
+  await expect.poll(colors).toEqual(DARK); // тёмная включена кнопкой — строка состояния тёмная, хотя система светлая
+  await page.getByRole("link", { name: "Задачи" }).first().click(); // переход внутри сайта без перезагрузки
+  await page.waitForURL("**/tasks");
+  await expect.poll(colors).toEqual(DARK);
+  await page.reload(); // тема запомнена
+  await expect.poll(colors).toEqual(DARK);
+  await page.getByRole("button", { name: "Включить светлую тему" }).first().click();
+  await expect.poll(colors).toEqual(LIGHT);
+});

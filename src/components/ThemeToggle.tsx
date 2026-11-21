@@ -1,5 +1,6 @@
 "use client";
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
+import { THEME_COLOR_DARK, THEME_COLOR_LIGHT } from "@/lib/config";
 
 export const THEME_KEY = "dsc-theme";
 
@@ -12,6 +13,29 @@ function subscribeTheme(cb: () => void) {
   return () => obs.disconnect();
 }
 const isDark = () => document.documentElement.classList.contains("dark");
+
+/**
+ * Цвет строки состояния телефона и панели браузера (<meta name="theme-color">) — по теме сайта, а не только системной:
+ * если тёмную тему включили кнопкой при светлой теме телефона (или наоборот), полоса сверху совпадает со страницей.
+ * Next.js выводит два тега с media по системной теме; здесь обоим ставится цвет текущей темы — и при переключении,
+ * и когда при переходах между страницами теги в <head> перерисовываются.
+ */
+export function ThemeColorSync() {
+  useEffect(() => {
+    const apply = () => {
+      const color = isDark() ? THEME_COLOR_DARK : THEME_COLOR_LIGHT;
+      document.querySelectorAll('meta[name="theme-color"]').forEach((m) => {
+        if (m.getAttribute("content") !== color) m.setAttribute("content", color);
+      });
+    };
+    apply();
+    const obs = new MutationObserver(apply);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    obs.observe(document.head, { childList: true, subtree: true, attributes: true, attributeFilter: ["content"] });
+    return () => obs.disconnect();
+  }, []);
+  return null;
+}
 
 export function ThemeToggle() {
   const dark = useSyncExternalStore(subscribeTheme, isDark, () => false);
