@@ -1,7 +1,7 @@
 // Настройки сайта, которые удобно менять в одном месте.
 
 /** Ссылка «Нашли ошибку?» в шапке и подвале. Подставьте свой адрес (форма, issues на GitHub, почта). */
-export const REPORT_BUG_URL = process.env.NEXT_PUBLIC_REPORT_BUG_URL || "https://github.com/your-name/ds-course-trainer/issues/new";
+export const REPORT_BUG_URL = process.env.NEXT_PUBLIC_REPORT_BUG_URL || "https://github.com/Maxim2008233/data-analysis-ai-course/issues/new";
 
 export const SITE_NAME = "Лаборатория данных";
 export const SITE_SHORT = "Лаборатория данных";
