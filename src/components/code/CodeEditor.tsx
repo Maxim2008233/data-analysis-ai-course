@@ -1,5 +1,6 @@
 "use client";
 // Редактор кода на CodeMirror 6: подсветка Python, автодополнение, Ctrl/Cmd+Enter — запуск.
+// Клавиши — как в IDE (editorKeys.ts): Tab подставляет подсказку или делает отступ в месте курсора, Enter — новая строка.
 // На телефоне и планшете, пока редактор в фокусе, над клавиатурой — панель символов (MobileCodeKeys).
 import { useEffect, useRef, useState } from "react";
 import { EditorState, Prec, StateEffect, StateField, type Extension } from "@codemirror/state";
@@ -14,12 +15,13 @@ import {
   placeholder as placeholderExt,
   type DecorationSet,
 } from "@codemirror/view";
-import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
+import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { python } from "@codemirror/lang-python";
 import { bracketMatching, indentOnInput, indentUnit, syntaxHighlighting } from "@codemirror/language";
 import { classHighlighter } from "@lezer/highlight";
-import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap, type CompletionContext } from "@codemirror/autocomplete";
+import { autocompletion, closeBrackets, closeBracketsKeymap, type CompletionContext } from "@codemirror/autocomplete";
 import { LIBRARY_COMPLETIONS } from "./completions";
+import { ideKeymap } from "./editorKeys";
 import { CODE_KEYS_HEIGHT, MobileCodeKeys, useCoarsePointer } from "./MobileCodeKeys";
 
 const setErrorLine = StateEffect.define<number | null>();
@@ -98,7 +100,8 @@ export default function CodeEditor({ value, onChange, onRun, readOnly = false, e
       EditorState.tabSize.of(4),
       python(),
       syntaxHighlighting(classHighlighter),
-      autocompletion({ override: undefined }),
+      // без стандартных клавиш автодополнения (там Enter подставляет подсказку) — свои, как в IDE, ниже
+      autocompletion({ override: undefined, defaultKeymap: false }),
       EditorState.languageData.of(() => [{ autocomplete: libraryCompletion }]),
       errorLineField,
       Prec.highest(
@@ -119,7 +122,8 @@ export default function CodeEditor({ value, onChange, onRun, readOnly = false, e
           },
         ])
       ),
-      keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...completionKeymap, indentWithTab]),
+      Prec.high(keymap.of(ideKeymap)),
+      keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap]),
       EditorView.lineWrapping,
       EditorView.contentAttributes.of({ "aria-label": ariaLabel }),
       EditorView.theme({

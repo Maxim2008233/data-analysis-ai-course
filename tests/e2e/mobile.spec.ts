@@ -52,6 +52,7 @@ test("34. Телефон: панель символов вставляет ск�
 
   // отступ, его отмена и история правок
   await pause();
+  await page.keyboard.press("Home"); // «⇥» работает как Tab в IDE: отступ в месте курсора — ставим его в начало строки
   await key("⇥").tap();
   const indented = "distance_col = header.index('Distance')\n    print(distance_col)";
   expect(await code()).toBe(indented);

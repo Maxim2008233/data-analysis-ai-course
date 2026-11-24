@@ -6,8 +6,9 @@
 import { useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { insertBracket } from "@codemirror/autocomplete";
-import { cursorCharLeft, cursorCharRight, cursorLineDown, cursorLineUp, indentLess, indentMore, redo, undo } from "@codemirror/commands";
+import { cursorCharLeft, cursorCharRight, cursorLineDown, cursorLineUp, indentLess, redo, undo } from "@codemirror/commands";
 import type { EditorView } from "@codemirror/view";
+import { codeTab } from "./editorKeys";
 
 interface CodeKey {
   label: string;
@@ -26,7 +27,8 @@ const char = (ch: string, aria?: string): CodeKey => ({ label: ch, aria, run: (v
 
 /** Порядок — по частоте в коде курса: отступ, скобки, двоеточие, присваивание, кавычки, точка… */
 export const CODE_KEYS: CodeKey[] = [
-  { label: "⇥", aria: "Отступ", run: (v) => void indentMore(v) },
+  // как клавиша Tab в редакторе: подставить подсказку, если список открыт, иначе отступ в месте курсора
+  { label: "⇥", aria: "Отступ или подставить подсказку", run: (v) => void codeTab(v) },
   char("("),
   char(")"),
   char("["),
