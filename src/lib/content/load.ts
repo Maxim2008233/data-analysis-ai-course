@@ -92,6 +92,7 @@ function normalizeTask(raw: Record<string, unknown>, file: string): TaskSource {
     explanation: raw.explanation ? String(raw.explanation) : undefined,
     tests: raw.tests ? String(raw.tests) : undefined,
     files: asArray(raw.files as string[]),
+    columns: raw.columns === false ? false : Array.isArray(raw.columns) ? raw.columns.map(String) : undefined,
     timeout: raw.timeout ? Number(raw.timeout) : undefined,
     wrong: asArray(raw.wrong as { code: string; expect: string; note?: string }[]).map((w) => ({
       code: String(w.code ?? ""),

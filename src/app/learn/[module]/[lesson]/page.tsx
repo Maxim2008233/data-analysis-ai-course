@@ -12,6 +12,8 @@ import { LessonQuiz } from "@/components/lesson/Quiz";
 import { CompetitionSubmit } from "@/components/competition/CompetitionSubmit";
 import { Callout, StaticCode, SvgFigure, TableWrap } from "@/components/lesson/blocks";
 import { TaskCard, type ClientTask } from "@/components/lesson/TaskCard";
+import { TaskColumnsLine } from "@/components/lesson/TaskColumns";
+import { loadColumnDictionary, taskColumns } from "@/lib/content/columns";
 import { LessonSteps, type StepMeta } from "@/components/lesson/LessonSteps";
 import { LessonStatusDot, LessonTaskCounter } from "@/components/lesson/LessonClientParts";
 import { ReferencePanelButton } from "@/components/reference/ReferenceBrowser";
@@ -69,7 +71,10 @@ export default async function LessonPage({ params }: { params: Params }) {
   const lessonIndex = index.modules.find((m) => m.id === mod.id)!.lessons.find((l) => l.id === lesson.id)!;
   const md = (text: string) => renderMarkdown(text, smallComponents, { dir: lesson.dir, lessonId: lesson.id });
 
+  const columnsDict = loadColumnDictionary();
   const tasks = lesson.tasks.map((t, i) => {
+    // какие столбцы данных нужны заданию — строка «Столбцы» под условием
+    const cols = taskColumns(t, lesson, columnsDict);
     const number = `${lesson.number}.${i + 1}`;
     const client: ClientTask = {
       id: t.id,
@@ -110,6 +115,7 @@ export default async function LessonPage({ params }: { params: Params }) {
         key={t.id}
         task={client}
         statement={md(t.statement)}
+        columns={cols ? <TaskColumnsLine columns={cols} /> : undefined}
         hints={t.hints.map((h, hi) => <Fragment key={hi}>{md(h)}</Fragment>)}
         explanation={t.explanation ? md(t.explanation) : undefined}
         recall={recall}

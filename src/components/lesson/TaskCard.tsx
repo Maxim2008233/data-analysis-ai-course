@@ -34,6 +34,8 @@ export interface ClientTask {
 interface Props {
   task: ClientTask;
   statement: ReactNode;
+  /** Строка «Столбцы»: какие столбцы данных нужны (TaskColumnsLine, рисуется на сервере). */
+  columns?: ReactNode;
   hints: ReactNode[];
   explanation?: ReactNode;
   recall?: ReactNode;
@@ -45,7 +47,7 @@ interface Props {
 
 type Busy = null | "run" | "check";
 
-export function TaskCard({ task, statement, hints, explanation, recall, preludeNote, preludeHtml, solutionHtml, starterHtml }: Props) {
+export function TaskCard({ task, statement, columns, hints, explanation, recall, preludeNote, preludeHtml, solutionHtml, starterHtml }: Props) {
   const key = taskKey(task.id);
   const version = useProgressVersion();
   const item = useProgressItem(key);
@@ -228,6 +230,7 @@ export function TaskCard({ task, statement, hints, explanation, recall, preludeN
       <div className="p-4 sm:p-5">
         <h3 className="mb-2 font-display text-xl font-semibold leading-snug">{task.title}</h3>
         <div className="md text-[0.98rem] leading-relaxed">{statement}</div>
+        {columns}
 
         {recall && <div className="mt-4">{recall}</div>}
 

@@ -23,6 +23,7 @@ import fs from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
 import { conceptIntroductions, loadCourse, lessonHref } from "../src/lib/content/load";
+import { loadColumnDictionary, taskColumns } from "../src/lib/content/columns";
 import type { Course, LessonSource, ModuleSource, TaskSource } from "../src/lib/content/types";
 import { formatScore, getCompetition, isBetter, type CompetitionConfig } from "../src/lib/competitions/registry";
 import { scoreAccuracy, scoreChoices, scorePredictions, validateChoices, validateLabels, validateSubmission } from "../src/lib/competitions/scoring";
@@ -243,6 +244,18 @@ function checkTask(
   ctx.taskIds.add(t.id);
   if (!t.statement.trim()) err(where, "нет формулировки");
   if (t.hints.length !== 3) err(where, `подсказок ${t.hints.length}, нужно ровно 3`);
+  // строка «Столбцы» под условием: у каждого столбца должно быть описание, ручной список — из настоящих столбцов
+  const columnsDict = loadColumnDictionary();
+  const cols = taskColumns(t, l, columnsDict);
+  for (const it of cols?.items ?? []) {
+    if (!it.label) err(where, `столбец «${it.name}» (${it.dataset || "датасет не найден"}) не описан в content/columns.yaml`);
+  }
+  if (Array.isArray(t.columns)) {
+    const files = (t.files?.length ? t.files : l.files).filter((f) => columnsDict.headers[f]);
+    for (const name of t.columns) {
+      if (!files.some((f) => columnsDict.headers[f].includes(name))) err(where, `columns: столбца «${name}» нет в датасетах задания (${files.join(", ") || "нет файлов"})`);
+    }
+  }
   const isQuiz = t.kind === "quiz" || t.kind === "predict";
   if (isQuiz) {
     if (!t.quiz?.length) err(where, "у квиза нет вопросов");

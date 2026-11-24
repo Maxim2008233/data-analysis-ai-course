@@ -1,0 +1,180 @@
+# Описания столбцов датасетов курса. По ним под условием задания строится строка «Столбцы»: какие столбцы
+# берёт эталонное решение и что в них лежит (src/lib/content/columns.ts). Валидатор проверяет, что у каждого
+# столбца, который попадает в эту строку, здесь есть описание. Формулировки — как в таблицах уроков.
+
+# Матрица X из load_numeric() (модуль 1): названия столбцов по порядку номеров 0, 1, 2, 3; описания — из cars.csv.
+load_numeric: [Year, Distance, Engine_capacity(cm3), Price(euro)]
+
+datasets:
+  cars.csv:
+    Make: марка
+    Model: модель
+    Year: год выпуска
+    Style: тип кузова
+    Distance: пробег, км
+    Engine_capacity(cm3): объём двигателя, см³
+    Fuel_type: тип топлива
+    AutoTransmission: "автоматическая коробка: True / False"
+    Price(euro): цена, евро
+
+  cars_processed.csv:
+    Make: марка (редкие марки объединены в Rare)
+    Model: модель
+    Year: год выпуска
+    Style: тип кузова
+    Distance: пробег, км
+    Engine: объём двигателя, см³
+    Fuel_type: тип топлива
+    AutoTransmission: "автоматическая коробка: True / False"
+    Price: цена, евро
+    Age: возраст автомобиля на 2022 год, лет
+    km_year: пробег за год, км
+    Transmission: "коробка: Automatic / Manual"
+    km_year_cat: "пробег за год: Small / Medium / Large"
+    Make_original: марка до объединения редких
+    source_row_id: номер строки в исходном cars.csv
+
+  titanic.csv:
+    PassengerId: номер пассажира
+    Survived: 1 — выжил, 0 — погиб
+    Pclass: класс билета — 1, 2 или 3
+    Name: имя с обращением (Mr., Mrs., Miss.)
+    Sex: пол
+    Age: возраст, лет
+    SibSp: братьев, сестёр и супругов на борту
+    Parch: родителей и детей на борту
+    Ticket: номер билета
+    Fare: стоимость билета
+    Cabin: каюта
+    Embarked: "порт посадки: S, C, Q"
+
+  adult.csv:
+    age: возраст, лет
+    workclass: тип работодателя
+    fnlwgt: статистический вес записи в переписи
+    education: уровень образования
+    education-num: номер уровня образования по порядку
+    marital-status: семейное положение
+    occupation: род занятий
+    relationship: роль в семье
+    race: раса
+    sex: пол
+    capital-gain: доход от капитала
+    capital-loss: убыток от капитала
+    hours-per-week: рабочих часов в неделю
+    native-country: страна рождения
+    salary: "доход за год: <=50K или >50K"
+
+  diabetes.csv:
+    age: возраст, лет
+    sex: пол — 1 или 2
+    bmi: индекс массы тела
+    bp: среднее давление
+    s1: показатель анализа крови s1
+    s2: показатель анализа крови s2
+    s3: показатель анализа крови s3
+    s4: показатель анализа крови s4
+    s5: показатель анализа крови s5
+    s6: показатель анализа крови s6
+    target: прогрессия болезни через год
+
+  competition_cars_train.csv:
+    Price: цена
+    Make: марка
+    Model: модель
+    Year: год выпуска
+    Style: тип кузова
+    Fuel: тип топлива
+    Engine: объём двигателя, л
+    Distance: пробег, км
+    Cylinders: число цилиндров
+    Transmission: коробка передач
+    Drive: "привод: Front / Rear / 4x4"
+    Wheel: руль — левый или правый
+    Color: цвет
+    ID: номер объявления
+
+  competition_cars_test.csv:
+    Make: марка
+    Model: модель
+    Year: год выпуска
+    Style: тип кузова
+    Fuel: тип топлива
+    Engine: объём двигателя, л
+    Distance: пробег, км
+    Cylinders: число цилиндров
+    Transmission: коробка передач
+    Drive: "привод: Front / Rear / 4x4"
+    Wheel: руль — левый или правый
+    Color: цвет
+    ID: номер объявления
+
+  competition_cars_sample_submission.csv:
+    ID: номер объявления
+    Predict: прогноз цены
+
+  zs_public.csv:
+    ID: номер картинки
+    class: класс картинки (на языке группы)
+    group: группа классов
+    language: язык названий классов
+    english: класс по-английски
+
+  competition_zs_test.csv:
+    ID: номер картинки
+    group: группа классов
+    language: язык названий классов
+
+  competition_zs_sample_submission.csv:
+    ID: номер картинки
+    predicted_class: предсказанный класс
+
+  qa_train.csv:
+    id: номер вопроса
+    вопрос: текст вопроса
+    варианты: варианты ответа
+    категория: тема вопроса
+    ответ: номер правильного варианта
+
+  qa_test.csv:
+    id: номер вопроса
+    вопрос: текст вопроса
+    варианты: варианты ответа
+    категория: тема вопроса
+
+  qa_gigachat_baseline.csv:
+    id: номер вопроса
+    prediction: ответ базового решения
+
+  reviews.csv:
+    text: текст отзыва
+    label: 1 — положительный, 0 — отрицательный
+    domain: тема отзыва
+    lang: "язык: en / ru"
+
+  moons.csv:
+    x1: первый признак точки
+    x2: второй признак точки
+    label: класс точки — 0 или 1
+
+  water_polution.csv:
+    code: код показателя (нитраты, фосфор, pH…)
+    Uom: единица измерения
+    year: год
+    period: период усреднения
+    polution: среднее за год значение показателя
+    id: водоём
+    Country: страна
+    population: плотность населения страны
+    tourists: число туристов страны
+    venue: число «площадок» (у 97 % строк — 0)
+    rate: уровень грамотности страны
+    food: доля пищевых отходов в мусоре, %
+    glass: доля стекла в мусоре, %
+    metal: доля металла в мусоре, %
+    other: доля прочего мусора, %
+    paper: доля бумаги в мусоре, %
+    plastic: доля пластика в мусоре, %
+    leather: доля кожи в мусоре, %
+    green_waste: доля растительных отходов в мусоре, %
+    waste_recycling: доля переработанного мусора, %

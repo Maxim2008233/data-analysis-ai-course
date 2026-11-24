@@ -37,6 +37,8 @@ export interface TaskSource {
   explanation?: string; // markdown: построчный разбор решения
   tests?: string;
   files?: string[];
+  /** Строка «Столбцы» под условием: по умолчанию — по эталонному решению (columns.ts); список вручную или false — убрать. */
+  columns?: string[] | false;
   timeout?: number; // секунды
   wrong?: WrongSolution[];
   alternatives?: string[]; // другие верные решения (должны проходить тесты)
